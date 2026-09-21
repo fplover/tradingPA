@@ -584,7 +584,7 @@ export class ChartRenderer {
       const span = max - min;
       const shift = (dy / Math.max(1, pane.height)) * span;
       pane.manual = true; // 上下拖动 → 锁定价格域
-      pane.priceScale.autoScale(min + shift, max + shift);
+      pane.priceScale.shift(shift);
       this.invalidate();
     } else if (this.priceDragging) {
       const dy = y - this.priceYAtDragStart;
@@ -593,7 +593,7 @@ export class ChartRenderer {
       const span = max - min;
       const shift = -(dy / Math.max(1, pane.height)) * span;
       pane.manual = true;
-      pane.priceScale.autoScale(min + shift, max + shift);
+      pane.priceScale.shift(shift);
       this.invalidate();
     } else if (this.dragDrawing) {
       this.updateDrawingDrag(x, y);
@@ -688,7 +688,7 @@ export class ChartRenderer {
       const mid = (min + max) / 2;
       const half = ((max - min) / 2) * factor;
       pane.manual = true; // 价格轴缩放同样锁定
-      pane.priceScale.autoScale(mid - half, mid + half);
+      pane.priceScale.setRange(mid - half, mid + half);
     } else {
       const factor = e.deltaY > 0 ? 1.1 : 0.9;
       this.viewport.zoomAt(x, factor);

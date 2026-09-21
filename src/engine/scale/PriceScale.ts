@@ -57,6 +57,18 @@ export class PriceScale {
     return { min: this.min, max: this.max };
   }
 
+  /** 平移价格域（不重新留白，供拖拽用） */
+  shift(delta: number): void {
+    this.min += delta;
+    this.max += delta;
+  }
+
+  /** 直接设置价格域（不留白，供价格轴缩放用） */
+  setRange(min: number, max: number): void {
+    this.min = min;
+    this.max = max;
+  }
+
   private get usable(): boolean {
     return this.logMode && this.min > 0 && this.max > 0;
   }
