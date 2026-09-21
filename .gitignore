@@ -3,6 +3,9 @@ dist
 dist-ssr
 *.local
 *.tsbuildinfo
+.playwright-browsers
+test-results
+playwright-report
 .DS_Store
 .vscode/*
 !.vscode/extensions.json

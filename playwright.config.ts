@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+
+// 浏览器二进制安装在 workspace 内（避免全局缓存锁冲突），.gitignore 已排除
+process.env.PLAYWRIGHT_BROWSERS_PATH ??= fileURLToPath(new URL('./.playwright-browsers', import.meta.url));
 
 export default defineConfig({
   testDir: './tests/e2e',
