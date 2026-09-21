@@ -8,12 +8,16 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
   retries: 0,
+  // 图表应用较重（10 万 K 线 + 实时流），并行页面互相抢资源会 flaky，串行执行
+  workers: 1,
+  fullyParallel: false,
   use: {
     baseURL: 'http://localhost:5173',
     viewport: { width: 1280, height: 800 },
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // 使用系统 Chrome（本环境无法从 CDN 下载 Playwright 内置 chromium）
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], channel: 'chrome' } },
   ],
   webServer: {
     command: 'npm run dev',

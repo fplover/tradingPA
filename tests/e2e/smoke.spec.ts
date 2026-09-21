@@ -16,17 +16,22 @@ test('页面加载并渲染图表', async ({ page }) => {
   expect(box!.width).toBeGreaterThan(100);
   expect(box!.height).toBeGreaterThan(100);
 
-  // 画布上确实画了内容（非纯背景像素）
-  const nonBg = await page.evaluate(() => {
-    const c = document.querySelector('canvas') as HTMLCanvasElement;
-    const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
-    let count = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i] !== 19 || d[i + 1] !== 23 || d[i + 2] !== 34) count++;
-    }
-    return count;
-  });
-  expect(nonBg).toBeGreaterThan(1000);
+  // 画布上确实画了内容（非纯背景像素）——轮询等待首帧渲染
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const c = document.querySelector('canvas') as HTMLCanvasElement;
+          const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+          let count = 0;
+          for (let i = 0; i < d.length; i += 4) {
+            if (d[i] !== 19 || d[i + 1] !== 23 || d[i + 2] !== 34) count++;
+          }
+          return count;
+        }),
+      { timeout: 8000 },
+    )
+    .toBeGreaterThan(1000);
 
   expect(errors).toEqual([]);
 });
