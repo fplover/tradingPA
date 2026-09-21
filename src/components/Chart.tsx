@@ -5,6 +5,7 @@ import type { ParamValue } from '@/indicators/core/types';
 import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
+import { syncBus } from '@/store/syncBus';
 
 function defaultsFor(id: string): Record<string, ParamValue> {
   const def = getIndicatorDef(id);
@@ -26,6 +27,10 @@ interface ChartProps {
   onRendererReady?: (renderer: ChartRenderer | null) => void;
   /** 视口滚动到数据左边缘时触发（懒加载更早历史） */
   onNeedsMoreHistory?: () => void;
+  /** 复盘模式：只渲染到该 index（null = 关闭） */
+  replayIndex?: number | null;
+  /** 参与多图表联动（十字光标/视口同步） */
+  sync?: boolean;
 }
 
 /** React 只负责挂载/卸载引擎与同步配置，渲染循环完全不经过 React */
@@ -40,6 +45,8 @@ export function Chart({
   showVolume = true,
   onRendererReady,
   onNeedsMoreHistory,
+  replayIndex = null,
+  sync = false,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
@@ -177,6 +184,34 @@ export function Chart({
     }, 500);
     return () => clearInterval(id);
   }, [onNeedsMoreHistory]);
+
+  // 复盘模式
+  useEffect(() => {
+    rendererRef.current?.setReplayIndex(replayIndex);
+  }, [replayIndex]);
+
+  // 多图表联动：十字光标时间 + 视口广播
+  useEffect(() => {
+    if (!sync) return;
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    let lastEmit = 0;
+    const offViewport = syncBus.onViewport((v) => renderer.setSyncViewport(v));
+    const offCrosshair = syncBus.onCrosshair((t) => renderer.setSyncCrosshair(t));
+    renderer.onCrosshairTime((t) => {
+      const now = performance.now();
+      if (now - lastEmit < 32) return; // 限频，避免刷屏
+      lastEmit = now;
+      syncBus.emitCrosshair(t);
+    });
+    renderer.onViewportCommit((v) => syncBus.emitViewport(v));
+    return () => {
+      offViewport();
+      offCrosshair();
+      renderer.onCrosshairTime(null);
+      renderer.onViewportCommit(null);
+    };
+  }, [sync]);
 
   return (
     <canvas

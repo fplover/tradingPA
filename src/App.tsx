@@ -17,13 +17,18 @@ import {
 } from '@/types/market';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
+import { useLayoutStore } from '@/store/layoutStore';
+import { useWatchlistStore } from '@/store/watchlistStore';
+import { useAlertStore } from '@/store/alertStore';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
 import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
 import { ObjectTree } from '@/features/drawings/ObjectTree';
-
-const SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT'];
+import { LayoutGrid, LayoutButtons } from '@/features/layout/LayoutGrid';
+import { Watchlist } from '@/features/watchlist/Watchlist';
+import { AlertPanel } from '@/features/alerts/AlertPanel';
+import { ReplayControls } from '@/features/replay/ReplayControls';
 
 const selectStyle: React.CSSProperties = {
   background: '#1e222d',
@@ -59,15 +64,16 @@ export default function App() {
   const [showVolume, setShowVolume] = useState(true);
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
+  const [replayIndex, setReplayIndex] = useState<number | null>(null);
 
   // 数据模式：live = Binance 实时；mock = 本地模拟（降级）
   const [mode, setMode] = useState<'live' | 'mock'>('live');
-  const [symbol, setSymbol] = useState('BTCUSDT');
   const [status, setStatus] = useState<FeedStatus>('idle');
   const [statusDetail, setStatusDetail] = useState('');
   const [liveBars, setLiveBars] = useState<Bar[] | null>(null);
   const feedRef = useRef<LiveDataFeed | null>(null);
 
+  const layout = useLayoutStore((s) => s.layout);
   const panelOpen = useIndicatorStore((s) => s.panelOpen);
   const setPanelOpen = useIndicatorStore((s) => s.setPanelOpen);
   const settingsFor = useIndicatorStore((s) => s.settingsFor);
@@ -76,6 +82,12 @@ export default function App() {
   const treeOpen = useDrawingStore((s) => s.treeOpen);
   const setTreeOpen = useDrawingStore((s) => s.setTreeOpen);
 
+  const activeSymbol = useWatchlistStore((s) => s.active);
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const alerts = useAlertStore((s) => s.alerts);
+  const checkAlerts = useAlertStore((s) => s.check);
+
   const mockBars = useMemo(() => generateMockBars(100_000, 60_000, 30_000), []);
   const tf = getTimeframe(timeframe);
   const mockTfBars = useMemo(
@@ -83,12 +95,12 @@ export default function App() {
     [mockBars, timeframe, tf],
   );
 
-  // 实时数据编排
+  // 实时数据编排（仅单图布局）
   useEffect(() => {
-    if (mode !== 'live') return;
+    if (mode !== 'live' || layout !== 1) return;
     let cancelled = false;
     const feed = new LiveDataFeed({
-      symbol,
+      symbol: activeSymbol,
       interval: toBinanceInterval(timeframe),
       handlers: {
         onHistory: (bars, info) => {
@@ -106,8 +118,7 @@ export default function App() {
           const lastT = r.lastBarTime;
           const intervalMs = Math.max(tf.seconds, 60) * 1000;
           if (lastT > 0 && bar.time > lastT + intervalMs * 1.5) {
-            // 缺口回补（断线重连后）
-            void fetchKlines(symbol, toBinanceInterval(timeframe), {
+            void fetchKlines(activeSymbol, toBinanceInterval(timeframe), {
               startTime: lastT + intervalMs,
               endTime: bar.time - intervalMs,
             }).then((missing) => {
@@ -120,6 +131,7 @@ export default function App() {
             return;
           }
           r.updateBar(bar);
+          checkAlerts(activeSymbol, bar.close);
         },
         onStatus: (s, detail) => {
           if (cancelled) return;
@@ -140,12 +152,22 @@ export default function App() {
       cancelled = true;
       feed.stop();
     };
-  }, [mode, symbol, timeframe, tf.seconds]);
+  }, [mode, activeSymbol, timeframe, layout, tf.seconds, checkAlerts]);
 
   const bars = mode === 'live' ? (liveBars ?? []) : mockTfBars;
+  const lastPrice = bars.length > 0 ? bars[bars.length - 1].close : 0;
 
   const handleNeedsMore = () => {
     void feedRef.current?.loadMore();
+  };
+
+  const handleScreenshot = () => {
+    const r = rendererRef.current;
+    if (!r) return;
+    const a = document.createElement('a');
+    a.href = r.screenshot();
+    a.download = `tradingpa-${activeSymbol}-${Date.now()}.png`;
+    a.click();
   };
 
   return (
@@ -162,27 +184,29 @@ export default function App() {
         }}
       >
         <strong style={{ color: '#d1d4dc', fontSize: 13, marginRight: 8 }}>TradingPA</strong>
-        <select style={selectStyle} value={symbol} onChange={(e) => setSymbol(e.target.value)} disabled={mode !== 'live'}>
-          {SYMBOLS.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-        <select style={selectStyle} value={timeframe} onChange={(e) => setTimeframe(e.target.value as TimeframeId)}>
-          {TIMEFRAMES.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
-        <select style={selectStyle} value={chartType} onChange={(e) => setChartType(e.target.value as ChartTypeId)}>
-          {CHART_TYPES.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+        <LayoutButtons />
+        <button style={{ ...btnStyle, background: watchlistOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setWatchlistOpen(!watchlistOpen)}>
+          自选股
+        </button>
+        {layout === 1 && (
+          <>
+            <select style={selectStyle} value={timeframe} onChange={(e) => setTimeframe(e.target.value as TimeframeId)}>
+              {TIMEFRAMES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <select style={selectStyle} value={chartType} onChange={(e) => setChartType(e.target.value as ChartTypeId)}>
+              {CHART_TYPES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <ReplayControls barCount={bars.length} replayIndex={replayIndex} onIndexChange={setReplayIndex} />
+          </>
+        )}
         <button style={{ ...btnStyle, background: panelOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setPanelOpen(!panelOpen)}>
           指标
         </button>
@@ -192,8 +216,14 @@ export default function App() {
         <button style={btnStyle} onClick={loadTemplate}>
           取模板
         </button>
-        <button style={btnStyle} onClick={() => setTreeOpen(!treeOpen)}>
+        <button style={{ ...btnStyle, background: treeOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setTreeOpen(!treeOpen)}>
           对象树
+        </button>
+        <button style={{ ...btnStyle, background: alertOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setAlertOpen(!alertOpen)}>
+          警报{alerts.length > 0 ? ` (${alerts.length})` : ''}
+        </button>
+        <button style={btnStyle} onClick={handleScreenshot} title="导出 PNG">
+          截图
         </button>
         <label style={{ color: '#b2b5be', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input type="checkbox" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
@@ -203,46 +233,62 @@ export default function App() {
           <input type="checkbox" checked={showVolume} onChange={(e) => setShowVolume(e.target.checked)} />
           成交量
         </label>
-        <button
-          style={btnStyle}
-          onClick={() => {
-            setLiveBars(null);
-            setStatus('loading');
-            setMode('live');
-          }}
-        >
-          {mode === 'live' ? '重连' : '切实时'}
-        </button>
+        {layout === 1 && (
+          <button
+            style={btnStyle}
+            onClick={() => {
+              setLiveBars(null);
+              setStatus('loading');
+              setMode('live');
+            }}
+          >
+            {mode === 'live' ? '重连' : '切实时'}
+          </button>
+        )}
         <ActiveIndicatorChips />
         <span style={{ color: '#787b86', fontSize: 11, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[status], display: 'inline-block' }} />
-          {mode === 'mock' ? '模拟数据' : statusDetail || status}
+          {layout === 1 && (
+            <>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[status], display: 'inline-block' }} />
+              {mode === 'mock' ? '模拟数据' : statusDetail || status}
+            </>
+          )}
           <span style={{ marginLeft: 8 }}>
             {bars.length.toLocaleString()} 根 · {tf.label}
           </span>
         </span>
       </div>
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <Chart
-          bars={bars}
-          symbol={symbol}
-          interval={tf.label}
-          decimals={2}
-          liveTickMs={mode === 'live' ? undefined : 800}
-          chartType={chartType}
-          logScale={logScale}
-          showVolume={showVolume}
-          onRendererReady={(r) => {
-            rendererRef.current = r;
-            setRenderer(r);
-          }}
-          onNeedsMoreHistory={handleNeedsMore}
-        />
-        <DrawingToolbar />
-        {panelOpen && <IndicatorPanel />}
-        {treeOpen && <ObjectTree renderer={renderer} onClose={() => setTreeOpen(false)} />}
-        {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
-      </div>
+
+      {layout === 1 ? (
+        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+          <Chart
+            bars={bars}
+            symbol={activeSymbol}
+            interval={tf.label}
+            decimals={2}
+            liveTickMs={mode === 'live' ? undefined : 800}
+            chartType={chartType}
+            logScale={logScale}
+            showVolume={showVolume}
+            replayIndex={replayIndex}
+            onRendererReady={(r) => {
+              rendererRef.current = r;
+              setRenderer(r);
+            }}
+            onNeedsMoreHistory={handleNeedsMore}
+          />
+          <DrawingToolbar />
+          {watchlistOpen && <Watchlist />}
+          {panelOpen && <IndicatorPanel />}
+          {treeOpen && <ObjectTree renderer={renderer} onClose={() => setTreeOpen(false)} />}
+          {alertOpen && <AlertPanel symbol={activeSymbol} currentPrice={lastPrice} />}
+          {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
+        </div>
+      ) : (
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <LayoutGrid />
+        </div>
+      )}
     </div>
   );
 }

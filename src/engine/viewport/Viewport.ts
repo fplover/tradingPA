@@ -81,6 +81,17 @@ export class Viewport {
     return this.firstIndex;
   }
 
+  /** 公开设置首 index（带边界钳制），供多图表联动 */
+  setFirstPublic(index: number): void {
+    this.firstIndex = index;
+    this.clamp();
+  }
+
+  /** 公开设置 bar 间距（带钳制），供多图表联动 */
+  setBarSpacing(spacing: number): void {
+    this.barSpacing = this.clampSpacing(spacing);
+  }
+
   get spacing(): number {
     return this.barSpacing;
   }

@@ -70,6 +70,12 @@ export class ChartRenderer {
   private dragDrawing: { id: string; part: 'body' | 'handle'; index: number; start: DrawingPoint; origin: DrawingPoint[] } | null = null;
   private drawingsListeners = new Set<() => void>();
 
+  // 联动 / 复盘
+  private syncCrosshairTime: number | null = null;
+  private replayIndex: number | null = null;
+  private viewportCommitCb: ((v: { first: number; spacing: number }) => void) | null = null;
+  private crosshairTimeCb: ((t: number | null) => void) | null = null;
+
   /** 订阅画线变更（对象树等 React UI 用） */
   onDrawingsChanged(cb: () => void): () => void {
     this.drawingsListeners.add(cb);
@@ -299,6 +305,44 @@ export class ChartRenderer {
     return this.viewport.first;
   }
 
+  /** 截图：画布 PNG dataURL */
+  screenshot(): string {
+    return this.manager.canvas.toDataURL('image/png');
+  }
+
+  /** 复盘模式：只渲染到指定 index（null = 关闭） */
+  setReplayIndex(index: number | null): void {
+    this.replayIndex = index;
+    this.invalidate();
+  }
+
+  /** 联动：外部图表十字光标时间（绘制垂直参考线） */
+  setSyncCrosshair(time: number | null): void {
+    this.syncCrosshairTime = time;
+    this.invalidate();
+  }
+
+  /** 联动：外部视口变化（平移/缩放广播） */
+  setSyncViewport(v: { first: number; spacing: number }): void {
+    this.viewport.setBarSpacing(v.spacing);
+    this.viewport.setFirstPublic(v.first);
+    this.invalidate();
+  }
+
+  getViewport(): { first: number; spacing: number } {
+    return { first: this.viewport.first, spacing: this.viewport.spacing };
+  }
+
+  /** 视口提交（拖拽/缩放结束）回调，用于多图表联动 */
+  onViewportCommit(cb: ((v: { first: number; spacing: number }) => void) | null): void {
+    this.viewportCommitCb = cb;
+  }
+
+  /** 十字光标所在 bar 时间回调，用于多图表联动 */
+  onCrosshairTime(cb: ((t: number | null) => void) | null): void {
+    this.crosshairTimeCb = cb;
+  }
+
   /** 最新 bar 时间戳（缺口检测用） */
   get lastBarTime(): number {
     return this.baseSeries.last?.time ?? 0;
@@ -471,7 +515,6 @@ export class ChartRenderer {
           start: pixelToPoint(x, y - pane.y, this.drawingCtx(), false),
           origin: d.points.map((p) => ({ ...p })),
         };
-        this.notifyDrawings();
     this.invalidate();
         return;
       }
@@ -480,7 +523,6 @@ export class ChartRenderer {
       this.lastPointerX = e.clientX;
       this.lastPointerY = e.clientY;
       this.crosshair.clear();
-      this.notifyDrawings();
     this.invalidate();
     }
   };
@@ -491,7 +533,6 @@ export class ChartRenderer {
     const def = getToolDef(this.activeTool!);
     if (def.points === 1) {
       this.drawingLayer.add(this.activeTool!, [pt]);
-      this.notifyDrawings();
     this.invalidate();
       return;
     }
@@ -501,7 +542,6 @@ export class ChartRenderer {
       this.placing = [];
       this.previewPoint = null;
     }
-    this.notifyDrawings();
     this.invalidate();
   }
 
@@ -518,7 +558,6 @@ export class ChartRenderer {
       const span = max - min;
       const shift = (dy / Math.max(1, pane.height)) * span;
       pane.priceScale.autoScale(min + shift, max + shift);
-      this.notifyDrawings();
     this.invalidate();
     } else if (this.priceDragging) {
       const dy = y - this.priceYAtDragStart;
@@ -527,14 +566,12 @@ export class ChartRenderer {
       const span = max - min;
       const shift = -(dy / Math.max(1, pane.height)) * span;
       pane.priceScale.autoScale(min + shift, max + shift);
-      this.notifyDrawings();
     this.invalidate();
     } else if (this.dragDrawing) {
       this.updateDrawingDrag(x, y);
     } else if (this.activeTool && this.placing.length > 0) {
       const pane = this.paneAt(y);
       this.previewPoint = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetEnabled);
-      this.notifyDrawings();
     this.invalidate();
     } else {
       this.updateCrosshair(x, y);
@@ -559,7 +596,6 @@ export class ChartRenderer {
       if (pts[drag.index]) pts[drag.index] = { time: cur.time, price: cur.price };
       this.drawingLayer.updatePoints(drag.id, pts);
     }
-    this.notifyDrawings();
     this.invalidate();
   }
 
@@ -568,8 +604,8 @@ export class ChartRenderer {
     const chartH = this.manager.height - AXIS_HEIGHT;
     if (x < 0 || x > chartW || y < 0 || y > chartH) {
       this.crosshair.clear();
-      this.notifyDrawings();
-    this.invalidate();
+      this.crosshairTimeCb?.(null);
+      this.invalidate();
       return;
     }
     const pane = this.paneAt(y);
@@ -579,10 +615,11 @@ export class ChartRenderer {
     if (bar) {
       const price = pane.priceScale.yToPrice(y - pane.y);
       this.crosshair.set(x, y, idx, bar.time, price);
+      this.crosshairTimeCb?.(bar.time);
     } else {
       this.crosshair.clear();
+      this.crosshairTimeCb?.(null);
     }
-    this.notifyDrawings();
     this.invalidate();
   }
 
@@ -590,6 +627,7 @@ export class ChartRenderer {
     this.dragging = false;
     this.priceDragging = false;
     this.dragDrawing = null;
+    this.viewportCommitCb?.(this.getViewport());
     if (this.manager.canvas.hasPointerCapture(e.pointerId)) {
       this.manager.canvas.releasePointerCapture(e.pointerId);
     }
@@ -601,7 +639,6 @@ export class ChartRenderer {
 
   private onPointerLeave = () => {
     this.crosshair.clear();
-    this.notifyDrawings();
     this.invalidate();
   };
 
@@ -620,7 +657,7 @@ export class ChartRenderer {
       const factor = e.deltaY > 0 ? 1.1 : 0.9;
       this.viewport.zoomAt(x, factor);
     }
-    this.notifyDrawings();
+    this.viewportCommitCb?.(this.getViewport());
     this.invalidate();
   };
 
@@ -661,7 +698,9 @@ export class ChartRenderer {
   private visibleRange(): { from: number; to: number } {
     const count = this.displaySeries.length;
     const from = Math.max(0, Math.floor(this.viewport.first));
-    const to = Math.min(count - 1, from + Math.ceil((this.manager.width - AXIS_WIDTH) / this.viewport.spacing));
+    let to = Math.min(count - 1, from + Math.ceil((this.manager.width - AXIS_WIDTH) / this.viewport.spacing));
+    // 复盘模式：隐藏 index 之后的 K 线
+    if (this.replayIndex !== null) to = Math.min(to, this.replayIndex);
     return { from, to };
   }
 
@@ -782,6 +821,24 @@ export class ChartRenderer {
       hoveredPane.height,
       legendIndicators,
     );
+
+    // 联动：其他图表十字光标时间的垂直参考线
+    if (this.syncCrosshairTime !== null && !this.crosshair.visible) {
+      const idx = this.displaySeries.indexOfTime(this.syncCrosshairTime);
+      if (idx >= 0) {
+        const sx = this.viewport.indexToX(idx);
+        if (sx >= 0 && sx <= mainGeo.chartW) {
+          ctx.strokeStyle = theme.crosshair;
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(Math.round(sx) + 0.5, 0);
+          ctx.lineTo(Math.round(sx) + 0.5, mainGeo.chartH);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+    }
 
     this.lastFrameMs = performance.now() - t0;
   }
