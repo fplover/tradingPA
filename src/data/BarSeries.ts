@@ -63,4 +63,23 @@ export class BarSeries {
     }
     return -1;
   }
+
+  /** 时间 → 小数 index（相邻 bar 间线性插值，范围外外推），供画线坐标换算 */
+  fractionalIndexAt(time: number): number {
+    if (this.bars.length === 0) return 0;
+    const iv = this.bars.length > 1 ? this.bars[1].time - this.bars[0].time : 60_000;
+    if (time <= this.bars[0].time) return (time - this.bars[0].time) / iv;
+    const last = this.bars.length - 1;
+    if (time >= this.bars[last].time) return last + (time - this.bars[last].time) / iv;
+    let lo = 0;
+    let hi = last;
+    while (lo < hi - 1) {
+      const mid = (lo + hi) >> 1;
+      if (this.bars[mid].time <= time) lo = mid;
+      else hi = mid;
+    }
+    const t0 = this.bars[lo].time;
+    const t1 = this.bars[hi].time;
+    return lo + (time - t0) / (t1 - t0 || 1);
+  }
 }

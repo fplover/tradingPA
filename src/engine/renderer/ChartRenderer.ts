@@ -8,6 +8,10 @@ import type { Bar, ChartTypeId } from '@/types/market';
 import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
 import { IndicatorInstance } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
+import { DrawingLayer } from '../drawing/DrawingLayer';
+import { getToolDef, type Drawing, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
+import { drawDrawings, hitTestDrawing, pixelToPoint, type DrawContext } from '../drawing/drawDrawings';
+import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders } from './drawAxes';
 import { drawOhlc, drawLine, drawArea, drawBaseline, drawVolume } from './seriesRenderers';
@@ -57,6 +61,24 @@ export class ChartRenderer {
   private chartType: ChartTypeId = 'candles';
   private logScale = false;
   private brickOpts: BrickOptions = {};
+
+  // 画线状态
+  private drawingLayer = new DrawingLayer();
+  private activeTool: DrawingTypeId | null = null;
+  private placing: DrawingPoint[] = [];
+  private previewPoint: DrawingPoint | null = null;
+  private dragDrawing: { id: string; part: 'body' | 'handle'; index: number; start: DrawingPoint; origin: DrawingPoint[] } | null = null;
+  private drawingsListeners = new Set<() => void>();
+
+  /** 订阅画线变更（对象树等 React UI 用） */
+  onDrawingsChanged(cb: () => void): () => void {
+    this.drawingsListeners.add(cb);
+    return () => this.drawingsListeners.delete(cb);
+  }
+
+  private notifyDrawings(): void {
+    for (const cb of this.drawingsListeners) cb();
+  }
 
   /** 最近一帧绘制耗时（ms），供性能监控与测试 */
   lastFrameMs = 0;
@@ -262,6 +284,128 @@ export class ChartRenderer {
     this.dirty = true;
   }
 
+  // ---------- 画线 ----------
+
+  /** 设置当前工具（null = 光标模式） */
+  setActiveTool(tool: DrawingTypeId | null): void {
+    this.activeTool = tool;
+    this.placing = [];
+    this.previewPoint = null;
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  setMagnet(on: boolean): void {
+    this.drawingLayer.setMagnet(on);
+  }
+
+  listDrawings(): Drawing[] {
+    return [...this.drawingLayer.list()];
+  }
+
+  get selectedDrawingId(): string | null {
+    return this.drawingLayer.selected?.id ?? null;
+  }
+
+  updateDrawingStyle(id: string, style: Partial<Drawing['style']>): void {
+    this.drawingLayer.updateStyle(id, style);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  setDrawingVisible(id: string, visible: boolean): void {
+    this.drawingLayer.setVisible(id, visible);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  setDrawingLocked(id: string, locked: boolean): void {
+    this.drawingLayer.setLocked(id, locked);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  removeDrawing(id: string): void {
+    this.drawingLayer.remove(id);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  removeSelectedDrawing(): void {
+    this.drawingLayer.removeSelected();
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  undoDrawing(): void {
+    this.drawingLayer.undo();
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  redoDrawing(): void {
+    this.drawingLayer.redo();
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  clearDrawings(): void {
+    this.drawingLayer.clear();
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  exportDrawings(): string {
+    return serializeDrawings(this.drawingLayer.list());
+  }
+
+  importDrawings(raw: string): void {
+    this.drawingLayer.replaceAll(deserializeDrawings(raw));
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  /** 主面板局部绘制上下文 */
+  private drawingCtx(): DrawContext {
+    const main = this.panes[0];
+    return {
+      viewport: this.viewport,
+      priceScale: main.priceScale,
+      series: this.displaySeries,
+      geo: { chartW: this.manager.width - AXIS_WIDTH, chartH: main.height },
+    };
+  }
+
+  private hitDrawings(x: number, y: number, pane: PaneState): { id: string; part: 'body' | 'handle'; index: number } | null {
+    const dctx = this.drawingCtx();
+    const list = this.drawingLayer.list();
+    for (let i = list.length - 1; i >= 0; i--) {
+      const d = list[i];
+      if (!d.visible || d.locked) continue;
+      const hit = hitTestDrawing(d, x, y - pane.y, dctx);
+      if (hit) return { id: d.id, part: hit.part, index: hit.part === 'handle' ? hit.index : -1 };
+    }
+    return null;
+  }
+
+  /** 完成路径类画线（双击/回车） */
+  finishPlacing(): void {
+    if (this.activeTool === 'path' && this.placing.length >= 2) {
+      this.drawingLayer.add('path', this.placing);
+    }
+    this.placing = [];
+    this.previewPoint = null;
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  cancelPlacing(): void {
+    this.placing = [];
+    this.previewPoint = null;
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
   // ---------- 输入 ----------
 
   private toLocal(e: { clientX: number; clientY: number }): { x: number; y: number } {
@@ -285,13 +429,56 @@ export class ChartRenderer {
       this.priceDragging = true;
       this.priceYAtDragStart = y;
     } else if (!inTimeAxis) {
+      const pane = this.paneAt(y);
+      if (this.activeTool) {
+        this.handleToolPointerDown(x, y, pane);
+        return;
+      }
+      const hit = this.hitDrawings(x, y, pane);
+      if (hit) {
+        this.drawingLayer.select(hit.id);
+        const d = this.drawingLayer.list().find((dd) => dd.id === hit.id)!;
+        this.drawingLayer.beginHistory();
+        this.dragDrawing = {
+          id: hit.id,
+          part: hit.part,
+          index: hit.index,
+          start: pixelToPoint(x, y - pane.y, this.drawingCtx(), false),
+          origin: d.points.map((p) => ({ ...p })),
+        };
+        this.notifyDrawings();
+    this.invalidate();
+        return;
+      }
+      this.drawingLayer.select(null);
       this.dragging = true;
       this.lastPointerX = e.clientX;
       this.lastPointerY = e.clientY;
       this.crosshair.clear();
-      this.invalidate();
+      this.notifyDrawings();
+    this.invalidate();
     }
   };
+
+  /** 工具模式下的落点 */
+  private handleToolPointerDown(x: number, y: number, pane: PaneState): void {
+    const pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetEnabled);
+    const def = getToolDef(this.activeTool!);
+    if (def.points === 1) {
+      this.drawingLayer.add(this.activeTool!, [pt]);
+      this.notifyDrawings();
+    this.invalidate();
+      return;
+    }
+    this.placing.push(pt);
+    if (def.points > 0 && this.placing.length >= def.points) {
+      this.drawingLayer.add(this.activeTool!, this.placing);
+      this.placing = [];
+      this.previewPoint = null;
+    }
+    this.notifyDrawings();
+    this.invalidate();
+  }
 
   private onPointerMove = (e: PointerEvent) => {
     const { x, y } = this.toLocal(e);
@@ -306,7 +493,8 @@ export class ChartRenderer {
       const span = max - min;
       const shift = (dy / Math.max(1, pane.height)) * span;
       pane.priceScale.autoScale(min + shift, max + shift);
-      this.invalidate();
+      this.notifyDrawings();
+    this.invalidate();
     } else if (this.priceDragging) {
       const dy = y - this.priceYAtDragStart;
       const pane = this.paneAt(y);
@@ -314,18 +502,49 @@ export class ChartRenderer {
       const span = max - min;
       const shift = -(dy / Math.max(1, pane.height)) * span;
       pane.priceScale.autoScale(min + shift, max + shift);
-      this.invalidate();
+      this.notifyDrawings();
+    this.invalidate();
+    } else if (this.dragDrawing) {
+      this.updateDrawingDrag(x, y);
+    } else if (this.activeTool && this.placing.length > 0) {
+      const pane = this.paneAt(y);
+      this.previewPoint = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetEnabled);
+      this.notifyDrawings();
+    this.invalidate();
     } else {
       this.updateCrosshair(x, y);
     }
   };
+
+  /** 拖拽画线：整体平移或单手柄移动 */
+  private updateDrawingDrag(x: number, y: number): void {
+    const drag = this.dragDrawing;
+    if (!drag) return;
+    const pane = this.panes[0];
+    const cur = pixelToPoint(x, y - pane.y, this.drawingCtx(), false);
+    if (drag.part === 'body') {
+      const dt = cur.time - drag.start.time;
+      const dp = cur.price - drag.start.price;
+      this.drawingLayer.updatePoints(
+        drag.id,
+        drag.origin.map((p) => ({ time: p.time + dt, price: p.price + dp })),
+      );
+    } else {
+      const pts = drag.origin.map((p) => ({ ...p }));
+      if (pts[drag.index]) pts[drag.index] = { time: cur.time, price: cur.price };
+      this.drawingLayer.updatePoints(drag.id, pts);
+    }
+    this.notifyDrawings();
+    this.invalidate();
+  }
 
   private updateCrosshair(x: number, y: number): void {
     const chartW = this.manager.width - AXIS_WIDTH;
     const chartH = this.manager.height - AXIS_HEIGHT;
     if (x < 0 || x > chartW || y < 0 || y > chartH) {
       this.crosshair.clear();
-      this.invalidate();
+      this.notifyDrawings();
+    this.invalidate();
       return;
     }
     const pane = this.paneAt(y);
@@ -338,19 +557,26 @@ export class ChartRenderer {
     } else {
       this.crosshair.clear();
     }
+    this.notifyDrawings();
     this.invalidate();
   }
 
   private onPointerUp = (e: PointerEvent) => {
     this.dragging = false;
     this.priceDragging = false;
+    this.dragDrawing = null;
     if (this.manager.canvas.hasPointerCapture(e.pointerId)) {
       this.manager.canvas.releasePointerCapture(e.pointerId);
     }
   };
 
+  private onDoubleClick = () => {
+    this.finishPlacing();
+  };
+
   private onPointerLeave = () => {
     this.crosshair.clear();
+    this.notifyDrawings();
     this.invalidate();
   };
 
@@ -369,6 +595,7 @@ export class ChartRenderer {
       const factor = e.deltaY > 0 ? 1.1 : 0.9;
       this.viewport.zoomAt(x, factor);
     }
+    this.notifyDrawings();
     this.invalidate();
   };
 
@@ -378,6 +605,7 @@ export class ChartRenderer {
     canvas.addEventListener('pointerup', this.onPointerUp);
     canvas.addEventListener('pointercancel', this.onPointerUp);
     canvas.addEventListener('pointerleave', this.onPointerLeave);
+    canvas.addEventListener('dblclick', this.onDoubleClick);
     canvas.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
@@ -387,6 +615,7 @@ export class ChartRenderer {
     canvas.removeEventListener('pointerup', this.onPointerUp);
     canvas.removeEventListener('pointercancel', this.onPointerUp);
     canvas.removeEventListener('pointerleave', this.onPointerLeave);
+    canvas.removeEventListener('dblclick', this.onDoubleClick);
     canvas.removeEventListener('wheel', this.onWheel);
   }
 
@@ -484,6 +713,24 @@ export class ChartRenderer {
     const mainGeo: DrawGeometry = { chartW: w - AXIS_WIDTH, chartH: h - AXIS_HEIGHT };
     drawTimeAxis(ctx, this.displaySeries, this.viewport, mainGeo);
     drawBorders(ctx, mainGeo);
+
+    // 画线层（主面板局部坐标）
+    const main = this.panes[0];
+    ctx.save();
+    ctx.translate(0, main.y);
+    drawDrawings(ctx, this.drawingLayer.list(), this.drawingLayer.selected?.id ?? null, this.drawingCtx(), this.legend.decimals);
+    if (this.activeTool && this.placing.length > 0) {
+      const pts = this.previewPoint ? [...this.placing, this.previewPoint] : this.placing;
+      const def = getToolDef(this.activeTool);
+      drawDrawings(
+        ctx,
+        [{ id: '__preview', type: this.activeTool, points: pts, style: { ...def.defaultStyle, color: theme.crosshair }, locked: false, visible: true }],
+        null,
+        this.drawingCtx(),
+        this.legend.decimals,
+      );
+    }
+    ctx.restore();
 
     const hoveredPane = this.panes.find((p) => p.id === this.hoveredPaneId) ?? this.panes[0];
     const hoveredBar = this.crosshair.bar(this.displaySeries);

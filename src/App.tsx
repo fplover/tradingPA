@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react';
 import { Chart } from '@/components/Chart';
+import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { generateMockBars } from '@/data/mockData';
 import { aggregateBars } from '@/data/aggregate';
 import { CHART_TYPES, TIMEFRAMES, getTimeframe, type ChartTypeId, type TimeframeId } from '@/types/market';
 import { useIndicatorStore } from '@/store/indicatorStore';
+import { useDrawingStore } from '@/store/drawingStore';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
+import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
+import { ObjectTree } from '@/features/drawings/ObjectTree';
 
 const selectStyle: React.CSSProperties = {
   background: '#1e222d',
@@ -32,12 +36,15 @@ export default function App() {
   const [chartType, setChartType] = useState<ChartTypeId>('candles');
   const [logScale, setLogScale] = useState(false);
   const [showVolume, setShowVolume] = useState(true);
+  const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
 
   const panelOpen = useIndicatorStore((s) => s.panelOpen);
   const setPanelOpen = useIndicatorStore((s) => s.setPanelOpen);
   const settingsFor = useIndicatorStore((s) => s.settingsFor);
   const saveTemplate = useIndicatorStore((s) => s.saveTemplate);
   const loadTemplate = useIndicatorStore((s) => s.loadTemplate);
+  const treeOpen = useDrawingStore((s) => s.treeOpen);
+  const setTreeOpen = useDrawingStore((s) => s.setTreeOpen);
 
   const baseBars = useMemo(() => generateMockBars(100_000, 60_000, 30_000), []);
   const tf = getTimeframe(timeframe);
@@ -83,6 +90,29 @@ export default function App() {
         <button style={btnStyle} onClick={loadTemplate}>
           取模板
         </button>
+        <button style={btnStyle} onClick={() => setTreeOpen(!treeOpen)}>
+          对象树
+        </button>
+        <button
+          style={btnStyle}
+          onClick={() => {
+            const raw = renderer?.exportDrawings() ?? '[]';
+            void navigator.clipboard?.writeText(raw);
+          }}
+          title="复制画线 JSON 到剪贴板"
+        >
+          导画线
+        </button>
+        <button
+          style={btnStyle}
+          onClick={() => {
+            const raw = window.prompt('粘贴画线 JSON 导入');
+            if (raw) renderer?.importDrawings(raw);
+          }}
+          title="从 JSON 导入画线"
+        >
+          入画线
+        </button>
         <label style={{ color: '#b2b5be', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input type="checkbox" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
           对数
@@ -106,8 +136,11 @@ export default function App() {
           chartType={chartType}
           logScale={logScale}
           showVolume={showVolume}
+          onRendererReady={setRenderer}
         />
+        <DrawingToolbar />
         {panelOpen && <IndicatorPanel />}
+        {treeOpen && <ObjectTree renderer={renderer} onClose={() => setTreeOpen(false)} />}
         {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
       </div>
     </div>

@@ -4,6 +4,7 @@ import type { Bar, ChartTypeId } from '@/types/market';
 import type { ParamValue } from '@/indicators/core/types';
 import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
+import { useDrawingStore } from '@/store/drawingStore';
 
 function defaultsFor(id: string): Record<string, ParamValue> {
   const def = getIndicatorDef(id);
@@ -22,6 +23,7 @@ interface ChartProps {
   chartType?: ChartTypeId;
   logScale?: boolean;
   showVolume?: boolean;
+  onRendererReady?: (renderer: ChartRenderer | null) => void;
 }
 
 /** React 只负责挂载/卸载引擎与同步配置，渲染循环完全不经过 React */
@@ -34,6 +36,7 @@ export function Chart({
   chartType = 'candles',
   logScale = false,
   showVolume = true,
+  onRendererReady,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
@@ -48,6 +51,7 @@ export function Chart({
     if (!canvas) return;
     const renderer = new ChartRenderer(canvas, bars, { symbol, interval, decimals });
     rendererRef.current = renderer;
+    onRendererReady?.(renderer);
     if (import.meta.env.DEV) {
       (window as unknown as { __chartRenderer?: ChartRenderer }).__chartRenderer = renderer;
     }
@@ -56,6 +60,7 @@ export function Chart({
     renderer.setVolumePaneVisible(showVolume);
     renderer.start();
     return () => {
+      onRendererReady?.(null);
       renderer.dispose();
       rendererRef.current = null;
     };
@@ -81,6 +86,44 @@ export function Chart({
   useEffect(() => {
     rendererRef.current?.setVolumePaneVisible(showVolume);
   }, [showVolume]);
+
+  // 画线工具/磁吸同步
+  const activeTool = useDrawingStore((s) => s.activeTool);
+  const magnet = useDrawingStore((s) => s.magnet);
+  const setActiveToolStore = useDrawingStore((s) => s.setActiveTool);
+  useEffect(() => {
+    rendererRef.current?.setActiveTool(activeTool as Parameters<ChartRenderer['setActiveTool']>[0]);
+  }, [activeTool]);
+
+  useEffect(() => {
+    rendererRef.current?.setMagnet(magnet);
+  }, [magnet]);
+
+  // 键盘快捷键：Esc 取消 / Delete 删除 / Ctrl+Z 撤销 / Ctrl+Y 重做 / Enter 完成路径
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return;
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+      if (e.key === 'Escape') {
+        renderer.cancelPlacing();
+        setActiveToolStore(null);
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        renderer.removeSelectedDrawing();
+      } else if (e.key === 'Enter') {
+        renderer.finishPlacing();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        renderer.undoDrawing();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        renderer.redoDrawing();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setActiveToolStore]);
 
   // 指标同步：store 为意图源，renderer 为实例源（按 id 对齐，去重/移除/改参）
   const activeIndicators = useIndicatorStore((s) => s.active);
