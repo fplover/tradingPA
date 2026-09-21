@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
-import type { Bar } from '@/types/market';
+import type { Bar, ChartTypeId } from '@/types/market';
 
 interface ChartProps {
   bars: Bar[];
@@ -9,15 +9,21 @@ interface ChartProps {
   decimals?: number;
   /** 实时模拟：以该间隔抖动最后一根 K 线（M5 替换为真实 WS） */
   liveTickMs?: number;
+  chartType?: ChartTypeId;
+  logScale?: boolean;
+  showVolume?: boolean;
 }
 
-/** React 只负责挂载/卸载引擎，渲染循环完全不经过 React */
+/** React 只负责挂载/卸载引擎与同步配置，渲染循环完全不经过 React */
 export function Chart({
   bars,
   symbol = 'BTC/USDT',
   interval = '1m',
   decimals = 2,
   liveTickMs,
+  chartType = 'candles',
+  logScale = false,
+  showVolume = true,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
@@ -35,6 +41,9 @@ export function Chart({
     if (import.meta.env.DEV) {
       (window as unknown as { __chartRenderer?: ChartRenderer }).__chartRenderer = renderer;
     }
+    renderer.setChartType(chartType);
+    renderer.setLogScale(logScale);
+    renderer.setVolumePaneVisible(showVolume);
     renderer.start();
     return () => {
       renderer.dispose();
@@ -46,6 +55,22 @@ export function Chart({
   useEffect(() => {
     rendererRef.current?.setData(bars);
   }, [bars]);
+
+  useEffect(() => {
+    rendererRef.current?.setLegend({ symbol, interval, decimals });
+  }, [symbol, interval, decimals]);
+
+  useEffect(() => {
+    rendererRef.current?.setChartType(chartType);
+  }, [chartType]);
+
+  useEffect(() => {
+    rendererRef.current?.setLogScale(logScale);
+  }, [logScale]);
+
+  useEffect(() => {
+    rendererRef.current?.setVolumePaneVisible(showVolume);
+  }, [showVolume]);
 
   useEffect(() => {
     if (!liveTickMs) return;

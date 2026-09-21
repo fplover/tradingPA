@@ -6,17 +6,25 @@ const DEFAULTS: PriceScaleOptions = {
 };
 
 /**
- * 价格坐标：price <-> y 像素换算。
- * M0 仅支持线性模式，对数模式在 M2 引入。
+ * 价格坐标：price <-> y 像素换算，支持线性/对数模式。
  */
 export class PriceScale {
   private min = 0;
   private max = 1;
   private height = 0;
+  private logMode = false;
   private options: PriceScaleOptions = { ...DEFAULTS };
 
   setSize(height: number): void {
     this.height = height;
+  }
+
+  setLogMode(on: boolean): void {
+    this.logMode = on;
+  }
+
+  get isLog(): boolean {
+    return this.logMode;
   }
 
   setOptions(options: Partial<PriceScaleOptions>): void {
@@ -44,20 +52,49 @@ export class PriceScale {
     return { min: this.min, max: this.max };
   }
 
+  private get usable(): boolean {
+    return this.logMode && this.min > 0 && this.max > 0;
+  }
+
   priceToY(price: number): number {
     const { min, max } = this;
+    if (this.usable) {
+      const lmin = Math.log(min);
+      const lmax = Math.log(max);
+      const ratio = (Math.log(Math.max(price, 1e-9)) - lmin) / (lmax - lmin || 1e-9);
+      return this.height * (1 - ratio);
+    }
     const ratio = (price - min) / (max - min || 1e-9);
     return this.height * (1 - ratio);
   }
 
   yToPrice(y: number): number {
     const ratio = 1 - y / (this.height || 1);
+    if (this.usable) {
+      const lmin = Math.log(this.min);
+      const lmax = Math.log(this.max);
+      return Math.exp(lmin + ratio * (lmax - lmin));
+    }
     return this.min + ratio * (this.max - this.min);
   }
 
   /** 生成美观的价格轴刻度值（约 targetCount 个） */
   ticks(targetCount = 6): number[] {
     const { min, max } = this;
+    if (this.usable) {
+      // 对数模式：在 log 空间取整刻度再映射回价格
+      const lmin = Math.log(min);
+      const lmax = Math.log(max);
+      const rough = (lmax - lmin) / targetCount;
+      const mag = Math.pow(10, Math.floor(Math.log10(rough)));
+      const norm = rough / mag;
+      const step = (norm >= 5 ? 5 : norm >= 2 ? 2 : 1) * mag;
+      const ticks: number[] = [];
+      for (let v = Math.ceil(lmin / step) * step; v <= lmax; v += step) {
+        ticks.push(Number(Math.exp(v).toPrecision(12)));
+      }
+      return ticks;
+    }
     const span = max - min;
     if (span <= 0 || this.height <= 0) return [];
     const rough = span / targetCount;

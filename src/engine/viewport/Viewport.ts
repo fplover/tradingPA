@@ -89,6 +89,13 @@ export class Viewport {
     return this.count;
   }
 
+  /** 视口是否贴在右边缘（实时更新时决定是否跟随滚动） */
+  isAtRightEdge(): boolean {
+    const visibleCount = this.width / this.barSpacing;
+    const maxFirst = this.count - visibleCount + this.options.rightOffset;
+    return this.firstIndex >= maxFirst - 0.5;
+  }
+
   xToIndex(x: number): number {
     return x / this.barSpacing + this.firstIndex;
   }

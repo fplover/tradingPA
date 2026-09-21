@@ -22,10 +22,12 @@ export function drawCrosshair(
   priceScale: PriceScale,
   geo: DrawGeometry,
   legend: LegendInfo,
+  paneY = 0,
+  paneHeight = geo.chartH,
 ): void {
   if (!crosshair.visible) return;
 
-  // 虚线（水平吸附鼠标 y，垂直吸附 bar 中心）
+  // 虚线（水平限悬停面板内，垂直吸附 bar 中心并贯穿全高）
   const snapX = viewport.indexToX(crosshair.barIndex);
   ctx.strokeStyle = theme.crosshair;
   ctx.lineWidth = 1;
@@ -33,13 +35,13 @@ export function drawCrosshair(
   ctx.beginPath();
   ctx.moveTo(0, Math.round(crosshair.y) + 0.5);
   ctx.lineTo(geo.chartW, Math.round(crosshair.y) + 0.5);
-  ctx.moveTo(Math.round(snapX) + 0.5, 0);
-  ctx.lineTo(Math.round(snapX) + 0.5, geo.chartH);
+  ctx.moveTo(Math.round(snapX) + 0.5, paneY);
+  ctx.lineTo(Math.round(snapX) + 0.5, paneY + paneHeight);
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // 价格轴标签
-  const price = priceScale.yToPrice(crosshair.y);
+  // 价格轴标签（价格按悬停面板的相对坐标换算）
+  const price = priceScale.yToPrice(crosshair.y - paneY);
   drawAxisLabel(ctx, geo.chartW + 1, crosshair.y, price.toFixed(legend.decimals), 'price');
 
   // 时间轴标签
