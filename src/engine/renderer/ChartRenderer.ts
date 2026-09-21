@@ -32,6 +32,10 @@ interface PaneState {
   indicators: IndicatorInstance[];
   y: number;
   height: number;
+  /** 手动价格域：上下拖动/价格轴拖动后锁定，不再自动适配 */
+  manual: boolean;
+  /** “自动”按钮命中区（面板局部坐标） */
+  autoBtn: { x: number; y: number; w: number; h: number } | null;
 }
 
 /** 砖块类图表类型的默认参数（按 ATR 自适应） */
@@ -113,7 +117,7 @@ export class ChartRenderer {
   }
 
   private createPane(id: string, kind: PaneKind, heightRatio: number): PaneState {
-    return { id, kind, heightRatio, priceScale: new PriceScale(), indicators: [], y: 0, height: 0 };
+    return { id, kind, heightRatio, priceScale: new PriceScale(), indicators: [], y: 0, height: 0, manual: false, autoBtn: null };
   }
 
   // ---------- 公开 API ----------
@@ -126,6 +130,7 @@ export class ChartRenderer {
   setData(bars: Bar[]): void {
     this.baseSeries.replace(bars);
     this.brickOpts = brickOptions(bars);
+    this.resetPriceScale();
     this.applyData(true);
   }
 
@@ -148,6 +153,7 @@ export class ChartRenderer {
 
   setChartType(type: ChartTypeId): void {
     this.chartType = type;
+    this.resetPriceScale();
     this.applyData(true);
   }
 
@@ -166,6 +172,15 @@ export class ChartRenderer {
       this.panes = this.panes.filter((p) => p.kind !== 'volume');
       this.invalidate();
     }
+  }
+
+  /** 恢复全部面板为自动价格适配 */
+  resetPriceScale(): void {
+    for (const pane of this.panes) {
+      pane.manual = false;
+      pane.autoBtn = null;
+    }
+    this.invalidate();
   }
 
   // ---------- 指标 ----------
@@ -495,6 +510,17 @@ export class ChartRenderer {
     const inTimeAxis = y > this.manager.height - AXIS_HEIGHT;
     this.manager.canvas.setPointerCapture(e.pointerId);
     if (inPriceAxis) {
+      const pane = this.paneAt(y);
+      // 点击“自动”按钮 → 恢复自动适配
+      if (pane.autoBtn) {
+        const b = pane.autoBtn;
+        const ly = y - pane.y;
+        if (x >= b.x && x <= b.x + b.w && ly >= b.y && ly <= b.y + b.h) {
+          pane.manual = false;
+          this.invalidate();
+          return;
+        }
+      }
       this.priceDragging = true;
       this.priceYAtDragStart = y;
     } else if (!inTimeAxis) {
@@ -557,16 +583,18 @@ export class ChartRenderer {
       const { min, max } = pane.priceScale.range;
       const span = max - min;
       const shift = (dy / Math.max(1, pane.height)) * span;
+      pane.manual = true; // 上下拖动 → 锁定价格域
       pane.priceScale.autoScale(min + shift, max + shift);
-    this.invalidate();
+      this.invalidate();
     } else if (this.priceDragging) {
       const dy = y - this.priceYAtDragStart;
       const pane = this.paneAt(y);
       const { min, max } = pane.priceScale.range;
       const span = max - min;
       const shift = -(dy / Math.max(1, pane.height)) * span;
+      pane.manual = true;
       pane.priceScale.autoScale(min + shift, max + shift);
-    this.invalidate();
+      this.invalidate();
     } else if (this.dragDrawing) {
       this.updateDrawingDrag(x, y);
     } else if (this.activeTool && this.placing.length > 0) {
@@ -633,7 +661,14 @@ export class ChartRenderer {
     }
   };
 
-  private onDoubleClick = () => {
+  private onDoubleClick = (e: MouseEvent) => {
+    const { x, y } = this.toLocal(e);
+    // 双击价格轴 → 恢复该面板自动适配
+    if (x > this.manager.width - AXIS_WIDTH) {
+      this.paneAt(y).manual = false;
+      this.invalidate();
+      return;
+    }
     this.finishPlacing();
   };
 
@@ -652,6 +687,7 @@ export class ChartRenderer {
       const { min, max } = pane.priceScale.range;
       const mid = (min + max) / 2;
       const half = ((max - min) / 2) * factor;
+      pane.manual = true; // 价格轴缩放同样锁定
       pane.priceScale.autoScale(mid - half, mid + half);
     } else {
       const factor = e.deltaY > 0 ? 1.1 : 0.9;
@@ -770,6 +806,27 @@ export class ChartRenderer {
         ctx.stroke();
       }
 
+      // 手动价格域指示：“自动”恢复按钮（价格轴底部）
+      pane.autoBtn = null;
+      if (pane.manual) {
+        const text = '自动';
+        ctx.font = '10px system-ui, sans-serif';
+        const bw = ctx.measureText(text).width + 14;
+        const bh = 16;
+        const bx = geo.chartW + (AXIS_WIDTH - bw) / 2;
+        const by = geo.chartH - bh - 4;
+        ctx.fillStyle = theme.tooltipBg;
+        ctx.fillRect(bx, by, bw, bh);
+        ctx.strokeStyle = theme.axisLine;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+        ctx.fillStyle = theme.axisText;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, bx + bw / 2, by + bh / 2);
+        pane.autoBtn = { x: bx, y: by, w: bw, h: bh };
+      }
+
       ctx.restore();
     }
 
@@ -860,10 +917,12 @@ export class ChartRenderer {
     }
     if (low === Infinity) return;
     pane.priceScale.setLogMode(this.logScale);
+    if (pane.manual) return; // 手动价格域：保持当前范围
     pane.priceScale.autoScale(low, high);
   }
 
   private autoscaleIndicators(pane: PaneState, from: number, to: number): void {
+    if (pane.manual) return;
     let low = Infinity;
     let high = -Infinity;
     const bars = this.barsArray();
@@ -878,6 +937,7 @@ export class ChartRenderer {
   }
 
   private autoscaleVolume(pane: PaneState, from: number, to: number): void {
+    if (pane.manual) return;
     let max = 0;
     for (let i = from; i <= to; i++) {
       const v = this.displaySeries.barAt(i)!.volume;
