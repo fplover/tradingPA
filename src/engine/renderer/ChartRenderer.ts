@@ -130,6 +130,16 @@ export class ChartRenderer {
     this.applyData(atRightEdge);
   }
 
+  /** 前插更早的历史（懒加载），保持当前视口不跳动 */
+  prependBars(bars: Bar[]): void {
+    if (bars.length === 0) return;
+    this.baseSeries.prepend(bars);
+    this.applyData(false);
+    this.viewport.panByBars(bars.length);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
   setChartType(type: ChartTypeId): void {
     this.chartType = type;
     this.applyData(true);
@@ -282,6 +292,21 @@ export class ChartRenderer {
 
   invalidate(): void {
     this.dirty = true;
+  }
+
+  /** 视口首个可见 bar 的 index（懒加载检测用） */
+  get viewportFirst(): number {
+    return this.viewport.first;
+  }
+
+  /** 最新 bar 时间戳（缺口检测用） */
+  get lastBarTime(): number {
+    return this.baseSeries.last?.time ?? 0;
+  }
+
+  /** 当前全部 bar（缺口回补合并用） */
+  getBars(): Bar[] {
+    return [...this.baseSeries.raw()];
   }
 
   // ---------- 画线 ----------

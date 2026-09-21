@@ -24,6 +24,8 @@ interface ChartProps {
   logScale?: boolean;
   showVolume?: boolean;
   onRendererReady?: (renderer: ChartRenderer | null) => void;
+  /** 视口滚动到数据左边缘时触发（懒加载更早历史） */
+  onNeedsMoreHistory?: () => void;
 }
 
 /** React 只负责挂载/卸载引擎与同步配置，渲染循环完全不经过 React */
@@ -37,6 +39,7 @@ export function Chart({
   logScale = false,
   showVolume = true,
   onRendererReady,
+  onNeedsMoreHistory,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
@@ -164,6 +167,16 @@ export function Chart({
     }, liveTickMs);
     return () => clearInterval(id);
   }, [liveTickMs]);
+
+  // 懒加载检测：视口接近数据左边缘时通知外部
+  useEffect(() => {
+    if (!onNeedsMoreHistory) return;
+    const id = setInterval(() => {
+      const renderer = rendererRef.current;
+      if (renderer && renderer.viewportFirst < 30) onNeedsMoreHistory();
+    }, 500);
+    return () => clearInterval(id);
+  }, [onNeedsMoreHistory]);
 
   return (
     <canvas

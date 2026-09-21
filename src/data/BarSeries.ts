@@ -39,6 +39,13 @@ export class BarSeries {
     this.lastTime = bars.length > 0 ? bars[bars.length - 1].time : -Infinity;
   }
 
+  /** 前插更早的历史（升序保持），用于懒加载 */
+  prepend(bars: Bar[]): void {
+    if (bars.length === 0) return;
+    this.bars = [...bars, ...this.bars];
+    this.lastTime = this.bars[this.bars.length - 1].time;
+  }
+
   /** 实时推送：同时间戳更新最后一根，新时间戳追加 */
   update(bar: Bar): void {
     if (this.bars.length === 0 || bar.time > this.lastTime) {
