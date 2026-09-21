@@ -102,9 +102,9 @@ function drawAxisLabel(
     bx = Math.max(0, bx);
     by = y + 3;
   }
-  ctx.fillStyle = '#2a2e39';
+  ctx.fillStyle = theme.tooltipBg;
   ctx.fillRect(bx, by, w, h);
-  ctx.fillStyle = '#d1d4dc';
+  ctx.fillStyle = theme.axisText;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, bx + w / 2, by + h / 2);
@@ -126,7 +126,7 @@ function drawLegend(
   ctx.textBaseline = 'top';
 
   const title = `${legend.symbol} · ${legend.interval}`;
-  ctx.fillStyle = '#d1d4dc';
+  ctx.fillStyle = theme.axisText;
   ctx.fillText(title, 8, 8);
 
   const fields: Array<[string, string, string]> = [

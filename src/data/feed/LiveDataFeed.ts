@@ -12,6 +12,7 @@ export class LiveDataFeed {
   private ws: BinanceKlineWS | null = null;
   private loadingMore = false;
   private earliestTime = Infinity;
+  private pollTimer: number | null = null;
 
   constructor(private opts: FeedOptions) {}
 
@@ -40,8 +41,29 @@ export class LiveDataFeed {
     handlers.onHistory(merged, { prepend: false });
     void klineCache.put(symbol, interval, merged);
 
-    this.ws = new BinanceKlineWS(symbol, interval, (bar) => handlers.onLive(bar), handlers.onStatus);
+    this.ws = new BinanceKlineWS(
+      symbol,
+      interval,
+      (bar) => handlers.onLive(bar),
+      handlers.onStatus,
+      () => this.startPolling(),
+    );
     this.ws.connect();
+  }
+
+  /** WS 连续失败后的 REST 轮询降级（3s 拉最新 2 根） */
+  private startPolling(): void {
+    if (this.pollTimer) return;
+    this.opts.handlers.onStatus('reconnecting', 'WS 不可用，已降级为 REST 轮询');
+    this.pollTimer = window.setInterval(() => {
+      void fetchKlines(this.opts.symbol, this.opts.interval, { limit: 2 })
+        .then((bars) => {
+          for (const bar of bars) this.opts.handlers.onLive(bar);
+        })
+        .catch(() => {
+          /* 网络抖动时下个周期再试 */
+        });
+    }, 3000);
   }
 
   /** 向左滚动到数据边缘时加载更早的历史 */
@@ -71,6 +93,8 @@ export class LiveDataFeed {
   }
 
   stop(): void {
+    if (this.pollTimer) window.clearInterval(this.pollTimer);
+    this.pollTimer = null;
     this.ws?.close();
     this.ws = null;
     this.opts.handlers.onStatus('idle');

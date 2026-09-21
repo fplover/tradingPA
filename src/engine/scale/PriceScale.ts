@@ -31,8 +31,13 @@ export class PriceScale {
     this.options = { ...this.options, ...options };
   }
 
-  /** 根据可见 K 线的最低价/最高价自动适配价格范围 */
+  /** 根据可见 K 线的最低价/最高价自动适配价格范围（对数模式用乘法留白） */
   autoScale(low: number, high: number): void {
+    if (this.logMode && low > 0 && high > 0) {
+      this.min = low * (1 - 0.1);
+      this.max = high * (1 + 0.1);
+      return;
+    }
     const span = high - low || Math.max(1e-9, high * 0.001);
     const pad = span * 0.1;
     this.min = low - pad;

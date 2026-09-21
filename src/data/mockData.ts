@@ -19,7 +19,8 @@ function lcg(seed: number): () => number {
 }
 
 /**
- * 生成随机游走 OHLCV 模拟数据（M0-M4 原型用，M5 替换为交易所实时数据）。
+ * 生成随机游走 OHLCV 模拟数据。
+ * 用途：实时数据不可用时的降级模式、多图表布局单元格。
  */
 export function generateMockBars(
   count: number,

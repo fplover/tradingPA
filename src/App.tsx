@@ -18,6 +18,7 @@ import {
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
 import { useLayoutStore } from '@/store/layoutStore';
+import { useThemeStore } from '@/store/themeStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import { useAlertStore } from '@/store/alertStore';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
@@ -56,6 +57,16 @@ const STATUS_COLOR: Record<FeedStatus, string> = {
   reconnecting: '#ff9800',
   error: '#ef5350',
 };
+
+function ThemeButton() {
+  const name = useThemeStore((s) => s.name);
+  const toggle = useThemeStore((s) => s.toggle);
+  return (
+    <button style={btnStyle} onClick={toggle} title="切换深浅主题">
+      {name === 'dark' ? '浅色' : '深色'}
+    </button>
+  );
+}
 
 export default function App() {
   const [timeframe, setTimeframe] = useState<TimeframeId>('1m');
@@ -225,6 +236,7 @@ export default function App() {
         <button style={btnStyle} onClick={handleScreenshot} title="导出 PNG">
           截图
         </button>
+        <ThemeButton />
         <label style={{ color: '#b2b5be', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input type="checkbox" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
           对数

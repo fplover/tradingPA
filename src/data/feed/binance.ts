@@ -26,7 +26,7 @@ export async function fetchKlines(
   }));
 }
 
-/** Binance K 线 WebSocket 订阅（自动重连 + 指数退避） */
+/** Binance K 线 WebSocket 订阅（自动重连 + 指数退避；多次失败转 REST 轮询） */
 export class BinanceKlineWS {
   private ws: WebSocket | null = null;
   private closed = false;
@@ -38,7 +38,13 @@ export class BinanceKlineWS {
     private interval: string,
     private onBar: (bar: Bar, isFinal: boolean) => void,
     private onStatus: (status: FeedStatus, detail?: string) => void,
+    private onGiveUp?: () => void,
   ) {}
+
+  /** 连续失败次数（供外部判断是否已降级） */
+  get retryCount(): number {
+    return this.retries;
+  }
 
   connect(): void {
     this.closed = false;
@@ -74,6 +80,11 @@ export class BinanceKlineWS {
 
   private scheduleReconnect(): void {
     this.retries += 1;
+    if (this.retries >= 3) {
+      // 连续失败：转 REST 轮询降级
+      this.onGiveUp?.();
+      return;
+    }
     const delay = Math.min(30_000, 1000 * 2 ** Math.min(this.retries - 1, 5));
     this.onStatus('reconnecting', `${(delay / 1000).toFixed(0)}s 后重连（第 ${this.retries} 次）`);
     this.reconnectTimer = window.setTimeout(() => this.open(), delay);

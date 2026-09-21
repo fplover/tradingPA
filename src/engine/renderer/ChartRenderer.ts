@@ -859,8 +859,8 @@ export class ChartRenderer {
       if (r.high > high) high = r.high;
     }
     if (low === Infinity) return;
-    pane.priceScale.autoScale(low, high);
     pane.priceScale.setLogMode(this.logScale);
+    pane.priceScale.autoScale(low, high);
   }
 
   private autoscaleIndicators(pane: PaneState, from: number, to: number): void {

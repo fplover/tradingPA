@@ -1,0 +1,112 @@
+import { test, expect } from '@playwright/test';
+
+/** 冒烟：页面加载、工具栏、画布渲染 */
+test('页面加载并渲染图表', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/');
+
+  await expect(page.getByText('TradingPA', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '指标' })).toBeVisible();
+
+  // 画布存在且有非零尺寸
+  const canvas = page.locator('canvas');
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  expect(box!.width).toBeGreaterThan(100);
+  expect(box!.height).toBeGreaterThan(100);
+
+  // 画布上确实画了内容（非纯背景像素）
+  const nonBg = await page.evaluate(() => {
+    const c = document.querySelector('canvas') as HTMLCanvasElement;
+    const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+    let count = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] !== 19 || d[i + 1] !== 23 || d[i + 2] !== 34) count++;
+    }
+    return count;
+  });
+  expect(nonBg).toBeGreaterThan(1000);
+
+  expect(errors).toEqual([]);
+});
+
+/** 周期与图表类型切换 */
+test('切换周期和图表类型', async ({ page }) => {
+  await page.goto('/');
+  const selects = page.locator('select');
+  await selects.nth(0).selectOption('1H');
+  await expect(page.getByText(/\d+ 根 · 1时/)).toBeVisible();
+
+  const chartTypeSelect = page.locator('select').nth(1);
+  await chartTypeSelect.selectOption('line');
+  // 线形图下不应有蜡烛色像素
+  const candlePx = await page.evaluate(() => {
+    const c = document.querySelector('canvas') as HTMLCanvasElement;
+    const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+    let count = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if ((d[i] === 38 && d[i + 1] === 166 && d[i + 2] === 154) || (d[i] === 239 && d[i + 1] === 83 && d[i + 2] === 80)) count++;
+    }
+    return count;
+  });
+  expect(candlePx).toBe(0);
+});
+
+/** 指标添加与副图面板 */
+test('添加指标创建副图', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '指标' }).click();
+  await page.getByText('RSI 相对强弱').click();
+  await expect(page.getByText('RSI 相对强弱⚙×')).toBeVisible();
+});
+
+/** 画线工具创建与删除 */
+test('画线工具创建趋势线并删除', async ({ page }) => {
+  await page.goto('/');
+  const canvas = page.locator('canvas');
+  const box = (await canvas.boundingBox())!;
+
+  await page.getByTitle('趋势线').click();
+  await page.mouse.click(box.x + 200, box.y + 200);
+  await page.mouse.click(box.x + 400, box.y + 300);
+
+  await page.getByRole('button', { name: '对象树' }).click();
+  await expect(page.getByText('对象树（1）')).toBeVisible();
+
+  await page.keyboard.press('Delete');
+  await expect(page.getByText('对象树（0）')).toBeVisible();
+});
+
+/** 多图表布局 */
+test('切换到四分布局', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '四分' }).click();
+  await expect(page.locator('canvas')).toHaveCount(4);
+  await page.getByRole('button', { name: '单图' }).click();
+  await expect(page.locator('canvas')).toHaveCount(1);
+});
+
+/** 复盘模式 */
+test('复盘模式进入与退出', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: '▶ 复盘' }).click();
+  await expect(page.getByRole('button', { name: '退出' })).toBeVisible();
+  await page.getByRole('button', { name: '退出' }).click();
+  await expect(page.getByRole('button', { name: '▶ 复盘' })).toBeVisible();
+});
+
+/** 主题切换 */
+test('主题切换改变画布背景', async ({ page }) => {
+  await page.goto('/');
+  const bgOf = () =>
+    page.evaluate(() => {
+      const c = document.querySelector('canvas') as HTMLCanvasElement;
+      const d = c.getContext('2d')!.getImageData(2, 2, 1, 1).data;
+      return `${d[0]},${d[1]},${d[2]}`;
+    });
+  const dark = await bgOf();
+  await page.getByRole('button', { name: '浅色' }).click();
+  const light = await bgOf();
+  expect(light).not.toBe(dark);
+});
