@@ -16,14 +16,14 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
     <div style={overlayStyle} onClick={() => setSettingsFor(null)}>
       <div style={dialogStyle} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <strong style={{ color: '#d1d4dc', fontSize: 13 }}>{def.name} 设置</strong>
+          <strong style={{ color: 'var(--text)', fontSize: 13 }}>{def.name} 设置</strong>
           <button onClick={() => setSettingsFor(null)} style={closeBtnStyle}>
             ×
           </button>
         </div>
-        {def.params.length === 0 && <div style={{ color: '#787b86', fontSize: 12 }}>该指标无可调参数</div>}
+        {def.params.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 12 }}>该指标无可调参数</div>}
         {def.params.map((p) => (
-          <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 12, color: '#d1d4dc' }}>
+          <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 12, color: 'var(--text)' }}>
             <span style={{ width: 80 }}>{p.label}</span>
             {p.type === 'number' && (
               <input
@@ -64,7 +64,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
           >
             恢复默认
           </button>
-          <button onClick={() => setSettingsFor(null)} style={{ ...btnStyle, background: '#2962ff' }}>
+          <button onClick={() => setSettingsFor(null)} style={{ ...btnStyle, background: 'var(--accent)' }}>
             完成
           </button>
         </div>
@@ -76,7 +76,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.5)',
+  background: 'var(--overlay)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -85,25 +85,26 @@ const overlayStyle: React.CSSProperties = {
 
 const dialogStyle: React.CSSProperties = {
   width: 320,
-  background: '#1e222d',
-  border: '1px solid #2a2e39',
+  color: 'var(--text)',
+  background: 'var(--panel)',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   padding: 16,
 };
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
-  background: '#131722',
-  border: '1px solid #2a2e39',
+  background: 'var(--bg)',
+  border: '1px solid var(--border)',
   borderRadius: 4,
-  color: '#d1d4dc',
+  color: 'var(--text)',
   padding: '4px 8px',
   fontSize: 12,
 };
 
 const btnStyle: React.CSSProperties = {
-  background: '#2a2e39',
-  color: '#d1d4dc',
+  background: 'var(--panel-2)',
+  color: 'var(--text)',
   border: 'none',
   borderRadius: 4,
   padding: '5px 12px',
@@ -114,7 +115,7 @@ const btnStyle: React.CSSProperties = {
 const closeBtnStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#787b86',
+  color: 'var(--text-faint)',
   fontSize: 18,
   cursor: 'pointer',
 };

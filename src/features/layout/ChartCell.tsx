@@ -5,9 +5,9 @@ import { aggregateBars } from '@/data/aggregate';
 import { CHART_TYPES, TIMEFRAMES, getTimeframe, type ChartTypeId, type TimeframeId } from '@/types/market';
 
 const selectStyle: React.CSSProperties = {
-  background: '#1e222d',
-  color: '#d1d4dc',
-  border: '1px solid #2a2e39',
+  background: 'var(--panel)',
+  color: 'var(--text)',
+  border: '1px solid var(--border)',
   borderRadius: 4,
   padding: '2px 6px',
   fontSize: 11,
@@ -28,7 +28,7 @@ export function ChartCell({ index }: { index: number }) {
   }, [symbol, timeframe, tf]);
 
   return (
-    <div style={{ position: 'relative', minWidth: 0, minHeight: 0, borderRight: '1px solid #2a2e39', borderBottom: '1px solid #2a2e39' }}>
+    <div style={{ position: 'relative', minWidth: 0, minHeight: 0, borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
       <div style={{ position: 'absolute', top: 4, left: 6, zIndex: 10, display: 'flex', gap: 4 }}>
         <select style={selectStyle} value={symbol} onChange={(e) => setSymbol(e.target.value)}>
           {DEFAULT_SYMBOLS.map((s) => (

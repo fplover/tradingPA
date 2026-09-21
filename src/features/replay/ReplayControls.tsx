@@ -57,7 +57,7 @@ export function ReplayControls({ barCount, replayIndex, onIndexChange }: ReplayC
       <button style={btnStyle} onClick={() => onIndexChange(Math.min(barCount - 1, replayIndex + 1))} title="下一根">
         ⏭
       </button>
-      <span style={{ color: '#787b86', fontSize: 10 }}>
+      <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>
         {replayIndex + 1} / {barCount}
       </span>
       <button
@@ -75,8 +75,8 @@ export function ReplayControls({ barCount, replayIndex, onIndexChange }: ReplayC
 }
 
 const btnStyle: React.CSSProperties = {
-  background: '#2a2e39',
-  color: '#d1d4dc',
+  background: 'var(--panel-2)',
+  color: 'var(--text)',
   border: 'none',
   borderRadius: 4,
   padding: '4px 8px',

@@ -17,14 +17,15 @@ export function IndicatorPanel() {
   return (
     <div
       style={{
+        color: 'var(--text)',
         position: 'absolute',
         top: 40,
         left: 8,
         width: 260,
         maxHeight: 'calc(100% - 60px)',
         overflowY: 'auto',
-        background: '#1e222d',
-        border: '1px solid #2a2e39',
+        background: 'var(--panel)',
+        border: '1px solid var(--border)',
         borderRadius: 6,
         padding: 10,
         zIndex: 20,
@@ -37,10 +38,10 @@ export function IndicatorPanel() {
           onChange={(e) => setQuery(e.target.value)}
           style={{
             flex: 1,
-            background: '#131722',
-            border: '1px solid #2a2e39',
+            background: 'var(--bg)',
+            border: '1px solid var(--border)',
             borderRadius: 4,
-            color: '#d1d4dc',
+            color: 'var(--text)',
             padding: '4px 8px',
             fontSize: 12,
           }}
@@ -51,7 +52,7 @@ export function IndicatorPanel() {
       </div>
       {filtered.map((g) => (
         <div key={g.category} style={{ marginBottom: 10 }}>
-          <div style={{ color: '#787b86', fontSize: 11, margin: '4px 0' }}>{g.category}</div>
+          <div style={{ color: 'var(--text-faint)', fontSize: 11, margin: '4px 0' }}>{g.category}</div>
           {g.items.map((def) => {
             const isActive = active.some((a) => a.id === def.id);
             return (
@@ -64,21 +65,21 @@ export function IndicatorPanel() {
                   padding: '5px 8px',
                   borderRadius: 4,
                   cursor: 'pointer',
-                  color: isActive ? '#2962ff' : '#d1d4dc',
+                  color: isActive ? 'var(--accent)' : 'var(--text)',
                   fontSize: 12,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#2a2e39')}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-2)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
                 <span>{def.name}</span>
-                <span style={{ color: '#787b86', fontSize: 10 }}>{def.overlay ? '主图' : '副图'}</span>
+                <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>{def.overlay ? '主图' : '副图'}</span>
               </div>
             );
           })}
         </div>
       ))}
-      {filtered.length === 0 && <div style={{ color: '#787b86', fontSize: 12 }}>无匹配指标</div>}
-      <div style={{ color: '#787b86', fontSize: 10, marginTop: 8 }}>
+      {filtered.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 12 }}>无匹配指标</div>}
+      <div style={{ color: 'var(--text-faint)', fontSize: 10, marginTop: 8 }}>
         共 {groups.reduce((s, g) => s + g.items.length, 0)} 个内置指标
       </div>
     </div>
@@ -86,8 +87,8 @@ export function IndicatorPanel() {
 }
 
 const btnStyle: React.CSSProperties = {
-  background: '#2a2e39',
-  color: '#d1d4dc',
+  background: 'var(--panel-2)',
+  color: 'var(--text)',
   border: 'none',
   borderRadius: 4,
   padding: '4px 10px',

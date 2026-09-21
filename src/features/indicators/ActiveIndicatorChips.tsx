@@ -19,11 +19,11 @@ export function ActiveIndicatorChips() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              background: '#2a2e39',
+              background: 'var(--panel-2)',
               borderRadius: 4,
               padding: '2px 6px',
               fontSize: 11,
-              color: '#d1d4dc',
+              color: 'var(--text)',
             }}
           >
             {def?.name ?? a.id}
@@ -43,7 +43,7 @@ export function ActiveIndicatorChips() {
 const iconBtn: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#787b86',
+  color: 'var(--text-faint)',
   cursor: 'pointer',
   fontSize: 11,
   padding: 0,

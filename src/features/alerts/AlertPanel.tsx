@@ -25,8 +25,8 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
   return (
     <div style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <strong style={{ color: '#d1d4dc', fontSize: 12 }}>价格警报</strong>
-        <span style={{ color: '#787b86', fontSize: 10 }}>当前 {currentPrice > 0 ? currentPrice.toFixed(2) : '--'}</span>
+        <strong style={{ color: 'var(--text)', fontSize: 12 }}>价格警报</strong>
+        <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>当前 {currentPrice > 0 ? currentPrice.toFixed(2) : '--'}</span>
       </div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
         <input
@@ -44,7 +44,7 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
           添加
         </button>
       </div>
-      {alerts.length === 0 && <div style={{ color: '#787b86', fontSize: 11 }}>暂无警报</div>}
+      {alerts.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无警报</div>}
       {alerts.map((a) => (
         <AlertRow key={a.id} alert={a} onRemove={() => remove(a.id)} />
       ))}
@@ -67,8 +67,8 @@ function AlertRow({ alert, onRemove }: { alert: PriceAlert; onRemove: () => void
         gap: 6,
         padding: '4px 6px',
         fontSize: 11,
-        color: '#d1d4dc',
-        borderBottom: '1px solid #2a2e39',
+        color: 'var(--text)',
+        borderBottom: '1px solid var(--border)',
       }}
     >
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
@@ -84,12 +84,13 @@ function AlertRow({ alert, onRemove }: { alert: PriceAlert; onRemove: () => void
 }
 
 const panelStyle: React.CSSProperties = {
+  color: 'var(--text)',
   position: 'absolute',
   right: 8,
   top: 8,
   width: 240,
-  background: '#1e222d',
-  border: '1px solid #2a2e39',
+  background: 'var(--panel)',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: 10,
   zIndex: 18,
@@ -98,17 +99,17 @@ const panelStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
   flex: 1,
   minWidth: 0,
-  background: '#131722',
-  border: '1px solid #2a2e39',
+  background: 'var(--bg)',
+  border: '1px solid var(--border)',
   borderRadius: 4,
-  color: '#d1d4dc',
+  color: 'var(--text)',
   padding: '4px 6px',
   fontSize: 11,
 };
 
 const btnStyle: React.CSSProperties = {
-  background: '#2a2e39',
-  color: '#d1d4dc',
+  background: 'var(--panel-2)',
+  color: 'var(--text)',
   border: 'none',
   borderRadius: 4,
   padding: '4px 8px',
@@ -119,7 +120,7 @@ const btnStyle: React.CSSProperties = {
 const miniBtn: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#787b86',
+  color: 'var(--text-faint)',
   cursor: 'pointer',
   fontSize: 12,
 };

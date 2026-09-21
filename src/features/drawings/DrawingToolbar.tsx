@@ -15,11 +15,12 @@ export function DrawingToolbar() {
         left: 8,
         top: '50%',
         transform: 'translateY(-50%)',
+        color: 'var(--text-dim)',
         display: 'flex',
         flexDirection: 'column',
         gap: 4,
-        background: '#1e222d',
-        border: '1px solid #2a2e39',
+        background: 'var(--panel)',
+        border: '1px solid var(--border)',
         borderRadius: 6,
         padding: 6,
         zIndex: 15,
@@ -33,7 +34,7 @@ export function DrawingToolbar() {
           {iconFor(t.id)}
         </ToolButton>
       ))}
-      <div style={{ height: 1, background: '#2a2e39', margin: '4px 2px' }} />
+      <div style={{ height: 1, background: 'var(--panel-2)', margin: '4px 2px' }} />
       <ToolButton active={magnet} onClick={() => setMagnet(!magnet)} title="磁吸（吸附OHLC）">
         ⌸
       </ToolButton>
@@ -52,8 +53,8 @@ function ToolButton({ active, onClick, title, children }: { active: boolean; onC
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: active ? '#2962ff' : 'transparent',
-        color: active ? '#fff' : '#b2b5be',
+        background: active ? 'var(--accent)' : 'transparent',
+        color: active ? 'var(--text-on-accent)' : 'var(--text-dim)',
         border: 'none',
         borderRadius: 4,
         cursor: 'pointer',

@@ -16,3 +16,34 @@ body,
   background: #131722;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
+
+/* 双主题变量：setTheme 切换 body 类名，全部 UI 组件经 var(--) 引用 */
+body.theme-dark {
+  color-scheme: dark;
+  --bg: #131722;
+  --panel: #1e222d;
+  --panel-2: #2a2e39;
+  --border: #2a2e39;
+  --text: #d1d4dc;
+  --text-dim: #b2b5be;
+  --text-faint: #787b86;
+  --accent: #2962ff;
+  --input-bg: #131722;
+  --text-on-accent: #ffffff;
+  --overlay: rgba(0, 0, 0, 0.5);
+}
+
+body.theme-light {
+  color-scheme: light;
+  --bg: #ffffff;
+  --panel: #f0f3fa;
+  --panel-2: #e0e3eb;
+  --border: #e0e3eb;
+  --text: #131722;
+  --text-dim: #50535e;
+  --text-faint: #787b86;
+  --accent: #2962ff;
+  --input-bg: #ffffff;
+  --text-on-accent: #ffffff;
+  --overlay: rgba(0, 0, 0, 0.25);
+}

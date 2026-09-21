@@ -32,17 +32,17 @@ import { AlertPanel } from '@/features/alerts/AlertPanel';
 import { ReplayControls } from '@/features/replay/ReplayControls';
 
 const selectStyle: React.CSSProperties = {
-  background: '#1e222d',
-  color: '#d1d4dc',
-  border: '1px solid #2a2e39',
+  background: 'var(--panel)',
+  color: 'var(--text)',
+  border: '1px solid var(--border)',
   borderRadius: 4,
   padding: '4px 8px',
   fontSize: 12,
 };
 
 const btnStyle: React.CSSProperties = {
-  background: '#2a2e39',
-  color: '#d1d4dc',
+  background: 'var(--panel-2)',
+  color: 'var(--text)',
   border: 'none',
   borderRadius: 4,
   padding: '4px 10px',
@@ -51,7 +51,7 @@ const btnStyle: React.CSSProperties = {
 };
 
 const STATUS_COLOR: Record<FeedStatus, string> = {
-  idle: '#787b86',
+  idle: 'var(--text-faint)',
   loading: '#ff9800',
   live: '#26a69a',
   reconnecting: '#ff9800',
@@ -182,21 +182,21 @@ export default function App() {
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', background: '#131722', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ width: '100vw', height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: 8,
           padding: '6px 10px',
-          background: '#1e222d',
-          borderBottom: '1px solid #2a2e39',
+          background: 'var(--panel)',
+          borderBottom: '1px solid var(--border)',
           flexWrap: 'wrap',
         }}
       >
-        <strong style={{ color: '#d1d4dc', fontSize: 13, marginRight: 8 }}>TradingPA</strong>
+        <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 8 }}>TradingPA</strong>
         <LayoutButtons />
-        <button style={{ ...btnStyle, background: watchlistOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setWatchlistOpen(!watchlistOpen)}>
+        <button style={{ ...btnStyle, background: watchlistOpen ? 'var(--accent)' : 'var(--panel-2)' }} onClick={() => setWatchlistOpen(!watchlistOpen)}>
           自选股
         </button>
         {layout === 1 && (
@@ -218,7 +218,7 @@ export default function App() {
             <ReplayControls barCount={bars.length} replayIndex={replayIndex} onIndexChange={setReplayIndex} />
           </>
         )}
-        <button style={{ ...btnStyle, background: panelOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setPanelOpen(!panelOpen)}>
+        <button style={{ ...btnStyle, background: panelOpen ? 'var(--accent)' : 'var(--panel-2)' }} onClick={() => setPanelOpen(!panelOpen)}>
           指标
         </button>
         <button style={btnStyle} onClick={saveTemplate}>
@@ -227,21 +227,21 @@ export default function App() {
         <button style={btnStyle} onClick={loadTemplate}>
           取模板
         </button>
-        <button style={{ ...btnStyle, background: treeOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setTreeOpen(!treeOpen)}>
+        <button style={{ ...btnStyle, background: treeOpen ? 'var(--accent)' : 'var(--panel-2)' }} onClick={() => setTreeOpen(!treeOpen)}>
           对象树
         </button>
-        <button style={{ ...btnStyle, background: alertOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setAlertOpen(!alertOpen)}>
+        <button style={{ ...btnStyle, background: alertOpen ? 'var(--accent)' : 'var(--panel-2)' }} onClick={() => setAlertOpen(!alertOpen)}>
           警报{alerts.length > 0 ? ` (${alerts.length})` : ''}
         </button>
         <button style={btnStyle} onClick={handleScreenshot} title="导出 PNG">
           截图
         </button>
         <ThemeButton />
-        <label style={{ color: '#b2b5be', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label style={{ color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input type="checkbox" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
           对数
         </label>
-        <label style={{ color: '#b2b5be', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label style={{ color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input type="checkbox" checked={showVolume} onChange={(e) => setShowVolume(e.target.checked)} />
           成交量
         </label>
@@ -258,7 +258,7 @@ export default function App() {
           </button>
         )}
         <ActiveIndicatorChips />
-        <span style={{ color: '#787b86', fontSize: 11, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ color: 'var(--text-faint)', fontSize: 11, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
           {layout === 1 && (
             <>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[status], display: 'inline-block' }} />

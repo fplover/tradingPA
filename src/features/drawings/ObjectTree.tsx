@@ -23,7 +23,7 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
   return (
     <div style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <strong style={{ color: '#d1d4dc', fontSize: 12 }}>对象树（{drawings.length}）</strong>
+        <strong style={{ color: 'var(--text)', fontSize: 12 }}>对象树（{drawings.length}）</strong>
         <div style={{ display: 'flex', gap: 6 }}>
           <button style={btn} onClick={() => renderer.undoDrawing()} title="撤销 (Ctrl+Z)">
             ↶
@@ -36,7 +36,7 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
           </button>
         </div>
       </div>
-      {drawings.length === 0 && <div style={{ color: '#787b86', fontSize: 11 }}>暂无画线。左侧选择工具后在图表上点击放置。</div>}
+      {drawings.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无画线。左侧选择工具后在图表上点击放置。</div>}
       {drawings.map((d) => (
         <div
           key={d.id}
@@ -47,8 +47,8 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             padding: '4px 6px',
             borderRadius: 4,
             fontSize: 11,
-            color: '#d1d4dc',
-            background: renderer.selectedDrawingId === d.id ? '#2a2e39' : 'transparent',
+            color: 'var(--text)',
+            background: renderer.selectedDrawingId === d.id ? 'var(--panel-2)' : 'transparent',
           }}
         >
           <span style={{ width: 10, height: 10, background: d.style.color, borderRadius: 2, flexShrink: 0 }} />
@@ -85,22 +85,23 @@ function labelOf(d: Drawing): string {
 }
 
 const panelStyle: React.CSSProperties = {
+  color: 'var(--text)',
   position: 'absolute',
   right: 76,
   top: 8,
   width: 220,
   maxHeight: 'calc(100% - 24px)',
   overflowY: 'auto',
-  background: '#1e222d',
-  border: '1px solid #2a2e39',
+  background: 'var(--panel)',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: 10,
   zIndex: 15,
 };
 
 const btn: React.CSSProperties = {
-  background: '#2a2e39',
-  color: '#d1d4dc',
+  background: 'var(--panel-2)',
+  color: 'var(--text)',
   border: 'none',
   borderRadius: 4,
   padding: '3px 8px',
@@ -111,7 +112,7 @@ const btn: React.CSSProperties = {
 const miniBtn: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#787b86',
+  color: 'var(--text-faint)',
   cursor: 'pointer',
   fontSize: 11,
   padding: '0 2px',

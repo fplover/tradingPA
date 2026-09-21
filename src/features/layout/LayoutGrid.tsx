@@ -12,8 +12,8 @@ export function LayoutButtons() {
           key={l.id}
           onClick={() => setLayout(l.id)}
           style={{
-            background: layout === l.id ? '#2962ff' : '#2a2e39',
-            color: '#d1d4dc',
+            background: layout === l.id ? 'var(--accent)' : 'var(--panel-2)',
+            color: 'var(--text)',
             border: 'none',
             borderRadius: 4,
             padding: '4px 8px',

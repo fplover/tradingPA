@@ -48,4 +48,6 @@ export type ThemeName = 'dark' | 'light';
 export function setTheme(name: ThemeName): void {
   Object.assign(theme, name === 'dark' ? darkTheme : lightTheme);
   document.body.style.background = theme.background;
+  document.body.classList.remove('theme-dark', 'theme-light');
+  document.body.classList.add(`theme-${name}`);
 }

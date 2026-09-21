@@ -15,7 +15,7 @@ export function Watchlist() {
 
   return (
     <div style={panelStyle}>
-      <div style={{ color: '#d1d4dc', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>自选股</div>
+      <div style={{ color: 'var(--text)', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>自选股</div>
       <input
         placeholder="搜索"
         value={query}
@@ -35,8 +35,8 @@ export function Watchlist() {
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: 12,
-              color: s === active ? '#2962ff' : '#d1d4dc',
-              background: s === active ? '#2a2e39' : 'transparent',
+              color: s === active ? 'var(--accent)' : 'var(--text)',
+              background: s === active ? 'var(--panel-2)' : 'transparent',
             }}
           >
             <span>{s}</span>
@@ -52,7 +52,7 @@ export function Watchlist() {
             </button>
           </div>
         ))}
-        {filtered.length === 0 && <div style={{ color: '#787b86', fontSize: 11, padding: 4 }}>无匹配</div>}
+        {filtered.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 11, padding: 4 }}>无匹配</div>}
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
         <input
@@ -79,12 +79,13 @@ export function Watchlist() {
 }
 
 const panelStyle: React.CSSProperties = {
+  color: 'var(--text)',
   position: 'absolute',
   left: 48,
   top: 8,
   width: 200,
-  background: '#1e222d',
-  border: '1px solid #2a2e39',
+  background: 'var(--panel)',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: 10,
   zIndex: 18,
@@ -92,17 +93,17 @@ const panelStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  background: '#131722',
-  border: '1px solid #2a2e39',
+  background: 'var(--bg)',
+  border: '1px solid var(--border)',
   borderRadius: 4,
-  color: '#d1d4dc',
+  color: 'var(--text)',
   padding: '4px 8px',
   fontSize: 12,
 };
 
 const btnStyle: React.CSSProperties = {
-  background: '#2a2e39',
-  color: '#d1d4dc',
+  background: 'var(--panel-2)',
+  color: 'var(--text)',
   border: 'none',
   borderRadius: 4,
   padding: '4px 10px',
@@ -113,7 +114,7 @@ const btnStyle: React.CSSProperties = {
 const miniBtn: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#787b86',
+  color: 'var(--text-faint)',
   cursor: 'pointer',
   fontSize: 12,
 };
