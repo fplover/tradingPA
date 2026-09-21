@@ -24,6 +24,11 @@ export class BarSeries {
     return this.bars[index];
   }
 
+  /** 只读访问内部数组（指标计算等只读场景，避免逐帧拷贝） */
+  raw(): readonly Bar[] {
+    return this.bars;
+  }
+
   /** 可见区间切片 [from, to]（含端点，自动钳制） */
   slice(from: number, to: number): Bar[] {
     return this.bars.slice(Math.max(0, from), Math.min(this.bars.length - 1, to) + 1);

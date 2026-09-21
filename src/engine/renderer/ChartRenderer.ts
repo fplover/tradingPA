@@ -6,22 +6,26 @@ import { BarSeries } from '@/data/BarSeries';
 import { theme } from '../theme';
 import type { Bar, ChartTypeId } from '@/types/market';
 import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
+import { IndicatorInstance } from '@/indicators/core/instance';
+import { getIndicatorDef } from '@/indicators/registry';
 import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders } from './drawAxes';
 import { drawOhlc, drawLine, drawArea, drawBaseline, drawVolume } from './seriesRenderers';
 import { drawCrosshair, type LegendInfo } from './drawCrosshair';
+import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
 
 const AXIS_WIDTH = 64;
 const AXIS_HEIGHT = 24;
 const PANE_GAP = 0;
 
-type PaneKind = 'price' | 'volume';
+type PaneKind = 'price' | 'volume' | 'indicator';
 
 interface PaneState {
   id: string;
   kind: PaneKind;
   heightRatio: number;
   priceScale: PriceScale;
+  indicators: IndicatorInstance[];
   y: number;
   height: number;
 }
@@ -81,7 +85,7 @@ export class ChartRenderer {
   }
 
   private createPane(id: string, kind: PaneKind, heightRatio: number): PaneState {
-    return { id, kind, heightRatio, priceScale: new PriceScale(), y: 0, height: 0 };
+    return { id, kind, heightRatio, priceScale: new PriceScale(), indicators: [], y: 0, height: 0 };
   }
 
   // ---------- 公开 API ----------
@@ -124,6 +128,66 @@ export class ChartRenderer {
       this.panes = this.panes.filter((p) => p.kind !== 'volume');
       this.invalidate();
     }
+  }
+
+  // ---------- 指标 ----------
+
+  /** 添加指标：overlay 进主面板，否则新建独立副图面板。返回实例 uid */
+  addIndicator(id: string, overrides?: Record<string, string | number | boolean>): string | null {
+    const def = getIndicatorDef(id);
+    if (!def) return null;
+    const instance = new IndicatorInstance(def, overrides);
+    if (def.overlay) {
+      this.panes[0].indicators.push(instance);
+    } else {
+      this.panes.push(this.createPane(`pane_${instance.uid}`, 'indicator', 1));
+      this.panes[this.panes.length - 1].indicators.push(instance);
+    }
+    this.invalidate();
+    return instance.uid;
+  }
+
+  removeIndicator(uid: string): void {
+    for (const pane of this.panes) {
+      const idx = pane.indicators.findIndex((i) => i.uid === uid);
+      if (idx >= 0) pane.indicators.splice(idx, 1);
+    }
+    // 指标面板空了就移除
+    this.panes = this.panes.filter((p) => !(p.kind === 'indicator' && p.indicators.length === 0));
+    this.invalidate();
+  }
+
+  updateIndicatorParams(uid: string, params: Record<string, string | number | boolean>): void {
+    for (const pane of this.panes) {
+      const inst = pane.indicators.find((i) => i.uid === uid);
+      if (inst) {
+        inst.params = { ...inst.params, ...params };
+        this.invalidate();
+        return;
+      }
+    }
+  }
+
+  /** 全部激活指标（供 UI 列表） */
+  listIndicators(): Array<{ uid: string; id: string; name: string; overlay: boolean; params: Record<string, string | number | boolean> }> {
+    const out: Array<{ uid: string; id: string; name: string; overlay: boolean; params: Record<string, string | number | boolean> }> = [];
+    for (const pane of this.panes) {
+      for (const inst of pane.indicators) {
+        out.push({ uid: inst.uid, id: inst.id, name: inst.name, overlay: inst.overlay, params: inst.params });
+      }
+    }
+    return out;
+  }
+
+  /** 默认指标组合模板（localStorage 由 UI 层持久化） */
+  exportIndicatorTemplate(): Array<{ id: string; params: Record<string, string | number | boolean> }> {
+    return this.listIndicators().map(({ id, params }) => ({ id, params }));
+  }
+
+  importIndicatorTemplate(list: Array<{ id: string; params?: Record<string, string | number | boolean> }>): void {
+    for (const pane of this.panes) pane.indicators = [];
+    this.panes = this.panes.filter((p) => p.kind !== 'indicator');
+    for (const item of list) this.addIndicator(item.id, item.params);
   }
 
   /** 数据/图表类型变化后：重建 displaySeries 并重置视口 */
@@ -347,6 +411,11 @@ export class ChartRenderer {
     return { from, to };
   }
 
+  /** 指标计算用的只读 bar 数组（零拷贝） */
+  private barsArray(): readonly Bar[] {
+    return this.displaySeries.raw();
+  }
+
   private draw(): void {
     const t0 = performance.now();
     const ctx = this.manager.context;
@@ -378,10 +447,20 @@ export class ChartRenderer {
         this.autoscaleVolume(pane, from, to);
         drawGrid(ctx, this.viewport, pane.priceScale, geo);
         drawVolume(ctx, this.displaySeries, from, to, this.viewport, pane.priceScale, geo);
+      } else if (pane.kind === 'indicator') {
+        this.autoscaleIndicators(pane, from, to);
+        drawGrid(ctx, this.viewport, pane.priceScale, geo);
+        for (const inst of pane.indicators) {
+          drawIndicator(ctx, inst, this.barsArray(), from, to, this.viewport, pane.priceScale, geo);
+        }
       } else {
         this.autoscalePrice(pane, from, to);
         drawGrid(ctx, this.viewport, pane.priceScale, geo);
         this.drawPriceSeries(ctx, pane, geo, from, to);
+        // 主图叠加指标
+        for (const inst of pane.indicators) {
+          drawIndicator(ctx, inst, this.barsArray(), from, to, this.viewport, pane.priceScale, geo);
+        }
       }
 
       // 每面板价格轴
@@ -408,6 +487,16 @@ export class ChartRenderer {
 
     const hoveredPane = this.panes.find((p) => p.id === this.hoveredPaneId) ?? this.panes[0];
     const hoveredBar = this.crosshair.bar(this.displaySeries);
+    // 主图叠加指标在悬停 bar 上的值（图例展示）
+    const legendIndicators: Array<{ name: string; values: Array<{ label: string; value: number }> }> = [];
+    const mainPane = this.panes[0];
+    const legendIndex = this.crosshair.visible && hoveredBar ? this.crosshair.barIndex : this.displaySeries.length - 1;
+    if (mainPane.indicators.length > 0 && legendIndex >= 0) {
+      const bars = this.barsArray();
+      for (const inst of mainPane.indicators) {
+        legendIndicators.push({ name: inst.name, values: indicatorValuesAt(inst, bars, Math.max(0, legendIndex - 50), legendIndex) });
+      }
+    }
     drawCrosshair(
       ctx,
       this.crosshair,
@@ -419,6 +508,7 @@ export class ChartRenderer {
       this.legend,
       hoveredPane.y,
       hoveredPane.height,
+      legendIndicators,
     );
 
     this.lastFrameMs = performance.now() - t0;
@@ -432,9 +522,30 @@ export class ChartRenderer {
       if (bar.low < low) low = bar.low;
       if (bar.high > high) high = bar.high;
     }
+    // 叠加指标参与主图价格域
+    const bars = this.barsArray();
+    for (const inst of pane.indicators) {
+      const r = indicatorRange(inst, bars, from, to);
+      if (r.low < low) low = r.low;
+      if (r.high > high) high = r.high;
+    }
     if (low === Infinity) return;
     pane.priceScale.autoScale(low, high);
     pane.priceScale.setLogMode(this.logScale);
+  }
+
+  private autoscaleIndicators(pane: PaneState, from: number, to: number): void {
+    let low = Infinity;
+    let high = -Infinity;
+    const bars = this.barsArray();
+    for (const inst of pane.indicators) {
+      const r = indicatorRange(inst, bars, from, to);
+      if (r.low < low) low = r.low;
+      if (r.high > high) high = r.high;
+    }
+    if (low === Infinity) return;
+    // 含零轴（histogram 需要）
+    pane.priceScale.autoScale(Math.min(low, 0), Math.max(high, 0));
   }
 
   private autoscaleVolume(pane: PaneState, from: number, to: number): void {

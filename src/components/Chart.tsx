@@ -1,6 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Bar, ChartTypeId } from '@/types/market';
+import type { ParamValue } from '@/indicators/core/types';
+import { getIndicatorDef } from '@/indicators/registry';
+import { useIndicatorStore } from '@/store/indicatorStore';
+
+function defaultsFor(id: string): Record<string, ParamValue> {
+  const def = getIndicatorDef(id);
+  const out: Record<string, ParamValue> = {};
+  if (def) for (const p of def.params) out[p.key] = p.default;
+  return out;
+}
 
 interface ChartProps {
   bars: Bar[];
@@ -71,6 +81,26 @@ export function Chart({
   useEffect(() => {
     rendererRef.current?.setVolumePaneVisible(showVolume);
   }, [showVolume]);
+
+  // 指标同步：store 为意图源，renderer 为实例源（按 id 对齐，去重/移除/改参）
+  const activeIndicators = useIndicatorStore((s) => s.active);
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const current = renderer.listIndicators();
+    const desiredIds = new Set(activeIndicators.map((a) => a.id));
+    for (const cur of current) {
+      if (!desiredIds.has(cur.id)) renderer.removeIndicator(cur.uid);
+    }
+    for (const des of activeIndicators) {
+      const cur = current.find((c) => c.id === des.id);
+      if (!cur) {
+        renderer.addIndicator(des.id, des.params as Record<string, ParamValue>);
+      } else if (JSON.stringify(cur.params) !== JSON.stringify({ ...defaultsFor(des.id), ...des.params })) {
+        renderer.updateIndicatorParams(cur.uid, des.params as Record<string, ParamValue>);
+      }
+    }
+  }, [activeIndicators]);
 
   useEffect(() => {
     if (!liveTickMs) return;

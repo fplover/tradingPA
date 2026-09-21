@@ -24,6 +24,7 @@ export function drawCrosshair(
   legend: LegendInfo,
   paneY = 0,
   paneHeight = geo.chartH,
+  indicatorValues?: Array<{ name: string; values: Array<{ label: string; value: number }> }>,
 ): void {
   if (!crosshair.visible) return;
 
@@ -52,6 +53,34 @@ export function drawCrosshair(
 
   // 图例
   drawLegend(ctx, hoveredBar ?? lastBar, legend);
+
+  // 叠加指标值（悬停 bar 上）
+  if (indicatorValues && indicatorValues.length > 0) {
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    let y = 48;
+    for (const ind of indicatorValues) {
+      if (ind.values.length === 0) continue;
+      let x = 8;
+      ctx.fillStyle = '#787b86';
+      ctx.fillText(ind.name, x, y);
+      x += ctx.measureText(ind.name).width + 6;
+      for (const v of ind.values) {
+        ctx.fillStyle = '#d1d4dc';
+        const text = `${v.label} ${formatIndicatorValue(v.value)}`;
+        ctx.fillText(text, x, y);
+        x += ctx.measureText(text).width + 8;
+      }
+      y += 16;
+    }
+  }
+}
+
+function formatIndicatorValue(v: number): string {
+  if (Math.abs(v) >= 1000) return v.toFixed(2);
+  if (Math.abs(v) >= 1) return v.toFixed(3);
+  return v.toFixed(4);
 }
 
 function drawAxisLabel(

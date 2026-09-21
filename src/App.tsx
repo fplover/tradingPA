@@ -3,6 +3,10 @@ import { Chart } from '@/components/Chart';
 import { generateMockBars } from '@/data/mockData';
 import { aggregateBars } from '@/data/aggregate';
 import { CHART_TYPES, TIMEFRAMES, getTimeframe, type ChartTypeId, type TimeframeId } from '@/types/market';
+import { useIndicatorStore } from '@/store/indicatorStore';
+import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
+import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
+import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
 
 const selectStyle: React.CSSProperties = {
   background: '#1e222d',
@@ -13,11 +17,27 @@ const selectStyle: React.CSSProperties = {
   fontSize: 12,
 };
 
+const btnStyle: React.CSSProperties = {
+  background: '#2a2e39',
+  color: '#d1d4dc',
+  border: 'none',
+  borderRadius: 4,
+  padding: '4px 10px',
+  fontSize: 12,
+  cursor: 'pointer',
+};
+
 export default function App() {
   const [timeframe, setTimeframe] = useState<TimeframeId>('1m');
   const [chartType, setChartType] = useState<ChartTypeId>('candles');
   const [logScale, setLogScale] = useState(false);
   const [showVolume, setShowVolume] = useState(true);
+
+  const panelOpen = useIndicatorStore((s) => s.panelOpen);
+  const setPanelOpen = useIndicatorStore((s) => s.setPanelOpen);
+  const settingsFor = useIndicatorStore((s) => s.settingsFor);
+  const saveTemplate = useIndicatorStore((s) => s.saveTemplate);
+  const loadTemplate = useIndicatorStore((s) => s.loadTemplate);
 
   const baseBars = useMemo(() => generateMockBars(100_000, 60_000, 30_000), []);
   const tf = getTimeframe(timeframe);
@@ -36,6 +56,7 @@ export default function App() {
           padding: '6px 10px',
           background: '#1e222d',
           borderBottom: '1px solid #2a2e39',
+          flexWrap: 'wrap',
         }}
       >
         <strong style={{ color: '#d1d4dc', fontSize: 13, marginRight: 8 }}>TradingPA</strong>
@@ -53,19 +74,29 @@ export default function App() {
             </option>
           ))}
         </select>
+        <button style={{ ...btnStyle, background: panelOpen ? '#2962ff' : '#2a2e39' }} onClick={() => setPanelOpen(!panelOpen)}>
+          指标
+        </button>
+        <button style={btnStyle} onClick={saveTemplate}>
+          存模板
+        </button>
+        <button style={btnStyle} onClick={loadTemplate}>
+          取模板
+        </button>
         <label style={{ color: '#b2b5be', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input type="checkbox" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
-          对数坐标
+          对数
         </label>
         <label style={{ color: '#b2b5be', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input type="checkbox" checked={showVolume} onChange={(e) => setShowVolume(e.target.checked)} />
           成交量
         </label>
+        <ActiveIndicatorChips />
         <span style={{ color: '#787b86', fontSize: 11, marginLeft: 'auto' }}>
           {bars.length.toLocaleString()} 根 · {tf.label}
         </span>
       </div>
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <Chart
           bars={bars}
           symbol="BTC/USDT"
@@ -76,6 +107,8 @@ export default function App() {
           logScale={logScale}
           showVolume={showVolume}
         />
+        {panelOpen && <IndicatorPanel />}
+        {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
       </div>
     </div>
   );
