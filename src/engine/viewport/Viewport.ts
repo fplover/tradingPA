@@ -1,8 +1,10 @@
 import type { TimeScaleOptions } from '@/types/market';
 
+const DEFAULT_BAR_SPACING = 8;
+
 const DEFAULTS: TimeScaleOptions = {
   rightOffset: 5,
-  minBarSpacing: 1,
+  minBarSpacing: 0.001,
   maxBarSpacing: 120,
 };
 
@@ -12,7 +14,7 @@ const DEFAULTS: TimeScaleOptions = {
  */
 export class Viewport {
   private firstIndex = 0;
-  private barSpacing = 8;
+  private barSpacing = DEFAULT_BAR_SPACING;
   private count = 0;
   private width = 0;
   private options: TimeScaleOptions = { ...DEFAULTS };
@@ -36,7 +38,8 @@ export class Viewport {
   /** 初始定位：让最新 K 线贴右侧（留 rightOffset 空位） */
   scrollToRealtime(): void {
     const visibleCount = this.width / this.barSpacing;
-    this.firstIndex = Math.max(0, this.count - Math.ceil(visibleCount) + this.options.rightOffset);
+    this.firstIndex = this.count - Math.ceil(visibleCount) + this.options.rightOffset;
+    this.clamp();
   }
 
   panByBars(bars: number): void {
@@ -58,14 +61,20 @@ export class Viewport {
   }
 
   private clampSpacing(spacing: number): number {
-    return Math.min(this.options.maxBarSpacing, Math.max(this.options.minBarSpacing, spacing));
+    // 缩小下限取 max(静态下限, min(铺满全部数据所需间距, 默认间距))：
+    // 数据多时最小缩到"铺满宽度"，数据少时最小缩到默认间距
+    const fitAll = this.count > 0 ? this.width / this.count : Infinity;
+    const min = Math.max(this.options.minBarSpacing, Math.min(fitAll, DEFAULT_BAR_SPACING));
+    return Math.min(this.options.maxBarSpacing, Math.max(min, spacing));
   }
 
   private clamp(): void {
     const visibleCount = this.width / this.barSpacing;
-    const maxFirst = this.count - 1 + this.options.rightOffset;
+    // 最右：最后一根 K 线距右边缘保留 rightOffset 个 bar 的空隙
+    const maxFirst = this.count - visibleCount + this.options.rightOffset;
+    // 最左：第一根 K 线最多拖到画面中线
     const minFirst = -Math.ceil(visibleCount / 2);
-    this.firstIndex = Math.min(maxFirst, Math.max(minFirst, this.firstIndex));
+    this.firstIndex = Math.max(minFirst, Math.min(maxFirst, this.firstIndex));
   }
 
   get first(): number {
@@ -74,6 +83,10 @@ export class Viewport {
 
   get spacing(): number {
     return this.barSpacing;
+  }
+
+  get barCount(): number {
+    return this.count;
   }
 
   xToIndex(x: number): number {

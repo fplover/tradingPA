@@ -1,24 +1,34 @@
 import { CanvasManager } from '../canvas/CanvasManager';
 import { Viewport } from '../viewport/Viewport';
 import { PriceScale } from '../scale/PriceScale';
+import { Crosshair } from '../crosshair/Crosshair';
+import { BarSeries } from '@/data/BarSeries';
 import { theme } from '../theme';
 import type { Bar } from '@/types/market';
+import { drawCandles, type DrawGeometry } from './drawSeries';
+import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders } from './drawAxes';
+import { drawCrosshair, type LegendInfo } from './drawCrosshair';
 
-const AXIS_WIDTH = 64; // 右侧价格轴宽度
-const AXIS_HEIGHT = 24; // 底部时间轴高度
+const AXIS_WIDTH = 64;
+const AXIS_HEIGHT = 24;
 
 /**
- * 图表渲染器（M0）：网格 + 蜡烛 + 价格/时间轴 + 拖拽平移 + 滚轮缩放。
- * rAF 合帧：交互只置 dirty 标志，每帧最多重绘一次。
+ * 图表渲染器：拥有画布/视口/价格轴/数据/十字光标，rAF 合帧重绘。
+ * 输入交互只改状态 + invalidate，实际绘制发生在每帧至多一次。
  */
 export class ChartRenderer {
   private manager: CanvasManager;
   private viewport: Viewport;
   private priceScale = new PriceScale();
-  private bars: Bar[] = [];
+  private series = new BarSeries();
+  private crosshair = new Crosshair();
+  private legend: LegendInfo;
   private rafId = 0;
   private dirty = true;
   private disposed = false;
+
+  /** 最近一帧绘制耗时（ms），供性能监控与测试 */
+  lastFrameMs = 0;
 
   // 拖拽状态
   private dragging = false;
@@ -27,10 +37,11 @@ export class ChartRenderer {
   private priceDragging = false;
   private priceYAtDragStart = 0;
 
-  constructor(canvas: HTMLCanvasElement, bars: Bar[] = []) {
+  constructor(canvas: HTMLCanvasElement, bars: Bar[] = [], legend?: Partial<LegendInfo>) {
     this.manager = new CanvasManager(canvas);
     this.viewport = new Viewport(this.manager.width - AXIS_WIDTH);
-    this.bars = bars;
+    this.legend = { symbol: 'BTC/USDT', interval: '1m', decimals: 2, ...legend };
+    this.series.replace(bars);
     this.viewport.setBarCount(bars.length);
     if (bars.length > 0) this.viewport.scrollToRealtime();
     this.manager.onResize(() => {
@@ -42,10 +53,22 @@ export class ChartRenderer {
     this.bindInput(canvas);
   }
 
+  setLegend(legend: Partial<LegendInfo>): void {
+    this.legend = { ...this.legend, ...legend };
+    this.invalidate();
+  }
+
   setData(bars: Bar[]): void {
-    this.bars = bars;
+    this.series.replace(bars);
     this.viewport.setBarCount(bars.length);
     this.viewport.scrollToRealtime();
+    this.crosshair.clear();
+    this.invalidate();
+  }
+
+  /** 实时推送单根 K 线（更新时间戳的最后一根或追加） */
+  updateBar(bar: Bar): void {
+    this.series.update(bar);
     this.invalidate();
   }
 
@@ -98,32 +121,53 @@ export class ChartRenderer {
       this.dragging = true;
       this.lastPointerX = e.clientX;
       this.lastPointerY = e.clientY;
+      this.crosshair.clear();
+      this.invalidate();
     }
   };
 
   private onPointerMove = (e: PointerEvent) => {
+    const { x, y } = this.toLocal(e);
     if (this.dragging) {
       const dx = e.clientX - this.lastPointerX;
       const dy = e.clientY - this.lastPointerY;
       this.lastPointerX = e.clientX;
       this.lastPointerY = e.clientY;
       this.viewport.panByBars(-dx / this.viewport.spacing);
-      // 垂直拖拽：平移价格范围
       const { min, max } = this.priceScale.range;
       const span = max - min;
       const shift = (dy / Math.max(1, this.manager.height - AXIS_HEIGHT)) * span;
       this.priceScale.autoScale(min + shift, max + shift);
       this.invalidate();
     } else if (this.priceDragging) {
-      const { y } = this.toLocal(e);
       const dy = y - this.priceYAtDragStart;
       const { min, max } = this.priceScale.range;
       const span = max - min;
       const shift = -(dy / Math.max(1, this.manager.height - AXIS_HEIGHT)) * span;
       this.priceScale.autoScale(min + shift, max + shift);
       this.invalidate();
+    } else {
+      this.updateCrosshair(x, y);
     }
   };
+
+  private updateCrosshair(x: number, y: number): void {
+    const chartW = this.manager.width - AXIS_WIDTH;
+    const chartH = this.manager.height - AXIS_HEIGHT;
+    if (x < 0 || x > chartW || y < 0 || y > chartH) {
+      this.crosshair.clear();
+      this.invalidate();
+      return;
+    }
+    const idx = Math.round(this.viewport.xToIndex(x));
+    const bar = this.series.barAt(idx);
+    if (bar) {
+      this.crosshair.set(x, y, idx, bar.time, this.priceScale.yToPrice(y));
+    } else {
+      this.crosshair.clear();
+    }
+    this.invalidate();
+  }
 
   private onPointerUp = (e: PointerEvent) => {
     this.dragging = false;
@@ -133,11 +177,15 @@ export class ChartRenderer {
     }
   };
 
+  private onPointerLeave = () => {
+    this.crosshair.clear();
+    this.invalidate();
+  };
+
   private onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const { x } = this.toLocal(e);
     if (e.ctrlKey || e.metaKey) {
-      // ctrl+wheel：缩放价格轴（拉伸价格范围）
       const factor = e.deltaY > 0 ? 1.1 : 0.9;
       const { min, max } = this.priceScale.range;
       const mid = (min + max) / 2;
@@ -155,6 +203,7 @@ export class ChartRenderer {
     canvas.addEventListener('pointermove', this.onPointerMove);
     canvas.addEventListener('pointerup', this.onPointerUp);
     canvas.addEventListener('pointercancel', this.onPointerUp);
+    canvas.addEventListener('pointerleave', this.onPointerLeave);
     canvas.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
@@ -163,214 +212,64 @@ export class ChartRenderer {
     canvas.removeEventListener('pointermove', this.onPointerMove);
     canvas.removeEventListener('pointerup', this.onPointerUp);
     canvas.removeEventListener('pointercancel', this.onPointerUp);
+    canvas.removeEventListener('pointerleave', this.onPointerLeave);
     canvas.removeEventListener('wheel', this.onWheel);
   }
 
   // ---------- 绘制 ----------
 
   private draw(): void {
+    const t0 = performance.now();
     const ctx = this.manager.context;
     const w = this.manager.width;
     const h = this.manager.height;
-    const chartW = w - AXIS_WIDTH;
-    const chartH = h - AXIS_HEIGHT;
+    const geo: DrawGeometry = { chartW: w - AXIS_WIDTH, chartH: h - AXIS_HEIGHT };
 
     this.manager.beginFrame();
     ctx.fillStyle = theme.background;
     ctx.fillRect(0, 0, w, h);
 
-    if (this.bars.length === 0) return;
+    const count = this.series.length;
+    if (count === 0) {
+      this.lastFrameMs = performance.now() - t0;
+      return;
+    }
 
-    // 可见范围
-    const { from, to } = this.viewportRange();
-    if (to < from) return;
-    const visible = this.bars.slice(from, to + 1);
-    if (visible.length === 0) return;
+    const from = Math.max(0, Math.floor(this.viewport.first));
+    const to = Math.min(count - 1, from + Math.ceil(geo.chartW / this.viewport.spacing));
+    if (to < from) {
+      this.lastFrameMs = performance.now() - t0;
+      return;
+    }
 
-    // 价格自动适配
+    // 价格自动适配（基于可见范围）
     let low = Infinity;
     let high = -Infinity;
-    for (const b of visible) {
-      if (b.low < low) low = b.low;
-      if (b.high > high) high = b.high;
+    for (let i = from; i <= to; i++) {
+      const bar = this.series.barAt(i)!;
+      if (bar.low < low) low = bar.low;
+      if (bar.high > high) high = bar.high;
     }
     this.priceScale.autoScale(low, high);
 
-    this.drawGrid(ctx, chartW, chartH, from, to);
-    this.drawCandles(ctx, chartW, chartH, from, to);
-    this.drawPriceAxis(ctx, chartW, chartH);
-    this.drawTimeAxis(ctx, chartW, chartH, from, to);
-    this.drawBorders(ctx, chartW, chartH);
+    drawGrid(ctx, this.viewport, this.priceScale, geo);
+    drawCandles(ctx, this.series, from, to, this.viewport, this.priceScale, geo);
+    drawPriceAxis(ctx, this.priceScale, this.legend.decimals, geo);
+    drawTimeAxis(ctx, this.series, this.viewport, geo);
+
+    const hoveredBar = this.crosshair.bar(this.series);
+    drawCrosshair(
+      ctx,
+      this.crosshair,
+      hoveredBar,
+      this.series.last,
+      this.viewport,
+      this.priceScale,
+      geo,
+      this.legend,
+    );
+    drawBorders(ctx, geo);
+
+    this.lastFrameMs = performance.now() - t0;
   }
-
-  private viewportRange(): { from: number; to: number } {
-    const spacing = this.viewport.spacing;
-    const first = Math.floor(this.viewport.first);
-    const visibleCount = Math.ceil((this.manager.width - AXIS_WIDTH) / spacing);
-    const to = Math.min(this.bars.length - 1, first + visibleCount);
-    return { from: Math.max(0, first), to };
-  }
-
-  private drawGrid(
-    ctx: CanvasRenderingContext2D,
-    chartW: number,
-    chartH: number,
-    from: number,
-    to: number,
-  ): void {
-    ctx.strokeStyle = theme.grid;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (const price of this.priceScale.ticks(6)) {
-      const y = Math.round(this.priceScale.priceToY(price)) + 0.5;
-      if (y < 0 || y > chartH) continue;
-      ctx.moveTo(0, y);
-      ctx.lineTo(chartW, y);
-    }
-    // 垂直网格：约每 80px 一根
-    const spacing = this.viewport.spacing;
-    const step = Math.max(1, Math.ceil(80 / spacing));
-    for (let i = from; i <= to; i += step) {
-      const x = Math.round(this.viewport.indexToX(i)) + 0.5;
-      if (x < 0 || x > chartW) continue;
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, chartH);
-    }
-    ctx.stroke();
-  }
-
-  private drawCandles(
-    ctx: CanvasRenderingContext2D,
-    chartW: number,
-    chartH: number,
-    from: number,
-    to: number,
-  ): void {
-    const spacing = this.viewport.spacing;
-    const bodyW = Math.max(1, Math.min(spacing * 0.7, 30));
-    const wickW = 1;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, chartW, chartH);
-    ctx.clip();
-
-    for (let i = from; i <= to; i++) {
-      const bar = this.bars[i];
-      const xCenter = this.viewport.indexToX(i);
-      const x = xCenter - bodyW / 2;
-      if (x > chartW || x + bodyW < 0) continue;
-      const up = bar.close >= bar.open;
-      const color = up ? theme.up : theme.down;
-      const wickColor = up ? theme.upWick : theme.downWick;
-
-      const yHigh = this.priceScale.priceToY(bar.high);
-      const yLow = this.priceScale.priceToY(bar.low);
-      const yOpen = this.priceScale.priceToY(bar.open);
-      const yClose = this.priceScale.priceToY(bar.close);
-
-      // 影线
-      ctx.strokeStyle = wickColor;
-      ctx.lineWidth = wickW;
-      ctx.beginPath();
-      const xc = Math.round(xCenter) + 0.5;
-      ctx.moveTo(xc, yHigh);
-      ctx.lineTo(xc, yLow);
-      ctx.stroke();
-
-      // 实体
-      const top = Math.min(yOpen, yClose);
-      const bottom = Math.max(yOpen, yClose);
-      const bodyH = Math.max(1, bottom - top);
-      if (up) {
-        ctx.fillStyle = theme.background;
-        ctx.fillRect(x, top, bodyW, bodyH);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(Math.round(x) + 0.5, Math.round(top) + 0.5, bodyW - 1, bodyH - 1);
-      } else {
-        ctx.fillStyle = color;
-        ctx.fillRect(x, top, bodyW, bodyH);
-      }
-    }
-    ctx.restore();
-  }
-
-  private drawPriceAxis(
-    ctx: CanvasRenderingContext2D,
-    chartW: number,
-    chartH: number,
-  ): void {
-    ctx.fillStyle = theme.background;
-    ctx.fillRect(chartW, 0, AXIS_WIDTH, chartH);
-    ctx.strokeStyle = theme.axisLine;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(chartW + 0.5, 0);
-    ctx.lineTo(chartW + 0.5, chartH);
-    ctx.stroke();
-
-    ctx.fillStyle = theme.axisText;
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    const decimals = PriceScale.decimalsFor(this.bars[this.bars.length - 1].close);
-    for (const price of this.priceScale.ticks(6)) {
-      const y = this.priceScale.priceToY(price);
-      if (y < 10 || y > chartH - 2) continue;
-      ctx.fillText(price.toFixed(decimals), chartW + 6, y);
-    }
-  }
-
-  private drawTimeAxis(
-    ctx: CanvasRenderingContext2D,
-    chartW: number,
-    chartH: number,
-    from: number,
-    to: number,
-  ): void {
-    const top = chartH;
-    ctx.fillStyle = theme.background;
-    ctx.fillRect(0, top, chartW, AXIS_HEIGHT);
-    ctx.strokeStyle = theme.axisLine;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, top + 0.5);
-    ctx.lineTo(chartW, top + 0.5);
-    ctx.stroke();
-
-    ctx.fillStyle = theme.axisText;
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const spacing = this.viewport.spacing;
-    const step = Math.max(1, Math.ceil(80 / spacing));
-    for (let i = from; i <= to; i += step) {
-      const bar = this.bars[i];
-      const x = this.viewport.indexToX(i);
-      if (x < 30 || x > chartW - 30) continue;
-      ctx.fillText(formatTime(bar.time, spacing), x, top + AXIS_HEIGHT / 2);
-    }
-  }
-
-  private drawBorders(
-    ctx: CanvasRenderingContext2D,
-    chartW: number,
-    chartH: number,
-  ): void {
-    ctx.strokeStyle = theme.border;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(0.5, 0.5, chartW - 1, chartH - 1);
-  }
-}
-
-function formatTime(time: number, spacing: number): string {
-  const d = new Date(time);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  if (spacing >= 300) {
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-  }
-  if (spacing >= 60) {
-    return `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  }
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

@@ -10,6 +10,13 @@
   - 引擎：`CanvasManager`（DPR/Resize）、`Viewport`（平移/锚点缩放/边界钳制）、`PriceScale`（自动适配/刻度）、`ChartRenderer`（rAF 合帧 + 网格 + 蜡烛 + 价格/时间轴 + 拖拽平移 + 滚轮缩放）
   - 验证：浏览器实测——缩放锚点漂移 0px、拖拽平移数值精确、控制台无错误、生产构建 49KB gzip
   - 开发环境调试句柄：`window.__chartRenderer`（仅 DEV 构建存在，供 E2E 使用）
+- [x] **M1 核心引擎（第 2–4 周）已完成**
+  - 数据层：`BarSeries`（时间升序容器、增量更新、二分查找）
+  - 十字光标：吸附 K 线、虚线、价格/时间轴标签、左上角 OHLCV + 涨跌幅图例
+  - LOD：spacing < 4px 切换按像素列聚合的细线模式，单次 path 描边
+  - 性能：10 万根 K 线同屏（spacing 0.00466 铺满宽度）帧时间 3–9ms，常规视图 <1ms
+  - 实时路径：`updateBar` 同时间戳替换 / 新时间戳追加（App 内置 800ms 模拟跳动）
+  - 修复：clamp 右边界漏减 visibleCount 导致可平移进空视图；缩放下限超过"数据铺满"所需间距导致数据挤右半屏
 
 ---
 
