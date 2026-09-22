@@ -77,6 +77,8 @@ export class ChartRenderer {
   // 联动 / 复盘
   private syncCrosshairTime: number | null = null;
   private replayIndex: number | null = null;
+  private barSelectMode = false;
+  private barSelectCb: ((index: number) => void) | null = null;
   private viewportCommitCb: ((v: { first: number; spacing: number }) => void) | null = null;
   private crosshairTimeCb: ((t: number | null) => void) | null = null;
 
@@ -337,6 +339,13 @@ export class ChartRenderer {
     this.invalidate();
   }
 
+  /** 选择K线模式：开启后图表点击落点即为复盘位置 */
+  setBarSelectMode(on: boolean, cb: ((index: number) => void) | null): void {
+    this.barSelectMode = on;
+    this.barSelectCb = cb;
+    this.invalidate();
+  }
+
   /** 联动：外部图表十字光标时间（绘制垂直参考线） */
   setSyncCrosshair(time: number | null): void {
     this.syncCrosshairTime = time;
@@ -531,6 +540,15 @@ export class ChartRenderer {
       this.priceYAtDragStart = y;
     } else if (!inTimeAxis) {
       const pane = this.paneAt(y);
+      // 选择K线模式：点击落点即为复盘位置
+      if (this.barSelectMode) {
+        const idx = Math.round(this.viewport.xToIndex(x));
+        if (idx >= 0 && idx < this.displaySeries.length) {
+          this.barSelectCb?.(idx);
+          this.setBarSelectMode(false, null);
+        }
+        return;
+      }
       if (this.activeTool) {
         this.handleToolPointerDown(x, y, pane);
         return;
@@ -903,7 +921,51 @@ export class ChartRenderer {
       }
     }
 
+    // 复盘标记：垂直蓝线 + 顶部圆点 + “回放：周三 2026-09-16 16:30”标签
+    if (this.replayIndex !== null) {
+      const rx = this.viewport.indexToX(this.replayIndex);
+      if (rx >= 0 && rx <= mainGeo.chartW) {
+        const bar = this.displaySeries.barAt(this.replayIndex);
+        ctx.strokeStyle = '#2962ff';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(Math.round(rx) + 0.5, 0);
+        ctx.lineTo(Math.round(rx) + 0.5, mainGeo.chartH);
+        ctx.stroke();
+        // 顶部圆点标记
+        ctx.beginPath();
+        ctx.arc(rx, 7, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#2962ff';
+        ctx.fill();
+        // 标签
+        if (bar) {
+          const text = `回放：${formatReplayTime(bar.time, this.barIntervalMs())}`;
+          ctx.font = '11px system-ui, sans-serif';
+          const tw = ctx.measureText(text).width + 12;
+          const lx = Math.min(rx + 8, mainGeo.chartW - tw);
+          ctx.fillStyle = '#2962ff';
+          ctx.fillRect(lx, 14, tw, 18);
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, lx + tw / 2, 23);
+        }
+      }
+    }
+
     this.lastFrameMs = performance.now() - t0;
+  }
+
+  /** 当前 K 线周期（ms），用于复盘标签时间格式 */
+  private barIntervalMs(): number {
+    const n = this.displaySeries.length;
+    if (n >= 2) {
+      const a = this.displaySeries.barAt(n - 2)!.time;
+      const b = this.displaySeries.barAt(n - 1)!.time;
+      if (b > a) return b - a;
+    }
+    return 60_000;
   }
 
   private autoscalePrice(pane: PaneState, from: number, to: number): void {
@@ -988,4 +1050,16 @@ export class ChartRenderer {
         drawCandles(ctx, this.displaySeries, from, to, vs, ps, geo);
     }
   }
+}
+
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+/** 复盘标签时间格式：周三 2026-09-16 16:30（日线及以上只显示日期） */
+function formatReplayTime(time: number, intervalMs: number): string {
+  const d = new Date(time);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const weekday = `周${WEEKDAYS[d.getDay()]}`;
+  if (intervalMs >= 86_400_000) return `${weekday} ${date}`;
+  return `${weekday} ${date} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }

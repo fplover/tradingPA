@@ -7,6 +7,7 @@ import {
   Layers,
   Bell,
   Camera,
+  Play,
   RefreshCw,
   Sun,
   Moon,
@@ -33,15 +34,16 @@ import { useLayoutStore } from '@/store/layoutStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import { useAlertStore } from '@/store/alertStore';
+import { useReplayStore } from '@/store/replayStore';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
 import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
 import { ObjectTree } from '@/features/drawings/ObjectTree';
 import { LayoutGrid, LayoutButtons } from '@/features/layout/LayoutGrid';
+import { ReplayBar } from '@/features/replay/ReplayBar';
 import { Watchlist } from '@/features/watchlist/Watchlist';
 import { AlertPanel } from '@/features/alerts/AlertPanel';
-import { ReplayControls } from '@/features/replay/ReplayControls';
 
 const selectStyle: React.CSSProperties = {
   background: 'var(--panel)',
@@ -117,7 +119,7 @@ export default function App() {
   const [showVolume, setShowVolume] = useState(true);
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
-  const [replayIndex, setReplayIndex] = useState<number | null>(null);
+  const replayActive = useReplayStore((s) => s.index) !== null;
 
   // 数据模式：live = Binance 实时；mock = 本地模拟（降级）
   const [mode, setMode] = useState<'live' | 'mock'>('live');
@@ -223,6 +225,23 @@ export default function App() {
     a.click();
   };
 
+  /** 选择日期：二分查找第一个 >= 目标时间的 bar */
+  const handleSeekToTime = (time: number) => {
+    let lo = 0;
+    let hi = bars.length - 1;
+    let ans = bars.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (bars[mid].time >= time) {
+        ans = mid;
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    useReplayStore.getState().setIndex(Math.max(0, ans));
+  };
+
   return (
     <div style={{ width: '100vw', height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <div
@@ -258,7 +277,16 @@ export default function App() {
                 </option>
               ))}
             </select>
-            <ReplayControls barCount={bars.length} replayIndex={replayIndex} onIndexChange={setReplayIndex} />
+            <IconBtn
+              active={replayActive}
+              onClick={() => {
+                if (bars.length < 10) return; // 数据未就绪不进回放
+                useReplayStore.getState().start(bars.length - 60);
+              }}
+              title="回放：从最后 60 根之前开始逐K回放"
+            >
+              <Play size={15} />
+            </IconBtn>
           </>
         )}
         <IconBtn active={panelOpen} onClick={() => setPanelOpen(!panelOpen)} title="指标">
@@ -315,29 +343,33 @@ export default function App() {
       </div>
 
       {layout === 1 ? (
-        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          <Chart
-            bars={bars}
-            symbol={activeSymbol}
-            interval={tf.label}
-            decimals={2}
-            liveTickMs={mode === 'live' ? undefined : 800}
-            chartType={chartType}
-            logScale={logScale}
-            showVolume={showVolume}
-            replayIndex={replayIndex}
-            onRendererReady={(r) => {
-              rendererRef.current = r;
-              setRenderer(r);
-            }}
-            onNeedsMoreHistory={handleNeedsMore}
-          />
-          <DrawingToolbar />
-          {watchlistOpen && <Watchlist />}
-          {panelOpen && <IndicatorPanel />}
-          {treeOpen && <ObjectTree renderer={renderer} onClose={() => setTreeOpen(false)} />}
-          {alertOpen && <AlertPanel symbol={activeSymbol} currentPrice={lastPrice} />}
-          {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <Chart
+              bars={bars}
+              symbol={activeSymbol}
+              interval={tf.label}
+              decimals={2}
+              liveTickMs={mode === 'live' ? undefined : 800}
+              chartType={chartType}
+              logScale={logScale}
+              showVolume={showVolume}
+              onRendererReady={(r) => {
+                rendererRef.current = r;
+                setRenderer(r);
+              }}
+              onNeedsMoreHistory={handleNeedsMore}
+            />
+            <DrawingToolbar />
+            {watchlistOpen && <Watchlist />}
+            {panelOpen && <IndicatorPanel />}
+            {treeOpen && <ObjectTree renderer={renderer} onClose={() => setTreeOpen(false)} />}
+            {alertOpen && <AlertPanel symbol={activeSymbol} currentPrice={lastPrice} />}
+            {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
+          </div>
+          {replayActive && (
+            <ReplayBar barCount={bars.length} intervalLabel={tf.label} onSeekToTime={handleSeekToTime} />
+          )}
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

@@ -6,6 +6,7 @@ import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
 import { useThemeStore } from '@/store/themeStore';
+import { useReplayStore } from '@/store/replayStore';
 import { syncBus } from '@/store/syncBus';
 
 function defaultsFor(id: string): Record<string, ParamValue> {
@@ -28,8 +29,6 @@ interface ChartProps {
   onRendererReady?: (renderer: ChartRenderer | null) => void;
   /** 视口滚动到数据左边缘时触发（懒加载更早历史） */
   onNeedsMoreHistory?: () => void;
-  /** 复盘模式：只渲染到该 index（null = 关闭） */
-  replayIndex?: number | null;
   /** 参与多图表联动（十字光标/视口同步） */
   sync?: boolean;
 }
@@ -46,7 +45,6 @@ export function Chart({
   showVolume = true,
   onRendererReady,
   onNeedsMoreHistory,
-  replayIndex = null,
   sync = false,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -186,10 +184,22 @@ export function Chart({
     return () => clearInterval(id);
   }, [onNeedsMoreHistory]);
 
-  // 复盘模式
+  // 复盘模式：订阅 store（index → 隐藏未来 K 线；selectMode → 图表点击定位）
+  const replayIndex = useReplayStore((s) => s.index);
+  const replaySelectMode = useReplayStore((s) => s.selectMode);
+  const setReplayIndexStore = useReplayStore((s) => s.setIndex);
+  const setReplaySelectMode = useReplayStore((s) => s.setSelectMode);
   useEffect(() => {
     rendererRef.current?.setReplayIndex(replayIndex);
   }, [replayIndex]);
+
+  useEffect(() => {
+    rendererRef.current?.setBarSelectMode(replaySelectMode, (idx) => {
+      setReplayIndexStore(idx);
+      setReplaySelectMode(false);
+    });
+    return () => rendererRef.current?.setBarSelectMode(false, null);
+  }, [replaySelectMode, setReplayIndexStore, setReplaySelectMode]);
 
   // 主题切换：立即重绘画布（不等 rAF，避免图表区滞后于界面）
   const themeName = useThemeStore((s) => s.name);

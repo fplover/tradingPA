@@ -92,13 +92,32 @@ test('切换到四分布局', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveCount(1);
 });
 
-/** 复盘模式 */
-test('复盘模式进入与退出', async ({ page }) => {
+/** 回放模式：底部工具条 + 回放计时菜单 */
+test('回放模式进入与退出', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '复盘：从最后 60 根之前开始逐K回放' }).click();
-  await expect(page.getByRole('button', { name: '退出复盘' })).toBeVisible();
-  await page.getByRole('button', { name: '退出复盘' }).click();
-  await expect(page.getByRole('button', { name: '复盘：从最后 60 根之前开始逐K回放' })).toBeVisible();
+  // 等实时/模拟数据就绪（避免 0 根进入回放）
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: '回放：从最后 60 根之前开始逐K回放' }).click();
+  // 底部回放工具条
+  await expect(page.getByRole('button', { name: '回放计时' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '播放' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '上一根' })).toBeVisible();
+  // 回放计时菜单
+  await page.getByRole('button', { name: '回放计时' }).click();
+  await expect(page.getByRole('button', { name: '选择K线' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '选择日期' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '随机K线' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  // 播放推进（可见页面定时器正常）
+  const progress = page.locator('span', { hasText: /^\d+ \/ \d+$/ });
+  const before = await progress.textContent();
+  await page.getByRole('button', { name: '播放' }).click();
+  await page.waitForTimeout(900);
+  await page.getByRole('button', { name: '暂停' }).click();
+  expect(await progress.textContent()).not.toBe(before);
+  // 退出
+  await page.getByRole('button', { name: '退出回放' }).click();
+  await expect(page.getByRole('button', { name: '回放计时' })).toBeHidden();
 });
 
 /** 主题切换 */
