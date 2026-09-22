@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Timer,
   SkipBack,
@@ -10,6 +10,7 @@ import {
   CalendarRange,
   Shuffle,
   X,
+  GripHorizontal,
 } from 'lucide-react';
 import { useReplayStore } from '@/store/replayStore';
 import { Menu, MenuItem } from '@/ui/primitives';
@@ -24,20 +25,38 @@ interface ReplayBarProps {
   onSeekToTime: (time: number) => void;
 }
 
-/** TV 风格底部回放工具条：回放计时菜单 + 步进/播放/倍速 */
+/** 回放工具条：可拖动悬浮窗，默认居中偏下 */
 export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarProps) {
   const index = useReplayStore((s) => s.index);
   const playing = useReplayStore((s) => s.playing);
   const speed = useReplayStore((s) => s.speed);
   const selectMode = useReplayStore((s) => s.selectMode);
+  const barPos = useReplayStore((s) => s.barPos);
   const setIndex = useReplayStore((s) => s.setIndex);
   const setPlaying = useReplayStore((s) => s.setPlaying);
   const setSpeed = useReplayStore((s) => s.setSpeed);
   const setSelectMode = useReplayStore((s) => s.setSelectMode);
+  const setBarPos = useReplayStore((s) => s.setBarPos);
   const exit = useReplayStore((s) => s.exit);
 
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [dateValue, setDateValue] = useState('');
+  const barRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ dx: number; dy: number } | null>(null);
+
+  // 首次显示：无持久化位置时，默认居中偏下（容器高度 72% 处）
+  useEffect(() => {
+    if (barPos || !barRef.current) return;
+    const container = barRef.current.parentElement;
+    if (!container) return;
+    const bar = barRef.current.getBoundingClientRect();
+    setBarPos({
+      x: Math.max(8, (container.clientWidth - bar.width) / 2),
+      y: Math.max(8, container.clientHeight * 0.72 - bar.height / 2),
+    });
+    // 仅在无位置时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 播放：按倍速推进
   useEffect(() => {
@@ -71,8 +90,52 @@ export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarPr
     }
   };
 
+  // ---------- 拖动（抓手/背景可拖，控件不响应拖动） ----------
+
+  const onDragPointerDown = (e: React.PointerEvent) => {
+    if ((e.target as HTMLElement).closest('button, select, input, [role="menu"], [role="menuitem"]')) return;
+    if (!barPos || !barRef.current) return;
+    dragRef.current = { dx: e.clientX - barPos.x, dy: e.clientY - barPos.y };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const onDragPointerMove = (e: React.PointerEvent) => {
+    if (!dragRef.current || !barPos || !barRef.current) return;
+    const container = barRef.current.parentElement;
+    if (!container) return;
+    const bar = barRef.current.getBoundingClientRect();
+    const nx = e.clientX - dragRef.current.dx;
+    const ny = e.clientY - dragRef.current.dy;
+    setBarPos({
+      x: Math.min(Math.max(0, nx), Math.max(0, container.clientWidth - bar.width)),
+      y: Math.min(Math.max(0, ny), Math.max(0, container.clientHeight - bar.height)),
+    });
+  };
+
+  const onDragPointerUp = () => {
+    dragRef.current = null;
+  };
+
   return (
-    <div style={barStyle}>
+    <div
+      ref={barRef}
+      style={{
+        ...barStyle,
+        position: 'absolute',
+        left: barPos?.x ?? -9999, // 位置计算完成前先移出视野
+        top: barPos?.y ?? -9999,
+        cursor: 'move',
+        touchAction: 'none',
+        zIndex: 20,
+      }}
+      onPointerDown={onDragPointerDown}
+      onPointerMove={onDragPointerMove}
+      onPointerUp={onDragPointerUp}
+      onPointerCancel={onDragPointerUp}
+    >
+      {/* 拖动抓手 */}
+      <GripHorizontal size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+
       {/* 回放计时下拉菜单（Radix：键盘导航/Esc/外击关闭） */}
       <Menu
         trigger={
@@ -185,8 +248,9 @@ const barStyle: React.CSSProperties = {
   height: 36,
   padding: '0 10px',
   background: 'var(--panel)',
-  borderTop: '1px solid var(--border)',
-  flexShrink: 0,
+  border: '1px solid var(--border)',
+  borderRadius: 6,
+  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
 };
 
 const btnStyle: React.CSSProperties = {
@@ -215,7 +279,7 @@ const selectStyle: React.CSSProperties = {
 
 const datePopStyle: React.CSSProperties = {
   position: 'absolute',
-  bottom: 34,
+  bottom: 40,
   left: 0,
   display: 'flex',
   gap: 6,

@@ -363,10 +363,10 @@ export default function App() {
                 onReport={() => setReportOpen(true)}
               />
             )}
+            {replayActive && (
+              <ReplayBar barCount={bars.length} intervalLabel={tf.label} onSeekToTime={handleSeekToTime} />
+            )}
           </div>
-          {replayActive && (
-            <ReplayBar barCount={bars.length} intervalLabel={tf.label} onSeekToTime={handleSeekToTime} />
-          )}
           {reportOpen && <SummaryReport onClose={() => setReportOpen(false)} />}
         </div>
       ) : (
