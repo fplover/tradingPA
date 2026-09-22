@@ -73,11 +73,9 @@ export class Viewport {
 
   private clamp(): void {
     const visibleCount = this.width / this.barSpacing;
-    // 最右：回放期间锁定到复盘位置；否则允许拖入右侧空白区（TV 行为，最多半个视口）
-    const maxFirst =
-      this.replayEdge !== null
-        ? this.replayEdge - visibleCount + this.options.rightOffset
-        : this.count - visibleCount + Math.max(this.options.rightOffset, visibleCount * 0.5);
+    // 最右：允许拖入右侧空白区（TV 行为，最多半个视口）；回放期间以复盘位置为数据边界
+    const dataEdge = this.replayEdge !== null ? this.replayEdge : this.count;
+    const maxFirst = dataEdge - visibleCount + Math.max(this.options.rightOffset, visibleCount * 0.5);
     // 最左：第一根 K 线最多拖到画面中线
     const minFirst = -Math.ceil(visibleCount / 2);
     this.firstIndex = Math.max(minFirst, Math.min(maxFirst, this.firstIndex));

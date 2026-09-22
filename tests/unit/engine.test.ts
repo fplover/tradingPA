@@ -67,24 +67,24 @@ describe('Viewport', () => {
     expect(v.isAtRightEdge()).toBe(true);
   });
 
-  it('复盘边缘：视口不能滚过复盘位置（杜绝白屏）', () => {
+  it('复盘边缘：可左右拖动，右界为复盘位置 + 半个视口空白', () => {
     const v = new Viewport(460);
     v.setBarCount(1000);
     v.scrollToRealtime();
     v.setReplayEdge(500); // 复盘位置在 500
     const visibleCount = 460 / v.spacing;
-    // 强行向右拖也拖不过复盘位置
+    const maxFirst = 500 - visibleCount + Math.max(5, visibleCount * 0.5);
+    // 向左拖（看历史）：有左边界
     v.panByBars(-100000);
-    expect(v.first).toBeLessThanOrEqual(500 - visibleCount + 5 + 1e-9);
+    expect(v.first).toBeGreaterThanOrEqual(-Math.ceil(visibleCount / 2));
+    // 向右拖（看回放点右侧空白）：不超过 复盘位置 + 半个视口
     v.panByBars(100000);
-    expect(v.first).toBeLessThanOrEqual(500 - visibleCount + 5 + 1e-9);
-    // 复盘位置在可视域内
-    expect(v.first).toBeLessThanOrEqual(500);
-    expect(v.first + visibleCount).toBeGreaterThanOrEqual(500);
-    // 取消复盘边缘后恢复
+    expect(v.first).toBeLessThanOrEqual(maxFirst + 1e-9);
+    expect(v.first).toBeGreaterThan(499 - visibleCount); // 确实越过了复盘位置
+    // 取消复盘边缘后右界回到数据末端
     v.setReplayEdge(null);
     v.panByBars(100000);
-    expect(v.first).toBeGreaterThan(500);
+    expect(v.first).toBeGreaterThan(maxFirst);
   });
 
   it('缩放下限不超过数据铺满所需间距', () => {

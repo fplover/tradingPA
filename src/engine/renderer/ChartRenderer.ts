@@ -335,19 +335,23 @@ export class ChartRenderer {
     return this.manager.canvas.toDataURL('image/png');
   }
 
-  /** 复盘模式：只渲染到指定 index（null = 关闭）；位置变化时滚动到可见 */
+  /** 复盘模式：只渲染到指定 index（null = 关闭）；首次选中居中，播放/越界贴右带入 */
   setReplayIndex(index: number | null): void {
     const prev = this.replayIndex;
     this.replayIndex = index;
     this.viewport.setReplayEdge(index);
     if (index !== null && this.displaySeries.length > 0) {
       const visibleCount = (this.manager.width - AXIS_WIDTH) / this.viewport.spacing;
-      const first = this.viewport.first;
-      const outOfView = index < first + 2 || index > first + visibleCount - 2;
-      const forward = prev !== null && index > prev; // 播放/步进跟随
-      if (outOfView || forward) {
-        // 靠右对齐（留 rightOffset 空位）
-        this.viewport.setFirstPublic(index - visibleCount + 5);
+      if (prev === null) {
+        // 首次选中：回放位置居中
+        this.viewport.setFirstPublic(index - visibleCount / 2);
+      } else {
+        const first = this.viewport.first;
+        const outOfView = index < first + 2 || index > first + visibleCount - 2;
+        if (outOfView) {
+          // 播放/步进/跳转：回放点越出视野时靠右带入
+          this.viewport.setFirstPublic(index - visibleCount + 5);
+        }
       }
     }
     this.invalidate();
@@ -965,53 +969,10 @@ export class ChartRenderer {
       }
     }
 
-    // 复盘标记：垂直蓝线 + 剪刀图标 + 右侧淡蒙层 + “回放：周三 2026-09-16 16:30”标签
-    if (this.replayIndex !== null) {
-      const rx = this.viewport.indexToX(this.replayIndex);
-      if (rx >= 0 && rx <= mainGeo.chartW) {
-        const bar = this.displaySeries.barAt(this.replayIndex);
-        // 复盘位置右侧淡蒙层（未来区域）
-        ctx.fillStyle = 'rgba(41, 98, 255, 0.05)';
-        ctx.fillRect(rx, 0, mainGeo.chartW - rx, mainGeo.chartH);
-        ctx.strokeStyle = '#2962ff';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.moveTo(Math.round(rx) + 0.5, 0);
-        ctx.lineTo(Math.round(rx) + 0.5, mainGeo.chartH);
-        ctx.stroke();
-        // 顶端剪刀图标
-        drawScissors(ctx, rx, 10);
-        // 标签（贴时间轴上方，对齐 TV）
-        if (bar) {
-          const text = `回放：${formatReplayTime(bar.time, this.barIntervalMs())}`;
-          ctx.font = '11px system-ui, sans-serif';
-          const tw = ctx.measureText(text).width + 12;
-          const lx = Math.min(Math.max(4, rx + 8), mainGeo.chartW - tw - 4);
-          const ly = mainGeo.chartH - 26;
-          ctx.fillStyle = '#2962ff';
-          ctx.fillRect(lx, ly, tw, 18);
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(text, lx + tw / 2, ly + 9);
-        }
-      }
-    }
-
+    // 回放位置不绘制标记（蒙层/竖线/标签），图表截至该 K 线即为标示
     this.lastFrameMs = performance.now() - t0;
   }
 
-  /** 当前 K 线周期（ms），用于复盘标签时间格式 */
-  private barIntervalMs(): number {
-    const n = this.displaySeries.length;
-    if (n >= 2) {
-      const a = this.displaySeries.barAt(n - 2)!.time;
-      const b = this.displaySeries.barAt(n - 1)!.time;
-      if (b > a) return b - a;
-    }
-    return 60_000;
-  }
 
   private autoscalePrice(pane: PaneState, from: number, to: number): void {
     let low = Infinity;
@@ -1097,19 +1058,7 @@ export class ChartRenderer {
   }
 }
 
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
-
-/** 复盘标签时间格式：周三 2026-09-16 16:30（日线及以上只显示日期） */
-function formatReplayTime(time: number, intervalMs: number): string {
-  const d = new Date(time);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const weekday = `周${WEEKDAYS[d.getDay()]}`;
-  if (intervalMs >= 86_400_000) return `${weekday} ${date}`;
-  return `${weekday} ${date} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** 绘制剪刀图标（回放位置标记，蓝底白字） */
+/** 绘制剪刀图标（选择K线预览线顶端标记，蓝底白字） */
 function drawScissors(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.save();
   ctx.beginPath();

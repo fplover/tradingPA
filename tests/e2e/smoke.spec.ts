@@ -112,6 +112,8 @@ test('回放模式进入与退出', async ({ page }) => {
   await expect(page.getByRole('menuitem', { name: '选择日期' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: '随机K线' })).toBeVisible();
   await page.keyboard.press('Escape');
+  await expect(page.getByRole('menuitem', { name: '选择K线' })).toBeHidden();
+  await page.waitForTimeout(150); // portal 遮罩移除的微任务时间
   // 播放推进（可见页面定时器正常；经开发句柄读取回放位置）
   const idxOf = () => page.evaluate(() => (window as unknown as { __chartRenderer?: { replayIndex: number | null } }).__chartRenderer?.replayIndex ?? null);
   const before = await idxOf();
@@ -133,7 +135,7 @@ test('回放模拟交易全流程', async ({ page }) => {
   await page.getByRole('button', { name: '回放：点击后在图表上选择 K 线作为起点' }).click();
   await page.locator('canvas').click({ position: { x: 400, y: 300 } });
   // 交易面板 + 市价买入
-  await expect(page.getByText('回放交易面板')).toBeVisible();
+  await expect(page.getByRole('button', { name: '买入', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '买入', exact: true }).click();
   await expect(page.getByRole('tab', { name: /^持仓/ })).toBeVisible();
   // 挂单对话框（限价/止损/止损限价）
