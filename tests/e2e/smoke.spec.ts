@@ -112,13 +112,14 @@ test('回放模式进入与退出', async ({ page }) => {
   await expect(page.getByRole('menuitem', { name: '选择日期' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: '随机K线' })).toBeVisible();
   await page.keyboard.press('Escape');
-  // 播放推进（可见页面定时器正常）
-  const progress = page.locator('span', { hasText: /^\d+ \/ \d+$/ });
-  const before = await progress.textContent();
+  // 播放推进（可见页面定时器正常；经开发句柄读取回放位置）
+  const idxOf = () => page.evaluate(() => (window as unknown as { __chartRenderer?: { replayIndex: number | null } }).__chartRenderer?.replayIndex ?? null);
+  const before = await idxOf();
+  expect(before).not.toBeNull();
   await page.getByRole('button', { name: '播放' }).click();
   await page.waitForTimeout(900);
   await page.getByRole('button', { name: '暂停' }).click();
-  expect(await progress.textContent()).not.toBe(before);
+  expect(await idxOf()).toBeGreaterThan(before!);
   // 退出
   await page.getByRole('button', { name: '退出回放' }).click();
   await expect(page.getByRole('button', { name: '选择K线' })).toBeHidden();

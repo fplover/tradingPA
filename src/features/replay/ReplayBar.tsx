@@ -87,18 +87,13 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
     place({ type: 'market', side, qty: q }, price, time);
   };
 
-  const pnlColor = (v: number) => (v >= 0 ? '#26a69a' : '#ef5350');
   void tradeVersion;
   const position = tradeEngine.position;
 
   return (
     <div style={barStyle}>
-      {/* 左：回放控制 */}
-      {!selecting && (
-        <span style={replayLabelStyle}>
-          {index !== null ? `${index + 1} / ${barCount}` : ''}
-        </span>
-      )}
+      {/* 回放控制组：绝对定位于右侧居中（紧邻交易按钮区） */}
+      <div style={centerGroupStyle}>
       <Menu
         trigger={
           <button style={btnStyle} title="回放计时">
@@ -181,16 +176,13 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
           </button>
         </span>
       )}
+      </div>
 
       <div style={{ flex: 1 }} />
 
       {/* 右：模拟下单（对齐 TV 回放底条） */}
       {!selecting && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>
-            浮动 <b style={{ color: pnlColor(tradeEngine.unrealizedPnL) }}>{tradeEngine.unrealizedPnL >= 0 ? '+' : ''}{tradeEngine.unrealizedPnL.toFixed(2)}</b>
-          </span>
-          <div style={sepStyle} />
           <button style={{ ...orderBtn, background: '#ef5350' }} onClick={() => quick('sell')} title="市价卖出/做空">
             卖出
           </button>
@@ -215,6 +207,16 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
     </div>
   );
 }
+
+const centerGroupStyle: React.CSSProperties = {
+  position: 'absolute',
+  right: 258,
+  top: 0,
+  bottom: 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+};
 
 const barStyle: React.CSSProperties = {
   display: 'flex',
@@ -264,12 +266,6 @@ const qtyInput: React.CSSProperties = {
   padding: '0 4px',
 };
 
-const replayLabelStyle: React.CSSProperties = {
-  color: 'var(--text-faint)',
-  fontSize: 11,
-  fontVariantNumeric: 'tabular-nums',
-};
-
 const sepStyle: React.CSSProperties = {
   width: 1,
   height: 18,
@@ -287,8 +283,9 @@ const selectStyle: React.CSSProperties = {
 
 const datePopStyle: React.CSSProperties = {
   position: 'absolute',
-  bottom: 40,
+  bottom: '100%',
   left: 0,
+  marginBottom: 6,
   display: 'flex',
   gap: 6,
   alignItems: 'center',
