@@ -18,6 +18,18 @@ import { Menu, MenuItem } from '@/ui/primitives';
 const SPEEDS = [1, 2, 4];
 const BASE_INTERVAL = 300;
 
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+/** 回放徽章时间：周四 2026-09-17 07:00（日线及以上只显日期） */
+function formatBarTime(time: number): string {
+  const d = new Date(time);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const weekday = `周${WEEKDAYS[d.getDay()]}`;
+  if (d.getHours() === 0 && d.getMinutes() === 0) return `回放：${weekday} ${date}`;
+  return `回放：${weekday} ${date} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 interface ReplayBarProps {
   barCount: number;
   intervalLabel: string;
@@ -90,8 +102,12 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
   void tradeVersion;
   const position = tradeEngine.position;
 
+  const dateBadge = index !== null ? formatBarTime(time) : '';
+
   return (
     <div style={barStyle}>
+      {/* 左：回放日期徽章（对齐图例） */}
+      {!selecting && dateBadge && <span style={dateBadgeStyle}>{dateBadge}</span>}
       {/* 回放控制组：绝对定位于右侧居中（紧邻交易按钮区） */}
       <div style={centerGroupStyle}>
       <Menu
@@ -207,6 +223,16 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
     </div>
   );
 }
+
+const dateBadgeStyle: React.CSSProperties = {
+  background: 'var(--accent)',
+  color: 'var(--text-on-accent)',
+  fontSize: 11,
+  borderRadius: 4,
+  padding: '3px 8px',
+  whiteSpace: 'nowrap',
+  fontVariantNumeric: 'tabular-nums',
+};
 
 const centerGroupStyle: React.CSSProperties = {
   position: 'absolute',

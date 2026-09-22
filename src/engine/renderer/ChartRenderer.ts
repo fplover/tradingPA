@@ -945,23 +945,23 @@ export class ChartRenderer {
     }
 
     // 复盘标记：垂直蓝线 + 顶部圆点 + “回放：周三 2026-09-16 16:30”标签
-    // 选择K线预览线：跟随光标的垂直虚线（选中后由复盘标记线取代）
+    // 选择K线预览线：实线 + 剪刀图标 + 线右侧淡蒙层（选中后由复盘标记线取代）
     if (this.barSelectMode && this.selectPreviewX !== null) {
       const px = this.selectPreviewX;
       if (px >= 0 && px <= mainGeo.chartW) {
+        // 线右侧淡蒙层（“未来”区域提示）
+        ctx.fillStyle = 'rgba(41, 98, 255, 0.06)';
+        ctx.fillRect(px, 0, mainGeo.chartW - px, mainGeo.chartH);
+        // 实线
         ctx.strokeStyle = '#2962ff';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]);
         ctx.beginPath();
         ctx.moveTo(Math.round(px) + 0.5, 0);
         ctx.lineTo(Math.round(px) + 0.5, mainGeo.chartH);
         ctx.stroke();
-        ctx.setLineDash([]);
-        // 顶端小圆点（与图例一致的预览手感）
-        ctx.beginPath();
-        ctx.arc(px, 7, 3.5, 0, Math.PI * 2);
-        ctx.fillStyle = '#2962ff';
-        ctx.fill();
+        // 顶端剪刀图标
+        drawScissors(ctx, px, 10);
       }
     }
 
@@ -969,6 +969,9 @@ export class ChartRenderer {
       const rx = this.viewport.indexToX(this.replayIndex);
       if (rx >= 0 && rx <= mainGeo.chartW) {
         const bar = this.displaySeries.barAt(this.replayIndex);
+        // 复盘位置右侧淡蒙层（未来区域）
+        ctx.fillStyle = 'rgba(41, 98, 255, 0.05)';
+        ctx.fillRect(rx, 0, mainGeo.chartW - rx, mainGeo.chartH);
         ctx.strokeStyle = '#2962ff';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([]);
@@ -976,11 +979,8 @@ export class ChartRenderer {
         ctx.moveTo(Math.round(rx) + 0.5, 0);
         ctx.lineTo(Math.round(rx) + 0.5, mainGeo.chartH);
         ctx.stroke();
-        // 顶部圆点标记
-        ctx.beginPath();
-        ctx.arc(rx, 7, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#2962ff';
-        ctx.fill();
+        // 顶端剪刀图标
+        drawScissors(ctx, rx, 10);
         // 标签（贴时间轴上方，对齐 TV）
         if (bar) {
           const text = `回放：${formatReplayTime(bar.time, this.barIntervalMs())}`;
@@ -1106,4 +1106,19 @@ function formatReplayTime(time: number, intervalMs: number): string {
   const weekday = `周${WEEKDAYS[d.getDay()]}`;
   if (intervalMs >= 86_400_000) return `${weekday} ${date}`;
   return `${weekday} ${date} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** 绘制剪刀图标（回放位置标记，蓝底白字） */
+function drawScissors(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x, y, 8, 0, Math.PI * 2);
+  ctx.fillStyle = '#2962ff';
+  ctx.fill();
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText('✀', x, y + 0.5);
+  ctx.restore();
 }
