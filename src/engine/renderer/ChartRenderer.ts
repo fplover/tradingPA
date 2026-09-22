@@ -563,7 +563,8 @@ export class ChartRenderer {
           this.setBarSelectMode(false, null);
         }
         return;
-      }      if (this.activeTool) {
+      }
+      if (this.activeTool) {
         this.handleToolPointerDown(x, y, pane);
         return;
       }
@@ -944,7 +945,6 @@ export class ChartRenderer {
       }
     }
 
-    // 复盘标记：垂直蓝线 + 顶部圆点 + “回放：周三 2026-09-16 16:30”标签
     // 选择K线预览线：实线 + 剪刀图标 + 线右侧淡蒙层（选中后由复盘标记线取代）
     if (this.barSelectMode && this.selectPreviewX !== null) {
       const px = this.selectPreviewX;
@@ -965,6 +965,7 @@ export class ChartRenderer {
       }
     }
 
+    // 复盘标记：垂直蓝线 + 剪刀图标 + 右侧淡蒙层 + “回放：周三 2026-09-16 16:30”标签
     if (this.replayIndex !== null) {
       const rx = this.viewport.indexToX(this.replayIndex);
       if (rx >= 0 && rx <= mainGeo.chartW) {

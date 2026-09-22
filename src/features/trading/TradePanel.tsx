@@ -20,7 +20,7 @@ interface TradePanelProps {
   onReport: () => void;
 }
 
-/** 回放交易面板（底部）：挂单入口 + 挂单/持仓/成交页签 */
+/** 回放交易面板（底部）：权益/浮动 + 挂单入口 + 挂单/持仓/成交页签 */
 export function TradePanel({ price, time, onReport }: TradePanelProps) {
   const version = useTradeStore((s) => s.version);
   const engine = useTradeStore((s) => s.engine);
@@ -31,7 +31,6 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   void version;
-  const qtyNum = 0.01; // 挂单对话框默认数量
   const pending = engine.pendingOrders;
   const position = engine.position;
   const pnlColor = (v: number) => (v >= 0 ? '#26a69a' : '#ef5350');
@@ -132,7 +131,7 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
       <Modal open={dialogOpen} onOpenChange={setDialogOpen} title="挂单" width={280}>
         <OrderDialog
           price={price}
-          qtyNum={qtyNum}
+          qtyNum={0.01}
           onSubmit={(spec) => {
             place(spec, price, time);
             setDialogOpen(false);

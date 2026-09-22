@@ -40,7 +40,7 @@ interface ReplayBarProps {
   onSeekToTime: (time: number) => void;
 }
 
-/** 底部一体化回放工具条：回放控制（左）+ 模拟下单（右），对齐 TV 回放底条 */
+/** 底部一体化回放工具条：左徽章 + 右置中回放控制 + 最右模拟下单（对齐 TV） */
 export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }: ReplayBarProps) {
   const index = useReplayStore((s) => s.index);
   const playing = useReplayStore((s) => s.playing);
@@ -102,96 +102,97 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
   void tradeVersion;
   const position = tradeEngine.position;
 
-  const dateBadge = index !== null ? formatBarTime(time) : '';
-
   return (
     <div style={barStyle}>
-      {/* 左：回放日期徽章（对齐图例） */}
-      {!selecting && dateBadge && <span style={dateBadgeStyle}>{dateBadge}</span>}
-      {/* 回放控制组：绝对定位于右侧居中（紧邻交易按钮区） */}
+      {/* 左：回放日期徽章 */}
+      {!selecting && <span style={dateBadgeStyle}>{formatBarTime(time)}</span>}
+
+      <div style={{ flex: 1 }} />
+
+      {/* 中：回放控制组（偏右居中） */}
       <div style={centerGroupStyle}>
-      <Menu
-        trigger={
-          <button style={btnStyle} title="回放计时">
-            <Timer size={14} />
-            <span style={{ marginLeft: 4 }}>选择K线</span>
-          </button>
-        }
-      >
-        <MenuItem icon={<MousePointerClick size={14} />} onSelect={() => setSelectMode(true)}>
-          选择K线
-        </MenuItem>
-        <MenuItem icon={<Calendar size={14} />} onSelect={() => setDatePickerOpen(true)}>
-          选择日期
-        </MenuItem>
-        <MenuItem icon={<CalendarRange size={14} />} onSelect={() => setIndex(0)}>
-          选择第一个可用日期
-        </MenuItem>
-        <MenuItem icon={<Shuffle size={14} />} onSelect={seekRandom}>
-          随机K线
-        </MenuItem>
-      </Menu>
-      {datePickerOpen && (
-        <div style={datePopStyle}>
-          <input
-            type="datetime-local"
-            value={dateValue}
-            onChange={(e) => setDateValue(e.target.value)}
-            style={dateInputStyle}
-          />
-          <button style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={applyDate}>
-            跳转
-          </button>
-        </div>
-      )}
+        <Menu
+          trigger={
+            <button style={btnStyle} title="回放计时">
+              <Timer size={14} />
+              <span style={{ marginLeft: 4 }}>选择K线</span>
+            </button>
+          }
+        >
+          <MenuItem icon={<MousePointerClick size={14} />} onSelect={() => setSelectMode(true)}>
+            选择K线
+          </MenuItem>
+          <MenuItem icon={<Calendar size={14} />} onSelect={() => setDatePickerOpen(true)}>
+            选择日期
+          </MenuItem>
+          <MenuItem icon={<CalendarRange size={14} />} onSelect={() => setIndex(0)}>
+            选择第一个可用日期
+          </MenuItem>
+          <MenuItem icon={<Shuffle size={14} />} onSelect={seekRandom}>
+            随机K线
+          </MenuItem>
+        </Menu>
+        {datePickerOpen && (
+          <div style={datePopStyle}>
+            <input
+              type="datetime-local"
+              value={dateValue}
+              onChange={(e) => setDateValue(e.target.value)}
+              style={dateInputStyle}
+            />
+            <button style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={applyDate}>
+              跳转
+            </button>
+          </div>
+        )}
 
-      {!selecting && (
-        <>
-          <div style={sepStyle} />
-          <button style={btnStyle} title="上一根" onClick={() => { setPlaying(false); setIndex(Math.max(0, index - 1)); }}>
-            <SkipBack size={14} />
-          </button>
-          <button
-            style={{ ...btnStyle, background: playing ? 'var(--accent)' : 'transparent', color: playing ? 'var(--text-on-accent)' : 'var(--text-dim)' }}
-            title={playing ? '暂停' : '播放'}
-            onClick={() => setPlaying(!playing)}
-          >
-            {playing ? <Pause size={14} /> : <Play size={14} />}
-          </button>
-          <button style={btnStyle} title="下一根" onClick={() => { setPlaying(false); setIndex(Math.min(barCount - 1, index + 1)); }}>
-            <SkipForward size={14} />
-          </button>
-          <div style={sepStyle} />
-          <select
-            style={{ ...selectStyle, width: 52 }}
-            value={speed}
-            onChange={(e) => setSpeed(Number(e.target.value))}
-            title="播放倍速"
-          >
-            {SPEEDS.map((s) => (
-              <option key={s} value={s}>
-                {s}x
-              </option>
-            ))}
-          </select>
-          <span style={{ color: 'var(--text-dim)', fontSize: 12, padding: '0 4px' }}>{intervalLabel}</span>
-        </>
-      )}
+        {!selecting && (
+          <>
+            <div style={sepStyle} />
+            <button style={btnStyle} title="上一根" onClick={() => { setPlaying(false); setIndex(Math.max(0, index - 1)); }}>
+              <SkipBack size={14} />
+            </button>
+            <button
+              style={{ ...btnStyle, background: playing ? 'var(--accent)' : 'transparent', color: playing ? 'var(--text-on-accent)' : 'var(--text-dim)' }}
+              title={playing ? '暂停' : '播放'}
+              onClick={() => setPlaying(!playing)}
+            >
+              {playing ? <Pause size={14} /> : <Play size={14} />}
+            </button>
+            <button style={btnStyle} title="下一根" onClick={() => { setPlaying(false); setIndex(Math.min(barCount - 1, index + 1)); }}>
+              <SkipForward size={14} />
+            </button>
+            <div style={sepStyle} />
+            <select
+              style={{ ...selectStyle, width: 52 }}
+              value={speed}
+              onChange={(e) => setSpeed(Number(e.target.value))}
+              title="播放倍速"
+            >
+              {SPEEDS.map((s) => (
+                <option key={s} value={s}>
+                  {s}x
+                </option>
+              ))}
+            </select>
+            <span style={{ color: 'var(--text-dim)', fontSize: 12, padding: '0 4px' }}>{intervalLabel}</span>
+          </>
+        )}
 
-      {/* 选择中提示 */}
-      {selectMode && selecting && (
-        <span style={hintStyle}>
-          <MousePointerClick size={12} /> 请在图表上点击选择 K 线作为回放起点
-        </span>
-      )}
-      {selectMode && !selecting && (
-        <span style={hintStyle}>
-          <MousePointerClick size={12} /> 请在图表上点击选择 K 线
-          <button style={{ ...btnStyle, padding: '0 4px' }} onClick={() => setSelectMode(false)} title="取消">
-            <X size={12} />
-          </button>
-        </span>
-      )}
+        {/* 选择中提示 */}
+        {selectMode && selecting && (
+          <span style={hintStyle}>
+            <MousePointerClick size={12} /> 请在图表上点击选择 K 线作为回放起点
+          </span>
+        )}
+        {selectMode && !selecting && (
+          <span style={hintStyle}>
+            <MousePointerClick size={12} /> 请在图表上点击选择 K 线
+            <button style={{ ...btnStyle, padding: '0 4px' }} onClick={() => setSelectMode(false)} title="取消">
+              <X size={12} />
+            </button>
+          </span>
+        )}
       </div>
 
       <div style={{ flex: 1 }} />
@@ -224,6 +225,17 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
   );
 }
 
+const barStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  height: 38,
+  padding: '0 10px',
+  background: 'var(--panel)',
+  borderTop: '1px solid var(--border)',
+  flexShrink: 0,
+};
+
 const dateBadgeStyle: React.CSSProperties = {
   background: 'var(--accent)',
   color: 'var(--text-on-accent)',
@@ -235,24 +247,9 @@ const dateBadgeStyle: React.CSSProperties = {
 };
 
 const centerGroupStyle: React.CSSProperties = {
-  position: 'absolute',
-  right: 258,
-  top: 0,
-  bottom: 0,
   display: 'flex',
   alignItems: 'center',
   gap: 6,
-};
-
-const barStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  height: 38,
-  padding: '0 10px',
-  background: 'var(--panel)',
-  borderTop: '1px solid var(--border)',
-  flexShrink: 0,
 };
 
 const btnStyle: React.CSSProperties = {
