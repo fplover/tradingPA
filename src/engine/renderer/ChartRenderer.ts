@@ -315,6 +315,12 @@ export class ChartRenderer {
     this.dirty = true;
   }
 
+  /** 强制立即重绘（主题切换等需要零延迟的场景，不等 rAF） */
+  redraw(): void {
+    this.dirty = false;
+    this.draw();
+  }
+
   /** 视口首个可见 bar 的 index（懒加载检测用） */
   get viewportFirst(): number {
     return this.viewport.first;

@@ -5,6 +5,7 @@ import type { ParamValue } from '@/indicators/core/types';
 import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
+import { useThemeStore } from '@/store/themeStore';
 import { syncBus } from '@/store/syncBus';
 
 function defaultsFor(id: string): Record<string, ParamValue> {
@@ -189,6 +190,12 @@ export function Chart({
   useEffect(() => {
     rendererRef.current?.setReplayIndex(replayIndex);
   }, [replayIndex]);
+
+  // 主题切换：立即重绘画布（不等 rAF，避免图表区滞后于界面）
+  const themeName = useThemeStore((s) => s.name);
+  useEffect(() => {
+    rendererRef.current?.redraw();
+  }, [themeName]);
 
   // 多图表联动：十字光标时间 + 视口广播
   useEffect(() => {
