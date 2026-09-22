@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Plus, X, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, X, FileChartLine, FoldVertical, UnfoldVertical } from 'lucide-react';
 import { useTradeStore } from './tradeStore';
 import { useTradePanelStore } from '@/store/tradePanelStore';
 import { Modal, Tab, TabList } from '@/ui/primitives';
@@ -79,10 +79,10 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
           <Plus size={13} />
         </button>
         <button style={iconBtn} title="交易报告" onClick={onReport}>
-          <FileText size={13} />
+          <FileChartLine size={13} />
         </button>
         <button style={iconBtn} title={panelOpen ? '收起面板' : '展开面板'} onClick={togglePanel}>
-          {panelOpen ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
+          {panelOpen ? <FoldVertical size={13} /> : <UnfoldVertical size={13} />}
         </button>
       </div>
 
