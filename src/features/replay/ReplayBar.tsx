@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Timer,
-  ChevronDown,
-  ChevronUp,
   SkipBack,
   SkipForward,
   Play,
@@ -14,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { useReplayStore } from '@/store/replayStore';
+import { Menu, MenuItem } from '@/ui/primitives';
 
 const SPEEDS = [1, 2, 4];
 const BASE_INTERVAL = 300;
@@ -37,10 +36,8 @@ export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarPr
   const setSelectMode = useReplayStore((s) => s.setSelectMode);
   const exit = useReplayStore((s) => s.exit);
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [dateValue, setDateValue] = useState('');
-  const menuRef = useRef<HTMLDivElement>(null);
 
   // 播放：按倍速推进
   useEffect(() => {
@@ -56,16 +53,6 @@ export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarPr
     return () => window.clearInterval(id);
   }, [playing, index, speed, barCount, setIndex, setPlaying]);
 
-  // 点击菜单外关闭
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, [menuOpen]);
-
   // 未选 K 线时（选择中）也显示工具条，但隐藏走位控制
   const selecting = index === null;
   if (selecting && !selectMode) return null;
@@ -73,7 +60,6 @@ export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarPr
   const seekRandom = () => {
     const max = Math.max(1, barCount - 60);
     setIndex(Math.floor(Math.random() * max));
-    setMenuOpen(false);
   };
 
   const applyDate = () => {
@@ -82,41 +68,46 @@ export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarPr
     if (!isNaN(t)) {
       onSeekToTime(t);
       setDatePickerOpen(false);
-      setMenuOpen(false);
     }
   };
 
   return (
     <div style={barStyle}>
-      {/* 回放计时下拉菜单 */}
-      <div style={{ position: 'relative' }} ref={menuRef}>
-        <button style={btnStyle} onClick={() => setMenuOpen(!menuOpen)} title="回放计时">
-          <Timer size={14} />
-          <span style={{ marginLeft: 4 }}>回放计时</span>
-          {menuOpen ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-        </button>
-        {menuOpen && (
-          <div style={menuStyle}>
-            <MenuItem icon={<MousePointerClick size={14} />} label="选择K线" onClick={() => { setSelectMode(true); setMenuOpen(false); }} />
-            <MenuItem icon={<Calendar size={14} />} label="选择日期" onClick={() => { setDatePickerOpen(true); setMenuOpen(false); }} />
-            <MenuItem icon={<CalendarRange size={14} />} label="选择第一个可用日期" onClick={() => { setIndex(0); setMenuOpen(false); }} />
-            <MenuItem icon={<Shuffle size={14} />} label="随机K线" onClick={seekRandom} />
-          </div>
-        )}
-        {datePickerOpen && (
-          <div style={datePopStyle}>
-            <input
-              type="datetime-local"
-              value={dateValue}
-              onChange={(e) => setDateValue(e.target.value)}
-              style={dateInputStyle}
-            />
-            <button style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={applyDate}>
-              跳转
-            </button>
-          </div>
-        )}
-      </div>
+      {/* 回放计时下拉菜单（Radix：键盘导航/Esc/外击关闭） */}
+      <Menu
+        trigger={
+          <button style={btnStyle} title="回放计时">
+            <Timer size={14} />
+            <span style={{ marginLeft: 4 }}>回放计时</span>
+          </button>
+        }
+      >
+        <MenuItem icon={<MousePointerClick size={14} />} onSelect={() => setSelectMode(true)}>
+          选择K线
+        </MenuItem>
+        <MenuItem icon={<Calendar size={14} />} onSelect={() => setDatePickerOpen(true)}>
+          选择日期
+        </MenuItem>
+        <MenuItem icon={<CalendarRange size={14} />} onSelect={() => setIndex(0)}>
+          选择第一个可用日期
+        </MenuItem>
+        <MenuItem icon={<Shuffle size={14} />} onSelect={seekRandom}>
+          随机K线
+        </MenuItem>
+      </Menu>
+      {datePickerOpen && (
+        <div style={datePopStyle}>
+          <input
+            type="datetime-local"
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
+            style={dateInputStyle}
+          />
+          <button style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={applyDate}>
+            跳转
+          </button>
+        </div>
+      )}
 
       <div style={{ width: 1, height: 18, background: 'var(--border)' }} />
 
@@ -187,32 +178,6 @@ export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarPr
   );
 }
 
-function MenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        width: '100%',
-        padding: '7px 10px',
-        background: 'transparent',
-        border: 'none',
-        color: 'var(--text)',
-        fontSize: 12,
-        cursor: 'pointer',
-        textAlign: 'left',
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-2)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
 const barStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -246,19 +211,6 @@ const selectStyle: React.CSSProperties = {
   borderRadius: 4,
   padding: '3px 6px',
   fontSize: 12,
-};
-
-const menuStyle: React.CSSProperties = {
-  position: 'absolute',
-  bottom: 34,
-  left: 0,
-  width: 200,
-  background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: 6,
-  padding: 4,
-  zIndex: 30,
-  boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
 };
 
 const datePopStyle: React.CSSProperties = {

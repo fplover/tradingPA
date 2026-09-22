@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Plus, X, FileText } from 'lucide-react';
 import { useTradeStore } from './tradeStore';
+import { Modal, Tab, TabList } from '@/ui/primitives';
+import * as Tabs from '@radix-ui/react-tabs';
 import type { OrderType, OrderSide } from './paperEngine';
 
 const fmtQty = (q: number) => String(Number(q.toFixed(8)));
@@ -85,7 +87,8 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
       </button>
 
       {/* Tabs */}
-      <div style={tabBarStyle}>
+      <Tabs.Root value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+      <TabList>
         {(
           [
             ['pending', `挂单 (${pending.length})`],
@@ -93,22 +96,15 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
             ['trades', `成交 (${engine.trades.length})`],
           ] as const
         ).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            style={{
-              ...tabStyle,
-              color: tab === key ? 'var(--accent)' : 'var(--text-faint)',
-              borderBottom: tab === key ? '2px solid var(--accent)' : '2px solid transparent',
-            }}
-          >
+          <Tab key={key} value={key} active={tab === key}>
             {label}
-          </button>
+          </Tab>
         ))}
-      </div>
+      </TabList>
 
       {/* 列表 */}
       <div style={listStyle}>
+        <Tabs.Content value="pending">
         {tab === 'pending' &&
           (pending.length === 0 ? (
             <Empty text="无挂单" />
@@ -117,7 +113,7 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
               <Row key={o.id}>
                 <span style={{ color: o.side === 'buy' ? '#26a69a' : '#ef5350' }}>{o.side === 'buy' ? '买' : '卖'}</span>
                 <span style={{ color: 'var(--text-dim)' }}>{ORDER_TYPE_LABELS[o.type]}</span>
-                <span style={{ color: 'var(--text)' }}>{o.qty}</span>
+                <span style={{ color: 'var(--text)' }}>{fmtQty(o.qty)}</span>
                 <span style={{ color: 'var(--text-faint)' }}>
                   {o.limitPrice ? `限 ${o.limitPrice}` : ''} {o.stopPrice ? `止 ${o.stopPrice}` : ''}
                 </span>
@@ -129,6 +125,8 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
             ))
           ))}
 
+        </Tabs.Content>
+        <Tabs.Content value="position">
         {tab === 'position' &&
           (position ? (
             <Row>
@@ -144,6 +142,8 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
             <Empty text="无持仓" />
           ))}
 
+        </Tabs.Content>
+        <Tabs.Content value="trades">
         {tab === 'trades' &&
           (engine.trades.length === 0 ? (
             <Empty text="无成交" />
@@ -162,20 +162,20 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
               </Row>
             ))
           ))}
+        </Tabs.Content>
       </div>
+      </Tabs.Root>
 
-      {dialogOpen && (
+      <Modal open={dialogOpen} onOpenChange={setDialogOpen} title="挂单" width={280}>
         <OrderDialog
           price={price}
-          time={time}
           qtyNum={qtyNum}
-          onClose={() => setDialogOpen(false)}
           onSubmit={(spec) => {
             place(spec, price, time);
             setDialogOpen(false);
           }}
         />
-      )}
+      </Modal>
     </div>
   );
 }
@@ -184,13 +184,10 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
 function OrderDialog({
   price,
   qtyNum,
-  onClose,
   onSubmit,
 }: {
   price: number;
-  time: number;
   qtyNum: number;
-  onClose: () => void;
   onSubmit: (spec: { type: OrderType; side: OrderSide; qty: number; limitPrice?: number; stopPrice?: number }) => void;
 }) {
   const [type, setType] = useState<OrderType>('limit');
@@ -212,17 +209,8 @@ function OrderDialog({
   };
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={dialogStyle} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-          <strong style={{ color: 'var(--text)', fontSize: 13 }}>挂单</strong>
-          <div style={{ flex: 1 }} />
-          <button style={iconBtn} onClick={onClose} title="关闭">
-            <X size={14} />
-          </button>
-        </div>
-
-        {/* 类型 */}
+    <div>
+      {/* 类型 */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
           {(['limit', 'stop', 'stop-limit'] as OrderType[]).map((t) => (
             <button
@@ -273,16 +261,12 @@ function OrderDialog({
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10 }}>
-          <button style={{ ...chipStyle, background: 'var(--panel-2)', color: 'var(--text-dim)' }} onClick={onClose}>
-            取消
-          </button>
           <button style={{ ...chipStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={submit}>
             下单
           </button>
         </div>
-        <div style={{ color: 'var(--text-faint)', fontSize: 10, marginTop: 6 }}>
-          当前价 {price > 0 ? price.toFixed(2) : '--'} · 挂单在回放触及价格时成交
-        </div>
+      <div style={{ color: 'var(--text-faint)', fontSize: 10, marginTop: 6 }}>
+        当前价 {price > 0 ? price.toFixed(2) : '--'} · 挂单在回放触及价格时成交
       </div>
     </div>
   );
@@ -362,42 +346,9 @@ const newOrderBtn: React.CSSProperties = {
   marginBottom: 6,
 };
 
-const tabBarStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: 4,
-  borderBottom: '1px solid var(--border)',
-  marginBottom: 4,
-};
-
-const tabStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 11,
-  padding: '4px 6px',
-  cursor: 'pointer',
-};
-
 const listStyle: React.CSSProperties = {
   maxHeight: 130,
   overflowY: 'auto',
-};
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'var(--overlay)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 60,
-};
-
-const dialogStyle: React.CSSProperties = {
-  width: 260,
-  background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  padding: 14,
 };
 
 const chipStyle: React.CSSProperties = {

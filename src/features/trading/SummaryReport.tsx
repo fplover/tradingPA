@@ -1,5 +1,5 @@
-import { X } from 'lucide-react';
 import { useTradeStore } from './tradeStore';
+import { Modal } from '@/ui/primitives';
 
 const fmtQty = (q: number) => String(Number(q.toFixed(8)));
 
@@ -12,15 +12,7 @@ export function SummaryReport({ onClose }: { onClose: () => void }) {
   const pnlColor = (v: number) => (v >= 0 ? '#26a69a' : '#ef5350');
 
   return (
-    <div style={overlayStyle} onClick={onClose}>
-      <div style={dialogStyle} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 12 }}>
-          <strong style={{ color: 'var(--text)', fontSize: 14 }}>交易总结报告</strong>
-          <div style={{ flex: 1 }} />
-          <button style={iconBtnStyle} onClick={onClose} title="关闭">
-            <X size={15} />
-          </button>
-        </div>
+    <Modal open onOpenChange={(o) => !o && onClose()} title="交易总结报告" width={480}>
 
         {/* 核心指标 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
@@ -83,8 +75,7 @@ export function SummaryReport({ onClose }: { onClose: () => void }) {
             </table>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -97,35 +88,6 @@ function Stat({ label, value, color, hint }: { label: string; value: string; col
     </div>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'var(--overlay)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 70,
-};
-
-const dialogStyle: React.CSSProperties = {
-  width: 460,
-  maxHeight: '80vh',
-  overflowY: 'auto',
-  background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  padding: 16,
-};
-
-const iconBtnStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  background: 'none',
-  border: 'none',
-  color: 'var(--text-faint)',
-  cursor: 'pointer',
-};
 
 const tableWrap: React.CSSProperties = {
   maxHeight: 220,

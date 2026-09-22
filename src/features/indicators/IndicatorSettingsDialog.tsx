@@ -1,7 +1,7 @@
-import { X } from 'lucide-react';
 import { getIndicatorDef } from '@/indicators/registry';
 import type { ParamValue } from '@/indicators/core/types';
 import { useIndicatorStore } from '@/store/indicatorStore';
+import { Modal } from '@/ui/primitives';
 
 /** 指标参数设置对话框：数值/颜色/布尔/下拉 */
 export function IndicatorSettingsDialog({ id }: { id: string }) {
@@ -14,15 +14,8 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
   const set = (key: string, value: ParamValue) => updateParams(id, { [key]: value });
 
   return (
-    <div style={overlayStyle} onClick={() => setSettingsFor(null)}>
-      <div style={dialogStyle} onClick={(e) => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <strong style={{ color: 'var(--text)', fontSize: 13 }}>{def.name} 设置</strong>
-          <button onClick={() => setSettingsFor(null)} style={{ ...closeBtnStyle, display: 'flex', alignItems: 'center' }} title="关闭">
-            <X size={15} />
-          </button>
-        </div>
-        {def.params.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 12 }}>该指标无可调参数</div>}
+    <Modal open onOpenChange={(o) => !o && setSettingsFor(null)} title={`${def.name} 设置`} width={320}>
+      {def.params.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 12 }}>该指标无可调参数</div>}
         {def.params.map((p) => (
           <label key={p.key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 12, color: 'var(--text)' }}>
             <span style={{ width: 80 }}>{p.label}</span>
@@ -65,33 +58,13 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
           >
             恢复默认
           </button>
-          <button onClick={() => setSettingsFor(null)} style={{ ...btnStyle, background: 'var(--accent)' }}>
+          <button onClick={() => setSettingsFor(null)} style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }}>
             完成
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'var(--overlay)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  zIndex: 50,
-};
-
-const dialogStyle: React.CSSProperties = {
-  width: 320,
-  color: 'var(--text)',
-  background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: 8,
-  padding: 16,
-};
 
 const inputStyle: React.CSSProperties = {
   flex: 1,
@@ -113,10 +86,3 @@ const btnStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const closeBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  color: 'var(--text-faint)',
-  fontSize: 18,
-  cursor: 'pointer',
-};

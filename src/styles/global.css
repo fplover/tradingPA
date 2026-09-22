@@ -15,6 +15,25 @@ body,
   overflow: hidden;
   background: #131722;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* 交易界面：价格/盈亏/数量全部等宽数字，列对齐 */
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* 键盘焦点可见 */
+:focus-visible {
+  outline: 2px solid #2962ff;
+  outline-offset: 1px;
+}
+
+/* 尊重减少动效 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* 双主题变量：setTheme 切换 body 类名，全部 UI 组件经 var(--) 引用 */

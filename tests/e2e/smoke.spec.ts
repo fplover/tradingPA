@@ -108,9 +108,9 @@ test('回放模式进入与退出', async ({ page }) => {
   await expect(page.getByText('请在图表上点击选择 K 线作为回放起点')).toBeHidden();
   // 回放计时菜单
   await page.getByRole('button', { name: '回放计时' }).click();
-  await expect(page.getByRole('button', { name: '选择K线' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '选择日期' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '随机K线' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '选择K线' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '选择日期' })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: '随机K线' })).toBeVisible();
   await page.keyboard.press('Escape');
   // 播放推进（可见页面定时器正常）
   const progress = page.locator('span', { hasText: /^\d+ \/ \d+$/ });
@@ -134,15 +134,16 @@ test('回放模拟交易全流程', async ({ page }) => {
   // 交易面板 + 市价买入
   await expect(page.getByText('模拟交易')).toBeVisible();
   await page.getByRole('button', { name: '买入', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^持仓/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^持仓/ })).toBeVisible();
   // 挂单对话框（限价/止损/止损限价）
   await page.getByRole('button', { name: '限价 / 止损挂单' }).click();
   await expect(page.getByText('挂单在回放触及价格时成交')).toBeVisible();
   await expect(page.getByRole('button', { name: '止损限价' })).toBeVisible();
-  await page.getByRole('button', { name: '取消' }).click();
+  await page.keyboard.press('Escape'); // Radix Dialog：Esc 关闭
+  await expect(page.getByText('挂单在回放触及价格时成交')).toBeHidden();
   // 市价平仓 → 产生成交
   await page.getByRole('button', { name: '平仓', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^成交 \([1-9]/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^成交 \([1-9]/ })).toBeVisible();
   // 总结报告
   await page.getByRole('button', { name: '交易报告' }).click();
   await expect(page.getByText('交易总结报告')).toBeVisible();
