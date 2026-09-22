@@ -44,6 +44,7 @@ import { LayoutGrid, LayoutButtons } from '@/features/layout/LayoutGrid';
 import { ReplayBar } from '@/features/replay/ReplayBar';
 import { IconButton } from '@/ui/primitives';
 import { TradePanel } from '@/features/trading/TradePanel';
+import { ChartOrderMenu } from '@/features/trading/ChartOrderMenu';
 import { SummaryReport } from '@/features/trading/SummaryReport';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { Watchlist } from '@/features/watchlist/Watchlist';
@@ -373,6 +374,7 @@ export default function App() {
               onReport={() => setReportOpen(true)}
             />
           )}
+          {replayActive && <ChartOrderMenu decimals={2} />}
           {reportOpen && <SummaryReport onClose={() => setReportOpen(false)} />}
         </div>
       ) : (

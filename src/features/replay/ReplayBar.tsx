@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
-import { useTradeDragStore } from '@/store/tradeDragStore';
 import { Menu, MenuItem } from '@/ui/primitives';
 
 const SPEEDS = [1, 2, 4];
@@ -100,31 +99,6 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
     place({ type: 'market', side, qty: q }, price, time);
   };
 
-  /** 按钮拖拽到图表 = 在松开价位挂限价单（TV drag-to-trade）；单击仍为市价 */
-  const onBtnPointerDown = (side: 'buy' | 'sell') => (e: React.PointerEvent) => {
-    const q = Math.max(0, Number(qty) || 0);
-    if (q <= 0 || price <= 0) return;
-    const startX = e.clientX;
-    const startY = e.clientY;
-    let moved = false;
-    const overChart = (cx: number, cy: number) => {
-      const rect = document.querySelector('canvas')?.getBoundingClientRect();
-      return !!rect && cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom;
-    };
-    const onMove = (ev: PointerEvent) => {
-      if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
-      moved = true;
-      useTradeDragStore.getState().move(ev.clientY, overChart(ev.clientX, ev.clientY));
-    };
-    const onUp = (ev: PointerEvent) => {
-      document.removeEventListener('pointermove', onMove);
-      document.removeEventListener('pointerup', onUp);
-      useTradeDragStore.getState().end(ev.clientY, moved && overChart(ev.clientX, ev.clientY));
-    };
-    useTradeDragStore.getState().begin(side, q, startY);
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
-  };
 
   void tradeVersion;
   const position = tradeEngine.position;
@@ -227,21 +201,11 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
       {/* 右：模拟下单（对齐 TV 回放底条） */}
       {!selecting && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <button
-            style={{ ...orderBtn, background: '#ef5350' }}
-            onClick={() => quick('sell')}
-            onPointerDown={onBtnPointerDown('sell')}
-            title="市价卖出/做空（拖到图表=挂限价卖单）"
-          >
+          <button style={{ ...orderBtn, background: '#ef5350' }} onClick={() => quick('sell')} title="市价卖出/做空">
             卖出
           </button>
           <input value={qty} onChange={(e) => setQty(e.target.value)} style={qtyInput} title="数量" />
-          <button
-            style={{ ...orderBtn, background: '#26a69a' }}
-            onClick={() => quick('buy')}
-            onPointerDown={onBtnPointerDown('buy')}
-            title="市价买入/做多（拖到图表=挂限价买单）"
-          >
+          <button style={{ ...orderBtn, background: '#26a69a' }} onClick={() => quick('buy')} title="市价买入/做多">
             买入
           </button>
           <button

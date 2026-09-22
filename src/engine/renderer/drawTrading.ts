@@ -61,8 +61,8 @@ function drawOrderLine(
   if (y < 0 || y > geo.chartH) return;
   const color = o.type === 'stop' || o.type === 'stop-limit' ? '#ff9800' : '#2962ff';
   ctx.strokeStyle = color;
-  ctx.lineWidth = 1;
-  ctx.setLineDash([5, 4]);
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([2, 3]);
   ctx.beginPath();
   ctx.moveTo(0, y);
   ctx.lineTo(geo.chartW, y);
@@ -83,12 +83,29 @@ function drawPositionLine(
   const y = Math.round(priceScale.priceToY(p.avgPrice)) + 0.5;
   if (y < 0 || y > geo.chartH) return;
   const color = p.side === 'long' ? '#26a69a' : '#ef5350';
+  // 持仓入场线（细实线）
   ctx.strokeStyle = color;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(0, y);
   ctx.lineTo(geo.chartW, y);
   ctx.stroke();
+  // TP/SL 横线（细虚线，TP 绿 / SL 红）
+  const drawTpSlLine = (price: number | undefined, lineColor: string) => {
+    if (price === undefined) return;
+    const ly = Math.round(priceScale.priceToY(price)) + 0.5;
+    if (ly < 0 || ly > geo.chartH) return;
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 0.5;
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(0, ly);
+    ctx.lineTo(geo.chartW, ly);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  drawTpSlLine(p.takeProfit, '#26a69a');
+  drawTpSlLine(p.stopLoss, '#ef5350');
   const pnl = p.pnl >= 0 ? `+${p.pnl.toFixed(2)}` : p.pnl.toFixed(2);
   const label = `${p.side === 'long' ? '多' : '空'} ${p.qty} @${p.avgPrice.toFixed(decimals)} · ${pnl}`;
   drawTag(ctx, geo.chartW - 4, y, label, color, false);

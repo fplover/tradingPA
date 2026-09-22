@@ -78,13 +78,12 @@ export class ChartRenderer {
   // 交易可视化（挂单线/持仓线/TP-SL）
   private tradeVisual: TradeVisual = { orders: [], position: null };
   private tradeDrag: TradeHit = null;
-  private tradePreview: { side: 'buy' | 'sell'; price: number } | null = null;
   private tradeCbs: {
     onOrderMove?: (id: string, price: number) => void;
     onOrderCancel?: (id: string) => void;
     onPositionTpSl?: (tp: number | null, sl: number | null) => void;
   } = {};
-  private placeLimitCb: ((side: 'buy' | 'sell', qty: number, price: number, time: number) => void) | null = null;
+  private chartClickCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
 
   // 联动 / 复盘
   private syncCrosshairTime: number | null = null;
@@ -377,23 +376,9 @@ export class ChartRenderer {
     this.invalidate();
   }
 
-  /** 注册拖拽下单完成回调 */
-  setPlaceLimitCallback(cb: ((side: 'buy' | 'sell', qty: number, price: number, time: number) => void) | null): void {
-    this.placeLimitCb = cb;
-  }
-
-  /** 拖拽下单在图表上松开：换算价格与当前回放时间并触发挂限价单 */
-  finishTradeDrag(side: 'buy' | 'sell', qty: number, clientY: number): void {
-    this.setTradeDragPreview(null);
-    this.ensurePriceScaleReady(this.panes[0]);
-    const rect = this.manager.canvas.getBoundingClientRect();
-    const pane = this.panes[0];
-    const y = clientY - rect.top - pane.y;
-    if (y < 0 || y > pane.height || qty <= 0) return;
-    const price = pane.priceScale.yToPrice(y);
-    const bar = this.replayIndex !== null ? this.displaySeries.barAt(this.replayIndex) : undefined;
-    const time = bar?.time ?? Date.now();
-    this.placeLimitCb?.(side, qty, price, time);
+  /** 注册图表空白处点击回调（弹出下单浮窗） */
+  setChartClickCallback(cb: ((price: number, time: number, clientX: number, clientY: number) => void) | null): void {
+    this.chartClickCb = cb;
   }
 
   /** 同步交易可视化数据（挂单/持仓） */
@@ -405,21 +390,6 @@ export class ChartRenderer {
   /** 注册交易交互回调（拖拽改价/撤单/TP-SL） */
   setTradeCallbacks(cbs: typeof this.tradeCbs): void {
     this.tradeCbs = cbs;
-  }
-
-  /** 拖拽下单预览（从工具条按钮拖入图表时显示，clientY 为视口坐标） */
-  setTradeDragPreview(preview: { side: 'buy' | 'sell'; clientY: number } | null): void {
-    if (!preview) {
-      this.tradePreview = null;
-      this.invalidate();
-      return;
-    }
-    this.ensurePriceScaleReady(this.panes[0]); // rAF 暂停时也要正确换算
-    const rect = this.manager.canvas.getBoundingClientRect();
-    const pane = this.panes[0];
-    const price = pane.priceScale.yToPrice(preview.clientY - rect.top - pane.y);
-    this.tradePreview = { side: preview.side, price };
-    this.invalidate();
   }
 
   /** 联动：外部图表十字光标时间（绘制垂直参考线） */
@@ -663,6 +633,14 @@ export class ChartRenderer {
         return;
       }
       this.drawingLayer.select(null);
+      // 回放中点击空白处：弹出下单浮窗（TV 图表点击下单）
+      if (this.replayIndex !== null && this.chartClickCb) {
+        this.ensurePriceScaleReady(pane);
+        const price = pane.priceScale.yToPrice(y - pane.y);
+        const bar = this.displaySeries.barAt(this.replayIndex);
+        this.chartClickCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
+        return;
+      }
       this.dragging = true;
       this.lastPointerX = e.clientX;
       this.lastPointerY = e.clientY;
@@ -1006,20 +984,6 @@ export class ChartRenderer {
     drawDrawings(ctx, this.drawingLayer.list(), this.drawingLayer.selected?.id ?? null, this.drawingCtx(), this.legend.decimals);
     // 交易可视化：挂单线 / 持仓线 / TP-SL 手柄
     drawTrading(ctx, this.tradeVisual, main.priceScale, { chartW: this.manager.width - AXIS_WIDTH, chartH: main.height }, this.legend.decimals);
-    // 拖拽下单预览线
-    if (this.tradePreview) {
-      const py = Math.round(main.priceScale.priceToY(this.tradePreview.price)) + 0.5;
-      if (py >= 0 && py <= main.height) {
-        ctx.strokeStyle = this.tradePreview.side === 'buy' ? '#26a69a' : '#ef5350';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([5, 4]);
-        ctx.beginPath();
-        ctx.moveTo(0, py);
-        ctx.lineTo(main.height > 0 ? this.manager.width - AXIS_WIDTH : 0, py);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
     if (this.activeTool && this.placing.length > 0) {
       const pts = this.previewPoint ? [...this.placing, this.previewPoint] : this.placing;
       const def = getToolDef(this.activeTool);
