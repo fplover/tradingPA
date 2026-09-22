@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Undo2, Redo2, X, Eye, EyeOff, Lock, Unlock, Trash2 } from 'lucide-react';
 import type { Drawing } from '@/engine/drawing/types';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 
@@ -26,13 +27,13 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
         <strong style={{ color: 'var(--text)', fontSize: 12 }}>对象树（{drawings.length}）</strong>
         <div style={{ display: 'flex', gap: 6 }}>
           <button style={btn} onClick={() => renderer.undoDrawing()} title="撤销 (Ctrl+Z)">
-            ↶
+            <Undo2 size={13} />
           </button>
           <button style={btn} onClick={() => renderer.redoDrawing()} title="重做 (Ctrl+Y)">
-            ↷
+            <Redo2 size={13} />
           </button>
-          <button style={btn} onClick={onClose}>
-            ×
+          <button style={btn} onClick={onClose} title="关闭">
+            <X size={14} />
           </button>
         </div>
       </div>
@@ -56,19 +57,19 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             {labelOf(d)}
           </span>
           <button style={miniBtn} onClick={() => renderer.setDrawingVisible(d.id, !d.visible)} title="显示/隐藏">
-            {d.visible ? '👁' : '🚫'}
+            {d.visible ? <Eye size={13} /> : <EyeOff size={13} />}
           </button>
           <button style={miniBtn} onClick={() => renderer.setDrawingLocked(d.id, !d.locked)} title="锁定">
-            {d.locked ? '🔒' : '🔓'}
+            {d.locked ? <Lock size={13} /> : <Unlock size={13} />}
           </button>
           <button style={miniBtn} onClick={() => renderer.removeDrawing(d.id)} title="删除">
-            ×
+            <X size={13} />
           </button>
         </div>
       ))}
       {drawings.length > 0 && (
-        <button style={{ ...btn, width: '100%', marginTop: 8 }} onClick={() => renderer.clearDrawings()}>
-          清空全部
+        <button style={{ ...btn, width: '100%', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onClick={() => renderer.clearDrawings()}>
+          <Trash2 size={12} /> 清空全部
         </button>
       )}
     </div>

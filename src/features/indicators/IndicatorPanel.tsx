@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { X } from 'lucide-react';
 import { indicatorsByCategory } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 
@@ -46,8 +47,8 @@ export function IndicatorPanel() {
             fontSize: 12,
           }}
         />
-        <button onClick={() => setPanelOpen(false)} style={btnStyle}>
-          关闭
+        <button onClick={() => setPanelOpen(false)} style={{ ...btnStyle, display: 'flex', alignItems: 'center' }} title="关闭">
+          <X size={13} />
         </button>
       </div>
       {filtered.map((g) => (

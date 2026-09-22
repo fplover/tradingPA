@@ -1,4 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Star,
+  BarChart3,
+  Save,
+  FolderOpen,
+  Layers,
+  Bell,
+  Camera,
+  RefreshCw,
+  Sun,
+  Moon,
+} from 'lucide-react';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { generateMockBars } from '@/data/mockData';
@@ -40,16 +52,6 @@ const selectStyle: React.CSSProperties = {
   fontSize: 12,
 };
 
-const btnStyle: React.CSSProperties = {
-  background: 'var(--panel-2)',
-  color: 'var(--text)',
-  border: 'none',
-  borderRadius: 4,
-  padding: '4px 10px',
-  fontSize: 12,
-  cursor: 'pointer',
-};
-
 const STATUS_COLOR: Record<FeedStatus, string> = {
   idle: 'var(--text-faint)',
   loading: '#ff9800',
@@ -62,8 +64,48 @@ function ThemeButton() {
   const name = useThemeStore((s) => s.name);
   const toggle = useThemeStore((s) => s.toggle);
   return (
-    <button style={btnStyle} onClick={toggle} title="切换深浅主题">
-      {name === 'dark' ? '浅色' : '深色'}
+    <IconBtn onClick={toggle} title={name === 'dark' ? '切换到浅色' : '切换到深色'}>
+      {name === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+    </IconBtn>
+  );
+}
+
+/** 顶栏图标按钮（TV 风格：图标 + 原生 tooltip） */
+function IconBtn({
+  active,
+  onClick,
+  title,
+  children,
+}: {
+  active?: boolean;
+  onClick: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 28,
+        height: 26,
+        background: active ? 'var(--accent)' : 'transparent',
+        color: active ? 'var(--text-on-accent)' : 'var(--text-dim)',
+        border: 'none',
+        borderRadius: 4,
+        cursor: 'pointer',
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = 'var(--panel-2)';
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      {children}
     </button>
   );
 }
@@ -194,11 +236,12 @@ export default function App() {
           flexWrap: 'wrap',
         }}
       >
-        <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 8 }}>TradingPA</strong>
+        <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 4 }}>TradingPA</strong>
+        <span style={{ color: 'var(--text)', fontSize: 13, fontWeight: 600, marginRight: 4 }}>{activeSymbol}</span>
+        <IconBtn active={watchlistOpen} onClick={() => setWatchlistOpen(!watchlistOpen)} title="自选股">
+          <Star size={15} />
+        </IconBtn>
         <LayoutButtons />
-        <button style={{ ...btnStyle, background: watchlistOpen ? 'var(--accent)' : 'var(--panel-2)' }} onClick={() => setWatchlistOpen(!watchlistOpen)}>
-          自选股
-        </button>
         {layout === 1 && (
           <>
             <select style={selectStyle} value={timeframe} onChange={(e) => setTimeframe(e.target.value as TimeframeId)}>
@@ -218,24 +261,24 @@ export default function App() {
             <ReplayControls barCount={bars.length} replayIndex={replayIndex} onIndexChange={setReplayIndex} />
           </>
         )}
-        <button style={{ ...btnStyle, background: panelOpen ? 'var(--accent)' : 'var(--panel-2)' }} onClick={() => setPanelOpen(!panelOpen)}>
-          指标
-        </button>
-        <button style={btnStyle} onClick={saveTemplate}>
-          存模板
-        </button>
-        <button style={btnStyle} onClick={loadTemplate}>
-          取模板
-        </button>
-        <button style={{ ...btnStyle, background: treeOpen ? 'var(--accent)' : 'var(--panel-2)' }} onClick={() => setTreeOpen(!treeOpen)}>
-          对象树
-        </button>
-        <button style={{ ...btnStyle, background: alertOpen ? 'var(--accent)' : 'var(--panel-2)' }} onClick={() => setAlertOpen(!alertOpen)}>
-          警报{alerts.length > 0 ? ` (${alerts.length})` : ''}
-        </button>
-        <button style={btnStyle} onClick={handleScreenshot} title="导出 PNG">
-          截图
-        </button>
+        <IconBtn active={panelOpen} onClick={() => setPanelOpen(!panelOpen)} title="指标">
+          <BarChart3 size={15} />
+        </IconBtn>
+        <IconBtn onClick={saveTemplate} title="保存指标模板">
+          <Save size={15} />
+        </IconBtn>
+        <IconBtn onClick={loadTemplate} title="加载指标模板">
+          <FolderOpen size={15} />
+        </IconBtn>
+        <IconBtn active={treeOpen} onClick={() => setTreeOpen(!treeOpen)} title="对象树">
+          <Layers size={15} />
+        </IconBtn>
+        <IconBtn active={alertOpen} onClick={() => setAlertOpen(!alertOpen)} title={`价格警报${alerts.length > 0 ? ` (${alerts.length})` : ''}`}>
+          <Bell size={15} />
+        </IconBtn>
+        <IconBtn onClick={handleScreenshot} title="截图导出 PNG">
+          <Camera size={15} />
+        </IconBtn>
         <ThemeButton />
         <label style={{ color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
           <input type="checkbox" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
@@ -246,16 +289,16 @@ export default function App() {
           成交量
         </label>
         {layout === 1 && (
-          <button
-            style={btnStyle}
+          <IconBtn
             onClick={() => {
               setLiveBars(null);
               setStatus('loading');
               setMode('live');
             }}
+            title={mode === 'live' ? '重新连接' : '切换到实时数据'}
           >
-            {mode === 'live' ? '重连' : '切实时'}
-          </button>
+            <RefreshCw size={15} />
+          </IconBtn>
         )}
         <ActiveIndicatorChips />
         <span style={{ color: 'var(--text-faint)', fontSize: 11, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>

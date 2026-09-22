@@ -7,7 +7,7 @@ test('页面加载并渲染图表', async ({ page }) => {
   await page.goto('/');
 
   await expect(page.getByText('TradingPA', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '指标' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '指标', exact: true })).toBeVisible();
 
   // 画布存在且有非零尺寸
   const canvas = page.locator('canvas');
@@ -61,9 +61,9 @@ test('切换周期和图表类型', async ({ page }) => {
 /** 指标添加与副图面板 */
 test('添加指标创建副图', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '指标' }).click();
+  await page.getByRole('button', { name: '指标', exact: true }).click();
   await page.getByText('RSI 相对强弱').click();
-  await expect(page.getByText('RSI 相对强弱⚙×')).toBeVisible();
+  await expect(page.getByRole('button', { name: '设置' })).toBeVisible();
 });
 
 /** 画线工具创建与删除 */
@@ -86,19 +86,19 @@ test('画线工具创建趋势线并删除', async ({ page }) => {
 /** 多图表布局 */
 test('切换到四分布局', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '四分' }).click();
+  await page.getByRole('button', { name: '布局：四分' }).click();
   await expect(page.locator('canvas')).toHaveCount(4);
-  await page.getByRole('button', { name: '单图' }).click();
+  await page.getByRole('button', { name: '布局：单图' }).click();
   await expect(page.locator('canvas')).toHaveCount(1);
 });
 
 /** 复盘模式 */
 test('复盘模式进入与退出', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '▶ 复盘' }).click();
-  await expect(page.getByRole('button', { name: '退出' })).toBeVisible();
-  await page.getByRole('button', { name: '退出' }).click();
-  await expect(page.getByRole('button', { name: '▶ 复盘' })).toBeVisible();
+  await page.getByRole('button', { name: '复盘：从最后 60 根之前开始逐K回放' }).click();
+  await expect(page.getByRole('button', { name: '退出复盘' })).toBeVisible();
+  await page.getByRole('button', { name: '退出复盘' }).click();
+  await expect(page.getByRole('button', { name: '复盘：从最后 60 根之前开始逐K回放' })).toBeVisible();
 });
 
 /** 主题切换 */
@@ -111,7 +111,7 @@ test('主题切换改变画布背景', async ({ page }) => {
       return `${d[0]},${d[1]},${d[2]}`;
     });
   const dark = await bgOf();
-  await page.getByRole('button', { name: '浅色' }).click();
+  await page.getByRole('button', { name: '切换到浅色' }).click();
   const light = await bgOf();
   expect(light).not.toBe(dark);
 });

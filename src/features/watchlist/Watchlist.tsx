@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { X, Plus } from 'lucide-react';
 import { useWatchlistStore } from '@/store/watchlistStore';
 
 /** 自选股面板：列表 + 搜索 + 添加/删除 */
@@ -48,7 +49,7 @@ export function Watchlist() {
               style={miniBtn}
               title="移除"
             >
-              ×
+              <X size={12} />
             </button>
           </div>
         ))}
@@ -62,7 +63,7 @@ export function Watchlist() {
           style={{ ...inputStyle, flex: 1 }}
         />
         <button
-          style={btnStyle}
+          style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: 3 }}
           onClick={() => {
             if (input.trim()) {
               add(input.trim());
@@ -71,7 +72,7 @@ export function Watchlist() {
             }
           }}
         >
-          添加
+          <Plus size={12} /> 添加
         </button>
       </div>
     </div>

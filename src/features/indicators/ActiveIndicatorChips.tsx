@@ -1,3 +1,4 @@
+import { Settings, X } from 'lucide-react';
 import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 
@@ -28,10 +29,10 @@ export function ActiveIndicatorChips() {
           >
             {def?.name ?? a.id}
             <button onClick={() => setSettingsFor(a.id)} style={iconBtn} title="设置">
-              ⚙
+              <Settings size={12} />
             </button>
             <button onClick={() => remove(a.id)} style={iconBtn} title="移除">
-              ×
+              <X size={12} />
             </button>
           </span>
         );

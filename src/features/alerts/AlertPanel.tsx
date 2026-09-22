@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Plus, X, Bell } from 'lucide-react';
 import { useAlertStore, type PriceAlert } from '@/store/alertStore';
 
 interface AlertPanelProps {
@@ -25,7 +26,9 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
   return (
     <div style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <strong style={{ color: 'var(--text)', fontSize: 12 }}>价格警报</strong>
+        <strong style={{ color: 'var(--text)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <Bell size={13} /> 价格警报
+        </strong>
         <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>当前 {currentPrice > 0 ? currentPrice.toFixed(2) : '--'}</span>
       </div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
@@ -40,8 +43,8 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
           <option value="above">上穿</option>
           <option value="below">下穿</option>
         </select>
-        <button style={btnStyle} onClick={submit}>
-          添加
+        <button style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: 3 }} onClick={submit}>
+          <Plus size={12} /> 添加
         </button>
       </div>
       {alerts.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无警报</div>}
@@ -76,8 +79,8 @@ function AlertRow({ alert, onRemove }: { alert: PriceAlert; onRemove: () => void
         {alert.symbol} {alert.direction === 'above' ? '≥' : '≤'} {alert.price}
         {alert.triggered && <span style={{ color: '#ff9800' }}> · 已触发</span>}
       </span>
-      <button onClick={onRemove} style={miniBtn}>
-        ×
+      <button onClick={onRemove} style={miniBtn} title="删除警报">
+        <X size={12} />
       </button>
     </div>
   );

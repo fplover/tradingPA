@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import { getIndicatorDef } from '@/indicators/registry';
 import type { ParamValue } from '@/indicators/core/types';
 import { useIndicatorStore } from '@/store/indicatorStore';
@@ -17,8 +18,8 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
       <div style={dialogStyle} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <strong style={{ color: 'var(--text)', fontSize: 13 }}>{def.name} 设置</strong>
-          <button onClick={() => setSettingsFor(null)} style={closeBtnStyle}>
-            ×
+          <button onClick={() => setSettingsFor(null)} style={{ ...closeBtnStyle, display: 'flex', alignItems: 'center' }} title="关闭">
+            <X size={15} />
           </button>
         </div>
         {def.params.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 12 }}>该指标无可调参数</div>}
