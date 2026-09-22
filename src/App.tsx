@@ -119,7 +119,7 @@ export default function App() {
   const [showVolume, setShowVolume] = useState(true);
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
-  const replayActive = useReplayStore((s) => s.index) !== null;
+  const replayActive = useReplayStore((s) => s.index !== null || s.selectMode);
 
   // 数据模式：live = Binance 实时；mock = 本地模拟（降级）
   const [mode, setMode] = useState<'live' | 'mock'>('live');
@@ -281,9 +281,9 @@ export default function App() {
               active={replayActive}
               onClick={() => {
                 if (bars.length < 10) return; // 数据未就绪不进回放
-                useReplayStore.getState().start(bars.length - 60);
+                useReplayStore.getState().enterSelect(); // 默认进入选择K线
               }}
-              title="回放：从最后 60 根之前开始逐K回放"
+              title="回放：点击后在图表上选择 K 线作为起点"
             >
               <Play size={15} />
             </IconBtn>

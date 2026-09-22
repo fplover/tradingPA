@@ -66,7 +66,9 @@ export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarPr
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [menuOpen]);
 
-  if (index === null) return null;
+  // 未选 K 线时（选择中）也显示工具条，但隐藏走位控制
+  const selecting = index === null;
+  if (selecting && !selectMode) return null;
 
   const seekRandom = () => {
     const max = Math.max(1, barCount - 60);
@@ -118,46 +120,56 @@ export function ReplayBar({ barCount, intervalLabel, onSeekToTime }: ReplayBarPr
 
       <div style={{ width: 1, height: 18, background: 'var(--border)' }} />
 
-      {/* 步进 / 播放 */}
-      <button style={btnStyle} title="上一根" onClick={() => { setPlaying(false); setIndex(Math.max(0, index - 1)); }}>
-        <SkipBack size={14} />
-      </button>
-      <button
-        style={{ ...btnStyle, background: playing ? 'var(--accent)' : 'transparent', color: playing ? 'var(--text-on-accent)' : 'var(--text-dim)' }}
-        title={playing ? '暂停' : '播放'}
-        onClick={() => setPlaying(!playing)}
-      >
-        {playing ? <Pause size={14} /> : <Play size={14} />}
-      </button>
-      <button style={btnStyle} title="下一根" onClick={() => { setPlaying(false); setIndex(Math.min(barCount - 1, index + 1)); }}>
-        <SkipForward size={14} />
-      </button>
+      {/* 步进 / 播放（选好 K 线后可用） */}
+      {!selecting && (
+        <>
+          <button style={btnStyle} title="上一根" onClick={() => { setPlaying(false); setIndex(Math.max(0, index - 1)); }}>
+            <SkipBack size={14} />
+          </button>
+          <button
+            style={{ ...btnStyle, background: playing ? 'var(--accent)' : 'transparent', color: playing ? 'var(--text-on-accent)' : 'var(--text-dim)' }}
+            title={playing ? '暂停' : '播放'}
+            onClick={() => setPlaying(!playing)}
+          >
+            {playing ? <Pause size={14} /> : <Play size={14} />}
+          </button>
+          <button style={btnStyle} title="下一根" onClick={() => { setPlaying(false); setIndex(Math.min(barCount - 1, index + 1)); }}>
+            <SkipForward size={14} />
+          </button>
 
-      <div style={{ width: 1, height: 18, background: 'var(--border)' }} />
+          <div style={{ width: 1, height: 18, background: 'var(--border)' }} />
 
-      {/* 倍速 */}
-      <select
-        style={{ ...selectStyle, width: 56 }}
-        value={speed}
-        onChange={(e) => setSpeed(Number(e.target.value))}
-        title="播放倍速"
-      >
-        {SPEEDS.map((s) => (
-          <option key={s} value={s}>
-            {s}x
-          </option>
-        ))}
-      </select>
+          {/* 倍速 */}
+          <select
+            style={{ ...selectStyle, width: 56 }}
+            value={speed}
+            onChange={(e) => setSpeed(Number(e.target.value))}
+            title="播放倍速"
+          >
+            {SPEEDS.map((s) => (
+              <option key={s} value={s}>
+                {s}x
+              </option>
+            ))}
+          </select>
 
-      {/* 周期 */}
-      <span style={{ color: 'var(--text-dim)', fontSize: 12, padding: '0 6px' }}>{intervalLabel}</span>
+          {/* 周期 */}
+          <span style={{ color: 'var(--text-dim)', fontSize: 12, padding: '0 6px' }}>{intervalLabel}</span>
 
-      {/* 进度 */}
-      <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>
-        {index + 1} / {barCount}
-      </span>
+          {/* 进度 */}
+          <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>
+            {index + 1} / {barCount}
+          </span>
+        </>
+      )}
 
-      {selectMode && (
+      {/* 选择中提示 */}
+      {selectMode && selecting && (
+        <span style={hintStyle}>
+          <MousePointerClick size={12} /> 请在图表上点击选择 K 线作为回放起点
+        </span>
+      )}
+      {selectMode && !selecting && (
         <span style={hintStyle}>
           <MousePointerClick size={12} /> 请在图表上点击选择 K 线
           <button style={{ ...btnStyle, padding: '0 4px' }} onClick={() => setSelectMode(false)} title="取消">

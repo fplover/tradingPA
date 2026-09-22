@@ -12,6 +12,8 @@ interface ReplayStore {
   setPlaying: (playing: boolean) => void;
   setSpeed: (speed: number) => void;
   setSelectMode: (selectMode: boolean) => void;
+  /** 进入回放并默认进入选择K线状态（用户先点图表选起点） */
+  enterSelect: () => void;
   /** 进入复盘（从指定 index 开始，暂停态） */
   start: (index: number) => void;
   exit: () => void;
@@ -26,6 +28,7 @@ export const useReplayStore = create<ReplayStore>((set) => ({
   setPlaying: (playing) => set({ playing }),
   setSpeed: (speed) => set({ speed }),
   setSelectMode: (selectMode) => set({ selectMode }),
+  enterSelect: () => set({ selectMode: true, playing: false, index: null }),
   start: (index) => set({ index, playing: false, selectMode: false }),
   exit: () => set({ index: null, playing: false, selectMode: false }),
 }));

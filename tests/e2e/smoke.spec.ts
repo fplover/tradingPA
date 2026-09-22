@@ -92,16 +92,20 @@ test('切换到四分布局', async ({ page }) => {
   await expect(page.locator('canvas')).toHaveCount(1);
 });
 
-/** 回放模式：底部工具条 + 回放计时菜单 */
+/** 回放模式：进入即选择K线，点图表定位起点 */
 test('回放模式进入与退出', async ({ page }) => {
   await page.goto('/');
   // 等实时/模拟数据就绪（避免 0 根进入回放）
   await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 15_000 });
-  await page.getByRole('button', { name: '回放：从最后 60 根之前开始逐K回放' }).click();
-  // 底部回放工具条
+  await page.getByRole('button', { name: '回放：点击后在图表上选择 K 线作为起点' }).click();
+  // 进入即选择K线：提示可见、走位控件未出现
+  await expect(page.getByText('请在图表上点击选择 K 线作为回放起点')).toBeVisible();
   await expect(page.getByRole('button', { name: '回放计时' })).toBeVisible();
+  // 点击图表选定起点 → 进入回放（走位控件出现）
+  await page.locator('canvas').click({ position: { x: 400, y: 300 } });
   await expect(page.getByRole('button', { name: '播放' })).toBeVisible();
   await expect(page.getByRole('button', { name: '上一根' })).toBeVisible();
+  await expect(page.getByText('请在图表上点击选择 K 线作为回放起点')).toBeHidden();
   // 回放计时菜单
   await page.getByRole('button', { name: '回放计时' }).click();
   await expect(page.getByRole('button', { name: '选择K线' })).toBeVisible();
