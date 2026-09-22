@@ -42,7 +42,7 @@ export const clampPanelHeight = (h: number) =>
 export const useTradePanelStore = create<TradePanelState>((set, get) => {
   const saved = load();
   return {
-    open: saved.open ?? true,
+    open: saved.open ?? false, // 默认收起（仅显示标题头部）
     height: clampPanelHeight(saved.height ?? DEFAULT_HEIGHT),
     setOpen: (open) => {
       persist({ open, height: get().height });

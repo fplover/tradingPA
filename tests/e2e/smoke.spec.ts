@@ -137,6 +137,8 @@ test('回放模拟交易全流程', async ({ page }) => {
   // 交易面板 + 市价买入
   await expect(page.getByRole('button', { name: '买入', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '买入', exact: true }).click();
+  // 面板默认收起：先展开再验证页签
+  await page.getByRole('button', { name: '展开面板' }).click();
   await expect(page.getByRole('tab', { name: /^持仓/ })).toBeVisible();
   // 挂单对话框（限价/止损/止损限价）
   await page.getByRole('button', { name: '限价 / 止损挂单' }).click();

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Plus, X, FileText, ChevronDown } from 'lucide-react';
+import { Plus, X, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTradeStore } from './tradeStore';
 import { useTradePanelStore } from '@/store/tradePanelStore';
 import { Modal, Tab, TabList } from '@/ui/primitives';
@@ -27,9 +27,10 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
   const engine = useTradeStore((s) => s.engine);
   const place = useTradeStore((s) => s.place);
   const cancel = useTradeStore((s) => s.cancel);
+  const panelOpen = useTradePanelStore((s) => s.open);
+  const togglePanel = useTradePanelStore((s) => s.toggle);
   const panelHeight = useTradePanelStore((s) => s.height);
   const setPanelHeight = useTradePanelStore((s) => s.setHeight);
-  const setPanelOpen = useTradePanelStore((s) => s.setOpen);
 
   const [tab, setTab] = useState<'pending' | 'position' | 'trades'>('pending');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -55,16 +56,18 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
   const pnlColor = (v: number) => (v >= 0 ? '#26a69a' : '#ef5350');
 
   return (
-    <div style={{ ...panelStyle, height: panelHeight }}>
-      {/* 顶部拖拽热区：调整面板高度 */}
-      <div
-        style={resizeHandleStyle}
-        title="拖动调整高度"
-        onPointerDown={onHandleDown}
-        onPointerMove={onHandleMove}
-        onPointerUp={onHandleUp}
-        onPointerCancel={onHandleUp}
-      />
+    <div style={{ ...panelStyle, height: panelOpen ? panelHeight : 'auto' }}>
+      {/* 顶部拖拽热区：调整面板高度（仅展开时） */}
+      {panelOpen && (
+        <div
+          style={resizeHandleStyle}
+          title="拖动调整高度"
+          onPointerDown={onHandleDown}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleUp}
+          onPointerCancel={onHandleUp}
+        />
+      )}
       {/* 头部：标题 + 权益 + 入口 */}
       <div style={headerStyle}>
         <strong style={{ color: 'var(--text)', fontSize: 12 }}>回放交易面板</strong>
@@ -78,12 +81,13 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
         <button style={iconBtn} title="交易报告" onClick={onReport}>
           <FileText size={13} />
         </button>
-        <button style={iconBtn} title="隐藏交易面板" onClick={() => setPanelOpen(false)}>
-          <ChevronDown size={13} />
+        <button style={iconBtn} title={panelOpen ? '收起面板' : '展开面板'} onClick={togglePanel}>
+          {panelOpen ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
         </button>
       </div>
 
-      {/* 页签 + 列表 */}
+      {/* 页签 + 列表（展开时显示） */}
+      {panelOpen && (
       <Tabs.Root value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabList>
           {(
@@ -158,6 +162,7 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
           </Tabs.Content>
         </div>
       </Tabs.Root>
+      )}
 
       <Modal open={dialogOpen} onOpenChange={setDialogOpen} title="挂单" width={280}>
         <OrderDialog

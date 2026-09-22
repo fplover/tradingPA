@@ -10,12 +10,9 @@ import {
   CalendarRange,
   Shuffle,
   X,
-  PanelTopClose,
-  PanelTopOpen,
 } from 'lucide-react';
 import { useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
-import { useTradePanelStore } from '@/store/tradePanelStore';
 import { Menu, MenuItem } from '@/ui/primitives';
 
 const SPEEDS = [1, 2, 4];
@@ -59,8 +56,6 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
   const tradeEngine = useTradeStore((s) => s.engine);
   const place = useTradeStore((s) => s.place);
   const closePosition = useTradeStore((s) => s.closePosition);
-  const panelOpen = useTradePanelStore((s) => s.open);
-  const togglePanel = useTradePanelStore((s) => s.toggle);
 
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [dateValue, setDateValue] = useState('');
@@ -223,10 +218,6 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
         </div>
       )}
 
-      <div style={sepStyle} />
-      <button style={btnStyle} title={panelOpen ? '隐藏交易面板' : '显示交易面板'} onClick={togglePanel}>
-        {panelOpen ? <PanelTopClose size={15} /> : <PanelTopOpen size={15} />}
-      </button>
       <button style={btnStyle} title="退出回放" onClick={exit}>
         <X size={15} />
       </button>
