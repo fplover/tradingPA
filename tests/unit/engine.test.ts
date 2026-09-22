@@ -17,7 +17,8 @@ describe('Viewport', () => {
     const v = new Viewport(460);
     v.setBarCount(1000);
     v.scrollToRealtime();
-    expect(v.first).toBe(1000 - 58 + 5);
+    const visibleCount = 460 / v.spacing;
+    expect(v.first).toBeCloseTo(1000 - visibleCount + 5, 10);
     expect(v.isAtRightEdge()).toBe(true);
   });
 
@@ -32,16 +33,38 @@ describe('Viewport', () => {
     expect(v.indexToX(anchor)).toBeCloseTo(xBefore, 6);
   });
 
-  it('右边界钳制：不会平移进空视图', () => {
+  it('向右拖（看历史）有左边界，第一根不超过中线', () => {
     const v = new Viewport(460);
     v.setBarCount(100);
     v.scrollToRealtime();
-    v.panByBars(500);
+    v.panByBars(-100000);
     const visibleCount = 460 / v.spacing;
-    // first 不超过 count - visibleCount + rightOffset
-    expect(v.first).toBeLessThanOrEqual(100 - visibleCount + 5 + 1e-9);
-    // 最后一根仍在视口内
-    expect(v.indexToX(99)).toBeGreaterThanOrEqual(0);
+    expect(v.first).toBeGreaterThanOrEqual(-Math.ceil(visibleCount / 2));
+  });
+
+  it('向左拖允许进入右侧空白区（半个视口），不再钉死在右边缘', () => {
+    const v = new Viewport(460);
+    v.setBarCount(100);
+    v.scrollToRealtime();
+    v.panByBars(100000);
+    const visibleCount = 460 / v.spacing;
+    const maxFirst = 100 - visibleCount + Math.max(5, visibleCount * 0.5);
+    expect(v.first).toBeLessThanOrEqual(maxFirst + 1e-9);
+    expect(v.first).toBeGreaterThan(100 - visibleCount + 5); // 确实拖过了实时边缘
+  });
+
+  it('isAtRightEdge：贴边为 true，拖入空白/看历史为 false', () => {
+    const v = new Viewport(460);
+    v.setBarCount(100);
+    v.scrollToRealtime();
+    expect(v.isAtRightEdge()).toBe(true);
+    v.panByBars(10); // 拖入右侧空白区
+    expect(v.isAtRightEdge()).toBe(false);
+    v.scrollToRealtime();
+    v.panByBars(-10); // 看历史
+    expect(v.isAtRightEdge()).toBe(false);
+    v.scrollToRealtime();
+    expect(v.isAtRightEdge()).toBe(true);
   });
 
   it('缩放下限不超过数据铺满所需间距', () => {
@@ -49,15 +72,6 @@ describe('Viewport', () => {
     v.setBarCount(100);
     for (let i = 0; i < 50; i++) v.zoomAt(230, 0.7);
     expect(v.spacing).toBeGreaterThanOrEqual(460 / 100 - 1e-9);
-  });
-
-  it('左边界：第一根最多拖到中线', () => {
-    const v = new Viewport(460);
-    v.setBarCount(1000);
-    v.scrollToRealtime();
-    v.panByBars(-100000);
-    const visibleCount = 460 / v.spacing;
-    expect(v.first).toBeGreaterThanOrEqual(-Math.ceil(visibleCount / 2));
   });
 });
 

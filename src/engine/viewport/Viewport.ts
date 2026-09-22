@@ -38,7 +38,8 @@ export class Viewport {
   /** 初始定位：让最新 K 线贴右侧（留 rightOffset 空位） */
   scrollToRealtime(): void {
     const visibleCount = this.width / this.barSpacing;
-    this.firstIndex = this.count - Math.ceil(visibleCount) + this.options.rightOffset;
+    // 与 isAtRightEdge 使用同一公式，保证贴边判定精确
+    this.firstIndex = this.count - visibleCount + this.options.rightOffset;
     this.clamp();
   }
 
@@ -70,8 +71,8 @@ export class Viewport {
 
   private clamp(): void {
     const visibleCount = this.width / this.barSpacing;
-    // 最右：最后一根 K 线距右边缘保留 rightOffset 个 bar 的空隙
-    const maxFirst = this.count - visibleCount + this.options.rightOffset;
+    // 最右：允许拖入右侧空白区（TV 行为），最多半个视口；实时边缘由 isAtRightEdge 判定
+    const maxFirst = this.count - visibleCount + Math.max(this.options.rightOffset, visibleCount * 0.5);
     // 最左：第一根 K 线最多拖到画面中线
     const minFirst = -Math.ceil(visibleCount / 2);
     this.firstIndex = Math.max(minFirst, Math.min(maxFirst, this.firstIndex));
@@ -100,11 +101,11 @@ export class Viewport {
     return this.count;
   }
 
-  /** 视口是否贴在右边缘（实时更新时决定是否跟随滚动） */
+  /** 视口是否正好贴在实时边缘（自动跟随滚动只在此时生效；拖入空白区后脱钩） */
   isAtRightEdge(): boolean {
     const visibleCount = this.width / this.barSpacing;
-    const maxFirst = this.count - visibleCount + this.options.rightOffset;
-    return this.firstIndex >= maxFirst - 0.5;
+    const realtimeEdge = this.count - visibleCount + this.options.rightOffset;
+    return Math.abs(this.firstIndex - realtimeEdge) <= 1;
   }
 
   xToIndex(x: number): number {
