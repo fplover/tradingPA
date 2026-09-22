@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Plus, X, FileText } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Plus, X, FileText, ChevronDown } from 'lucide-react';
 import { useTradeStore } from './tradeStore';
+import { useTradePanelStore } from '@/store/tradePanelStore';
 import { Modal, Tab, TabList } from '@/ui/primitives';
 import * as Tabs from '@radix-ui/react-tabs';
 import type { OrderType, OrderSide } from './paperEngine';
@@ -20,15 +21,33 @@ interface TradePanelProps {
   onReport: () => void;
 }
 
-/** 回放交易面板（底部）：权益/浮动 + 挂单入口 + 挂单/持仓/成交页签 */
+/** 回放交易面板（底部）：高度可拖拽 + 权益/浮动 + 挂单入口 + 挂单/持仓/成交页签 */
 export function TradePanel({ price, time, onReport }: TradePanelProps) {
   const version = useTradeStore((s) => s.version);
   const engine = useTradeStore((s) => s.engine);
   const place = useTradeStore((s) => s.place);
   const cancel = useTradeStore((s) => s.cancel);
+  const panelHeight = useTradePanelStore((s) => s.height);
+  const setPanelHeight = useTradePanelStore((s) => s.setHeight);
+  const setPanelOpen = useTradePanelStore((s) => s.setOpen);
 
   const [tab, setTab] = useState<'pending' | 'position' | 'trades'>('pending');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const dragRef = useRef<{ startY: number; startH: number } | null>(null);
+
+  // 顶部拖拽调整高度
+  const onHandleDown = (e: React.PointerEvent) => {
+    dragRef.current = { startY: e.clientY, startH: panelHeight };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onHandleMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    // 向上拖增高
+    setPanelHeight(dragRef.current.startH + (dragRef.current.startY - e.clientY));
+  };
+  const onHandleUp = () => {
+    dragRef.current = null;
+  };
 
   void version;
   const pending = engine.pendingOrders;
@@ -36,7 +55,16 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
   const pnlColor = (v: number) => (v >= 0 ? '#26a69a' : '#ef5350');
 
   return (
-    <div style={panelStyle}>
+    <div style={{ ...panelStyle, height: panelHeight }}>
+      {/* 顶部拖拽热区：调整面板高度 */}
+      <div
+        style={resizeHandleStyle}
+        title="拖动调整高度"
+        onPointerDown={onHandleDown}
+        onPointerMove={onHandleMove}
+        onPointerUp={onHandleUp}
+        onPointerCancel={onHandleUp}
+      />
       {/* 头部：标题 + 权益 + 入口 */}
       <div style={headerStyle}>
         <strong style={{ color: 'var(--text)', fontSize: 12 }}>回放交易面板</strong>
@@ -49,6 +77,9 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
         </button>
         <button style={iconBtn} title="交易报告" onClick={onReport}>
           <FileText size={13} />
+        </button>
+        <button style={iconBtn} title="隐藏交易面板" onClick={() => setPanelOpen(false)}>
+          <ChevronDown size={13} />
         </button>
       </div>
 
@@ -247,10 +278,24 @@ function Empty({ text }: { text: string }) {
 }
 
 const panelStyle: React.CSSProperties = {
+  position: 'relative',
   background: 'var(--panel)',
   borderTop: '1px solid var(--border)',
   padding: '6px 10px 8px',
   flexShrink: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  overflow: 'hidden',
+};
+
+const resizeHandleStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  height: 5,
+  cursor: 'ns-resize',
+  zIndex: 2,
 };
 
 const headerStyle: React.CSSProperties = {
@@ -273,7 +318,8 @@ const iconBtn: React.CSSProperties = {
 };
 
 const listStyle: React.CSSProperties = {
-  maxHeight: 108,
+  flex: 1,
+  minHeight: 0,
   overflowY: 'auto',
 };
 

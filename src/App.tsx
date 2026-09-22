@@ -35,6 +35,7 @@ import { useThemeStore } from '@/store/themeStore';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import { useAlertStore } from '@/store/alertStore';
 import { useReplayStore } from '@/store/replayStore';
+import { useTradePanelStore } from '@/store/tradePanelStore';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
@@ -84,6 +85,7 @@ export default function App() {
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
   const replayActive = useReplayStore((s) => s.index !== null || s.selectMode);
+  const tradePanelOpen = useTradePanelStore((s) => s.open);
   const replayIndex = useReplayStore((s) => s.index);
   const [reportOpen, setReportOpen] = useState(false);
   const wasReplaying = useRef(false);
@@ -366,7 +368,7 @@ export default function App() {
               onSeekToTime={handleSeekToTime}
             />
           )}
-          {replayIndex !== null && (
+          {replayIndex !== null && tradePanelOpen && (
             <TradePanel
               price={bars[replayIndex]?.close ?? 0}
               time={bars[replayIndex]?.time ?? Date.now()}
