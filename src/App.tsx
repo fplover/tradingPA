@@ -356,17 +356,23 @@ export default function App() {
             {treeOpen && <ObjectTree renderer={renderer} onClose={() => setTreeOpen(false)} />}
             {alertOpen && <AlertPanel symbol={activeSymbol} currentPrice={lastPrice} />}
             {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
-            {replayIndex !== null && (
-              <TradePanel
-                price={bars[replayIndex]?.close ?? 0}
-                time={bars[replayIndex]?.time ?? Date.now()}
-                onReport={() => setReportOpen(true)}
-              />
-            )}
-            {replayActive && (
-              <ReplayBar barCount={bars.length} intervalLabel={tf.label} onSeekToTime={handleSeekToTime} />
-            )}
           </div>
+          {replayActive && (
+            <ReplayBar
+              barCount={bars.length}
+              intervalLabel={tf.label}
+              price={bars[replayIndex ?? 0]?.close ?? 0}
+              time={bars[replayIndex ?? 0]?.time ?? Date.now()}
+              onSeekToTime={handleSeekToTime}
+            />
+          )}
+          {replayIndex !== null && (
+            <TradePanel
+              price={bars[replayIndex]?.close ?? 0}
+              time={bars[replayIndex]?.time ?? Date.now()}
+              onReport={() => setReportOpen(true)}
+            />
+          )}
           {reportOpen && <SummaryReport onClose={() => setReportOpen(false)} />}
         </div>
       ) : (

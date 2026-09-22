@@ -78,6 +78,8 @@ export class ChartRenderer {
   private syncCrosshairTime: number | null = null;
   private replayIndex: number | null = null;
   private barSelectMode = false;
+  /** 选择K线预览线 x（跟随光标，选中后清除） */
+  private selectPreviewX: number | null = null;
   private barSelectCb: ((index: number) => void) | null = null;
   private viewportCommitCb: ((v: { first: number; spacing: number }) => void) | null = null;
   private crosshairTimeCb: ((t: number | null) => void) | null = null;
@@ -355,6 +357,7 @@ export class ChartRenderer {
   setBarSelectMode(on: boolean, cb: ((index: number) => void) | null): void {
     this.barSelectMode = on;
     this.barSelectCb = cb;
+    if (!on) this.selectPreviewX = null;
     this.invalidate();
   }
 
@@ -560,8 +563,7 @@ export class ChartRenderer {
           this.setBarSelectMode(false, null);
         }
         return;
-      }
-      if (this.activeTool) {
+      }      if (this.activeTool) {
         this.handleToolPointerDown(x, y, pane);
         return;
       }
@@ -668,7 +670,15 @@ export class ChartRenderer {
     const chartH = this.manager.height - AXIS_HEIGHT;
     if (x < 0 || x > chartW || y < 0 || y > chartH) {
       this.crosshair.clear();
+      this.selectPreviewX = null;
       this.crosshairTimeCb?.(null);
+      this.invalidate();
+      return;
+    }
+    // 选择K线模式：预览线跟随光标（不显示十字光标）
+    if (this.barSelectMode) {
+      this.crosshair.clear();
+      this.selectPreviewX = x;
       this.invalidate();
       return;
     }
@@ -935,6 +945,26 @@ export class ChartRenderer {
     }
 
     // 复盘标记：垂直蓝线 + 顶部圆点 + “回放：周三 2026-09-16 16:30”标签
+    // 选择K线预览线：跟随光标的垂直虚线（选中后由复盘标记线取代）
+    if (this.barSelectMode && this.selectPreviewX !== null) {
+      const px = this.selectPreviewX;
+      if (px >= 0 && px <= mainGeo.chartW) {
+        ctx.strokeStyle = '#2962ff';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(Math.round(px) + 0.5, 0);
+        ctx.lineTo(Math.round(px) + 0.5, mainGeo.chartH);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // 顶端小圆点（与图例一致的预览手感）
+        ctx.beginPath();
+        ctx.arc(px, 7, 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = '#2962ff';
+        ctx.fill();
+      }
+    }
+
     if (this.replayIndex !== null) {
       const rx = this.viewport.indexToX(this.replayIndex);
       if (rx >= 0 && rx <= mainGeo.chartW) {
@@ -951,18 +981,19 @@ export class ChartRenderer {
         ctx.arc(rx, 7, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#2962ff';
         ctx.fill();
-        // 标签
+        // 标签（贴时间轴上方，对齐 TV）
         if (bar) {
           const text = `回放：${formatReplayTime(bar.time, this.barIntervalMs())}`;
           ctx.font = '11px system-ui, sans-serif';
           const tw = ctx.measureText(text).width + 12;
-          const lx = Math.min(rx + 8, mainGeo.chartW - tw);
+          const lx = Math.min(Math.max(4, rx + 8), mainGeo.chartW - tw - 4);
+          const ly = mainGeo.chartH - 26;
           ctx.fillStyle = '#2962ff';
-          ctx.fillRect(lx, 14, tw, 18);
+          ctx.fillRect(lx, ly, tw, 18);
           ctx.fillStyle = '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(text, lx + tw / 2, 23);
+          ctx.fillText(text, lx + tw / 2, ly + 9);
         }
       }
     }

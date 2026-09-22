@@ -100,14 +100,14 @@ test('回放模式进入与退出', async ({ page }) => {
   await page.getByRole('button', { name: '回放：点击后在图表上选择 K 线作为起点' }).click();
   // 进入即选择K线：提示可见、走位控件未出现
   await expect(page.getByText('请在图表上点击选择 K 线作为回放起点')).toBeVisible();
-  await expect(page.getByRole('button', { name: '回放计时' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '选择K线' })).toBeVisible();
   // 点击图表选定起点 → 进入回放（走位控件出现）
   await page.locator('canvas').click({ position: { x: 400, y: 300 } });
   await expect(page.getByRole('button', { name: '播放' })).toBeVisible();
   await expect(page.getByRole('button', { name: '上一根' })).toBeVisible();
   await expect(page.getByText('请在图表上点击选择 K 线作为回放起点')).toBeHidden();
   // 回放计时菜单
-  await page.getByRole('button', { name: '回放计时' }).click();
+  await page.getByRole('button', { name: '选择K线' }).click();
   await expect(page.getByRole('menuitem', { name: '选择K线' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: '选择日期' })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: '随机K线' })).toBeVisible();
@@ -121,7 +121,7 @@ test('回放模式进入与退出', async ({ page }) => {
   expect(await progress.textContent()).not.toBe(before);
   // 退出
   await page.getByRole('button', { name: '退出回放' }).click();
-  await expect(page.getByRole('button', { name: '回放计时' })).toBeHidden();
+  await expect(page.getByRole('button', { name: '选择K线' })).toBeHidden();
 });
 
 /** 回放模拟交易：市价下单 / 挂单对话框 / 平仓 / 总结报告 */
@@ -132,7 +132,7 @@ test('回放模拟交易全流程', async ({ page }) => {
   await page.getByRole('button', { name: '回放：点击后在图表上选择 K 线作为起点' }).click();
   await page.locator('canvas').click({ position: { x: 400, y: 300 } });
   // 交易面板 + 市价买入
-  await expect(page.getByText('模拟交易')).toBeVisible();
+  await expect(page.getByText('回放交易面板')).toBeVisible();
   await page.getByRole('button', { name: '买入', exact: true }).click();
   await expect(page.getByRole('tab', { name: /^持仓/ })).toBeVisible();
   // 挂单对话框（限价/止损/止损限价）
