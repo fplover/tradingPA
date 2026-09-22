@@ -18,6 +18,8 @@ export class Viewport {
   private count = 0;
   private width = 0;
   private options: TimeScaleOptions = { ...DEFAULTS };
+  /** 复盘边缘：回放期间视口最右只能到此 index（null = 无限制） */
+  private replayEdge: number | null = null;
 
   constructor(width = 0) {
     this.width = width;
@@ -71,11 +73,20 @@ export class Viewport {
 
   private clamp(): void {
     const visibleCount = this.width / this.barSpacing;
-    // 最右：允许拖入右侧空白区（TV 行为），最多半个视口；实时边缘由 isAtRightEdge 判定
-    const maxFirst = this.count - visibleCount + Math.max(this.options.rightOffset, visibleCount * 0.5);
+    // 最右：回放期间锁定到复盘位置；否则允许拖入右侧空白区（TV 行为，最多半个视口）
+    const maxFirst =
+      this.replayEdge !== null
+        ? this.replayEdge - visibleCount + this.options.rightOffset
+        : this.count - visibleCount + Math.max(this.options.rightOffset, visibleCount * 0.5);
     // 最左：第一根 K 线最多拖到画面中线
     const minFirst = -Math.ceil(visibleCount / 2);
     this.firstIndex = Math.max(minFirst, Math.min(maxFirst, this.firstIndex));
+  }
+
+  /** 设置复盘边缘（null = 取消），立即重新钳制 */
+  setReplayEdge(index: number | null): void {
+    this.replayEdge = index;
+    this.clamp();
   }
 
   get first(): number {

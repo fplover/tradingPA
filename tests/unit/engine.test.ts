@@ -67,6 +67,26 @@ describe('Viewport', () => {
     expect(v.isAtRightEdge()).toBe(true);
   });
 
+  it('复盘边缘：视口不能滚过复盘位置（杜绝白屏）', () => {
+    const v = new Viewport(460);
+    v.setBarCount(1000);
+    v.scrollToRealtime();
+    v.setReplayEdge(500); // 复盘位置在 500
+    const visibleCount = 460 / v.spacing;
+    // 强行向右拖也拖不过复盘位置
+    v.panByBars(-100000);
+    expect(v.first).toBeLessThanOrEqual(500 - visibleCount + 5 + 1e-9);
+    v.panByBars(100000);
+    expect(v.first).toBeLessThanOrEqual(500 - visibleCount + 5 + 1e-9);
+    // 复盘位置在可视域内
+    expect(v.first).toBeLessThanOrEqual(500);
+    expect(v.first + visibleCount).toBeGreaterThanOrEqual(500);
+    // 取消复盘边缘后恢复
+    v.setReplayEdge(null);
+    v.panByBars(100000);
+    expect(v.first).toBeGreaterThan(500);
+  });
+
   it('缩放下限不超过数据铺满所需间距', () => {
     const v = new Viewport(460);
     v.setBarCount(100);

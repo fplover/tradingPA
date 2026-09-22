@@ -333,9 +333,21 @@ export class ChartRenderer {
     return this.manager.canvas.toDataURL('image/png');
   }
 
-  /** 复盘模式：只渲染到指定 index（null = 关闭） */
+  /** 复盘模式：只渲染到指定 index（null = 关闭）；位置变化时滚动到可见 */
   setReplayIndex(index: number | null): void {
+    const prev = this.replayIndex;
     this.replayIndex = index;
+    this.viewport.setReplayEdge(index);
+    if (index !== null && this.displaySeries.length > 0) {
+      const visibleCount = (this.manager.width - AXIS_WIDTH) / this.viewport.spacing;
+      const first = this.viewport.first;
+      const outOfView = index < first + 2 || index > first + visibleCount - 2;
+      const forward = prev !== null && index > prev; // 播放/步进跟随
+      if (outOfView || forward) {
+        // 靠右对齐（留 rightOffset 空位）
+        this.viewport.setFirstPublic(index - visibleCount + 5);
+      }
+    }
     this.invalidate();
   }
 
@@ -757,10 +769,11 @@ export class ChartRenderer {
 
   private visibleRange(): { from: number; to: number } {
     const count = this.displaySeries.length;
-    const from = Math.max(0, Math.floor(this.viewport.first));
+    let from = Math.max(0, Math.floor(this.viewport.first));
     let to = Math.min(count - 1, from + Math.ceil((this.manager.width - AXIS_WIDTH) / this.viewport.spacing));
     // 复盘模式：隐藏 index 之后的 K 线
     if (this.replayIndex !== null) to = Math.min(to, this.replayIndex);
+    if (to < from) from = Math.max(0, to); // 防御：永远不出现空可视域
     return { from, to };
   }
 
