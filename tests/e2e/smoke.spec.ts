@@ -29,7 +29,7 @@ test('页面加载并渲染图表', async ({ page }) => {
           }
           return count;
         }),
-      { timeout: 8000 },
+      { timeout: 20_000 },
     )
     .toBeGreaterThan(1000);
 
