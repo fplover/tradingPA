@@ -124,6 +124,32 @@ test('回放模式进入与退出', async ({ page }) => {
   await expect(page.getByRole('button', { name: '回放计时' })).toBeHidden();
 });
 
+/** 回放模拟交易：市价下单 / 挂单对话框 / 平仓 / 总结报告 */
+test('回放模拟交易全流程', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 15_000 });
+  // 进入回放并选择 K 线
+  await page.getByRole('button', { name: '回放：点击后在图表上选择 K 线作为起点' }).click();
+  await page.locator('canvas').click({ position: { x: 400, y: 300 } });
+  // 交易面板 + 市价买入
+  await expect(page.getByText('模拟交易')).toBeVisible();
+  await page.getByRole('button', { name: '买入', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^持仓/ })).toBeVisible();
+  // 挂单对话框（限价/止损/止损限价）
+  await page.getByRole('button', { name: '限价 / 止损挂单' }).click();
+  await expect(page.getByText('挂单在回放触及价格时成交')).toBeVisible();
+  await expect(page.getByRole('button', { name: '止损限价' })).toBeVisible();
+  await page.getByRole('button', { name: '取消' }).click();
+  // 市价平仓 → 产生成交
+  await page.getByRole('button', { name: '平仓', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^成交 \([1-9]/ })).toBeVisible();
+  // 总结报告
+  await page.getByRole('button', { name: '交易报告' }).click();
+  await expect(page.getByText('交易总结报告')).toBeVisible();
+  await expect(page.getByText('交易次数')).toBeVisible();
+  await expect(page.getByText('盈亏比')).toBeVisible();
+});
+
 /** 主题切换 */
 test('主题切换改变画布背景', async ({ page }) => {
   await page.goto('/');

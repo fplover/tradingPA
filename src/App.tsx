@@ -42,6 +42,9 @@ import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
 import { ObjectTree } from '@/features/drawings/ObjectTree';
 import { LayoutGrid, LayoutButtons } from '@/features/layout/LayoutGrid';
 import { ReplayBar } from '@/features/replay/ReplayBar';
+import { TradePanel } from '@/features/trading/TradePanel';
+import { SummaryReport } from '@/features/trading/SummaryReport';
+import { useTradeStore } from '@/features/trading/tradeStore';
 import { Watchlist } from '@/features/watchlist/Watchlist';
 import { AlertPanel } from '@/features/alerts/AlertPanel';
 
@@ -120,6 +123,11 @@ export default function App() {
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
   const replayActive = useReplayStore((s) => s.index !== null || s.selectMode);
+  const replayIndex = useReplayStore((s) => s.index);
+  const [reportOpen, setReportOpen] = useState(false);
+  const wasReplaying = useRef(false);
+  const lastFedBarTime = useRef(0);
+  const prevReplayIndex = useRef<number | null>(null);
 
   // 数据模式：live = Binance 实时；mock = 本地模拟（降级）
   const [mode, setMode] = useState<'live' | 'mock'>('live');
@@ -224,6 +232,27 @@ export default function App() {
     a.download = `tradingpa-${activeSymbol}-${Date.now()}.png`;
     a.click();
   };
+
+  // 回放联动：新会话重置引擎；每根回放 K 线驱动挂单触发与盈亏
+  useEffect(() => {
+    if (replayIndex !== null && prevReplayIndex.current === null) {
+      lastFedBarTime.current = 0;
+      useTradeStore.getState().reset();
+    }
+    prevReplayIndex.current = replayIndex;
+    if (replayIndex === null) {
+      if (wasReplaying.current) {
+        wasReplaying.current = false;
+        if (useTradeStore.getState().engine.trades.length > 0) setReportOpen(true);
+      }
+      return;
+    }
+    wasReplaying.current = true;
+    const bar = bars[replayIndex];
+    if (!bar || bar.time === lastFedBarTime.current) return;
+    lastFedBarTime.current = bar.time;
+    useTradeStore.getState().onBar(bar);
+  }, [replayIndex, bars]);
 
   /** 选择日期：二分查找第一个 >= 目标时间的 bar */
   const handleSeekToTime = (time: number) => {
@@ -366,10 +395,18 @@ export default function App() {
             {treeOpen && <ObjectTree renderer={renderer} onClose={() => setTreeOpen(false)} />}
             {alertOpen && <AlertPanel symbol={activeSymbol} currentPrice={lastPrice} />}
             {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
+            {replayIndex !== null && (
+              <TradePanel
+                price={bars[replayIndex]?.close ?? 0}
+                time={bars[replayIndex]?.time ?? Date.now()}
+                onReport={() => setReportOpen(true)}
+              />
+            )}
           </div>
           {replayActive && (
             <ReplayBar barCount={bars.length} intervalLabel={tf.label} onSeekToTime={handleSeekToTime} />
           )}
+          {reportOpen && <SummaryReport onClose={() => setReportOpen(false)} />}
         </div>
       ) : (
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
