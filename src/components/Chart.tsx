@@ -7,6 +7,8 @@ import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useReplayStore } from '@/store/replayStore';
+import { useTradeStore } from '@/features/trading/tradeStore';
+import { useTradeDragStore } from '@/store/tradeDragStore';
 import { syncBus } from '@/store/syncBus';
 
 function defaultsFor(id: string): Record<string, ParamValue> {
@@ -183,6 +185,49 @@ export function Chart({
     }, 500);
     return () => clearInterval(id);
   }, [onNeedsMoreHistory]);
+
+  // 交易可视化：数据同步 + 交互回调
+  const tradeVersion = useTradeStore((s) => s.version);
+  useEffect(() => {
+    rendererRef.current?.setTradeVisual(useTradeStore.getState().visual());
+  }, [tradeVersion]);
+
+  useEffect(() => {
+    rendererRef.current?.setTradeCallbacks({
+      onOrderMove: (id, price) => useTradeStore.getState().updateOrderPrice(id, price),
+      onOrderCancel: (id) => useTradeStore.getState().cancel(id),
+      onPositionTpSl: (tp, sl) => useTradeStore.getState().setPositionTPSL(tp, sl),
+    });
+    rendererRef.current?.setPlaceLimitCallback((side, qty, price, time) => {
+      useTradeStore.getState().place({ type: 'limit', side, qty, limitPrice: price }, price, time);
+    });
+    return () => {
+      rendererRef.current?.setTradeCallbacks({});
+      rendererRef.current?.setPlaceLimitCallback(null);
+    };
+  }, []);
+
+  // 拖拽下单：预览线 + 松开成交
+  const dragDragging = useTradeDragStore((s) => s.dragging);
+  const dragSide = useTradeDragStore((s) => s.side);
+  const dragClientY = useTradeDragStore((s) => s.clientY);
+  const dragOverChart = useTradeDragStore((s) => s.overChart);
+  const dragPendingEnd = useTradeDragStore((s) => s.pendingEnd);
+  const clearPendingEnd = useTradeDragStore((s) => s.clearPendingEnd);
+
+  useEffect(() => {
+    if (dragDragging && dragOverChart) {
+      rendererRef.current?.setTradeDragPreview({ side: dragSide, clientY: dragClientY });
+    } else if (dragDragging) {
+      rendererRef.current?.setTradeDragPreview(null);
+    }
+  }, [dragDragging, dragOverChart, dragSide, dragClientY]);
+
+  useEffect(() => {
+    if (!dragPendingEnd) return;
+    rendererRef.current?.finishTradeDrag(dragPendingEnd.side, dragPendingEnd.qty, dragPendingEnd.clientY);
+    clearPendingEnd();
+  }, [dragPendingEnd, clearPendingEnd]);
 
   // 复盘模式：订阅 store（index → 隐藏未来 K 线；selectMode → 图表点击定位）
   const replayIndex = useReplayStore((s) => s.index);

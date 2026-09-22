@@ -96,6 +96,53 @@ describe('PaperTradingEngine 挂单触发', () => {
   });
 });
 
+describe('PaperTradingEngine 止盈止损', () => {
+  it('多单止盈触发：high 触及 TP 按 TP 价平仓', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.setPositionTPSL(110, null);
+    e.onBar(bar(2, 100, 105, 99, 104)); // 未触及
+    expect(e.position).not.toBeNull();
+    e.onBar(bar(3, 104, 111, 103, 110)); // 触及 TP
+    expect(e.position).toBeNull();
+    expect(e.trades[0].pnl).toBeCloseTo(10, 10);
+    expect(e.trades[0].exitPrice).toBe(110);
+  });
+
+  it('多单止损触发：low 跌破 SL 按 SL 价平仓', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.setPositionTPSL(null, 95);
+    e.onBar(bar(2, 100, 100, 96, 97)); // 未跌破
+    expect(e.position).not.toBeNull();
+    e.onBar(bar(3, 97, 97, 94, 95)); // 跌破
+    expect(e.position).toBeNull();
+    expect(e.trades[0].pnl).toBeCloseTo(-5, 10);
+  });
+
+  it('空单止盈止损方向相反', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'sell', qty: 1 }, 100, 1);
+    e.setPositionTPSL(90, 110);
+    e.onBar(bar(2, 100, 100, 96, 97)); // 空单：跌是盈利方向，未触 TP(90)
+    expect(e.position).not.toBeNull();
+    e.onBar(bar(3, 97, 97, 89, 90)); // 跌至 90 触 TP
+    expect(e.position).toBeNull();
+    expect(e.trades[0].pnl).toBeCloseTo(10, 10);
+  });
+
+  it('挂单改价：限价单拖动后按新价成交', () => {
+    const e = new PaperTradingEngine(10_000);
+    const o = e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: 95 }, 100, 1);
+    e.updateOrderPrice(o.id, 90);
+    e.onBar(bar(2, 100, 100, 94, 95)); // 94 > 90 不成交
+    expect(e.pendingOrders.length).toBe(1);
+    e.onBar(bar(3, 95, 95, 89, 90)); // 触及新价 90
+    expect(e.pendingOrders.length).toBe(0);
+    expect(e.position!.avgPrice).toBe(90);
+  });
+});
+
 describe('PaperTradingEngine 总结报告', () => {
   it('统计胜率/盈亏比/回撤', () => {
     const e = new PaperTradingEngine(10_000);

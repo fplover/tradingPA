@@ -11,6 +11,7 @@ import { getIndicatorDef } from '@/indicators/registry';
 import { DrawingLayer } from '../drawing/DrawingLayer';
 import { getToolDef, type Drawing, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
 import { drawDrawings, hitTestDrawing, pixelToPoint, type DrawContext } from '../drawing/drawDrawings';
+import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders } from './drawAxes';
@@ -73,6 +74,17 @@ export class ChartRenderer {
   private previewPoint: DrawingPoint | null = null;
   private dragDrawing: { id: string; part: 'body' | 'handle'; index: number; start: DrawingPoint; origin: DrawingPoint[] } | null = null;
   private drawingsListeners = new Set<() => void>();
+
+  // 交易可视化（挂单线/持仓线/TP-SL）
+  private tradeVisual: TradeVisual = { orders: [], position: null };
+  private tradeDrag: TradeHit = null;
+  private tradePreview: { side: 'buy' | 'sell'; price: number } | null = null;
+  private tradeCbs: {
+    onOrderMove?: (id: string, price: number) => void;
+    onOrderCancel?: (id: string) => void;
+    onPositionTpSl?: (tp: number | null, sl: number | null) => void;
+  } = {};
+  private placeLimitCb: ((side: 'buy' | 'sell', qty: number, price: number, time: number) => void) | null = null;
 
   // 联动 / 复盘
   private syncCrosshairTime: number | null = null;
@@ -365,6 +377,51 @@ export class ChartRenderer {
     this.invalidate();
   }
 
+  /** 注册拖拽下单完成回调 */
+  setPlaceLimitCallback(cb: ((side: 'buy' | 'sell', qty: number, price: number, time: number) => void) | null): void {
+    this.placeLimitCb = cb;
+  }
+
+  /** 拖拽下单在图表上松开：换算价格与当前回放时间并触发挂限价单 */
+  finishTradeDrag(side: 'buy' | 'sell', qty: number, clientY: number): void {
+    this.setTradeDragPreview(null);
+    this.ensurePriceScaleReady(this.panes[0]);
+    const rect = this.manager.canvas.getBoundingClientRect();
+    const pane = this.panes[0];
+    const y = clientY - rect.top - pane.y;
+    if (y < 0 || y > pane.height || qty <= 0) return;
+    const price = pane.priceScale.yToPrice(y);
+    const bar = this.replayIndex !== null ? this.displaySeries.barAt(this.replayIndex) : undefined;
+    const time = bar?.time ?? Date.now();
+    this.placeLimitCb?.(side, qty, price, time);
+  }
+
+  /** 同步交易可视化数据（挂单/持仓） */
+  setTradeVisual(visual: TradeVisual): void {
+    this.tradeVisual = visual;
+    this.invalidate();
+  }
+
+  /** 注册交易交互回调（拖拽改价/撤单/TP-SL） */
+  setTradeCallbacks(cbs: typeof this.tradeCbs): void {
+    this.tradeCbs = cbs;
+  }
+
+  /** 拖拽下单预览（从工具条按钮拖入图表时显示，clientY 为视口坐标） */
+  setTradeDragPreview(preview: { side: 'buy' | 'sell'; clientY: number } | null): void {
+    if (!preview) {
+      this.tradePreview = null;
+      this.invalidate();
+      return;
+    }
+    this.ensurePriceScaleReady(this.panes[0]); // rAF 暂停时也要正确换算
+    const rect = this.manager.canvas.getBoundingClientRect();
+    const pane = this.panes[0];
+    const price = pane.priceScale.yToPrice(preview.clientY - rect.top - pane.y);
+    this.tradePreview = { side: preview.side, price };
+    this.invalidate();
+  }
+
   /** 联动：外部图表十字光标时间（绘制垂直参考线） */
   setSyncCrosshair(time: number | null): void {
     this.syncCrosshairTime = time;
@@ -587,6 +644,24 @@ export class ChartRenderer {
     this.invalidate();
         return;
       }
+      // 交易可视化命中：挂单线拖动改价 / 撤单 / TP-SL 手柄
+      const tradeHit = hitTestTrading(
+        this.tradeVisual,
+        x,
+        y - pane.y,
+        pane.priceScale,
+        { chartW: this.manager.width - AXIS_WIDTH, chartH: pane.height },
+      );
+      if (tradeHit) {
+        if (tradeHit.kind === 'order-cancel') {
+          this.tradeCbs.onOrderCancel?.(tradeHit.id);
+          return;
+        }
+        if (tradeHit.kind !== 'position') {
+          this.tradeDrag = tradeHit; // 持仓线仅展示不可拖（TV 行为）
+        }
+        return;
+      }
       this.drawingLayer.select(null);
       this.dragging = true;
       this.lastPointerX = e.clientX;
@@ -640,6 +715,8 @@ export class ChartRenderer {
       this.invalidate();
     } else if (this.dragDrawing) {
       this.updateDrawingDrag(x, y);
+    } else if (this.tradeDrag) {
+      this.updateTradeDrag(y);
     } else if (this.activeTool && this.placing.length > 0) {
       const pane = this.paneAt(y);
       this.previewPoint = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetEnabled);
@@ -702,10 +779,27 @@ export class ChartRenderer {
     this.invalidate();
   }
 
+  /** 拖拽交易可视化：挂单改价 / TP-SL 设置 */
+  private updateTradeDrag(y: number): void {
+    const drag = this.tradeDrag;
+    if (!drag) return;
+    const pane = this.panes[0];
+    const price = pane.priceScale.yToPrice(y - pane.y);
+    if (drag.kind === 'order') {
+      this.tradeCbs.onOrderMove?.(drag.id, price);
+    } else if (drag.kind === 'tp') {
+      this.tradeCbs.onPositionTpSl?.(price, this.tradeVisual.position?.stopLoss ?? null);
+    } else if (drag.kind === 'sl') {
+      this.tradeCbs.onPositionTpSl?.(this.tradeVisual.position?.takeProfit ?? null, price);
+    }
+    this.invalidate();
+  }
+
   private onPointerUp = (e: PointerEvent) => {
     this.dragging = false;
     this.priceDragging = false;
     this.dragDrawing = null;
+    this.tradeDrag = null;
     this.viewportCommitCb?.(this.getViewport());
     if (this.manager.canvas.hasPointerCapture(e.pointerId)) {
       this.manager.canvas.releasePointerCapture(e.pointerId);
@@ -779,6 +873,24 @@ export class ChartRenderer {
       pane.y = y;
       y += pane.height + PANE_GAP;
       pane.priceScale.setSize(pane.height);
+    }
+  }
+
+  /** 确保面板价格轴尺寸与自适应范围最新（rAF 暂停时拖拽换算也正确） */
+  private ensurePriceScaleReady(pane: PaneState): void {
+    this.layout();
+    const { from, to } = this.visibleRange();
+    if (to < from) return;
+    let low = Infinity;
+    let high = -Infinity;
+    for (let i = from; i <= to; i++) {
+      const bar = this.displaySeries.barAt(i)!;
+      if (bar.low < low) low = bar.low;
+      if (bar.high > high) high = bar.high;
+    }
+    if (low !== Infinity) {
+      pane.priceScale.setLogMode(this.logScale);
+      pane.priceScale.autoScale(low, high);
     }
   }
 
@@ -892,6 +1004,22 @@ export class ChartRenderer {
     ctx.save();
     ctx.translate(0, main.y);
     drawDrawings(ctx, this.drawingLayer.list(), this.drawingLayer.selected?.id ?? null, this.drawingCtx(), this.legend.decimals);
+    // 交易可视化：挂单线 / 持仓线 / TP-SL 手柄
+    drawTrading(ctx, this.tradeVisual, main.priceScale, { chartW: this.manager.width - AXIS_WIDTH, chartH: main.height }, this.legend.decimals);
+    // 拖拽下单预览线
+    if (this.tradePreview) {
+      const py = Math.round(main.priceScale.priceToY(this.tradePreview.price)) + 0.5;
+      if (py >= 0 && py <= main.height) {
+        ctx.strokeStyle = this.tradePreview.side === 'buy' ? '#26a69a' : '#ef5350';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, py);
+        ctx.lineTo(main.height > 0 ? this.manager.width - AXIS_WIDTH : 0, py);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
     if (this.activeTool && this.placing.length > 0) {
       const pts = this.previewPoint ? [...this.placing, this.previewPoint] : this.placing;
       const def = getToolDef(this.activeTool);

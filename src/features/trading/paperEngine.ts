@@ -21,6 +21,10 @@ export interface Position {
   side: 'long' | 'short';
   qty: number;
   avgPrice: number;
+  /** 止盈价（图表拖拽手柄设置） */
+  takeProfit?: number;
+  /** 止损价（图表拖拽手柄设置） */
+  stopLoss?: number;
 }
 
 export interface ClosedTrade {
@@ -132,6 +136,41 @@ export class PaperTradingEngine {
     if (o && o.status === 'pending') o.status = 'cancelled';
   }
 
+  /** 挂单改价（限价单拖动改价） */
+  updateOrderPrice(id: string, price: number): void {
+    const o = this.orders.find((x) => x.id === id);
+    if (!o || o.status !== 'pending') return;
+    if (o.type === 'limit' || o.type === 'stop-limit') o.limitPrice = price;
+    if (o.type === 'stop' || o.type === 'stop-limit') o.stopPrice = price;
+  }
+
+  /** 设置/清除持仓止盈止损（null 清除） */
+  setPositionTPSL(tp: number | null, sl: number | null): void {
+    if (!this.position) return;
+    this.position.takeProfit = tp ?? undefined;
+    this.position.stopLoss = sl ?? undefined;
+  }
+
+  /** 每根 K 线检查止盈止损触发（多：触 TP 平多/触 SL 平多；空反之） */
+  private checkTpSl(bar: { high: number; low: number; time: number }): void {
+    const p = this.position;
+    if (!p) return;
+    const long = p.side === 'long';
+    if (p.takeProfit !== undefined) {
+      const hit = long ? bar.high >= p.takeProfit : bar.low <= p.takeProfit;
+      if (hit) {
+        this.closePosition(p.takeProfit, bar.time);
+        return;
+      }
+    }
+    if (p.stopLoss !== undefined) {
+      const hit = long ? bar.low <= p.stopLoss : bar.high >= p.stopLoss;
+      if (hit) {
+        this.closePosition(p.stopLoss, bar.time);
+      }
+    }
+  }
+
   /** 市价平掉全部持仓 */
   closePosition(refPrice: number, time: number): ClosedTrade | null {
     if (!this.position) return null;
@@ -157,6 +196,7 @@ export class PaperTradingEngine {
   /** 每根 K 线调用：标记盈亏 + 检查挂单触发 */
   onBar(bar: { time: number; high: number; low: number; close: number }): void {
     this.markToMarket(bar.close);
+    this.checkTpSl(bar);
     for (const order of this.pendingOrders) {
       const fill = this.checkTrigger(order, bar);
       if (fill !== null) this.fill(order, fill, bar.time);

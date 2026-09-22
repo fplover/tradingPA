@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { PaperTradingEngine, type OrderSpec } from './paperEngine';
+import { PaperTradingEngine, type OrderSpec, type Position } from './paperEngine';
+import type { TradeVisual } from '@/engine/renderer/drawTrading';
 
 interface TradeStore {
   engine: PaperTradingEngine;
@@ -10,6 +11,10 @@ interface TradeStore {
   closePosition: (refPrice: number, time: number) => void;
   onBar: (bar: { time: number; high: number; low: number; close: number }) => void;
   reset: (balance?: number) => void;
+  updateOrderPrice: (id: string, price: number) => void;
+  setPositionTPSL: (tp: number | null, sl: number | null) => void;
+  /** 构造图表可视化数据（挂单线/持仓线） */
+  visual: () => TradeVisual;
 }
 
 export const useTradeStore = create<TradeStore>((set, get) => ({
@@ -34,5 +39,36 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   reset: (balance) => {
     get().engine.reset(balance);
     set((s) => ({ version: s.version + 1 }));
+  },
+  updateOrderPrice: (id, price) => {
+    get().engine.updateOrderPrice(id, price);
+    set((s) => ({ version: s.version + 1 }));
+  },
+  setPositionTPSL: (tp, sl) => {
+    get().engine.setPositionTPSL(tp, sl);
+    set((s) => ({ version: s.version + 1 }));
+  },
+  visual: () => {
+    const e = get().engine;
+    const p: Position | null = e.position;
+    return {
+      orders: e.pendingOrders.map((o) => ({
+        id: o.id,
+        side: o.side,
+        type: o.type,
+        qty: o.qty,
+        price: o.limitPrice ?? o.stopPrice,
+      })),
+      position: p
+        ? {
+            side: p.side,
+            qty: p.qty,
+            avgPrice: p.avgPrice,
+            takeProfit: p.takeProfit,
+            stopLoss: p.stopLoss,
+            pnl: e.unrealizedPnL,
+          }
+        : null,
+    };
   },
 }));
