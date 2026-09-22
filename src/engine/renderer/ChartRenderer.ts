@@ -555,13 +555,13 @@ export class ChartRenderer {
       this.priceYAtDragStart = y;
     } else if (!inTimeAxis) {
       const pane = this.paneAt(y);
-      // 选择K线模式：点击落点即为复盘位置
+      // 选择K线模式：点击任意位置完成选择，预览线与蒙层即消失；
+      // 越界点击（右侧空白/蒙层区）clamp 到最近的有效 bar
       if (this.barSelectMode) {
-        const idx = Math.round(this.viewport.xToIndex(x));
-        if (idx >= 0 && idx < this.displaySeries.length) {
-          this.barSelectCb?.(idx);
-          this.setBarSelectMode(false, null);
-        }
+        const raw = Math.round(this.viewport.xToIndex(x));
+        const idx = Math.min(Math.max(raw, 0), Math.max(0, this.displaySeries.length - 1));
+        this.barSelectCb?.(idx);
+        this.setBarSelectMode(false, null);
         return;
       }
       if (this.activeTool) {
