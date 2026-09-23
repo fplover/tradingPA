@@ -110,46 +110,15 @@ function drawPositionLine(
   const label = `${p.side === 'long' ? '多' : '空'} ${p.qty} @${p.avgPrice.toFixed(decimals)} · ${pnl}`;
   drawTag(ctx, geo.chartW - 4, y, label, color, false);
 
-  // TP/SL 手柄（线右端两个圆点）：已设置为实心，未设置为半透明"拖出创建"
-  const tpY = p.takeProfit !== undefined ? priceScale.priceToY(p.takeProfit) : y - 40;
-  const slY = p.stopLoss !== undefined ? priceScale.priceToY(p.stopLoss) : y + 40;
-  drawHandle(ctx, tpY, geo, '#26a69a', p.takeProfit !== undefined);
-  drawHandle(ctx, slY, geo, '#ef5350', p.stopLoss !== undefined);
 }
 
-/** TP/SL 手柄默认位置（未设置时）：持仓线上下各 40px */
-export function tpHandleY(position: PositionVisual, priceScale: PriceScale): number {
-  return position.takeProfit !== undefined
-    ? priceScale.priceToY(position.takeProfit)
-    : priceScale.priceToY(position.avgPrice) - 40;
-}
+/** 持仓详情块命中区宽度（圆角标签约宽） */
+const POSITION_TAG_W = 150;
 
-export function slHandleY(position: PositionVisual, priceScale: PriceScale): number {
-  return position.stopLoss !== undefined
-    ? priceScale.priceToY(position.stopLoss)
-    : priceScale.priceToY(position.avgPrice) + 40;
-}
-
-function drawHandle(
-  ctx: CanvasRenderingContext2D,
-  y: number,
-  geo: DrawGeometry,
-  color: string,
-  active: boolean,
-): void {
-  if (y < 0 || y > geo.chartH) return;
-  const x = geo.chartW - 26;
-  ctx.beginPath();
-  ctx.arc(x, y, 6, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.globalAlpha = active ? 0.85 : 0.3;
-  ctx.fill();
-  ctx.globalAlpha = 1;
-  if (!active) {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
+/** 持仓详情块是否命中（线右端圆角标签区域） */
+export function isPositionTagHit(x: number, y: number, position: PositionVisual, priceScale: PriceScale, geo: DrawGeometry): boolean {
+  const ey = priceScale.priceToY(position.avgPrice);
+  return x >= geo.chartW - POSITION_TAG_W && x <= geo.chartW && Math.abs(y - ey) <= 10;
 }
 
 function drawTag(
@@ -167,7 +136,9 @@ function drawTag(
   const h = 16;
   const x = rightX - w;
   ctx.fillStyle = color;
-  ctx.fillRect(x, y - h / 2, w, h);
+  ctx.beginPath();
+  ctx.roundRect(x, y - h / 2, w, h, 4);
+  ctx.fill();
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
@@ -195,12 +166,9 @@ export function hitTestTrading(
   geo: DrawGeometry,
 ): TradeHit {
   const p = visual.position;
-  // 1) TP/SL 手柄（精确圆点）优先于带状命中
-  if (p) {
-    if (nearHandle(x, y, tpHandleY(p, priceScale), geo)) return { kind: 'tp' };
-    if (nearHandle(x, y, slHandleY(p, priceScale), geo)) return { kind: 'sl' };
-  }
-  // 2) 挂单线（含撤单按钮区：标签右端窄区，避免与 TP/SL 手柄重叠）
+  // 1) 持仓详情块（圆角标签，拖动设 TP/SL）
+  if (p && isPositionTagHit(x, y, p, priceScale, geo)) return { kind: 'position' };
+  // 2) 挂单线（含撤单按钮区：标签右端窄区）
   for (const o of visual.orders) {
     if (o.price === undefined) continue;
     const ly = priceScale.priceToY(o.price);
@@ -209,17 +177,7 @@ export function hitTestTrading(
       return { kind: 'order', id: o.id };
     }
   }
-  // 3) 持仓入场线（仅展示）
-  if (p) {
-    const py = priceScale.priceToY(p.avgPrice);
-    if (Math.abs(y - py) <= 5) return { kind: 'position' };
-  }
   return null;
-}
-
-function nearHandle(x: number, y: number, hy: number, geo: DrawGeometry): boolean {
-  const hx = geo.chartW - 26;
-  return Math.hypot(x - hx, y - hy) <= 9;
 }
 
 /** 撤单按钮命中区（标签右端） */

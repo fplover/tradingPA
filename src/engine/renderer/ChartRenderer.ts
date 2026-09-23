@@ -614,7 +614,7 @@ export class ChartRenderer {
     this.invalidate();
         return;
       }
-      // 交易可视化命中：挂单线拖动改价 / 撤单 / TP-SL 手柄
+      // 交易可视化命中：挂单线拖动改价 / 撤单 / 持仓详情块拖动设 TP-SL
       const tradeHit = hitTestTrading(
         this.tradeVisual,
         x,
@@ -627,20 +627,10 @@ export class ChartRenderer {
           this.tradeCbs.onOrderCancel?.(tradeHit.id);
           return;
         }
-        if (tradeHit.kind !== 'position') {
-          this.tradeDrag = tradeHit; // 持仓线仅展示不可拖（TV 行为）
-        }
+        this.tradeDrag = tradeHit;
         return;
       }
       this.drawingLayer.select(null);
-      // 回放中点击空白处：弹出下单浮窗（TV 图表点击下单）
-      if (this.replayIndex !== null && this.chartClickCb) {
-        this.ensurePriceScaleReady(pane);
-        const price = pane.priceScale.yToPrice(y - pane.y);
-        const bar = this.displaySeries.barAt(this.replayIndex);
-        this.chartClickCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
-        return;
-      }
       this.dragging = true;
       this.lastPointerX = e.clientX;
       this.lastPointerY = e.clientY;
@@ -765,10 +755,15 @@ export class ChartRenderer {
     const price = pane.priceScale.yToPrice(y - pane.y);
     if (drag.kind === 'order') {
       this.tradeCbs.onOrderMove?.(drag.id, price);
-    } else if (drag.kind === 'tp') {
-      this.tradeCbs.onPositionTpSl?.(price, this.tradeVisual.position?.stopLoss ?? null);
-    } else if (drag.kind === 'sl') {
-      this.tradeCbs.onPositionTpSl?.(this.tradeVisual.position?.takeProfit ?? null, price);
+    } else if (drag.kind === 'position') {
+      // 拖动持仓详情块：按拖动方向与订单类型设置止盈/止损
+      const pos = this.tradeVisual.position;
+      if (pos) {
+        const above = price > pos.avgPrice;
+        const isTp = pos.side === 'long' ? above : !above;
+        if (isTp) this.tradeCbs.onPositionTpSl?.(price, pos.stopLoss ?? null);
+        else this.tradeCbs.onPositionTpSl?.(pos.takeProfit ?? null, price);
+      }
     }
     this.invalidate();
   }
@@ -782,6 +777,24 @@ export class ChartRenderer {
     if (this.manager.canvas.hasPointerCapture(e.pointerId)) {
       this.manager.canvas.releasePointerCapture(e.pointerId);
     }
+  };
+
+  /** 右键：禁默认菜单；回放中在空白处右键 → 弹出下单浮窗（左键保留拖动） */
+  private onContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    if (this.replayIndex === null || !this.chartClickCb) return;
+    const { x, y } = this.toLocal(e);
+    const chartW = this.manager.width - AXIS_WIDTH;
+    const chartH = this.manager.height - AXIS_HEIGHT;
+    if (x < 0 || x > chartW || y < 0 || y > chartH) return;
+    // 命中交易可视化/画线时不弹下单
+    const pane = this.paneAt(y);
+    if (hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height })) return;
+    if (this.hitDrawings(x, y, pane)) return;
+    this.ensurePriceScaleReady(pane);
+    const price = pane.priceScale.yToPrice(y - pane.y);
+    const bar = this.displaySeries.barAt(this.replayIndex);
+    this.chartClickCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
   };
 
   private onDoubleClick = (e: MouseEvent) => {
@@ -827,6 +840,7 @@ export class ChartRenderer {
     canvas.addEventListener('pointercancel', this.onPointerUp);
     canvas.addEventListener('pointerleave', this.onPointerLeave);
     canvas.addEventListener('dblclick', this.onDoubleClick);
+    canvas.addEventListener('contextmenu', this.onContextMenu);
     canvas.addEventListener('wheel', this.onWheel, { passive: false });
   }
 
@@ -837,6 +851,7 @@ export class ChartRenderer {
     canvas.removeEventListener('pointercancel', this.onPointerUp);
     canvas.removeEventListener('pointerleave', this.onPointerLeave);
     canvas.removeEventListener('dblclick', this.onDoubleClick);
+    canvas.removeEventListener('contextmenu', this.onContextMenu);
     canvas.removeEventListener('wheel', this.onWheel);
   }
 
