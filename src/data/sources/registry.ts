@@ -1,0 +1,117 @@
+import type { Bar } from '@/types/market';
+import type { TimeframeId } from '@/types/market';
+import type { AssetClass, Instrument, MarketId } from '@/types/instrument';
+import { tencentSource } from './tencent';
+import { binanceSource } from './binance';
+import { sinaSource } from './sina';
+import { eastmoneySearch, futuresQuotes, futuresSearch, futuresUniverse } from './eastmoney';
+import { NoHistoryError, type MarketSource, type Quote, type SearchHit } from './types';
+
+/**
+ * 数据源路由。上层只认 Instrument，不关心哪个站点提供数据。
+ * 报价按数据源分组批量请求，K 线按品种所属市场沿候选链取第一个能供应该周期的源。
+ */
+
+const QUOTE_SOURCES: MarketSource[] = [tencentSource, binanceSource];
+
+/** 市场 → K 线数据源候选链（顺序即优先级） */
+const BARS_BY_MARKET: Record<MarketId, MarketSource[]> = {
+  'cn-sh': [tencentSource],
+  'cn-sz': [tencentSource],
+  'cn-bj': [tencentSource],
+  // 港股只有日/周/月，分钟线两个源都不提供
+  hk: [tencentSource],
+  // 美股日线走腾讯（无需代理），分钟线腾讯没有，落到新浪
+  'us-nasdaq': [tencentSource, sinaSource],
+  'us-nyse': [tencentSource, sinaSource],
+  'us-amex': [tencentSource, sinaSource],
+  'cn-index': [tencentSource],
+  'cn-fut': [sinaSource],
+  // 外盘期货：已验证的免费源都只有报价，没有历史 K 线
+  'global-fut': [],
+  crypto: [binanceSource],
+};
+
+/** 市场 → 报价数据源 */
+const QUOTES_BY_MARKET: Record<MarketId, 'source' | 'futures'> = {
+  'cn-sh': 'source',
+  'cn-sz': 'source',
+  'cn-bj': 'source',
+  hk: 'source',
+  'us-nasdaq': 'source',
+  'us-nyse': 'source',
+  'us-amex': 'source',
+  'cn-index': 'source',
+  'cn-fut': 'futures',
+  'global-fut': 'futures',
+  crypto: 'source',
+};
+
+export const dataRegistry = {
+  /** 批量报价：按数据源分组，单组失败不影响其他组 */
+  async quotes(instruments: Instrument[]): Promise<Quote[]> {
+    if (instruments.length === 0) return [];
+    const direct: Instrument[] = [];
+    const futures: Instrument[] = [];
+    for (const inst of instruments) {
+      if (QUOTES_BY_MARKET[inst.market] === 'futures') futures.push(inst);
+      else direct.push(inst);
+    }
+
+    const jobs: Promise<Quote[]>[] = [];
+    if (futures.length > 0) jobs.push(futuresQuotes(futures).catch(() => []));
+    if (direct.length > 0) {
+      for (const source of QUOTE_SOURCES) {
+        const group = direct.filter((i) => source.markets.includes(i.market));
+        if (group.length === 0) continue;
+        if (!source.quotes) continue;
+        jobs.push(source.quotes(group).catch(() => []));
+      }
+    }
+    const results = await Promise.all(jobs);
+    return results.flat();
+  },
+
+  /** 历史 K 线。无可用源时抛 NoHistoryError，调用方应显示空状态而不是编造数据。 */
+  async bars(instrument: Instrument, timeframe: TimeframeId, limit = 500): Promise<Bar[]> {
+    const chain = BARS_BY_MARKET[instrument.market];
+    if (chain.length === 0) throw new NoHistoryError(instrument, timeframe);
+    let lastError: unknown = null;
+    for (const source of chain) {
+      if (!source.bars) continue;
+      try {
+        return await source.bars({ instrument, timeframe, limit });
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    throw lastError ?? new NoHistoryError(instrument, timeframe);
+  },
+
+  /** 符号搜索：东财全市场联想；选了「期货」分类时并上合约全集本地过滤 */
+  async search(query: string, asset?: AssetClass): Promise<SearchHit[]> {
+    const q = query.trim();
+    if (!q) return [];
+    const suggest = eastmoneySearch.search(q, asset).catch(() => [] as SearchHit[]);
+    if (asset !== 'futures') return suggest;
+    const [a, b] = await Promise.all([suggest, futuresSearch(q, asset).catch(() => [] as SearchHit[])]);
+    const seen = new Set(a.map((h) => h.instrument.id));
+    return [...a, ...b.filter((h) => !seen.has(h.instrument.id))];
+  },
+
+  /** 期货合约全集（浏览/搜索用） */
+  allFutures(): Promise<Instrument[]> {
+    return futuresUniverse();
+  },
+
+  sourceName(instrument: Instrument): string {
+    return BARS_BY_MARKET[instrument.market]?.[0]?.name ?? '—';
+  },
+
+  hasHistory(instrument: Instrument): boolean {
+    return BARS_BY_MARKET[instrument.market].length > 0;
+  },
+};
+
+export { NoHistoryError };
+export type { Quote, SearchHit };
