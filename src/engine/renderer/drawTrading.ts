@@ -1,4 +1,6 @@
 import type { PriceScale } from '../scale/PriceScale';
+import type { Viewport } from '../viewport/Viewport';
+import type { BarSeries } from '@/data/BarSeries';
 import type { DrawGeometry } from './drawSeries';
 
 export interface OrderVisual {
@@ -20,9 +22,20 @@ export interface PositionVisual {
   pnl: number;
 }
 
+/** K 线进出场标记：买=标在 K 线下方，卖=标在上方（平多记为卖、平空记为买） */
+export interface TradeMarker {
+  time: number;
+  side: 'buy' | 'sell';
+  kind: 'entry' | 'exit';
+}
+
 export interface TradeVisual {
   orders: OrderVisual[];
   position: PositionVisual | null;
+  /** 开仓点（含已平仓交易的入场） */
+  entries: TradeMarker[];
+  /** 平仓点 */
+  exits: TradeMarker[];
 }
 
 export type TradeHit =
@@ -31,16 +44,32 @@ export type TradeHit =
   | { kind: 'tp' }
   | { kind: 'sl' }
   | { kind: 'order-cancel'; id: string }
+  | { kind: 'position-close' }
+  | { kind: 'tp-close' }
+  | { kind: 'sl-close' }
   | null;
 
-/** 绘制挂单线 / 持仓线 / TP-SL 手柄（面板局部坐标） */
+/** 右端标签与画布边缘的预留间距 */
+const TAG_PAD = 12;
+/** 右端关闭/撤单按钮命中宽度 */
+const BTN_HIT_W = 16;
+/** 持仓详情块命中区宽度（圆角标签约宽） */
+const POSITION_TAG_W = 150;
+/** TP/SL 线命中半宽 */
+const TP_SL_HIT = 5;
+
+/** 绘制挂单线 / 持仓线 / TP-SL / K 线进出场标记（面板局部坐标） */
 export function drawTrading(
   ctx: CanvasRenderingContext2D,
   visual: TradeVisual,
   priceScale: PriceScale,
   geo: DrawGeometry,
   decimals: number,
+  series: BarSeries,
+  viewport: Viewport,
 ): void {
+  drawTradeMarkers(ctx, visual.entries, series, viewport, priceScale, geo);
+  drawTradeMarkers(ctx, visual.exits, series, viewport, priceScale, geo);
   for (const o of visual.orders) {
     if (o.price === undefined) continue;
     drawOrderLine(ctx, o, priceScale, geo, decimals);
@@ -68,9 +97,9 @@ function drawOrderLine(
   ctx.lineTo(geo.chartW, y);
   ctx.stroke();
   ctx.setLineDash([]);
-  // 右侧标签：数量 + 类型 + 撤盘按钮
+  // 右侧标签：数量 + 类型 + 价格 + 撤单按钮
   const label = `${o.qty} ${orderTypeLabel(o.type)} ${o.price!.toFixed(decimals)}`;
-  drawTag(ctx, geo.chartW - 4, y, label, color, true);
+  drawTag(ctx, geo.chartW - TAG_PAD, y, label, color, true);
 }
 
 function drawPositionLine(
@@ -90,7 +119,7 @@ function drawPositionLine(
   ctx.moveTo(0, y);
   ctx.lineTo(geo.chartW, y);
   ctx.stroke();
-  // TP/SL 横线（细虚线）+ 右端描述标签（与持仓详情块同款圆角）
+  // TP/SL 横线（细虚线）+ 右端描述标签 + 清除按钮（与持仓详情块同款圆角）
   const drawTpSlLine = (price: number | undefined, lineColor: string, label: string) => {
     if (price === undefined) return;
     const ly = Math.round(priceScale.priceToY(price)) + 0.5;
@@ -103,37 +132,77 @@ function drawPositionLine(
     ctx.lineTo(geo.chartW, ly);
     ctx.stroke();
     ctx.setLineDash([]);
-    drawTag(ctx, geo.chartW - 4, ly, `${label} ${price.toFixed(decimals)}`, lineColor, false);
+    drawTag(ctx, geo.chartW - TAG_PAD, ly, `${label} ${price.toFixed(decimals)}`, lineColor, true);
   };
   drawTpSlLine(p.takeProfit, '#26a69a', '止盈');
   drawTpSlLine(p.stopLoss, '#ef5350', '止损');
   const pnl = p.pnl >= 0 ? `+${p.pnl.toFixed(2)}` : p.pnl.toFixed(2);
   const label = `${p.side === 'long' ? '多' : '空'} ${p.qty} @${p.avgPrice.toFixed(decimals)} · ${pnl}`;
-  drawTag(ctx, geo.chartW - 4, y, label, color, false);
-
+  // 持仓详情块右端带关闭按钮（点击市价平仓）
+  drawTag(ctx, geo.chartW - TAG_PAD, y, label, color, true);
 }
 
-/** 持仓详情块命中区宽度（圆角标签约宽） */
-const POSITION_TAG_W = 150;
-
-/** 持仓详情块是否命中（线右端圆角标签区域） */
-export function isPositionTagHit(x: number, y: number, position: PositionVisual, priceScale: PriceScale, geo: DrawGeometry): boolean {
-  const ey = priceScale.priceToY(position.avgPrice);
-  return x >= geo.chartW - POSITION_TAG_W && x <= geo.chartW && Math.abs(y - ey) <= 10;
+/** K 线进出场标记徽标（买=绿、卖/平多=红、平空=绿），贴在 K 线高低点外侧 */
+function drawTradeMarkers(
+  ctx: CanvasRenderingContext2D,
+  markers: TradeMarker[],
+  series: BarSeries,
+  viewport: Viewport,
+  priceScale: PriceScale,
+  geo: DrawGeometry,
+): void {
+  for (const m of markers) {
+    const idx = series.indexOfTime(m.time);
+    if (idx < 0) continue;
+    const x = viewport.indexToX(idx);
+    if (x < -12 || x > geo.chartW + 12) continue;
+    const bar = series.barAt(idx);
+    if (!bar) continue;
+    const buy = m.side === 'buy';
+    const color = buy ? '#26a69a' : '#ef5350';
+    const text = m.kind === 'entry' ? (buy ? '买' : '卖') : '平';
+    // 买入类标在 K 线下方、卖出类标在上方，避免遮挡 K 线
+    const anchorY = buy ? priceScale.priceToY(bar.low) : priceScale.priceToY(bar.high);
+    const cy = buy ? anchorY + 12 : anchorY - 12;
+    if (cy < -12 || cy > geo.chartH + 12) continue;
+    // 连接线：徽标 → K 线高低点
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    if (buy) {
+      ctx.moveTo(x, cy - 8);
+      ctx.lineTo(x, anchorY + 1);
+    } else {
+      ctx.moveTo(x, anchorY - 1);
+      ctx.lineTo(x, cy + 8);
+    }
+    ctx.stroke();
+    // 圆角徽标
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.roundRect(x - 8, cy - 8, 16, 16, 4);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, x, cy + 0.5);
+  }
 }
 
+/** 右端标签（圆角块）：label + 可选关闭/撤单按钮（×） */
 function drawTag(
   ctx: CanvasRenderingContext2D,
   rightX: number,
   y: number,
   label: string,
   color: string,
-  withCancel: boolean,
+  withButton: boolean,
 ): void {
   ctx.font = '10px system-ui, sans-serif';
   const textW = ctx.measureText(label).width;
-  const cancelW = withCancel ? 14 : 0;
-  const w = textW + 12 + cancelW;
+  const btnW = withButton ? 14 : 0;
+  const w = textW + 12 + btnW;
   const h = 16;
   const x = rightX - w;
   ctx.fillStyle = color;
@@ -144,8 +213,9 @@ function drawTag(
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(label, x + 6, y);
-  if (withCancel) {
-    ctx.fillText('×', x + w - 10, y);
+  if (withButton) {
+    ctx.textAlign = 'center';
+    ctx.fillText('×', rightX - 8, y);
   }
 }
 
@@ -158,7 +228,16 @@ function orderTypeLabel(type: OrderVisual['type']): string {
   }
 }
 
-/** 命中测试：挂单线/持仓线/TP/SL 手柄/撤单按钮（面板局部坐标） */
+/** 右端关闭/撤单按钮命中区（标签末尾 × 区域） */
+function isRightBtnHit(x: number, y: number, ly: number, geo: DrawGeometry): boolean {
+  return (
+    x >= geo.chartW - TAG_PAD - BTN_HIT_W &&
+    x <= geo.chartW - TAG_PAD + 4 &&
+    Math.abs(y - ly) <= 10
+  );
+}
+
+/** 命中测试：挂单线/持仓块/TP-SL 线的拖动区与右端关闭按钮（面板局部坐标） */
 export function hitTestTrading(
   visual: TradeVisual,
   x: number,
@@ -167,21 +246,39 @@ export function hitTestTrading(
   geo: DrawGeometry,
 ): TradeHit {
   const p = visual.position;
-  // 1) 持仓详情块（圆角标签，拖动设 TP/SL）
-  if (p && isPositionTagHit(x, y, p, priceScale, geo)) return { kind: 'position' };
-  // 2) 挂单线（含撤单按钮区：标签右端窄区）
+  // 1) 持仓详情块：右端关闭（平仓）优先，其余区域拖动设 TP/SL
+  if (p) {
+    const ey = priceScale.priceToY(p.avgPrice);
+    if (Math.abs(y - ey) <= 10) {
+      if (isRightBtnHit(x, y, ey, geo)) return { kind: 'position-close' };
+      if (x >= geo.chartW - TAG_PAD - POSITION_TAG_W && x <= geo.chartW - TAG_PAD) return { kind: 'position' };
+    }
+  }
+  // 2) TP/SL 线：右端关闭（清除）优先，线体拖动改价
+  if (p) {
+    if (p.takeProfit !== undefined) {
+      const ty = priceScale.priceToY(p.takeProfit);
+      if (Math.abs(y - ty) <= TP_SL_HIT) {
+        if (isRightBtnHit(x, y, ty, geo)) return { kind: 'tp-close' };
+        return { kind: 'tp' };
+      }
+    }
+    if (p.stopLoss !== undefined) {
+      const sy = priceScale.priceToY(p.stopLoss);
+      if (Math.abs(y - sy) <= TP_SL_HIT) {
+        if (isRightBtnHit(x, y, sy, geo)) return { kind: 'sl-close' };
+        return { kind: 'sl' };
+      }
+    }
+  }
+  // 3) 挂单线：右端撤单按钮 + 线体拖动改价
   for (const o of visual.orders) {
     if (o.price === undefined) continue;
     const ly = priceScale.priceToY(o.price);
     if (Math.abs(y - ly) <= 5) {
-      if (x >= geo.chartW - 30 && x <= geo.chartW) return { kind: 'order-cancel', id: o.id };
+      if (isRightBtnHit(x, y, ly, geo)) return { kind: 'order-cancel', id: o.id };
       return { kind: 'order', id: o.id };
     }
   }
   return null;
-}
-
-/** 撤单按钮命中区（标签右端） */
-export function isOrderCancelArea(x: number, geo: DrawGeometry): boolean {
-  return x >= geo.chartW - 30 && x <= geo.chartW;
 }

@@ -52,9 +52,11 @@ export function Chart({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
   const lastBarRef = useRef<Bar | undefined>(bars[bars.length - 1]);
+  const barsRef = useRef<Bar[]>(bars);
 
   useEffect(() => {
     lastBarRef.current = bars[bars.length - 1];
+    barsRef.current = bars;
   }, [bars]);
 
   useEffect(() => {
@@ -197,6 +199,13 @@ export function Chart({
       onOrderMove: (id, price) => useTradeStore.getState().updateOrderPrice(id, price),
       onOrderCancel: (id) => useTradeStore.getState().cancel(id),
       onPositionTpSl: (tp, sl) => useTradeStore.getState().setPositionTPSL(tp, sl),
+      // 持仓详情块 × ：按当前回放 bar 收盘价市价平仓
+      onPositionClose: () => {
+        const idx = useReplayStore.getState().index;
+        const list = barsRef.current;
+        const bar = idx !== null ? list[idx] : list[list.length - 1];
+        if (bar) useTradeStore.getState().closePosition(bar.close, bar.time);
+      },
     });
     rendererRef.current?.setChartClickCallback((price, time, clientX, clientY) => {
       useOrderMenuStore.getState().openMenu(price, time, clientX, clientY);

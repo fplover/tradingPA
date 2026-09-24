@@ -76,12 +76,15 @@ export class ChartRenderer {
   private drawingsListeners = new Set<() => void>();
 
   // 交易可视化（挂单线/持仓线/TP-SL）
-  private tradeVisual: TradeVisual = { orders: [], position: null };
+  private tradeVisual: TradeVisual = { orders: [], position: null, entries: [], exits: [] };
   private tradeDrag: TradeHit = null;
+  /** 悬停交易可视化元素时的 pointer 光标状态（避免每帧写样式） */
+  private tradeHoverCursor = false;
   private tradeCbs: {
     onOrderMove?: (id: string, price: number) => void;
     onOrderCancel?: (id: string) => void;
     onPositionTpSl?: (tp: number | null, sl: number | null) => void;
+    onPositionClose?: () => void;
   } = {};
   private chartClickCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
 
@@ -627,6 +630,18 @@ export class ChartRenderer {
           this.tradeCbs.onOrderCancel?.(tradeHit.id);
           return;
         }
+        if (tradeHit.kind === 'position-close') {
+          this.tradeCbs.onPositionClose?.();
+          return;
+        }
+        if (tradeHit.kind === 'tp-close') {
+          this.tradeCbs.onPositionTpSl?.(null, this.tradeVisual.position?.stopLoss ?? null);
+          return;
+        }
+        if (tradeHit.kind === 'sl-close') {
+          this.tradeCbs.onPositionTpSl?.(this.tradeVisual.position?.takeProfit ?? null, null);
+          return;
+        }
         this.tradeDrag = tradeHit;
         return;
       }
@@ -722,6 +737,7 @@ export class ChartRenderer {
       this.crosshair.clear();
       this.selectPreviewX = null;
       this.crosshairTimeCb?.(null);
+      this.setTradeHoverCursor(false);
       this.invalidate();
       return;
     }
@@ -734,6 +750,9 @@ export class ChartRenderer {
     }
     const pane = this.paneAt(y);
     this.hoveredPaneId = pane.id;
+    // 悬停交易可视化元素（标签/关闭按钮/TP-SL 线）→ pointer 光标提示可交互
+    const hit = hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height });
+    this.setTradeHoverCursor(hit !== null);
     const idx = Math.round(this.viewport.xToIndex(x));
     const bar = this.displaySeries.barAt(idx);
     if (bar) {
@@ -747,23 +766,36 @@ export class ChartRenderer {
     this.invalidate();
   }
 
-  /** 拖拽交易可视化：挂单改价 / TP-SL 设置 */
+  /** 悬停交易可视化元素时切换 pointer 光标（状态不变不写样式） */
+  private setTradeHoverCursor(on: boolean): void {
+    if (on === this.tradeHoverCursor) return;
+    this.tradeHoverCursor = on;
+    this.manager.canvas.style.cursor = on ? 'pointer' : '';
+  }
+
+  /** 拖拽交易可视化：挂单改价 / TP-SL 设置或改价 */
   private updateTradeDrag(y: number): void {
     const drag = this.tradeDrag;
     if (!drag) return;
     const pane = this.panes[0];
     const price = pane.priceScale.yToPrice(y - pane.y);
+    const pos = this.tradeVisual.position;
     if (drag.kind === 'order') {
       this.tradeCbs.onOrderMove?.(drag.id, price);
     } else if (drag.kind === 'position') {
       // 拖动持仓详情块：按拖动方向与订单类型设置止盈/止损
-      const pos = this.tradeVisual.position;
       if (pos) {
         const above = price > pos.avgPrice;
         const isTp = pos.side === 'long' ? above : !above;
         if (isTp) this.tradeCbs.onPositionTpSl?.(price, pos.stopLoss ?? null);
         else this.tradeCbs.onPositionTpSl?.(pos.takeProfit ?? null, price);
       }
+    } else if (drag.kind === 'tp') {
+      // 直接拖动止盈线改价
+      this.tradeCbs.onPositionTpSl?.(price, pos?.stopLoss ?? null);
+    } else if (drag.kind === 'sl') {
+      // 直接拖动止损线改价
+      this.tradeCbs.onPositionTpSl?.(pos?.takeProfit ?? null, price);
     }
     this.invalidate();
   }
@@ -810,6 +842,7 @@ export class ChartRenderer {
 
   private onPointerLeave = () => {
     this.crosshair.clear();
+    this.setTradeHoverCursor(false);
     this.invalidate();
   };
 
@@ -997,8 +1030,16 @@ export class ChartRenderer {
     ctx.save();
     ctx.translate(0, main.y);
     drawDrawings(ctx, this.drawingLayer.list(), this.drawingLayer.selected?.id ?? null, this.drawingCtx(), this.legend.decimals);
-    // 交易可视化：挂单线 / 持仓线 / TP-SL 手柄
-    drawTrading(ctx, this.tradeVisual, main.priceScale, { chartW: this.manager.width - AXIS_WIDTH, chartH: main.height }, this.legend.decimals);
+    // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记
+    drawTrading(
+      ctx,
+      this.tradeVisual,
+      main.priceScale,
+      { chartW: this.manager.width - AXIS_WIDTH, chartH: main.height },
+      this.legend.decimals,
+      this.displaySeries,
+      this.viewport,
+    );
     if (this.activeTool && this.placing.length > 0) {
       const pts = this.previewPoint ? [...this.placing, this.previewPoint] : this.placing;
       const def = getToolDef(this.activeTool);

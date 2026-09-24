@@ -85,8 +85,8 @@ export class PaperTradingEngine {
   orders: Order[] = [];
   trades: ClosedTrade[] = [];
   equityCurve: EquityPoint[] = [];
-  /** 持仓开仓时间（报告用） */
-  private entryTime = 0;
+  /** 持仓开仓时间（图表进出场标记用，平仓后归零） */
+  entryTime = 0;
 
   constructor(initialBalance = 100_000) {
     this.balance = initialBalance;

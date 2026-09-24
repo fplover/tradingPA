@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { PaperTradingEngine, type OrderSpec, type Position } from './paperEngine';
-import type { TradeVisual } from '@/engine/renderer/drawTrading';
+import type { TradeMarker, TradeVisual } from '@/engine/renderer/drawTrading';
 
 interface TradeStore {
   engine: PaperTradingEngine;
@@ -51,6 +51,17 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
   visual: () => {
     const e = get().engine;
     const p: Position | null = e.position;
+    const entries: TradeMarker[] = [];
+    const exits: TradeMarker[] = [];
+    // 当前持仓：开仓点一个
+    if (p && e.entryTime > 0) {
+      entries.push({ time: e.entryTime, side: p.side === 'long' ? 'buy' : 'sell', kind: 'entry' });
+    }
+    // 已平仓交易：入场 + 平仓两点（平多记为卖、平空记为买）
+    for (const t of e.trades.slice(0, 200)) {
+      entries.push({ time: t.entryTime, side: t.side === 'long' ? 'buy' : 'sell', kind: 'entry' });
+      exits.push({ time: t.exitTime, side: t.side === 'long' ? 'sell' : 'buy', kind: 'exit' });
+    }
     return {
       orders: e.pendingOrders.map((o) => ({
         id: o.id,
@@ -69,6 +80,8 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
             pnl: e.unrealizedPnL,
           }
         : null,
+      entries,
+      exits,
     };
   },
 }));
