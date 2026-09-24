@@ -4,6 +4,10 @@ import { fileURLToPath } from 'node:url';
 // 浏览器二进制安装在 workspace 内（避免全局缓存锁冲突），.gitignore 已排除
 process.env.PLAYWRIGHT_BROWSERS_PATH ??= fileURLToPath(new URL('./.playwright-browsers', import.meta.url));
 
+// 端口可用 PORT 覆盖：本机残留旧 dev server 占住 5173 时，指向带最新 vite 配置的实例
+const PORT = Number(process.env.PORT ?? 5173);
+const BASE_URL = `http://localhost:${PORT}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
@@ -13,7 +17,7 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: BASE_URL,
     viewport: { width: 1280, height: 800 },
   },
   projects: [
@@ -22,7 +26,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev',
-    url: 'http://localhost:5173',
+    url: BASE_URL,
     reuseExistingServer: true,
     timeout: 30_000,
   },

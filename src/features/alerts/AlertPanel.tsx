@@ -86,17 +86,13 @@ function AlertRow({ alert, onRemove }: { alert: PriceAlert; onRemove: () => void
   );
 }
 
+/** 停靠在右侧面板内：充满容器，不再自己绝对定位 */
 const panelStyle: React.CSSProperties = {
   color: 'var(--text)',
-  position: 'absolute',
-  right: 8,
-  top: 8,
-  width: 240,
-  background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: 6,
+  flex: 1,
+  minHeight: 0,
+  overflowY: 'auto',
   padding: 10,
-  zIndex: 18,
 };
 
 const inputStyle: React.CSSProperties = {

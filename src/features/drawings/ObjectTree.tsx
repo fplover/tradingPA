@@ -85,19 +85,13 @@ function labelOf(d: Drawing): string {
   return names[d.type] ?? d.type;
 }
 
+/** 停靠在右侧面板内：充满容器，不再自己绝对定位 */
 const panelStyle: React.CSSProperties = {
   color: 'var(--text)',
-  position: 'absolute',
-  right: 76,
-  top: 8,
-  width: 220,
-  maxHeight: 'calc(100% - 24px)',
+  flex: 1,
+  minHeight: 0,
   overflowY: 'auto',
-  background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: 6,
   padding: 10,
-  zIndex: 15,
 };
 
 const btn: React.CSSProperties = {

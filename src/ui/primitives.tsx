@@ -77,7 +77,7 @@ export function MenuItem({
   onSelect: () => void;
 }) {
   return (
-    <DropdownMenu.Item style={menuItemStyle} onSelect={onSelect}>
+    <DropdownMenu.Item className="tv-menu-item" style={menuItemStyle} onSelect={onSelect}>
       {icon}
       {children}
     </DropdownMenu.Item>

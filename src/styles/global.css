@@ -50,6 +50,12 @@ body.theme-dark {
   --input-bg: #131722;
   --text-on-accent: #ffffff;
   --overlay: rgba(0, 0, 0, 0.5);
+  --row-hover: rgba(42, 46, 57, 0.5);
+  /* 界面涨跌色，刻意区别于画布蜡烛色（#26a69a/#ef5350）——TradingView 就是两套 */
+  --up: #089981;
+  --down: #f23645;
+  --elevated: #363a45;
+  --on-updown: #ffffff;
 }
 
 body.theme-light {
@@ -65,4 +71,115 @@ body.theme-light {
   --input-bg: #ffffff;
   --text-on-accent: #ffffff;
   --overlay: rgba(0, 0, 0, 0.25);
+  --row-hover: rgba(18, 24, 38, 0.06);
+  --up: #089981;
+  --down: #f23645;
+  --elevated: #d8dce5;
+  --on-updown: #ffffff;
+}
+
+/* 报价刷新闪烁：涨绿跌红底色淡出，密集列表里能一眼看到哪几只在动 */
+@keyframes tick-flash-up {  from {
+    background-color: rgba(8, 153, 129, 0.28);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+@keyframes tick-flash-down {
+  from {
+    background-color: rgba(242, 54, 69, 0.28);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.tick-up {
+  animation: tick-flash-up 480ms ease-out;
+}
+.tick-down {
+  animation: tick-flash-down 480ms ease-out;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+/* 右侧图标轨：全部状态走 CSS，避免和内联样式抢优先级 */
+.rail-btn {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.rail-btn:hover {
+  background: var(--panel-2);
+  color: var(--text-dim);
+}
+.rail-btn[data-active='true'] {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+/* Radix 菜单项：鼠标悬停与键盘高亮用同一套底色 */
+.tv-menu-item:hover,
+.tv-menu-item[data-highlighted] {
+  background: var(--panel-2);
+}
+.tv-menu-item {
+  border-radius: 4px;
+}
+
+/* 面板头部的小图标按钮 */
+.tv-icon-btn {
+  background: transparent;
+  color: var(--text-dim);
+}
+.tv-icon-btn:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.tv-icon-btn[data-active='true'] {
+  background: var(--panel-2);
+  color: var(--text);
+}
+.tv-icon-btn[data-state='open'] {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+/* 面板拖拽调宽时禁用文本选中，否则拖动会刷蓝整片文字 */
+.resizing,
+.resizing * {
+  user-select: none !important;
+  cursor: col-resize !important;
+}
+
+/* 细滚动条，贴近 TradingView 的面板观感 */
+.tv-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--panel-2) transparent;
+}
+.tv-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.tv-scroll::-webkit-scrollbar-thumb {
+  background: var(--panel-2);
+  border-radius: 4px;
+}
+.tv-scroll::-webkit-scrollbar-track {
+  background: transparent;
 }
