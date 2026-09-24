@@ -2,7 +2,7 @@ import type { Drawing, DrawingPoint } from './types';
 import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
 import type { BarSeries } from '@/data/BarSeries';
-import { theme } from '../theme';
+import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from '../renderer/drawSeries';
 
 export interface DrawContext {
@@ -151,7 +151,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
   ctx.strokeStyle = d.style.color;
   ctx.fillStyle = d.style.color;
   ctx.lineWidth = d.style.lineWidth;
-  ctx.font = `${d.style.fontSize ?? 12}px system-ui, sans-serif`;
+  ctx.font = `${d.style.fontSize ?? 12}px ${TV_FONT}`;
   ctx.textBaseline = 'middle';
 
   const line = (x1: number, y1: number, x2: number, y2: number) => {
@@ -288,7 +288,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
 }
 
 function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align: CanvasTextAlign) {
-  ctx.font = '10px system-ui, sans-serif';
+  ctx.font = `10px ${TV_FONT}`;
   ctx.textAlign = align;
   ctx.fillStyle = theme.axisText;
   ctx.fillText(text, x, y);

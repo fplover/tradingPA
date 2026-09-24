@@ -3,7 +3,7 @@ import type { Bar } from '@/types/market';
 import { formatCompact } from '@/data/format';
 import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
-import { theme } from '../theme';
+import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
 
 export function drawGrid(
@@ -58,7 +58,7 @@ export function drawPriceAxis(
   ctx.stroke();
 
   ctx.fillStyle = theme.axisText;
-  ctx.font = '11px system-ui, sans-serif';
+  ctx.font = `11px ${TV_FONT}`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   for (const price of priceScale.ticks(6)) {
@@ -85,7 +85,7 @@ export function drawTimeAxis(
   ctx.stroke();
 
   ctx.fillStyle = theme.axisText;
-  ctx.font = '11px system-ui, sans-serif';
+  ctx.font = `11px ${TV_FONT}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   const spacing = viewport.spacing;
@@ -116,7 +116,7 @@ export function drawPaneLegend(
   value: string,
   color: string,
 ): void {
-  ctx.font = '11px system-ui, sans-serif';
+  ctx.font = `11px ${TV_FONT}`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillStyle = color;
@@ -150,7 +150,7 @@ export function drawLastPrice(
   ctx.setLineDash([]);
 
   const text = last.close.toFixed(decimals);
-  ctx.font = '11px system-ui, sans-serif';
+  ctx.font = `11px ${TV_FONT}`;
   const w = Math.max(58, ctx.measureText(text).width + 12);
   const h = 18;
   const by = Math.min(Math.max(y - h / 2, 1), geo.chartH - h - 1);

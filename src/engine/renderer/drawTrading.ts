@@ -1,6 +1,7 @@
 import type { PriceScale } from '../scale/PriceScale';
 import type { Viewport } from '../viewport/Viewport';
 import type { BarSeries } from '@/data/BarSeries';
+import { TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
 
 export interface OrderVisual {
@@ -192,7 +193,7 @@ function drawTag(
   color: string,
   withButton: boolean,
 ): void {
-  ctx.font = '10px system-ui, sans-serif';
+  ctx.font = `10px ${TV_FONT}`;
   const textW = ctx.measureText(label).width;
   const btnW = withButton ? 14 : 0;
   const w = textW + 12 + btnW;

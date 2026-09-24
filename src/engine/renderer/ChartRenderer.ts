@@ -3,7 +3,7 @@ import { Viewport } from '../viewport/Viewport';
 import { PriceScale } from '../scale/PriceScale';
 import { Crosshair } from '../crosshair/Crosshair';
 import { BarSeries } from '@/data/BarSeries';
-import { theme } from '../theme';
+import { theme, TV_FONT } from '../theme';
 import type { Bar, ChartTypeId } from '@/types/market';
 import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
 import { IndicatorInstance } from '@/indicators/core/instance';
@@ -92,6 +92,7 @@ export class ChartRenderer {
     onPositionClose?: () => void;
   } = {};
   private chartClickCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
+  private contextMenuCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
   /** 当前选中面板 id（TV：点击面板即选中；面板被移除后回落主面板） */
   private selectedPaneId = 'main';
   /** 面板头部按钮动作回调（设置/移除指标） */
@@ -404,6 +405,30 @@ export class ChartRenderer {
   /** 注册图表空白处点击回调（弹出下单浮窗） */
   setChartClickCallback(cb: ((price: number, time: number, clientX: number, clientY: number) => void) | null): void {
     this.chartClickCb = cb;
+  }
+
+  setContextMenuCallback(cb: ((price: number, time: number, clientX: number, clientY: number) => void) | null): void {
+    this.contextMenuCb = cb;
+  }
+
+  /** 重置视图：恢复自动价格适配并让最新 K 线贴右 */
+  resetView(): void {
+    this.resetPriceScale();
+    this.viewport.scrollToRealtime();
+    this.invalidate();
+  }
+
+  /** 以画布中心为锚点缩放 */
+  zoom(factor: number): void {
+    this.viewport.zoomAt(this.manager.width / 2, factor);
+    this.viewportCommitCb?.(this.getViewport());
+    this.invalidate();
+  }
+
+  pan(bars: number): void {
+    this.viewport.panByBars(bars);
+    this.viewportCommitCb?.(this.getViewport());
+    this.invalidate();
   }
 
   /** 注册面板头部按钮回调（选中副图面板后显示 设置/移除） */
@@ -863,22 +888,34 @@ export class ChartRenderer {
     }
   };
 
-  /** 右键：禁默认菜单；回放中在空白处右键 → 弹出下单浮窗（左键保留拖动） */
+  /** 右键：禁默认菜单；回放中在空白处右键 → 弹出下单浮窗（左键保留拖动），
+   *  非回放时 → 交给上层弹图表上下文菜单 */
   private onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
-    if (this.replayIndex === null || !this.chartClickCb) return;
     const { x, y } = this.toLocal(e);
     const chartW = this.manager.width - AXIS_WIDTH;
     const chartH = this.manager.height - AXIS_HEIGHT;
     if (x < 0 || x > chartW || y < 0 || y > chartH) return;
-    // 命中交易可视化/画线时不弹下单
     const pane = this.paneAt(y);
-    if (hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height })) return;
+
+    if (this.replayIndex !== null && this.chartClickCb) {
+      // 命中交易可视化/画线时不弹下单
+      if (hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height })) return;
+      if (this.hitDrawings(x, y, pane)) return;
+      this.ensurePriceScaleReady(pane);
+      const price = pane.priceScale.yToPrice(y - pane.y);
+      const bar = this.displaySeries.barAt(this.replayIndex);
+      this.chartClickCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
+      return;
+    }
+
+    if (!this.contextMenuCb) return;
     if (this.hitDrawings(x, y, pane)) return;
     this.ensurePriceScaleReady(pane);
     const price = pane.priceScale.yToPrice(y - pane.y);
-    const bar = this.displaySeries.barAt(this.replayIndex);
-    this.chartClickCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
+    const idx = Math.round(this.viewport.xToIndex(x));
+    const bar = this.displaySeries.barAt(idx);
+    this.contextMenuCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
   };
 
   private onDoubleClick = (e: MouseEvent) => {
@@ -1076,7 +1113,7 @@ export class ChartRenderer {
       pane.autoBtn = null;
       if (pane.manual) {
         const text = '自动';
-        ctx.font = '10px system-ui, sans-serif';
+        ctx.font = `10px ${TV_FONT}`;
         const bw = ctx.measureText(text).width + 14;
         const bh = 16;
         const bx = geo.chartW + (AXIS_WIDTH - bw) / 2;
@@ -1292,7 +1329,7 @@ function drawScissors(ctx: CanvasRenderingContext2D, x: number, y: number): void
   ctx.arc(x, y, 8, 0, Math.PI * 2);
   ctx.fillStyle = '#2962ff';
   ctx.fill();
-  ctx.font = '11px system-ui, sans-serif';
+  ctx.font = `11px ${TV_FONT}`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillStyle = '#ffffff';

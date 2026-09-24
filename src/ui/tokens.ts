@@ -15,13 +15,13 @@ export const radius = {
   lg: 8,
 } as const;
 
-/** 字号阶梯（交易界面偏小字号密集信息） */
+/** 字号阶梯：对齐 TradingView（正文 14 / 密集行 13 / 元信息 12 / 微标签 11） */
 export const fontSize = {
-  xs: 10,
-  sm: 11,
-  md: 12,
-  lg: 13,
-  xl: 14,
+  xs: 11,
+  sm: 12,
+  md: 13,
+  lg: 14,
+  xl: 15,
 } as const;
 
 /** 控件高度 */

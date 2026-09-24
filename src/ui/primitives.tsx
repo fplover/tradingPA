@@ -204,8 +204,8 @@ const menuContentStyle: React.CSSProperties = {
   minWidth: 200,
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: radius.md,
-  padding: space.xs,
+  borderRadius: 4,
+  padding: '4px 0',
   zIndex: zIndex.dropdown,
   boxShadow: shadow.menu,
 };
@@ -215,14 +215,14 @@ const menuItemStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: space.sm,
   width: '100%',
-  padding: `${space.xs + 1}px ${space.sm}px`,
+  padding: `${space.xs + 1}px ${space.sm + 2}px`,
   background: 'transparent',
   border: 'none',
   color: 'var(--text)',
   fontSize: fontSize.md,
   cursor: 'pointer',
   textAlign: 'left',
-  borderRadius: radius.sm,
+  borderRadius: 0,
   outline: 'none',
 };
 

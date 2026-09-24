@@ -81,8 +81,8 @@ const menuStyle: React.CSSProperties = {
   overflowY: 'auto',
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 6,
-  padding: space.xs,
+  borderRadius: 4,
+  padding: '4px 0',
   zIndex: zIndex.dropdown,
   boxShadow: shadow.menu,
 };

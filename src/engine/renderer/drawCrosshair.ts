@@ -2,7 +2,7 @@ import type { Bar } from '@/types/market';
 import type { Crosshair } from '../crosshair/Crosshair';
 import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
-import { theme } from '../theme';
+import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
 import { formatTime } from './drawAxes';
 
@@ -67,12 +67,12 @@ export function drawLegendBlock(
 
   let x = 8;
   const y = 8;
-  ctx.font = '600 12px system-ui, sans-serif';
+  ctx.font = `600 12px ${TV_FONT}`;
   ctx.fillStyle = theme.legendText;
   ctx.fillText(legend.symbol, x, y);
   x += ctx.measureText(legend.symbol).width;
 
-  ctx.font = '12px system-ui, sans-serif';
+  ctx.font = `12px ${TV_FONT}`;
   const meta = ` · ${legend.interval}${legend.exchange ? ` · ${legend.exchange}` : ''}`;
   ctx.fillStyle = theme.legendDim;
   ctx.fillText(meta, x, y);
@@ -104,7 +104,7 @@ export function drawLegendBlock(
 
   if (indicatorValues && indicatorValues.length > 0) {
     let iy = 26;
-    ctx.font = '11px system-ui, sans-serif';
+    ctx.font = `11px ${TV_FONT}`;
     for (const ind of indicatorValues) {
       if (ind.values.length === 0) continue;
       let ix = 8;
@@ -136,7 +136,7 @@ function drawAxisLabel(
   text: string,
   kind: 'price' | 'time',
 ): void {
-  ctx.font = '11px system-ui, sans-serif';
+  ctx.font = `11px ${TV_FONT}`;
   const w = ctx.measureText(text).width + 12;
   const h = 18;
   let bx = x - w / 2;
@@ -150,7 +150,7 @@ function drawAxisLabel(
   }
   ctx.fillStyle = theme.tooltipBg;
   ctx.fillRect(bx, by, w, h);
-  ctx.fillStyle = theme.axisText;
+  ctx.fillStyle = theme.axisLabelText;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, bx + w / 2, by + h / 2);

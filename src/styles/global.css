@@ -14,10 +14,17 @@ body,
   height: 100%;
   overflow: hidden;
   background: #131722;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* TradingView 字体栈：Windows 落到 Trebuchet MS，而非 Segoe UI */
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, Arial, sans-serif;
   /* 交易界面：价格/盈亏/数量全部等宽数字，列对齐 */
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
+}
+
+/* lucide 默认 2 的描边比 TradingView 自研图标粗；1.5 才对齐其光学重量 */
+svg.lucide {
+  stroke-width: 1.5;
 }
 
 /* 键盘焦点可见 */
@@ -49,7 +56,7 @@ body.theme-dark {
   --accent: #2962ff;
   --input-bg: #131722;
   --text-on-accent: #ffffff;
-  --overlay: rgba(0, 0, 0, 0.5);
+  --overlay: rgba(0, 0, 0, 0.55);
   --row-hover: rgba(42, 46, 57, 0.5);
   /* 界面涨跌色，刻意区别于画布蜡烛色（#26a69a/#ef5350）——TradingView 就是两套 */
   --up: #089981;
@@ -60,9 +67,10 @@ body.theme-dark {
 
 body.theme-light {
   color-scheme: light;
+  /* TV 浅色是纯白表面 + 蓝灰悬停：#f0f3fa 是悬停/次级填充而非面板色 */
   --bg: #ffffff;
-  --panel: #f0f3fa;
-  --panel-2: #e0e3eb;
+  --panel: #ffffff;
+  --panel-2: #f0f3fa;
   --border: #e0e3eb;
   --text: #131722;
   --text-dim: #50535e;
@@ -70,11 +78,11 @@ body.theme-light {
   --accent: #2962ff;
   --input-bg: #ffffff;
   --text-on-accent: #ffffff;
-  --overlay: rgba(0, 0, 0, 0.25);
-  --row-hover: rgba(18, 24, 38, 0.06);
+  --overlay: rgba(19, 23, 34, 0.5);
+  --row-hover: #f0f3fa;
   --up: #089981;
   --down: #f23645;
-  --elevated: #d8dce5;
+  --elevated: #e0e3eb;
   --on-updown: #ffffff;
 }
 
@@ -95,10 +103,10 @@ body.theme-light {
   }
 }
 .tick-up {
-  animation: tick-flash-up 480ms ease-out;
+  animation: tick-flash-up 600ms cubic-bezier(0.16, 0.84, 0.44, 1);
 }
 .tick-down {
-  animation: tick-flash-down 480ms ease-out;
+  animation: tick-flash-down 600ms cubic-bezier(0.16, 0.84, 0.44, 1);
 }
 
 @keyframes spin {
@@ -133,13 +141,13 @@ body.theme-light {
   color: var(--text);
 }
 
-/* Radix 菜单项：鼠标悬停与键盘高亮用同一套底色 */
+/* Radix 菜单项：TV 的行是全出血方形，悬停铺满整行 */
 .tv-menu-item:hover,
 .tv-menu-item[data-highlighted] {
   background: var(--panel-2);
 }
 .tv-menu-item {
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 /* 面板头部的小图标按钮 */
@@ -167,18 +175,24 @@ body.theme-light {
   cursor: col-resize !important;
 }
 
-/* 细滚动条，贴近 TradingView 的面板观感 */
+/* 细滚动条：rgba 梯度在深浅两种表面上都可见 */
 .tv-scroll {
   scrollbar-width: thin;
-  scrollbar-color: var(--panel-2) transparent;
+  scrollbar-color: rgba(128, 138, 158, 0.35) transparent;
 }
 .tv-scroll::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 .tv-scroll::-webkit-scrollbar-thumb {
-  background: var(--panel-2);
+  background: rgba(128, 138, 158, 0.28);
   border-radius: 4px;
+}
+.tv-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 138, 158, 0.42);
+}
+.tv-scroll::-webkit-scrollbar-thumb:active {
+  background: rgba(128, 138, 158, 0.55);
 }
 .tv-scroll::-webkit-scrollbar-track {
   background: transparent;
