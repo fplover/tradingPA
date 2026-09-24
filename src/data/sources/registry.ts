@@ -2,7 +2,7 @@ import type { Bar } from '@/types/market';
 import type { TimeframeId } from '@/types/market';
 import type { AssetClass, Instrument, MarketId } from '@/types/instrument';
 import { tencentSource } from './tencent';
-import { binanceSource } from './binance';
+import { binanceSource, cryptoSearch } from './binance';
 import { sinaSource } from './sina';
 import { eastmoneySearch, futuresQuotes, futuresSearch, futuresUniverse } from './eastmoney';
 import { NoHistoryError, type MarketSource, type Quote, type SearchHit } from './types';
@@ -11,6 +11,16 @@ import { NoHistoryError, type MarketSource, type Quote, type SearchHit } from '.
  * 数据源路由。上层只认 Instrument，不关心哪个站点提供数据。
  * 报价按数据源分组批量请求，K 线按品种所属市场沿候选链取第一个能供应该周期的源。
  */
+
+function dedupe(hits: SearchHit[]): SearchHit[] {
+  const seen = new Set<string>();
+  return hits.filter((h) => {
+    const id = h.instrument.id;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
 
 const QUOTE_SOURCES: MarketSource[] = [tencentSource, binanceSource];
 
@@ -88,15 +98,19 @@ export const dataRegistry = {
     throw lastError ?? new NoHistoryError(instrument, timeframe);
   },
 
-  /** 符号搜索：东财全市场联想；选了「期货」分类时并上合约全集本地过滤 */
+  /** 符号搜索：东财全市场联想；期货分类并上合约全集，加密分类走 Binance 交易对校验 */
   async search(query: string, asset?: AssetClass): Promise<SearchHit[]> {
     const q = query.trim();
     if (!q) return [];
     const suggest = eastmoneySearch.search(q, asset).catch(() => [] as SearchHit[]);
+
+    if (asset === 'crypto') {
+      const [a, b] = await Promise.all([suggest, cryptoSearch(q)]);
+      return dedupe([...b, ...a]);
+    }
     if (asset !== 'futures') return suggest;
     const [a, b] = await Promise.all([suggest, futuresSearch(q, asset).catch(() => [] as SearchHit[])]);
-    const seen = new Set(a.map((h) => h.instrument.id));
-    return [...a, ...b.filter((h) => !seen.has(h.instrument.id))];
+    return dedupe([...a, ...b]);
   },
 
   /** 期货合约全集（浏览/搜索用） */

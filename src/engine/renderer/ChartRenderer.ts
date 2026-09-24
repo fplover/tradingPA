@@ -14,7 +14,8 @@ import { drawDrawings, hitTestDrawing, pixelToPoint, type DrawContext } from '..
 import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
-import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, formatCompact, type PaneButtonRects } from './drawAxes';
+import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, type PaneButtonRects } from './drawAxes';
+import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
 import { drawCrosshair, type LegendInfo } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';

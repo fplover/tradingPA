@@ -60,17 +60,6 @@ export const MARKETS: Record<MarketId, MarketDef> = {
   crypto: { id: 'crypto', label: '加密货币', asset: 'crypto', region: '—', decimals: 2 },
 };
 
-/** 资产类别的中文名（搜索弹窗 tab 文案） */
-export const ASSET_LABELS: Record<AssetClass, string> = {
-  stock: '股票',
-  futures: '期货',
-  index: '指数',
-  fund: '基金',
-  bond: '债券',
-  forex: '外汇',
-  crypto: '加密',
-};
-
 export function makeId(market: MarketId, code: string): string {
   return `${market}:${code}`;
 }

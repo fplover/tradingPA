@@ -85,10 +85,16 @@ function unwrap(text: string): SinaBar[] {
   }
 }
 
-/** 各市场的新浪服务路径。期货代码需大写（RB2610、主连 RB0），美股用裸代码。 */
+/** 各市场的新浪服务路径。期货代码需大写（RB2610），美股用裸代码。
+ *  主连后缀两家不一致：东财 `rbm`，新浪 `RB0`。合约代码恒以数字结尾，故以 M 结尾即主连。 */
+function sinaSymbol(inst: Instrument): string {
+  const code = inst.code.toUpperCase();
+  return code.endsWith('M') ? `${code.slice(0, -1)}0` : code;
+}
+
 function serviceFor(inst: Instrument, plan: ActivePlan): string | null {
   if (inst.market === 'cn-fut') {
-    const sym = inst.code.toUpperCase();
+    const sym = sinaSymbol(inst);
     const path = `${baseOf('futures')}/futures/api/jsonp.php/var%20t=`;
     return plan.kind === 'daily'
       ? `${path}/InnerFuturesNewService.getDailyKLine?symbol=${sym}`

@@ -1,4 +1,5 @@
 import type { BarSeries } from '@/data/BarSeries';
+import { formatCompact } from '@/data/format';
 import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
 import { theme } from '../theme';
@@ -37,16 +38,7 @@ export function drawGrid(
   ctx.stroke();
 }
 
-/** 紧凑数字格式（副图数值轴/图例用）：1.2K / 3.4M */
-export function formatCompact(v: number): string {
-  const a = Math.abs(v);
-  const trim = (n: number) => String(Number(n.toFixed(1)));
-  if (a >= 1e9) return `${trim(v / 1e9)}B`;
-  if (a >= 1e6) return `${trim(v / 1e6)}M`;
-  if (a >= 1e3) return `${trim(v / 1e3)}K`;
-  if (a >= 1 || v === 0) return String(Number(v.toFixed(2)));
-  return String(Number(v.toPrecision(3)));
-}
+/** 紧凑数字格式见 @/data/format（画布与 UI 共用） */
 
 export function drawPriceAxis(
   ctx: CanvasRenderingContext2D,
