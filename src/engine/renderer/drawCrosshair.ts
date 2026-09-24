@@ -30,9 +30,21 @@ export const DEFAULT_LEGEND_OPTIONS: LegendOptions = {
 };
 
 export interface LegendStudyValues {
+  uid: string;
   name: string;
   precision?: number;
   values: Array<{ label: string; value: number }>;
+}
+
+/** 研究图例行命中区（含右侧三个悬停按钮的子区） */
+export interface StudyLegendRect {
+  uid: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  /** 按钮区起点 x：eye / gear / remove 各 16px */
+  btnX: number;
 }
 
 /** 十字光标：虚线 + 价格轴标签 + 时间轴标签 */
@@ -83,6 +95,8 @@ export function drawLegendBlock(
   legend: LegendInfo,
   indicatorValues?: LegendStudyValues[],
   options: LegendOptions = DEFAULT_LEGEND_OPTIONS,
+  hoverUid: string | null = null,
+  outRects?: StudyLegendRect[],
 ): void {
   ctx.save();
   ctx.textAlign = 'left';
@@ -146,7 +160,51 @@ export function drawLegendBlock(
         ctx.fillText(text, ix, iy);
         ix += ctx.measureText(text).width + 8;
       }
+      const btnX = ix + 4;
+      outRects?.push({ uid: ind.uid, x: 8, y: iy - 15, w: btnX + 48 - 8, h: 16, btnX });
+      if (hoverUid === ind.uid) drawStudyButtons(ctx, btnX, iy - 15);
       iy += 16;
+    }
+  }
+  ctx.restore();
+}
+
+/** 研究图例行的悬停按钮：显示/隐藏、设置、移除（TV 同位置） */
+function drawStudyButtons(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+  ctx.save();
+  ctx.strokeStyle = theme.legendDim;
+  ctx.fillStyle = theme.legendDim;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    const bx = x + i * 16;
+    const cx = bx + 8;
+    const cy = y + 8;
+    ctx.beginPath();
+    if (i === 0) {
+      // eye
+      ctx.ellipse(cx, cy, 5, 3.2, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (i === 1) {
+      // gear
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      for (let a = 0; a < 4; a++) {
+        const ang = (a * Math.PI) / 2;
+        ctx.moveTo(cx + Math.cos(ang) * 3.6, cy + Math.sin(ang) * 3.6);
+        ctx.lineTo(cx + Math.cos(ang) * 5.4, cy + Math.sin(ang) * 5.4);
+      }
+      ctx.stroke();
+    } else {
+      // remove
+      ctx.moveTo(cx - 3.4, cy - 3.4);
+      ctx.lineTo(cx + 3.4, cy + 3.4);
+      ctx.moveTo(cx + 3.4, cy - 3.4);
+      ctx.lineTo(cx - 3.4, cy + 3.4);
+      ctx.stroke();
     }
   }
   ctx.restore();

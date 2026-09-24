@@ -17,7 +17,7 @@ import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type PaneButtonRects } from './drawAxes';
 import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
-import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
+import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, type StudyLegendRect, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
 
 const AXIS_WIDTH = 64;
@@ -77,6 +77,12 @@ export class ChartRenderer {
   private drawingsLocked = false;
   private gridVisible = true;
   private legendOptions: LegendOptions = { ...DEFAULT_LEGEND_OPTIONS };
+  /** 研究图例行命中区与悬停态（图例右侧 眼睛/设置/移除 按钮） */
+  private studyRects: StudyLegendRect[] = [];
+  private hoverStudyUid: string | null = null;
+  private studyHoverBtn: number | null = null;
+  private movedFar = false;
+  private studyActionCb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null = null;
   private brickOpts: BrickOptions = {};
 
   // 画线状态
@@ -234,6 +240,10 @@ export class ChartRenderer {
   setLegendOptions(options: Partial<LegendOptions>): void {
     this.legendOptions = { ...this.legendOptions, ...options };
     this.invalidate();
+  }
+
+  setStudyActionCallback(cb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null): void {
+    this.studyActionCb = cb;
   }
 
   setGridVisible(visible: boolean): void {
@@ -709,6 +719,7 @@ export class ChartRenderer {
     const { x, y } = this.toLocal(e);
     const inPriceAxis = x > this.manager.width - AXIS_WIDTH;
     const inTimeAxis = y > this.manager.height - AXIS_HEIGHT;
+    this.movedFar = false;
     this.manager.canvas.setPointerCapture(e.pointerId);
     const sep = !inPriceAxis && !inTimeAxis && e.button === 0 ? this.separatorIndexAt(y) : null;
     if (sep !== null) {
@@ -833,6 +844,7 @@ export class ChartRenderer {
     if (this.dragging) {
       const dx = e.clientX - this.lastPointerX;
       const dy = e.clientY - this.lastPointerY;
+      if (Math.abs(dx) + Math.abs(dy) > 3) this.movedFar = true;
       this.lastPointerX = e.clientX;
       this.lastPointerY = e.clientY;
       this.viewport.panByBars(-dx / this.viewport.spacing);
@@ -872,6 +884,7 @@ export class ChartRenderer {
     if (this.separatorIndexAt(y) !== null) cursor = 'ns-resize';
     else if (x > this.manager.width - AXIS_WIDTH) cursor = 'ns-resize';
     else if (y > this.manager.height - AXIS_HEIGHT) cursor = 'ew-resize';
+    else if (this.studyHoverBtn !== null) cursor = 'pointer';
     else if (this.tradeHoverCursor) cursor = 'pointer';
     const canvas = this.manager.canvas;
     if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
@@ -916,6 +929,16 @@ export class ChartRenderer {
       this.selectPreviewX = x;
       this.invalidate();
       return;
+    }
+    // 研究图例行悬停：记录命中行与按钮区（眼睛/设置/移除）
+    this.studyHoverBtn = null;
+    this.hoverStudyUid = null;
+    for (const r of this.studyRects) {
+      if (x >= r.x && x <= r.btnX + 48 && y >= r.y && y <= r.y + r.h) {
+        this.hoverStudyUid = r.uid;
+        if (x >= r.btnX) this.studyHoverBtn = Math.min(2, Math.floor((x - r.btnX) / 16));
+        break;
+      }
     }
     const pane = this.paneAt(y);
     this.hoveredPaneId = pane.id;
@@ -968,6 +991,13 @@ export class ChartRenderer {
   }
 
   private onPointerUp = (e: PointerEvent) => {
+    const studyBtn = this.studyHoverBtn;
+    const studyUid = this.hoverStudyUid;
+    this.studyHoverBtn = null;
+    if (studyBtn !== null && studyUid && !this.movedFar) {
+      this.studyActionCb?.(studyBtn === 0 ? 'hide' : studyBtn === 1 ? 'settings' : 'remove', studyUid);
+    }
+    this.movedFar = false;
     this.dragging = false;
     this.priceDragging = false;
     this.paneResizeIndex = null;
@@ -1022,6 +1052,8 @@ export class ChartRenderer {
 
   private onPointerLeave = () => {
     this.crosshair.clear();
+    this.hoverStudyUid = null;
+    this.studyHoverBtn = null;
     this.setTradeHoverCursor(false);
     this.invalidate();
   };
@@ -1286,6 +1318,7 @@ export class ChartRenderer {
       for (const inst of mainPane.indicators) {
         if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
         legendIndicators.push({
+          uid: inst.uid,
           name: inst.name,
           precision: inst.precision,
           values: indicatorValuesAt(inst, bars, Math.max(0, legendIndex - 50), legendIndex),
@@ -1302,8 +1335,9 @@ export class ChartRenderer {
       hoveredPane.y,
       hoveredPane.height,
     );
-    // 图例常驻：悬停跟随十字光标，否则显示最后一根
-    drawLegendBlock(ctx, hoveredBar ?? this.displaySeries.last, this.legend, legendIndicators, this.legendOptions);
+    // 图例常驻：悬停跟随十字光标，否则显示最后一根；同时收集研究行命中区
+    this.studyRects = [];
+    drawLegendBlock(ctx, hoveredBar ?? this.displaySeries.last, this.legend, legendIndicators, this.legendOptions, this.hoverStudyUid, this.studyRects);
 
     // 联动：其他图表十字光标时间的垂直参考线
     if (this.syncCrosshairTime !== null && !this.crosshair.visible) {

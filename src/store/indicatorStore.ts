@@ -21,15 +21,31 @@ export interface ActiveIndicator {
 }
 
 const STORAGE_KEY = 'tradingpa.indicatorTemplate';
+const FAV_KEY = 'tradingpa.indicatorFavorites';
+
+function loadFavorites(): string[] {
+  try {
+    const raw = localStorage.getItem(FAV_KEY);
+    if (raw) {
+      const list = JSON.parse(raw) as string[];
+      if (Array.isArray(list)) return list.filter((x) => typeof x === 'string');
+    }
+  } catch {
+    /* 忽略 */
+  }
+  return [];
+}
 
 interface IndicatorStore {
   active: ActiveIndicator[];
+  favorites: string[];
   panelOpen: boolean;
   settingsFor: string | null;
   add: (id: string, params?: Record<string, ParamValue>) => void;
   remove: (id: string) => void;
   updateParams: (id: string, params: Record<string, ParamValue>) => void;
   updateInstance: (id: string, patch: Partial<Omit<ActiveIndicator, 'id' | 'params'>>) => void;
+  toggleFavorite: (id: string) => void;
   replaceAll: (list: ActiveIndicator[]) => void;
   setPanelOpen: (open: boolean) => void;
   setSettingsFor: (id: string | null) => void;
@@ -40,6 +56,7 @@ interface IndicatorStore {
 export const useIndicatorStore = create<IndicatorStore>((set, get) => ({
   // 默认挂 VOL 成交量指标（副图直方图），可通过工具栏复选框或指标面板增删
   active: [{ id: 'vol', params: {} }],
+  favorites: loadFavorites(),
   panelOpen: false,
   settingsFor: null,
   add: (id, params) =>
@@ -49,6 +66,16 @@ export const useIndicatorStore = create<IndicatorStore>((set, get) => ({
     set((s) => ({ active: s.active.map((a) => (a.id === id ? { ...a, params: { ...a.params, ...params } } : a)) })),
   updateInstance: (id, patch) =>
     set((s) => ({ active: s.active.map((a) => (a.id === id ? { ...a, ...patch } : a)) })),
+  toggleFavorite: (id) =>
+    set((s) => {
+      const favorites = s.favorites.includes(id) ? s.favorites.filter((f) => f !== id) : [...s.favorites, id];
+      try {
+        localStorage.setItem(FAV_KEY, JSON.stringify(favorites));
+      } catch {
+        /* 忽略 */
+      }
+      return { favorites };
+    }),
   replaceAll: (list) => set({ active: list }),
   setPanelOpen: (panelOpen) => set({ panelOpen }),
   setSettingsFor: (settingsFor) => set({ settingsFor }),

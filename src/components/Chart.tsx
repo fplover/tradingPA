@@ -3,6 +3,7 @@ import { ChevronsRight } from 'lucide-react';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Bar, ChartTypeId } from '@/types/market';
 import type { IndicatorOptions } from '@/indicators/core/instance';
+import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
 import { useThemeStore } from '@/store/themeStore';
@@ -236,10 +237,32 @@ export function Chart({
       if (action === 'settings') useIndicatorStore.getState().setSettingsFor(indicatorId);
       else useIndicatorStore.getState().remove(indicatorId);
     });
+    // 研究图例悬停按钮：眼睛=隐藏/显示全部 plot，齿轮=设置，×=移除
+    rendererRef.current?.setStudyActionCallback((action, uid) => {
+      const found = (rendererRef.current?.listIndicators() ?? []).find((l) => l.uid === uid);
+      if (!found) return;
+      const store = useIndicatorStore.getState();
+      if (action === 'settings') {
+        store.setSettingsFor(found.id);
+        return;
+      }
+      if (action === 'remove') {
+        store.remove(found.id);
+        return;
+      }
+      const def = getIndicatorDef(found.id);
+      const entry = store.active.find((a) => a.id === found.id);
+      if (!def || !entry) return;
+      const allHidden = def.plots.every((p) => entry.styles?.[p.key]?.hidden === true);
+      const styles: Record<string, { hidden: boolean }> = {};
+      for (const p of def.plots) styles[p.key] = { hidden: !allHidden };
+      store.updateInstance(found.id, { styles });
+    });
     return () => {
       rendererRef.current?.setTradeCallbacks({});
       rendererRef.current?.setChartClickCallback(null);
       rendererRef.current?.setContextMenuCallback(null);
+      rendererRef.current?.setStudyActionCallback(null);
       rendererRef.current?.setPaneActionCallback(null);
     };
   }, []);
