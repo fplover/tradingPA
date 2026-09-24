@@ -203,9 +203,14 @@ export function Chart({
     rendererRef.current?.setChartClickCallback((price, time, clientX, clientY) => {
       useOrderMenuStore.getState().openMenu(price, time, clientX, clientY);
     });
+    rendererRef.current?.setPaneActionCallback((action, indicatorId) => {
+      if (action === 'settings') useIndicatorStore.getState().setSettingsFor(indicatorId);
+      else useIndicatorStore.getState().remove(indicatorId);
+    });
     return () => {
       rendererRef.current?.setTradeCallbacks({});
       rendererRef.current?.setChartClickCallback(null);
+      rendererRef.current?.setPaneActionCallback(null);
     };
   }, []);
 

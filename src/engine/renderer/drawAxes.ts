@@ -37,11 +37,23 @@ export function drawGrid(
   ctx.stroke();
 }
 
+/** 紧凑数字格式（副图数值轴/图例用）：1.2K / 3.4M */
+export function formatCompact(v: number): string {
+  const a = Math.abs(v);
+  const trim = (n: number) => String(Number(n.toFixed(1)));
+  if (a >= 1e9) return `${trim(v / 1e9)}B`;
+  if (a >= 1e6) return `${trim(v / 1e6)}M`;
+  if (a >= 1e3) return `${trim(v / 1e3)}K`;
+  if (a >= 1 || v === 0) return String(Number(v.toFixed(2)));
+  return String(Number(v.toPrecision(3)));
+}
+
 export function drawPriceAxis(
   ctx: CanvasRenderingContext2D,
   priceScale: PriceScale,
   decimals: number,
   geo: DrawGeometry,
+  compact = false,
 ): void {
   ctx.fillStyle = theme.background;
   ctx.fillRect(geo.chartW, 0, 64, geo.chartH);
@@ -59,7 +71,7 @@ export function drawPriceAxis(
   for (const price of priceScale.ticks(6)) {
     const y = priceScale.priceToY(price);
     if (y < 10 || y > geo.chartH - 2) continue;
-    ctx.fillText(price.toFixed(decimals), geo.chartW + 6, y);
+    ctx.fillText(compact ? formatCompact(price) : price.toFixed(decimals), geo.chartW + 6, y);
   }
 }
 
@@ -102,6 +114,65 @@ export function drawBorders(ctx: CanvasRenderingContext2D, geo: DrawGeometry): v
   ctx.strokeStyle = theme.border;
   ctx.lineWidth = 1;
   ctx.strokeRect(0.5, 0.5, geo.chartW - 1, geo.chartH - 1);
+}
+
+/** 副图面板图例：指标名（指标色）+ 最新值，置于面板左上角（TV 风格） */
+export function drawPaneLegend(
+  ctx: CanvasRenderingContext2D,
+  name: string,
+  value: string,
+  color: string,
+): void {
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle = color;
+  ctx.fillText(name, 8, 6);
+  const x = 8 + ctx.measureText(name).width + 6;
+  ctx.fillStyle = theme.axisText;
+  ctx.fillText(value, x, 6);
+}
+
+export interface PaneButtonRects {
+  settings: { x: number; y: number; w: number; h: number };
+  remove: { x: number; y: number; w: number; h: number };
+}
+
+/** 选中面板右上角的操作按钮（设置/移除），返回命中区（面板局部坐标） */
+export function drawPaneButtons(ctx: CanvasRenderingContext2D, geo: DrawGeometry): PaneButtonRects {
+  const size = 18;
+  const y = 3;
+  const remove = { x: geo.chartW - 6 - size, y, w: size, h: size };
+  const settings = { x: remove.x - 2 - size, y, w: size, h: size };
+  ctx.save();
+  ctx.strokeStyle = theme.axisText;
+  ctx.lineWidth = 1.2;
+  drawGearIcon(ctx, settings.x + size / 2, settings.y + size / 2, 5.5);
+  drawXIcon(ctx, remove.x + size / 2, remove.y + size / 2, 4.5);
+  ctx.restore();
+  return { settings, remove };
+}
+
+function drawGearIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.52, 0, Math.PI * 2);
+  ctx.stroke();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * r * 0.72, cy + Math.sin(a) * r * 0.72);
+    ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+    ctx.stroke();
+  }
+}
+
+function drawXIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+  ctx.beginPath();
+  ctx.moveTo(cx - r * 0.62, cy - r * 0.62);
+  ctx.lineTo(cx + r * 0.62, cy + r * 0.62);
+  ctx.moveTo(cx + r * 0.62, cy - r * 0.62);
+  ctx.lineTo(cx - r * 0.62, cy + r * 0.62);
+  ctx.stroke();
 }
 
 export function formatTime(time: number, spacing: number): string {

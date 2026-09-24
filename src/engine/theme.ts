@@ -11,6 +11,8 @@ export interface ChartTheme {
   downWick: string;
   border: string;
   tooltipBg: string;
+  /** 选中面板的淡色高亮背景 */
+  paneActive: string;
 }
 
 const darkTheme: ChartTheme = {
@@ -25,6 +27,7 @@ const darkTheme: ChartTheme = {
   downWick: '#ef5350',
   border: '#2a2e39',
   tooltipBg: '#1e222d',
+  paneActive: 'rgba(255, 255, 255, 0.03)',
 };
 
 const lightTheme: ChartTheme = {
@@ -39,6 +42,7 @@ const lightTheme: ChartTheme = {
   downWick: '#ef5350',
   border: '#e0e3eb',
   tooltipBg: '#f0f3fa',
+  paneActive: 'rgba(41, 98, 255, 0.045)',
 };
 
 export const theme: ChartTheme = { ...darkTheme };

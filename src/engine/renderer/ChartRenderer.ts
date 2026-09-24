@@ -14,7 +14,7 @@ import { drawDrawings, hitTestDrawing, pixelToPoint, type DrawContext } from '..
 import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
-import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders } from './drawAxes';
+import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, formatCompact, type PaneButtonRects } from './drawAxes';
 import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
 import { drawCrosshair, type LegendInfo } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
@@ -37,6 +37,8 @@ interface PaneState {
   manual: boolean;
   /** “自动”按钮命中区（面板局部坐标） */
   autoBtn: { x: number; y: number; w: number; h: number } | null;
+  /** 面板头部操作按钮命中区（设置/移除，选中指标面板时绘制） */
+  headerBtns: PaneButtonRects | null;
 }
 
 /** 砖块类图表类型的默认参数（按 ATR 自适应） */
@@ -87,6 +89,10 @@ export class ChartRenderer {
     onPositionClose?: () => void;
   } = {};
   private chartClickCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
+  /** 当前选中面板 id（TV：点击面板即选中；面板被移除后回落主面板） */
+  private selectedPaneId = 'main';
+  /** 面板头部按钮动作回调（设置/移除指标） */
+  private paneActionCb: ((action: 'settings' | 'remove', indicatorId: string) => void) | null = null;
 
   // 联动 / 复盘
   private syncCrosshairTime: number | null = null;
@@ -135,7 +141,7 @@ export class ChartRenderer {
   }
 
   private createPane(id: string, kind: PaneKind, heightRatio: number): PaneState {
-    return { id, kind, heightRatio, priceScale: new PriceScale(), indicators: [], y: 0, height: 0, manual: false, autoBtn: null };
+    return { id, kind, heightRatio, priceScale: new PriceScale(), indicators: [], y: 0, height: 0, manual: false, autoBtn: null, headerBtns: null };
   }
 
   // ---------- 公开 API ----------
@@ -214,6 +220,10 @@ export class ChartRenderer {
     }
     // 指标面板空了就移除
     this.panes = this.panes.filter((p) => !(p.kind === 'indicator' && p.indicators.length === 0));
+    // 选中面板被移除时回落主面板
+    if (!this.panes.some((p) => p.id === this.selectedPaneId)) {
+      this.selectedPaneId = this.panes[0]?.id ?? 'main';
+    }
     this.invalidate();
   }
 
@@ -373,6 +383,16 @@ export class ChartRenderer {
     this.chartClickCb = cb;
   }
 
+  /** 注册面板头部按钮回调（选中副图面板后显示 设置/移除） */
+  setPaneActionCallback(cb: ((action: 'settings' | 'remove', indicatorId: string) => void) | null): void {
+    this.paneActionCb = cb;
+  }
+
+  /** 当前选中面板（无效 id 回落主面板） */
+  private selectedPane(): PaneState {
+    return this.panes.find((p) => p.id === this.selectedPaneId) ?? this.panes[0];
+  }
+
   /** 同步交易可视化数据（挂单/持仓） */
   setTradeVisual(visual: TradeVisual): void {
     this.tradeVisual = visual;
@@ -525,6 +545,18 @@ export class ChartRenderer {
     return null;
   }
 
+  /** 面板头部按钮命中（设置/移除，仅选中指标面板绘制了按钮） */
+  private hitPaneButtons(x: number, y: number, pane: PaneState): { action: 'settings' | 'remove'; indicatorId: string } | null {
+    if (!pane.headerBtns || pane.indicators.length === 0) return null;
+    const ly = y - pane.y;
+    const inRect = (r: { x: number; y: number; w: number; h: number }) =>
+      x >= r.x - 2 && x <= r.x + r.w + 2 && ly >= r.y - 2 && ly <= r.y + r.h + 2;
+    const indicatorId = pane.indicators[0].def.id;
+    if (inRect(pane.headerBtns.settings)) return { action: 'settings', indicatorId };
+    if (inRect(pane.headerBtns.remove)) return { action: 'remove', indicatorId };
+    return null;
+  }
+
   /** 完成路径类画线（双击/回车） */
   finishPlacing(): void {
     if (this.activeTool === 'path' && this.placing.length >= 2) {
@@ -591,6 +623,14 @@ export class ChartRenderer {
         this.handleToolPointerDown(x, y, pane);
         return;
       }
+      // 面板头部按钮（设置/移除指标）优先于画线/交易命中
+      const btnHit = this.hitPaneButtons(x, y, pane);
+      if (btnHit) {
+        this.paneActionCb?.(btnHit.action, btnHit.indicatorId);
+        return;
+      }
+      // 点击即选中面板（TV 行为）
+      this.selectedPaneId = pane.id;
       const hit = this.hitDrawings(x, y, pane);
       if (hit) {
         this.drawingLayer.select(hit.id);
@@ -924,6 +964,12 @@ export class ChartRenderer {
     return this.displaySeries.raw();
   }
 
+  /** 指标在指定 index 的首个 plot 值（副图图例用） */
+  private indicatorValueAt(inst: IndicatorInstance, index: number): number | null {
+    const vals = indicatorValuesAt(inst, this.barsArray(), Math.max(0, index - 50), index);
+    return vals.length > 0 ? vals[0].value : null;
+  }
+
   private draw(): void {
     const t0 = performance.now();
     const ctx = this.manager.context;
@@ -946,6 +992,7 @@ export class ChartRenderer {
       return;
     }
 
+    const selected = this.selectedPane();
     for (const pane of this.panes) {
       const geo: DrawGeometry = { chartW: w - AXIS_WIDTH, chartH: pane.height };
       ctx.save();
@@ -967,18 +1014,29 @@ export class ChartRenderer {
         }
       }
 
-      // 每面板价格轴
-      if (pane.kind === 'price') {
-        drawPriceAxis(ctx, pane.priceScale, this.legend.decimals, geo);
-      } else {
-        ctx.fillStyle = theme.background;
-        ctx.fillRect(geo.chartW, 0, AXIS_WIDTH, geo.chartH);
-        ctx.strokeStyle = theme.axisLine;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(geo.chartW + 0.5, 0);
-        ctx.lineTo(geo.chartW + 0.5, geo.chartH);
-        ctx.stroke();
+      // 每面板数值轴：主面板全精度，副面板紧凑格式（K/M）
+      drawPriceAxis(ctx, pane.priceScale, this.legend.decimals, geo, pane.kind !== 'price');
+
+      // 选中面板淡色高亮（内容与轴之后绘制，避免冲淡文字/按钮）
+      pane.headerBtns = null;
+      if (pane.id === selected.id) {
+        ctx.fillStyle = theme.paneActive;
+        ctx.fillRect(0, 0, w, geo.chartH);
+      }
+
+      // 副图面板：指标图例（左上角）+ 选中时的操作按钮（右上角）
+      if (pane.kind === 'indicator' && pane.indicators.length > 0) {
+        const inst = pane.indicators[0];
+        const value = this.indicatorValueAt(inst, to);
+        drawPaneLegend(
+          ctx,
+          inst.name,
+          value === null ? '' : formatCompact(value),
+          inst.def.plots[0]?.style.color ?? theme.axisText,
+        );
+        if (pane.id === selected.id) {
+          pane.headerBtns = drawPaneButtons(ctx, geo);
+        }
       }
 
       // 手动价格域指示：“自动”恢复按钮（价格轴底部）
@@ -1004,6 +1062,17 @@ export class ChartRenderer {
 
       ctx.restore();
     }
+
+    // 面板分隔线：各副图面板顶边（贯穿含数值轴的全宽，TV 风格）
+    ctx.strokeStyle = theme.axisLine;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let pi = 1; pi < this.panes.length; pi++) {
+      const sy = Math.round(this.panes[pi].y) + 0.5;
+      ctx.moveTo(0, sy);
+      ctx.lineTo(w, sy);
+    }
+    ctx.stroke();
 
     // 共享时间轴 + 边框 + 十字光标（全画布坐标）
     const mainGeo: DrawGeometry = { chartW: w - AXIS_WIDTH, chartH: h - AXIS_HEIGHT };
