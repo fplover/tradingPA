@@ -24,6 +24,8 @@ export interface PlotStyle {
   /** histogram 以上下零轴分色（涨/跌） */
   upColor?: string;
   downColor?: string;
+  /** histogram：按 K 线涨跌分色而非数值正负（成交量等恒为正的指标） */
+  colorByBar?: boolean;
 }
 
 export interface IndicatorPlot {

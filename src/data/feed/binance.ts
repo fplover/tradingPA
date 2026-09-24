@@ -3,6 +3,8 @@ import type { FeedStatus } from './types';
 
 const REST_BASE = 'https://api.binance.com';
 const WS_BASE = 'wss://stream.binance.com:9443/ws';
+/** REST 请求超时：挂起时及时失败，便于上层降级到模拟数据 */
+const REST_TIMEOUT_MS = 10_000;
 
 /** 拉取历史 K 线（分页） */
 export async function fetchKlines(
@@ -13,17 +15,23 @@ export async function fetchKlines(
   const params = new URLSearchParams({ symbol, interval, limit: String(opts.limit ?? 1000) });
   if (opts.endTime) params.set('endTime', String(opts.endTime));
   if (opts.startTime) params.set('startTime', String(opts.startTime));
-  const res = await fetch(`${REST_BASE}/api/v3/klines?${params}`);
-  if (!res.ok) throw new Error(`REST ${res.status}`);
-  const raw = (await res.json()) as unknown[][];
-  return raw.map((k) => ({
-    time: k[0] as number,
-    open: Number(k[1]),
-    high: Number(k[2]),
-    low: Number(k[3]),
-    close: Number(k[4]),
-    volume: Number(k[5]),
-  }));
+  const ctrl = new AbortController();
+  const timer = window.setTimeout(() => ctrl.abort(), REST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${REST_BASE}/api/v3/klines?${params}`, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`REST ${res.status}`);
+    const raw = (await res.json()) as unknown[][];
+    return raw.map((k) => ({
+      time: k[0] as number,
+      open: Number(k[1]),
+      high: Number(k[2]),
+      low: Number(k[3]),
+      close: Number(k[4]),
+      volume: Number(k[5]),
+    }));
+  } finally {
+    window.clearTimeout(timer);
+  }
 }
 
 /** Binance K 线 WebSocket 订阅（自动重连 + 指数退避；多次失败转 REST 轮询） */

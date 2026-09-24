@@ -63,7 +63,10 @@ test('添加指标创建副图', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '指标', exact: true }).click();
   await page.getByText('RSI 相对强弱').click();
-  await expect(page.getByRole('button', { name: '设置' })).toBeVisible();
+  // VOL 成交量默认激活，chip 区会有多个“设置”按钮；用“含设置按钮”过滤排除面板目录里的同名 span
+  const rsiChip = page.locator('span').filter({ hasText: 'RSI 相对强弱' }).filter({ has: page.getByRole('button', { name: '设置' }) });
+  await expect(rsiChip).toHaveCount(1);
+  await expect(rsiChip.getByRole('button', { name: '设置' })).toBeVisible();
 });
 
 /** 画线工具创建与删除 */
@@ -95,8 +98,8 @@ test('切换到四分布局', async ({ page }) => {
 /** 回放模式：进入即选择K线，点图表定位起点 */
 test('回放模式进入与退出', async ({ page }) => {
   await page.goto('/');
-  // 等实时/模拟数据就绪（避免 0 根进入回放）
-  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 15_000 });
+  // 等实时/模拟数据就绪（避免 0 根进入回放；冷缓存时含 REST 超时回退耗时）
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: '回放：点击后在图表上选择 K 线作为起点' }).click();
   // 进入即选择K线：提示可见、走位控件未出现
   await expect(page.getByText('请在图表上点击选择 K 线作为回放起点')).toBeVisible();

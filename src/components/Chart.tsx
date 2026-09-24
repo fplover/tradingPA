@@ -27,7 +27,6 @@ interface ChartProps {
   liveTickMs?: number;
   chartType?: ChartTypeId;
   logScale?: boolean;
-  showVolume?: boolean;
   onRendererReady?: (renderer: ChartRenderer | null) => void;
   /** 视口滚动到数据左边缘时触发（懒加载更早历史） */
   onNeedsMoreHistory?: () => void;
@@ -44,7 +43,6 @@ export function Chart({
   liveTickMs,
   chartType = 'candles',
   logScale = false,
-  showVolume = true,
   onRendererReady,
   onNeedsMoreHistory,
   sync = false,
@@ -70,7 +68,6 @@ export function Chart({
     }
     renderer.setChartType(chartType);
     renderer.setLogScale(logScale);
-    renderer.setVolumePaneVisible(showVolume);
     renderer.start();
     return () => {
       onRendererReady?.(null);
@@ -95,10 +92,6 @@ export function Chart({
   useEffect(() => {
     rendererRef.current?.setLogScale(logScale);
   }, [logScale]);
-
-  useEffect(() => {
-    rendererRef.current?.setVolumePaneVisible(showVolume);
-  }, [showVolume]);
 
   // 画线工具/磁吸同步
   const activeTool = useDrawingStore((s) => s.activeTool);

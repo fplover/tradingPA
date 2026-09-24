@@ -23,7 +23,8 @@ interface IndicatorStore {
 }
 
 export const useIndicatorStore = create<IndicatorStore>((set, get) => ({
-  active: [],
+  // 默认挂 VOL 成交量指标（副图直方图），可通过工具栏复选框或指标面板增删
+  active: [{ id: 'vol', params: {} }],
   panelOpen: false,
   settingsFor: null,
   add: (id, params) =>

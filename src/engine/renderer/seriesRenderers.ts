@@ -191,35 +191,3 @@ export function drawBaseline(
   }
   ctx.restore();
 }
-
-/** 成交量柱（副图用） */
-export function drawVolume(
-  ctx: CanvasRenderingContext2D,
-  series: BarSeries,
-  from: number,
-  to: number,
-  viewport: Viewport,
-  priceScale: PriceScale,
-  geo: DrawGeometry,
-): void {
-  const spacing = viewport.spacing;
-  const bodyW = Math.max(1, Math.min(spacing * 0.7, 30));
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, geo.chartW, geo.chartH);
-  ctx.clip();
-  for (const up of [true, false]) {
-    ctx.fillStyle = up ? theme.up + '80' : theme.down + '80';
-    ctx.beginPath();
-    for (let i = from; i <= to; i++) {
-      const bar = series.barAt(i)!;
-      if (bar.close >= bar.open !== up) continue;
-      const x = viewport.indexToX(i) - bodyW / 2;
-      if (x > geo.chartW || x + bodyW < 0) continue;
-      const h = geo.chartH - priceScale.priceToY(bar.volume);
-      ctx.rect(x, priceScale.priceToY(bar.volume), bodyW, Math.max(1, h));
-    }
-    ctx.fill();
-  }
-  ctx.restore();
-}

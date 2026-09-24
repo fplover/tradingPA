@@ -88,4 +88,22 @@ export const VolumeMA: IndicatorDef = {
   }),
 };
 
-export const volumeIndicators = [OBV, VWAP, CVD, VolumeMA];
+/** VOL 成交量（副图直方图，按 K 线涨跌着色，半透明） */
+export const VOL: IndicatorDef = {
+  id: 'vol',
+  name: 'VOL 成交量',
+  category: '成交量',
+  overlay: false,
+  lookback: 1,
+  params: [],
+  plots: [
+    {
+      key: 'vol',
+      label: 'VOL',
+      style: { kind: 'histogram', color: '#26a69a', upColor: '#26a69a80', downColor: '#ef535080', colorByBar: true },
+    },
+  ],
+  compute: (bars) => ({ vol: bars.map((b) => b.volume) }),
+};
+
+export const volumeIndicators = [VOL, OBV, VWAP, CVD, VolumeMA];

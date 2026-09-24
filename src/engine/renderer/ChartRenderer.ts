@@ -15,7 +15,7 @@ import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders } from './drawAxes';
-import { drawOhlc, drawLine, drawArea, drawBaseline, drawVolume } from './seriesRenderers';
+import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
 import { drawCrosshair, type LegendInfo } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
 
@@ -23,7 +23,7 @@ const AXIS_WIDTH = 64;
 const AXIS_HEIGHT = 24;
 const PANE_GAP = 0;
 
-type PaneKind = 'price' | 'volume' | 'indicator';
+type PaneKind = 'price' | 'indicator';
 
 interface PaneState {
   id: string;
@@ -47,7 +47,7 @@ function brickOptions(bars: Bar[]): BrickOptions {
 
 /**
  * 图表渲染器：拥有画布/视口/多面板/数据/十字光标，rAF 合帧重绘。
- * 面板模型：index 0 为主价格面板，其余为副面板（成交量等，M3 起挂指标）。
+ * 面板模型：index 0 为主价格面板，其余为副面板（指标，成交量也以 VOL 指标挂副图）。
  */
 export class ChartRenderer {
   private manager: CanvasManager;
@@ -179,17 +179,6 @@ export class ChartRenderer {
     this.logScale = on;
     for (const pane of this.panes) pane.priceScale.setLogMode(on);
     this.invalidate();
-  }
-
-  setVolumePaneVisible(visible: boolean): void {
-    const has = this.panes.some((p) => p.kind === 'volume');
-    if (visible && !has) {
-      this.panes.push(this.createPane('volume', 'volume', 1));
-      this.invalidate();
-    } else if (!visible && has) {
-      this.panes = this.panes.filter((p) => p.kind !== 'volume');
-      this.invalidate();
-    }
   }
 
   /** 恢复全部面板为自动价格适配 */
@@ -962,11 +951,7 @@ export class ChartRenderer {
       ctx.save();
       ctx.translate(0, pane.y);
 
-      if (pane.kind === 'volume') {
-        this.autoscaleVolume(pane, from, to);
-        drawGrid(ctx, this.viewport, pane.priceScale, geo);
-        drawVolume(ctx, this.displaySeries, from, to, this.viewport, pane.priceScale, geo);
-      } else if (pane.kind === 'indicator') {
+      if (pane.kind === 'indicator') {
         this.autoscaleIndicators(pane, from, to);
         drawGrid(ctx, this.viewport, pane.priceScale, geo);
         for (const inst of pane.indicators) {
@@ -1156,16 +1141,6 @@ export class ChartRenderer {
     if (low === Infinity) return;
     // 含零轴（histogram 需要）
     pane.priceScale.autoScale(Math.min(low, 0), Math.max(high, 0));
-  }
-
-  private autoscaleVolume(pane: PaneState, from: number, to: number): void {
-    if (pane.manual) return;
-    let max = 0;
-    for (let i = from; i <= to; i++) {
-      const v = this.displaySeries.barAt(i)!.volume;
-      if (v > max) max = v;
-    }
-    pane.priceScale.autoScale(0, max * 1.1 || 1);
   }
 
   private drawPriceSeries(

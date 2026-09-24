@@ -38,13 +38,17 @@ export function drawIndicator(
     if (style.kind === 'histogram') {
       const spacing = viewport.spacing;
       const bodyW = Math.max(1, Math.min(spacing * 0.7, 30));
-      for (const sign of [1, -1]) {
-        ctx.fillStyle = sign > 0 ? style.upColor ?? style.color : style.downColor ?? style.color;
+      for (const up of [true, false]) {
+        ctx.fillStyle = up ? style.upColor ?? style.color : style.downColor ?? style.color;
         ctx.beginPath();
         for (let i = from; i <= to; i++) {
           const v = values[i - ctxFrom];
           if (v === undefined) continue;
-          if (Math.sign(v) !== sign) continue;
+          // colorByBar：按 K 线涨跌分群；否则按数值正负分群（零值不绘制）
+          const inGroup = style.colorByBar
+            ? bars[i].close >= bars[i].open === up
+            : Math.sign(v) === (up ? 1 : -1);
+          if (!inGroup) continue;
           const x = viewport.indexToX(i) - bodyW / 2;
           if (x > geo.chartW || x + bodyW < 0) continue;
           const y = priceScale.priceToY(v);

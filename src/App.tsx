@@ -81,7 +81,6 @@ export default function App() {
   const [timeframe, setTimeframe] = useState<TimeframeId>('1m');
   const [chartType, setChartType] = useState<ChartTypeId>('candles');
   const [logScale, setLogScale] = useState(false);
-  const [showVolume, setShowVolume] = useState(true);
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
   const replayActive = useReplayStore((s) => s.index !== null || s.selectMode);
@@ -104,6 +103,10 @@ export default function App() {
   const settingsFor = useIndicatorStore((s) => s.settingsFor);
   const saveTemplate = useIndicatorStore((s) => s.saveTemplate);
   const loadTemplate = useIndicatorStore((s) => s.loadTemplate);
+  // 成交量以 VOL 指标挂在副图，复选框即增删该指标
+  const volActive = useIndicatorStore((s) => s.active.some((a) => a.id === 'vol'));
+  const indicatorAdd = useIndicatorStore((s) => s.add);
+  const indicatorRemove = useIndicatorStore((s) => s.remove);
   const treeOpen = useDrawingStore((s) => s.treeOpen);
   const setTreeOpen = useDrawingStore((s) => s.setTreeOpen);
 
@@ -304,7 +307,11 @@ export default function App() {
           对数
         </label>
         <label style={{ color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input type="checkbox" checked={showVolume} onChange={(e) => setShowVolume(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={volActive}
+            onChange={(e) => (e.target.checked ? indicatorAdd('vol') : indicatorRemove('vol'))}
+          />
           成交量
         </label>
         {layout === 1 && (
@@ -344,7 +351,6 @@ export default function App() {
               liveTickMs={mode === 'live' ? undefined : 800}
               chartType={chartType}
               logScale={logScale}
-              showVolume={showVolume}
               onRendererReady={(r) => {
                 rendererRef.current = r;
                 setRenderer(r);
