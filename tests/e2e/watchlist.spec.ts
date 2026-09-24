@@ -109,7 +109,8 @@ test('右侧图标轨切换面板', async ({ page }) => {
 test('向左滚动加载更早历史', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
-  await page.locator('select').nth(0).selectOption('1D');
+  await page.getByRole('button', { name: '周期' }).click();
+  await page.getByRole('menuitem', { name: '1日', exact: true }).click();
   await expect(page.getByText(/\d+ 根 · 1日/)).toBeVisible({ timeout: 15_000 });
   // 等日线真正落地（状态条显示源与根数），避免在在途加载时触发翻页
   await expect(page.getByText(/腾讯财经 · \d+ 根/)).toBeVisible({ timeout: 15_000 });

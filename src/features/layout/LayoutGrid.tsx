@@ -1,5 +1,6 @@
 import { Square, Columns2, Grid2x2, Grid3x3, Table, type LucideIcon } from 'lucide-react';
 import { useLayoutStore, LAYOUTS, type LayoutId } from '@/store/layoutStore';
+import { ToolbarSelect } from '@/ui/ToolbarSelect';
 import { ChartCell } from './ChartCell';
 
 const LAYOUT_ICONS: Record<LayoutId, LucideIcon> = {
@@ -10,38 +11,23 @@ const LAYOUT_ICONS: Record<LayoutId, LucideIcon> = {
   8: Table,
 };
 
-/** 布局切换按钮组（工具栏常驻，图标 + tooltip） */
-export function LayoutButtons() {
+/** 布局切换：单个下拉（TradingView 顶栏右侧的布局菜单） */
+export function LayoutMenu() {
   const layout = useLayoutStore((s) => s.layout);
   const setLayout = useLayoutStore((s) => s.setLayout);
+  const current = LAYOUTS.find((l) => l.id === layout) ?? LAYOUTS[0];
+  const Icon = LAYOUT_ICONS[current.id];
   return (
-    <div style={{ display: 'flex', gap: 2 }}>
-      {LAYOUTS.map((l) => {
-        const Icon = LAYOUT_ICONS[l.id];
-        const active = layout === l.id;
-        return (
-          <button
-            key={l.id}
-            title={`布局：${l.label}`}
-            onClick={() => setLayout(l.id)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 28,
-              height: 26,
-              background: active ? 'var(--accent)' : 'transparent',
-              color: active ? 'var(--text-on-accent)' : 'var(--text-dim)',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-          >
-            <Icon size={15} />
-          </button>
-        );
-      })}
-    </div>
+    <ToolbarSelect
+      ariaLabel="切换布局"
+      value={String(current.id)}
+      label={current.label}
+      icon={<Icon size={14} />}
+      align="end"
+      minWidth={96}
+      onChange={(v) => setLayout(Number(v) as LayoutId)}
+      options={LAYOUTS.map((l) => ({ value: String(l.id), label: l.label }))}
+    />
   );
 }
 

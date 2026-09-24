@@ -155,7 +155,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
         readyRef.current = true;
         setHistory(fresh);
         setStatus('live');
-        setStatusDetail(`${sourceName} · ${fresh.length} 根`);
+        setStatusDetail(sourceName);
         void klineCache.put(inst.id, timeframe, fresh);
       })
       .catch((err: unknown) => {

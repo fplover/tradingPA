@@ -39,23 +39,34 @@ test('页面加载并渲染图表', async ({ page }) => {
 /** 周期与图表类型切换 */
 test('切换周期和图表类型', async ({ page }) => {
   await page.goto('/');
-  const selects = page.locator('select');
-  await selects.nth(0).selectOption('1H');
-  await expect(page.getByText(/\d+ 根 · 1时/)).toBeVisible();
+  await expect(page.getByText(/[1-9][0-9,]* 根 · 1分/)).toBeVisible({ timeout: 20_000 });
 
-  const chartTypeSelect = page.locator('select').nth(1);
-  await chartTypeSelect.selectOption('line');
-  // 线形图下不应有蜡烛色像素
-  const candlePx = await page.evaluate(() => {
-    const c = document.querySelector('canvas') as HTMLCanvasElement;
-    const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
-    let count = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      if ((d[i] === 38 && d[i + 1] === 166 && d[i + 2] === 154) || (d[i] === 239 && d[i + 1] === 83 && d[i + 2] === 80)) count++;
-    }
-    return count;
-  });
-  expect(candlePx).toBe(0);
+  const chartTypeOf = () =>
+    page.evaluate(() => (window as unknown as { __chartRenderer?: { chartTypeNow: string } }).__chartRenderer?.chartTypeNow ?? null);
+  const paintedPx = () =>
+    page.evaluate(() => {
+      const c = document.querySelector('canvas') as HTMLCanvasElement;
+      const d = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+      let count = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] !== 19 || d[i + 1] !== 23 || d[i + 2] !== 34) count++;
+      }
+      return count;
+    });
+
+  await page.getByRole('button', { name: '图表类型' }).click();
+  await page.getByRole('menuitem', { name: '线形图', exact: true }).click();
+  await expect.poll(chartTypeOf).toBe('line');
+  // 线形图下画布仍在正常绘制
+  await expect.poll(paintedPx).toBeGreaterThan(1000);
+
+  await page.getByRole('button', { name: '图表类型' }).click();
+  await page.getByRole('menuitem', { name: '蜡烛图', exact: true }).click();
+  await expect.poll(chartTypeOf).toBe('candles');
+
+  await page.getByRole('button', { name: '周期' }).click();
+  await page.getByRole('menuitem', { name: '1时', exact: true }).click();
+  await expect(page.getByText(/[1-9][0-9,]* 根 · 1时/)).toBeVisible({ timeout: 15_000 });
 });
 
 /** 指标添加与副图面板 */
@@ -89,9 +100,11 @@ test('画线工具创建趋势线并删除', async ({ page }) => {
 /** 多图表布局 */
 test('切换到四分布局', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: '布局：四分' }).click();
+  await page.getByRole('button', { name: '切换布局' }).click();
+  await page.getByRole('menuitem', { name: '四分', exact: true }).click();
   await expect(page.locator('canvas')).toHaveCount(4);
-  await page.getByRole('button', { name: '布局：单图' }).click();
+  await page.getByRole('button', { name: '切换布局' }).click();
+  await page.getByRole('menuitem', { name: '单图', exact: true }).click();
   await expect(page.locator('canvas')).toHaveCount(1);
 });
 

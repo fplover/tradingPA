@@ -11,6 +11,10 @@ export interface ChartTheme {
   downWick: string;
   border: string;
   tooltipBg: string;
+  /** 图例主文字（代码/数值） */
+  legendText: string;
+  /** 图例次文字（O/H/L/C 标签、周期、交易所） */
+  legendDim: string;
   /** 选中面板的淡色高亮背景 */
   paneActive: string;
 }
@@ -27,6 +31,8 @@ const darkTheme: ChartTheme = {
   downWick: '#ef5350',
   border: '#2a2e39',
   tooltipBg: '#1e222d',
+  legendText: '#d1d4dc',
+  legendDim: '#787b86',
   /** 选中面板高亮：必须极淡且中性，否则整块画布会被染上底色 */
   paneActive: 'rgba(255, 255, 255, 0.02)',
 };
@@ -43,6 +49,8 @@ const lightTheme: ChartTheme = {
   downWick: '#ef5350',
   border: '#e0e3eb',
   tooltipBg: '#f0f3fa',
+  legendText: '#131722',
+  legendDim: '#787b86',
   paneActive: 'rgba(19, 23, 34, 0.02)',
 };
 

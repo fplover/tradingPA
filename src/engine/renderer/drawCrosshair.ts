@@ -10,21 +10,19 @@ export interface LegendInfo {
   symbol: string;
   interval: string;
   decimals: number;
+  exchange?: string;
 }
 
-/** 十字光标：虚线 + 价格轴标签 + 时间轴标签 + 左上角 OHLCV 图例 */
+/** 十字光标：虚线 + 价格轴标签 + 时间轴标签 */
 export function drawCrosshair(
   ctx: CanvasRenderingContext2D,
   crosshair: Crosshair,
-  hoveredBar: Bar | undefined,
-  lastBar: Bar | undefined,
   viewport: Viewport,
   priceScale: PriceScale,
   geo: DrawGeometry,
   legend: LegendInfo,
   paneY = 0,
   paneHeight = geo.chartH,
-  indicatorValues?: Array<{ name: string; values: Array<{ label: string; value: number }> }>,
 ): void {
   if (!crosshair.visible) return;
 
@@ -50,31 +48,79 @@ export function drawCrosshair(
   if (time > 0) {
     drawAxisLabel(ctx, snapX, geo.chartH + 1, formatTime(time, viewport.spacing), 'time');
   }
+}
 
-  // 图例
-  drawLegend(ctx, hoveredBar ?? lastBar, legend);
+/**
+ * 左上角图例：常驻单行（TradingView 样式）。
+ * 代码加粗 + 周期/交易所灰字 + O H L C 按该根涨跌着色 + 涨跌幅 + 量；
+ * 悬停时跟随十字光标，否则显示最后一根。叠加指标值换行附在其下。
+ */
+export function drawLegendBlock(
+  ctx: CanvasRenderingContext2D,
+  bar: Bar | undefined,
+  legend: LegendInfo,
+  indicatorValues?: Array<{ name: string; values: Array<{ label: string; value: number }> }>,
+): void {
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
 
-  // 叠加指标值（悬停 bar 上）
-  if (indicatorValues && indicatorValues.length > 0) {
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    let y = 48;
-    for (const ind of indicatorValues) {
-      if (ind.values.length === 0) continue;
-      let x = 8;
-      ctx.fillStyle = '#787b86';
-      ctx.fillText(ind.name, x, y);
-      x += ctx.measureText(ind.name).width + 6;
-      for (const v of ind.values) {
-        ctx.fillStyle = '#d1d4dc';
-        const text = `${v.label} ${formatIndicatorValue(v.value)}`;
-        ctx.fillText(text, x, y);
-        x += ctx.measureText(text).width + 8;
+  let x = 8;
+  const y = 8;
+  ctx.font = '600 12px system-ui, sans-serif';
+  ctx.fillStyle = theme.legendText;
+  ctx.fillText(legend.symbol, x, y);
+  x += ctx.measureText(legend.symbol).width;
+
+  ctx.font = '12px system-ui, sans-serif';
+  const meta = ` · ${legend.interval}${legend.exchange ? ` · ${legend.exchange}` : ''}`;
+  ctx.fillStyle = theme.legendDim;
+  ctx.fillText(meta, x, y);
+  x += ctx.measureText(meta).width + 14;
+
+  if (bar) {
+    const d = legend.decimals;
+    const change = bar.open !== 0 ? ((bar.close - bar.open) / bar.open) * 100 : 0;
+    const color = bar.close >= bar.open ? theme.up : theme.down;
+    const fields: Array<[string, string, string]> = [
+      ['O', bar.open.toFixed(d), color],
+      ['H', bar.high.toFixed(d), color],
+      ['L', bar.low.toFixed(d), color],
+      ['C', bar.close.toFixed(d), color],
+      ['', `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`, color],
+      ['量', formatVolume(bar.volume), theme.legendDim],
+    ];
+    for (const [label, value, c] of fields) {
+      if (label) {
+        ctx.fillStyle = theme.legendDim;
+        ctx.fillText(label, x, y);
+        x += ctx.measureText(label).width + 4;
       }
-      y += 16;
+      ctx.fillStyle = c;
+      ctx.fillText(value, x, y);
+      x += ctx.measureText(value).width + 10;
     }
   }
+
+  if (indicatorValues && indicatorValues.length > 0) {
+    let iy = 26;
+    ctx.font = '11px system-ui, sans-serif';
+    for (const ind of indicatorValues) {
+      if (ind.values.length === 0) continue;
+      let ix = 8;
+      ctx.fillStyle = theme.legendDim;
+      ctx.fillText(ind.name, ix, iy);
+      ix += ctx.measureText(ind.name).width + 6;
+      for (const v of ind.values) {
+        ctx.fillStyle = theme.legendText;
+        const text = `${v.label} ${formatIndicatorValue(v.value)}`;
+        ctx.fillText(text, ix, iy);
+        ix += ctx.measureText(text).width + 8;
+      }
+      iy += 16;
+    }
+  }
+  ctx.restore();
 }
 
 function formatIndicatorValue(v: number): string {
@@ -108,47 +154,6 @@ function drawAxisLabel(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, bx + w / 2, by + h / 2);
-}
-
-function drawLegend(
-  ctx: CanvasRenderingContext2D,
-  bar: Bar | undefined,
-  legend: LegendInfo,
-): void {
-  if (!bar) return;
-  const d = legend.decimals;
-  const change = bar.open !== 0 ? ((bar.close - bar.open) / bar.open) * 100 : 0;
-  const up = bar.close >= bar.open;
-  const color = up ? theme.up : theme.down;
-
-  ctx.font = '12px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'top';
-
-  const title = `${legend.symbol} · ${legend.interval}`;
-  ctx.fillStyle = theme.axisText;
-  ctx.fillText(title, 8, 8);
-
-  const fields: Array<[string, string, string]> = [
-    ['开', bar.open.toFixed(d), '#d1d4dc'],
-    ['高', bar.high.toFixed(d), theme.up],
-    ['低', bar.low.toFixed(d), theme.down],
-    ['收', bar.close.toFixed(d), color],
-    ['', `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`, color],
-    ['量', formatVolume(bar.volume), '#d1d4dc'],
-  ];
-  let x = 8;
-  const y = 28;
-  for (const [label, value, c] of fields) {
-    if (label) {
-      ctx.fillStyle = '#787b86';
-      ctx.fillText(label, x, y);
-      x += ctx.measureText(label).width + 4;
-    }
-    ctx.fillStyle = c;
-    ctx.fillText(value, x, y);
-    x += ctx.measureText(value).width + 10;
-  }
 }
 
 function formatVolume(v: number): string {

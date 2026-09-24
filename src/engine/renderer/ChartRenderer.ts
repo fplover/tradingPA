@@ -17,7 +17,7 @@ import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type PaneButtonRects } from './drawAxes';
 import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
-import { drawCrosshair, type LegendInfo } from './drawCrosshair';
+import { drawCrosshair, drawLegendBlock, type LegendInfo } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
 
 const AXIS_WIDTH = 64;
@@ -68,6 +68,8 @@ export class ChartRenderer {
 
   private chartType: ChartTypeId = 'candles';
   private logScale = false;
+  private autoScaleOn = true;
+  private drawingsHidden = false;
   private brickOpts: BrickOptions = {};
 
   // 画线状态
@@ -182,9 +184,29 @@ export class ChartRenderer {
     this.applyData(true);
   }
 
+  get chartTypeNow(): ChartTypeId {
+    return this.chartType;
+  }
+
   setLogScale(on: boolean): void {
     this.logScale = on;
     for (const pane of this.panes) pane.priceScale.setLogMode(on);
+    this.invalidate();
+  }
+
+  /** 关闭后不再每帧自动适配价格域（TV 底部 auto 开关），手动拖拽/缩放的范围得以保留 */
+  setAutoScale(on: boolean): void {
+    this.autoScaleOn = on;
+    this.invalidate();
+  }
+
+  get isAutoScale(): boolean {
+    return this.autoScaleOn;
+  }
+
+  /** 隐藏全部画线（TV 底部眼睛开关） */
+  setDrawingsHidden(hidden: boolean): void {
+    this.drawingsHidden = hidden;
     this.invalidate();
   }
 
@@ -1094,7 +1116,9 @@ export class ChartRenderer {
     const main = this.panes[0];
     ctx.save();
     ctx.translate(0, main.y);
-    drawDrawings(ctx, this.drawingLayer.list(), this.drawingLayer.selected?.id ?? null, this.drawingCtx(), this.legend.decimals);
+    if (!this.drawingsHidden) {
+      drawDrawings(ctx, this.drawingLayer.list(), this.drawingLayer.selected?.id ?? null, this.drawingCtx(), this.legend.decimals);
+    }
     // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记
     drawTrading(
       ctx,
@@ -1133,16 +1157,15 @@ export class ChartRenderer {
     drawCrosshair(
       ctx,
       this.crosshair,
-      hoveredBar,
-      this.displaySeries.last,
       this.viewport,
       hoveredPane.priceScale,
       mainGeo,
       this.legend,
       hoveredPane.y,
       hoveredPane.height,
-      legendIndicators,
     );
+    // 图例常驻：悬停跟随十字光标，否则显示最后一根
+    drawLegendBlock(ctx, hoveredBar ?? this.displaySeries.last, this.legend, legendIndicators);
 
     // 联动：其他图表十字光标时间的垂直参考线
     if (this.syncCrosshairTime !== null && !this.crosshair.visible) {
@@ -1188,6 +1211,7 @@ export class ChartRenderer {
 
 
   private autoscalePrice(pane: PaneState, from: number, to: number): void {
+    if (!this.autoScaleOn) return;
     let low = Infinity;
     let high = -Infinity;
     for (let i = from; i <= to; i++) {

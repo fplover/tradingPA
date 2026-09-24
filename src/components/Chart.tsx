@@ -23,6 +23,8 @@ interface ChartProps {
   symbol?: string;
   interval?: string;
   decimals?: number;
+  /** 交易所名，图例行展示 */
+  exchange?: string;
   /** 实时模拟：以该间隔抖动最后一根 K 线（M5 替换为真实 WS） */
   liveTickMs?: number;
   chartType?: ChartTypeId;
@@ -40,6 +42,7 @@ export function Chart({
   symbol = 'BTC/USDT',
   interval = '1m',
   decimals = 2,
+  exchange,
   liveTickMs,
   chartType = 'candles',
   logScale = false,
@@ -61,7 +64,7 @@ export function Chart({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const renderer = new ChartRenderer(canvas, bars, { symbol, interval, decimals });
+    const renderer = new ChartRenderer(canvas, bars, { symbol, interval, decimals, exchange });
     rendererRef.current = renderer;
     onRendererReady?.(renderer);
     if (import.meta.env.DEV) {
@@ -90,8 +93,8 @@ export function Chart({
   }, [bars]);
 
   useEffect(() => {
-    rendererRef.current?.setLegend({ symbol, interval, decimals });
-  }, [symbol, interval, decimals]);
+    rendererRef.current?.setLegend({ symbol, interval, decimals, exchange });
+  }, [symbol, interval, decimals, exchange]);
 
   useEffect(() => {
     rendererRef.current?.setChartType(chartType);

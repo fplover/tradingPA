@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, Camera, ChevronDown, Play, RefreshCw, Save, FolderOpen, Moon, Sun } from 'lucide-react';
+import { BarChart3, Camera, CandlestickChart, ChevronDown, Play, RefreshCw, Save, FolderOpen, Moon, Sun } from 'lucide-react';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Instrument } from '@/types/instrument';
 import { MARKETS } from '@/types/instrument';
 import { CHART_TYPES, TIMEFRAMES, getTimeframe, type ChartTypeId, type TimeframeId } from '@/types/market';
-import type { FeedStatus } from '@/data/feed/types';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useLayoutStore } from '@/store/layoutStore';
 import { useThemeStore } from '@/store/themeStore';
@@ -19,34 +18,29 @@ import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
 import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
-import { LayoutGrid, LayoutButtons } from '@/features/layout/LayoutGrid';
+import { LayoutGrid, LayoutMenu } from '@/features/layout/LayoutGrid';
 import { ReplayBar } from '@/features/replay/ReplayBar';
 import { RightSide } from '@/features/rightbar/RightSide';
+import { StatusBar } from '@/features/market/StatusBar';
 import { SymbolSearchDialog } from '@/features/watchlist/SymbolSearchDialog';
 import { useSymbolSearchStore } from '@/features/watchlist/searchStore';
 import { IconButton } from '@/ui/primitives';
+import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { TradePanel } from '@/features/trading/TradePanel';
 import { ChartOrderMenu } from '@/features/trading/ChartOrderMenu';
 import { SummaryReport } from '@/features/trading/SummaryReport';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { fontSize, space } from '@/ui/tokens';
 
-const selectStyle: React.CSSProperties = {
-  background: 'var(--panel)',
-  color: 'var(--text)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
-  padding: '4px 8px',
-  fontSize: 12,
-};
+function tfGroup(id: TimeframeId): string {
+  if (id.endsWith('s')) return '秒';
+  if (id.endsWith('m')) return '分钟';
+  if (id.endsWith('H')) return '小时';
+  return '日及以上';
+}
 
-const STATUS_COLOR: Record<FeedStatus, string> = {
-  idle: 'var(--text-faint)',
-  loading: '#ff9800',
-  live: '#26a69a',
-  reconnecting: '#ff9800',
-  error: '#ef5350',
-};
+const TF_OPTIONS: ToolbarOption[] = TIMEFRAMES.map((t) => ({ value: t.id, label: t.label, group: tfGroup(t.id) }));
+const CT_OPTIONS: ToolbarOption[] = CHART_TYPES.map((c) => ({ value: c.id, label: c.label, group: c.timeBased ? '常规' : '特殊' }));
 
 function ThemeButton() {
   const name = useThemeStore((s) => s.name);
@@ -98,6 +92,8 @@ export default function App() {
   const [timeframe, setTimeframe] = useState<TimeframeId>('1m');
   const [chartType, setChartType] = useState<ChartTypeId>('candles');
   const [logScale, setLogScale] = useState(false);
+  const [autoScale, setAutoScale] = useState(true);
+  const [hideDrawings, setHideDrawings] = useState(false);
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
@@ -111,10 +107,6 @@ export default function App() {
   const settingsFor = useIndicatorStore((s) => s.settingsFor);
   const saveTemplate = useIndicatorStore((s) => s.saveTemplate);
   const loadTemplate = useIndicatorStore((s) => s.loadTemplate);
-  // 成交量以 VOL 指标挂在副图，复选框即增删该指标
-  const volActive = useIndicatorStore((s) => s.active.some((a) => a.id === 'vol'));
-  const indicatorAdd = useIndicatorStore((s) => s.add);
-  const indicatorRemove = useIndicatorStore((s) => s.remove);
 
   const lists = useWatchlistStore((s) => s.lists);
   const activeListId = useWatchlistStore((s) => s.activeListId);
@@ -149,6 +141,14 @@ export default function App() {
     if (!activeInstrument || !activeQuote) return;
     checkAlerts(activeInstrument.symbol, activeQuote.price);
   }, [activeInstrument, activeQuote, checkAlerts]);
+
+  // 底部状态栏开关 → 渲染器
+  useEffect(() => {
+    renderer?.setAutoScale(autoScale);
+  }, [renderer, autoScale]);
+  useEffect(() => {
+    renderer?.setDrawingsHidden(hideDrawings);
+  }, [renderer, hideDrawings]);
 
   // 快捷键：/ 或 Ctrl+K 打开品种搜索（输入框内不劫持）
   useEffect(() => {
@@ -216,36 +216,26 @@ export default function App() {
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          padding: '6px 10px',
-          background: 'var(--panel)',
-          borderBottom: '1px solid var(--border)',
-          flexWrap: 'wrap',
-        }}
-      >
+      <div style={topBarStyle}>
         <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 4 }}>TradingPA</strong>
         <SymbolButton instrument={activeInstrument} />
-        <LayoutButtons />
         {layout === 1 && (
           <>
-            <select style={selectStyle} value={timeframe} onChange={(e) => setTimeframe(e.target.value as TimeframeId)}>
-              {TIMEFRAMES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <select style={selectStyle} value={chartType} onChange={(e) => setChartType(e.target.value as ChartTypeId)}>
-              {CHART_TYPES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+            <ToolbarSelect
+              ariaLabel="周期"
+              value={timeframe}
+              options={TF_OPTIONS}
+              minWidth={104}
+              onChange={(v) => setTimeframe(v as TimeframeId)}
+            />
+            <ToolbarSelect
+              ariaLabel="图表类型"
+              value={chartType}
+              options={CT_OPTIONS}
+              icon={<CandlestickChart size={14} />}
+              minWidth={120}
+              onChange={(v) => setChartType(v as ChartTypeId)}
+            />
             <IconButton
               active={replayActive}
               onClick={() => {
@@ -270,32 +260,15 @@ export default function App() {
         <IconButton onClick={handleScreenshot} title="截图导出 PNG">
           <Camera size={15} />
         </IconButton>
-        <ThemeButton />
-        <label style={{ color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input type="checkbox" checked={logScale} onChange={(e) => setLogScale(e.target.checked)} />
-          对数
-        </label>
-        <label style={{ color: 'var(--text-dim)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <input type="checkbox" checked={volActive} onChange={(e) => (e.target.checked ? indicatorAdd('vol') : indicatorRemove('vol'))} />
-          成交量
-        </label>
+        <ActiveIndicatorChips />
+        <span style={{ flex: 1 }} />
         {layout === 1 && (
           <IconButton onClick={series.reload} title={series.mode === 'mock' ? '重新连接实时数据' : '重新加载历史数据'}>
             <RefreshCw size={15} />
           </IconButton>
         )}
-        <ActiveIndicatorChips />
-        <span style={{ color: 'var(--text-faint)', fontSize: 11, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-          {layout === 1 && (
-            <>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[series.status], display: 'inline-block' }} />
-              {series.mode === 'mock' ? '模拟数据' : series.statusDetail || series.status}
-            </>
-          )}
-          <span style={{ marginLeft: 8 }}>
-            {bars.length.toLocaleString()} 根 · {tf.label}
-          </span>
-        </span>
+        <LayoutMenu />
+        <ThemeButton />
       </div>
 
       {layout === 1 ? (
@@ -309,6 +282,7 @@ export default function App() {
                   symbol={activeInstrument?.symbol ?? '—'}
                   interval={tf.label}
                   decimals={decimals}
+                  exchange={activeInstrument?.exchange}
                   liveTickMs={series.mode === 'mock' ? 800 : undefined}
                   chartType={chartType}
                   logScale={logScale}
@@ -330,6 +304,17 @@ export default function App() {
                 )}
               </div>
             </div>
+            <StatusBar
+              barsCount={bars.length}
+              intervalLabel={tf.label}
+              statusText={series.mode === 'mock' ? '模拟数据' : series.statusDetail || series.status}
+              logScale={logScale}
+              onToggleLog={() => setLogScale((v) => !v)}
+              autoScale={autoScale}
+              onToggleAuto={() => setAutoScale((v) => !v)}
+              hideDrawings={hideDrawings}
+              onToggleHide={() => setHideDrawings((v) => !v)}
+            />
             {replayActive && (
               <ReplayBar
                 barCount={bars.length}
@@ -372,6 +357,18 @@ const symbolBtnStyle: React.CSSProperties = {
   border: 'none',
   borderRadius: 4,
   cursor: 'pointer',
+};
+
+const topBarStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  height: 38,
+  padding: '0 8px',
+  background: 'var(--panel)',
+  borderBottom: '1px solid var(--border)',
+  flexShrink: 0,
+  overflowX: 'auto',
 };
 
 const noDataStyle: React.CSSProperties = {
