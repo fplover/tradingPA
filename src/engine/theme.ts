@@ -27,7 +27,8 @@ const darkTheme: ChartTheme = {
   downWick: '#ef5350',
   border: '#2a2e39',
   tooltipBg: '#1e222d',
-  paneActive: 'rgba(255, 255, 255, 0.03)',
+  /** 选中面板高亮：必须极淡且中性，否则整块画布会被染上底色 */
+  paneActive: 'rgba(255, 255, 255, 0.02)',
 };
 
 const lightTheme: ChartTheme = {
@@ -42,7 +43,7 @@ const lightTheme: ChartTheme = {
   downWick: '#ef5350',
   border: '#e0e3eb',
   tooltipBg: '#f0f3fa',
-  paneActive: 'rgba(41, 98, 255, 0.045)',
+  paneActive: 'rgba(19, 23, 34, 0.02)',
 };
 
 export const theme: ChartTheme = { ...darkTheme };

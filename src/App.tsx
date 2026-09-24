@@ -301,32 +301,34 @@ export default function App() {
       {layout === 1 ? (
         <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-              <Chart
-                bars={bars}
-                symbol={activeInstrument?.symbol ?? '—'}
-                interval={tf.label}
-                decimals={decimals}
-                liveTickMs={series.mode === 'mock' ? 800 : undefined}
-                chartType={chartType}
-                logScale={logScale}
-                onRendererReady={(r) => {
-                  rendererRef.current = r;
-                  setRenderer(r);
-                }}
-                onNeedsMoreHistory={series.loadMore}
-              />
+            <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
               <DrawingToolbar />
-              {panelOpen && <IndicatorPanel />}
-              {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
+              <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                <Chart
+                  bars={bars}
+                  symbol={activeInstrument?.symbol ?? '—'}
+                  interval={tf.label}
+                  decimals={decimals}
+                  liveTickMs={series.mode === 'mock' ? 800 : undefined}
+                  chartType={chartType}
+                  logScale={logScale}
+                  onRendererReady={(r) => {
+                    rendererRef.current = r;
+                    setRenderer(r);
+                  }}
+                  onNeedsMoreHistory={series.loadMore}
+                />
+                {panelOpen && <IndicatorPanel />}
+                {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
 
-              {/* 该市场没有历史数据源时，明确说明原因而不是留一块空白画布 */}
-              {bars.length === 0 && series.status === 'error' && (
-                <div style={noDataStyle}>
-                  <div style={{ fontSize: fontSize.lg, color: 'var(--text-dim)', marginBottom: space.xs }}>无法载入 K 线</div>
-                  <div style={{ fontSize: fontSize.md, color: 'var(--text-faint)', lineHeight: 1.7 }}>{series.statusDetail}</div>
-                </div>
-              )}
+                {/* 该市场没有历史数据源时，明确说明原因而不是留一块空白画布 */}
+                {bars.length === 0 && series.status === 'error' && (
+                  <div style={noDataStyle}>
+                    <div style={{ fontSize: fontSize.lg, color: 'var(--text-dim)', marginBottom: space.xs }}>无法载入 K 线</div>
+                    <div style={{ fontSize: fontSize.md, color: 'var(--text-faint)', lineHeight: 1.7 }}>{series.statusDetail}</div>
+                  </div>
+                )}
+              </div>
             </div>
             {replayActive && (
               <ReplayBar

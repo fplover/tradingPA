@@ -14,7 +14,7 @@ import { drawDrawings, hitTestDrawing, pixelToPoint, type DrawContext } from '..
 import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
-import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, type PaneButtonRects } from './drawAxes';
+import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type PaneButtonRects } from './drawAxes';
 import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
 import { drawCrosshair, type LegendInfo } from './drawCrosshair';
@@ -1017,6 +1017,16 @@ export class ChartRenderer {
 
       // 每面板数值轴：主面板全精度，副面板紧凑格式（K/M）
       drawPriceAxis(ctx, pane.priceScale, this.legend.decimals, geo, pane.kind !== 'price');
+
+      // 主图最新价：点线 + 右轴方向着色徽章
+      if (pane.kind === 'price') {
+        const bs = this.barsArray();
+        if (bs.length > 0) {
+          const lastBar = bs[bs.length - 1];
+          const prevClose = bs.length > 1 ? bs[bs.length - 2].close : lastBar.open;
+          drawLastPrice(ctx, pane.priceScale, lastBar, prevClose, this.legend.decimals, geo);
+        }
+      }
 
       // 选中面板淡色高亮（内容与轴之后绘制，避免冲淡文字/按钮）
       pane.headerBtns = null;

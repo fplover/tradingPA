@@ -73,7 +73,7 @@ export function DrawingToolbar() {
   const setMagnet = useDrawingStore((s) => s.setMagnet);
 
   return (
-    <div style={toolbarStyle}>
+    <div style={toolbarStyle} aria-label="画线工具">
       {GROUPS.map((group, gi) => (
         <div key={gi} style={{ display: 'contents' }}>
           {gi > 0 && <div style={sepStyle} />}
@@ -83,13 +83,13 @@ export function DrawingToolbar() {
             return (
               <button
                 key={id}
+                className="rail-btn"
+                data-active={active}
                 title={TOOL_LABELS[id]}
+                aria-label={TOOL_LABELS[id]}
+                aria-pressed={active}
                 onClick={() => setActiveTool(id === 'cursor' ? null : id)}
-                style={{
-                  ...btnStyle,
-                  background: active ? 'var(--accent)' : 'transparent',
-                  color: active ? 'var(--text-on-accent)' : 'var(--text-dim)',
-                }}
+                style={btnStyle}
               >
                 <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />
               </button>
@@ -99,20 +99,22 @@ export function DrawingToolbar() {
       ))}
       <div style={sepStyle} />
       <button
+        className="rail-btn"
+        data-active={magnet}
         title={TOOL_LABELS.magnet}
+        aria-label={TOOL_LABELS.magnet}
+        aria-pressed={magnet}
         onClick={() => setMagnet(!magnet)}
-        style={{
-          ...btnStyle,
-          background: magnet ? 'var(--accent)' : 'transparent',
-          color: magnet ? 'var(--text-on-accent)' : 'var(--text-dim)',
-        }}
+        style={btnStyle}
       >
         <Magnet size={16} strokeWidth={magnet ? 2.2 : 1.8} />
       </button>
       <button
+        className="rail-btn"
         title="删除选中画线（Delete）"
+        aria-label="删除选中画线"
         onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete' }))}
-        style={{ ...btnStyle, color: 'var(--text-dim)' }}
+        style={{ ...btnStyle, marginTop: 'auto' }}
       >
         <Trash2 size={16} strokeWidth={1.8} />
       </button>
@@ -120,30 +122,22 @@ export function DrawingToolbar() {
   );
 }
 
+/** 独立列而非浮层：TV 的工具栏占据图表左侧一列，不遮挡画布与图例 */
 const toolbarStyle: React.CSSProperties = {
-  position: 'absolute',
-  left: 8,
-  top: '50%',
-  transform: 'translateY(-50%)',
+  width: 38,
+  flexShrink: 0,
   display: 'flex',
   flexDirection: 'column',
-  gap: 3,
+  alignItems: 'center',
+  gap: 2,
+  padding: '6px 0',
   background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: 6,
-  padding: 5,
-  zIndex: 15,
+  borderRight: '1px solid var(--border)',
+  overflowY: 'auto',
 };
 
 const btnStyle: React.CSSProperties = {
-  width: 30,
-  height: 30,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
   border: 'none',
-  borderRadius: 4,
-  cursor: 'pointer',
   flexShrink: 0,
 };
 

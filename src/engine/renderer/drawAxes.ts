@@ -1,4 +1,5 @@
 import type { BarSeries } from '@/data/BarSeries';
+import type { Bar } from '@/types/market';
 import { formatCompact } from '@/data/format';
 import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
@@ -123,6 +124,45 @@ export function drawPaneLegend(
   const x = 8 + ctx.measureText(name).width + 6;
   ctx.fillStyle = theme.axisText;
   ctx.fillText(value, x, 6);
+}
+
+/** 最新价：横贯图表的点线 + 右轴方向着色徽章（TradingView 默认开启） */
+export function drawLastPrice(
+  ctx: CanvasRenderingContext2D,
+  priceScale: PriceScale,
+  last: Bar,
+  prevClose: number,
+  decimals: number,
+  geo: DrawGeometry,
+): void {
+  const y = Math.round(priceScale.priceToY(last.close)) + 0.5;
+  if (y < -20 || y > geo.chartH + 20) return;
+  const color = last.close >= prevClose ? theme.up : theme.down;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath();
+  ctx.moveTo(0, y);
+  ctx.lineTo(geo.chartW, y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const text = last.close.toFixed(decimals);
+  ctx.font = '11px system-ui, sans-serif';
+  const w = Math.max(58, ctx.measureText(text).width + 12);
+  const h = 18;
+  const by = Math.min(Math.max(y - h / 2, 1), geo.chartH - h - 1);
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(geo.chartW + 2, by, w, h, 3);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, geo.chartW + 2 + w / 2, by + h / 2 + 0.5);
+  ctx.restore();
 }
 
 export interface PaneButtonRects {
