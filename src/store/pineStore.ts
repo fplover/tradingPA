@@ -1,0 +1,125 @@
+import { create } from 'zustand';
+import { compilePine, DEFAULT_PINE_SCRIPT, type PineError } from '@/indicators/pine/compile';
+import { registerCustomDef, unregisterCustomDef } from '@/indicators/registry';
+import { useIndicatorStore } from '@/store/indicatorStore';
+
+/** 编辑器草稿编译产物的固定 id；保存后的脚本各自持有稳定 id */
+export const DRAFT_ID = 'pine_custom';
+
+export interface PineScript {
+  id: string;
+  name: string;
+  source: string;
+}
+
+const STORAGE_KEY = 'tradingpa.pine.scripts';
+
+let seq = 0;
+function newId(): string {
+  seq += 1;
+  return `pine_${Date.now().toString(36)}_${seq}`;
+}
+
+function loadScripts(): PineScript[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const list = JSON.parse(raw) as PineScript[];
+      if (Array.isArray(list)) return list.filter((s) => s && typeof s.source === 'string');
+    }
+  } catch {
+    /* 损坏则忽略 */
+  }
+  return [];
+}
+
+function persist(scripts: PineScript[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(scripts));
+  } catch {
+    /* 忽略 */
+  }
+}
+
+interface PineStore {
+  scripts: PineScript[];
+  editorSource: string;
+  errors: PineError[];
+  /** 最近一次运行成功的草稿名称 */
+  draftName: string | null;
+  panelOpen: boolean;
+  setPanelOpen: (open: boolean) => void;
+  setEditorSource: (source: string) => void;
+  /** 编译草稿；成功则注册为可添加的指标 */
+  run: () => boolean;
+  /** 保存草稿为脚本（同名覆盖）并注册 */
+  save: () => void;
+  remove: (id: string) => void;
+  loadIntoEditor: (id: string) => void;
+  addDraftToChart: () => void;
+}
+
+const initialScripts = loadScripts();
+// 启动时把已保存脚本编译进注册表
+for (const s of initialScripts) {
+  const { def } = compilePine(s.source, s.id);
+  if (def) registerCustomDef(def);
+}
+
+export const usePineStore = create<PineStore>((set, get) => ({
+  scripts: initialScripts,
+  editorSource: DEFAULT_PINE_SCRIPT,
+  errors: [],
+  draftName: null,
+  panelOpen: false,
+
+  setPanelOpen: (panelOpen) => set({ panelOpen }),
+  setEditorSource: (editorSource) => set({ editorSource, errors: [] }),
+
+  run: () => {
+    const { editorSource } = get();
+    const { def, errors } = compilePine(editorSource, DRAFT_ID);
+    if (!def) {
+      set({ errors, draftName: null });
+      return false;
+    }
+    registerCustomDef(def);
+    set({ errors: [], draftName: def.name });
+    return true;
+  },
+
+  save: () => {
+    const { editorSource, scripts } = get();
+    const { def, errors } = compilePine(editorSource, DRAFT_ID);
+    if (!def) {
+      set({ errors, draftName: null });
+      return;
+    }
+    const existing = scripts.find((s) => s.name === def.name);
+    const id = existing?.id ?? newId();
+    const script: PineScript = { id, name: def.name, source: editorSource };
+    const next = existing ? scripts.map((s) => (s.id === id ? script : s)) : [...scripts, script];
+    persist(next);
+    const { def: savedDef } = compilePine(editorSource, id);
+    if (savedDef) registerCustomDef(savedDef);
+    set({ scripts: next, errors: [], draftName: def.name });
+  },
+
+  remove: (id) => {
+    const next = get().scripts.filter((s) => s.id !== id);
+    persist(next);
+    unregisterCustomDef(id);
+    useIndicatorStore.getState().remove(id);
+    set({ scripts: next });
+  },
+
+  loadIntoEditor: (id) => {
+    const s = get().scripts.find((x) => x.id === id);
+    if (s) set({ editorSource: s.source, errors: [] });
+  },
+
+  addDraftToChart: () => {
+    if (!get().run()) return;
+    useIndicatorStore.getState().add(DRAFT_ID);
+  },
+}));

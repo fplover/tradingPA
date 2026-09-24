@@ -13,13 +13,28 @@ export const ALL_INDICATORS: IndicatorDef[] = [
   ...volumeIndicators,
 ];
 
+/** 自定义指标（Pine 子集编译产物）：运行时注册，与内置指标同管线 */
+const customDefs = new Map<string, IndicatorDef>();
+
+export function registerCustomDef(def: IndicatorDef): void {
+  customDefs.set(def.id, def);
+}
+
+export function unregisterCustomDef(id: string): void {
+  customDefs.delete(id);
+}
+
+function allDefs(): IndicatorDef[] {
+  return customDefs.size === 0 ? ALL_INDICATORS : [...ALL_INDICATORS, ...customDefs.values()];
+}
+
 export function getIndicatorDef(id: string): IndicatorDef | undefined {
-  return ALL_INDICATORS.find((d) => d.id === id);
+  return allDefs().find((d) => d.id === id);
 }
 
 export function indicatorsByCategory(): Array<{ category: string; items: IndicatorDef[] }> {
   const map = new Map<string, IndicatorDef[]>();
-  for (const def of ALL_INDICATORS) {
+  for (const def of allDefs()) {
     const list = map.get(def.category) ?? [];
     list.push(def);
     map.set(def.category, list);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, Camera, CandlestickChart, ChevronDown, Maximize2, Play, Redo2, RefreshCw, Save, Search, Settings2, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
+import { BarChart3, Camera, CandlestickChart, ChevronDown, FileCode2, Maximize2, Play, Redo2, RefreshCw, Save, Search, Settings2, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
@@ -25,6 +25,8 @@ import { RightSide } from '@/features/rightbar/RightSide';
 import { StatusBar } from '@/features/market/StatusBar';
 import { ChartContextMenu, type ChartMenuState } from '@/features/market/ChartContextMenu';
 import { ChartSettingsDialog } from '@/features/settings/ChartSettingsDialog';
+import { PineEditorPanel } from '@/features/pine/PineEditorPanel';
+import { usePineStore } from '@/store/pineStore';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
 import { DEFAULT_LEGEND_OPTIONS } from '@/engine/renderer/drawCrosshair';
 import { SymbolSearchDialog } from '@/features/watchlist/SymbolSearchDialog';
@@ -106,6 +108,8 @@ export default function App() {
   const [reportOpen, setReportOpen] = useState(false);
   const [chartMenu, setChartMenu] = useState<ChartMenuState | null>(null);
   const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
+  const pineOpen = usePineStore((s) => s.panelOpen);
+  const setPineOpen = usePineStore((s) => s.setPanelOpen);
   const [gridVisible, setGridVisible] = useState(true);
   const [legendOpts, setLegendOpts] = useState<LegendOptions>({ ...DEFAULT_LEGEND_OPTIONS });
   const wasReplaying = useRef(false);
@@ -302,6 +306,9 @@ export default function App() {
         <IconButton onClick={() => setChartSettingsOpen(true)} title="图表设置">
           <Settings2 size={15} />
         </IconButton>
+        <IconButton active={pineOpen} onClick={() => setPineOpen(!pineOpen)} title="Pine 编辑器">
+          <FileCode2 size={15} />
+        </IconButton>
         <IconButton onClick={() => useSymbolSearchStore.getState().openSearch('switch')} title="快速搜索">
           <Search size={15} />
         </IconButton>
@@ -354,6 +361,7 @@ export default function App() {
                 )}
               </div>
             </div>
+            {layout === 1 && pineOpen && <PineEditorPanel />}
             <StatusBar
               barsCount={bars.length}
               intervalLabel={tf.label}
