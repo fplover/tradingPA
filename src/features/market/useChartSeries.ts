@@ -44,9 +44,19 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
   const barsRef = useRef<Bar[]>(history);
   barsRef.current = history;
   const feedRef = useRef<LiveDataFeed | null>(null);
+  const pagingRef = useRef(false);
+  /** 源确实没有更早数据（连续两次空/失败）后停止请求；单次抖动要重试 */
+  const noMoreRef = useRef(false);
+  const pageFailsRef = useRef(0);
+  const retryAtRef = useRef(0);
+  /** 当前这批历史是否已落地；在途时禁止翻页合并，避免把旧周期数据混进新周期 */
+  const readyRef = useRef(false);
+  const loadTokenRef = useRef(0);
 
   const id = instrument?.id ?? null;
   const tf = getTimeframe(timeframe);
+  const tfRef = useRef(tf);
+  tfRef.current = tf;
   const quote = useQuoteStore((s) => (id ? s.quotes[id] : undefined));
 
   useEffect(() => {
@@ -59,8 +69,15 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     }
     let disposed = false;
     const sourceName = dataRegistry.sourceName(inst);
+    loadTokenRef.current += 1;
+    readyRef.current = false;
+    noMoreRef.current = false;
+    pagingRef.current = false;
+    pageFailsRef.current = 0;
+    retryAtRef.current = 0;
 
     const degradeToMock = (reason: string) => {
+      readyRef.current = true;
       setMode('mock');
       setStatus('error');
       setStatusDetail(`${reason}，已切换到模拟数据`);
@@ -72,6 +89,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     setStatusDetail('读取本地缓存');
     void klineCache.get(inst.id, timeframe).then((cached) => {
       if (disposed || cached.length === 0) return;
+      readyRef.current = true;
       setHistory(cached);
     });
 
@@ -82,6 +100,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
         handlers: {
           onHistory: (bars, info) => {
             if (disposed) return;
+            readyRef.current = true;
             setHistory(info.prepend ? [...bars, ...barsRef.current] : bars);
             setStatus('live');
           },
@@ -133,6 +152,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
           degradeToMock('数据源返回空');
           return;
         }
+        readyRef.current = true;
         setHistory(fresh);
         setStatus('live');
         setStatusDetail(`${sourceName} · ${fresh.length} 根`);
@@ -142,6 +162,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
         if (disposed) return;
         if (err instanceof NoHistoryError) {
           // 该市场确实没有历史源，给空图表 + 明确原因，不拿模拟数据冒充真实行情
+          readyRef.current = true;
           setHistory([]);
           setStatus('error');
           setStatusDetail(err.message);
@@ -169,7 +190,39 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     status,
     statusDetail,
     loadMore: () => {
-      void feedRef.current?.loadMore();
+      const inst = instRef.current;
+      if (!inst) return;
+      if (inst.market === 'crypto') {
+        void feedRef.current?.loadMore();
+        return;
+      }
+      const current = barsRef.current;
+      if (pagingRef.current || noMoreRef.current || current.length === 0) return;
+      if (Date.now() < retryAtRef.current) return;
+      // 历史还在在途加载时不翻页：否则会把旧周期的数据混进新周期
+      if (!readyRef.current) return;
+      const token = loadTokenRef.current;
+      pagingRef.current = true;
+      const fail = () => {
+        pageFailsRef.current += 1;
+        retryAtRef.current = Date.now() + 3000;
+        if (pageFailsRef.current >= 2) noMoreRef.current = true;
+      };
+      dataRegistry
+        .barsBefore(inst, tfRef.current.id, current[0].time, HISTORY_LIMIT)
+        .then((older) => {
+          if (token !== loadTokenRef.current) return;
+          if (older.length === 0) {
+            fail();
+            return;
+          }
+          pageFailsRef.current = 0;
+          setHistory((h) => klineCache.merge(older, h));
+        })
+        .catch(fail)
+        .finally(() => {
+          pagingRef.current = false;
+        });
     },
     reload: () => setNonce((n) => n + 1),
   };

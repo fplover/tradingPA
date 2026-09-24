@@ -105,6 +105,26 @@ test('右侧图标轨切换面板', async ({ page }) => {
   await expect(page.getByText(/对象树（\d+）/)).toBeHidden();
 });
 
+/** 日线滚到最左自动加载更早历史，且视口不跳回右边缘 */
+test('向左滚动加载更早历史', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+  await page.locator('select').nth(0).selectOption('1D');
+  await expect(page.getByText(/\d+ 根 · 1日/)).toBeVisible({ timeout: 15_000 });
+  // 等日线真正落地（状态条显示源与根数），避免在在途加载时触发翻页
+  await expect(page.getByText(/腾讯财经 · \d+ 根/)).toBeVisible({ timeout: 15_000 });
+
+  const countOf = () => page.evaluate(() => (window as unknown as { __chartRenderer?: { getBars(): unknown[] } }).__chartRenderer?.getBars().length ?? 0);
+  const before = await countOf();
+  expect(before).toBeGreaterThan(100);
+
+  await page.evaluate(() => {
+    const r = (window as unknown as { __chartRenderer?: { getViewport(): { first: number; spacing: number }; setSyncViewport(v: { first: number; spacing: number }): void } }).__chartRenderer;
+    r?.setSyncViewport({ first: 0, spacing: r.getViewport().spacing });
+  });
+  await expect.poll(countOf, { timeout: 20_000 }).toBeGreaterThan(before);
+});
+
 /** 面板宽度可拖拽并持久化 */
 test('拖拽调整面板宽度', async ({ page }) => {
   await page.goto('/');

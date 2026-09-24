@@ -155,6 +155,39 @@ function pickSeries(node: Record<string, unknown>, period: string): unknown[][] 
   return [];
 }
 
+/** 本地日期 → 接口日期参数 YYYY-MM-DD */
+function toDateParam(t: number): string {
+  const d = new Date(t);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+type ActivePlan = Exclude<ReturnType<typeof planFor>, { kind: 'none' }>;
+
+/** 拉一段 K 线。endDate 给定时取该日（含）之前的 count 根，用于向左翻页。
+ *  日线参数位：品种,周期,起,止,条数,复权；分钟线只支持 品种,周期,空,条数。 */
+async function fetchSeries(sym: string, plan: ActivePlan, count: number, endDate?: string): Promise<Bar[]> {
+  const url =
+    plan.kind === 'minute'
+      ? `${MINUTE_URL}?param=${encodeURIComponent(`${sym},m${plan.n},,${count}`)}`
+      : `${DAILY_URL}?param=${encodeURIComponent(`${sym},${plan.p},,${endDate ?? ''},${count},qfq`)}`;
+
+  const resp = await fetchJson<KlineResp>(url);
+  const node = resp.data?.[sym];
+  if (resp.code !== 0 || !node) return [];
+  const rows = pickSeries(node, plan.kind === 'minute' ? `m${plan.n}` : plan.p);
+
+  // 行格式：[时间, 开, 收, 高, 低, 量]（腾讯把收盘放在第 3 位）
+  return rows.map((r) => ({
+    time: parseBarTime(String(r[0])),
+    open: num(String(r[1])),
+    high: num(String(r[3])),
+    low: num(String(r[4])),
+    close: num(String(r[2])),
+    volume: num(String(r[5])),
+  }));
+}
+
 export const tencentSource: MarketSource = {
   name: '腾讯财经',
   markets: SUPPORTED,
@@ -194,28 +227,25 @@ export const tencentSource: MarketSource = {
     const ratio = plan.aggregate && tf.seconds > 0 ? Math.ceil(tf.seconds / baseSeconds) : 1;
     const count = Math.min(800, Math.max(limit, limit * ratio));
 
-    const url =
-      plan.kind === 'minute'
-        ? `${MINUTE_URL}?param=${encodeURIComponent(`${sym},m${plan.n},,${count}`)}`
-        : `${DAILY_URL}?param=${encodeURIComponent(`${sym},${plan.p},,,${count},qfq`)}`;
-
-    const resp = await fetchJson<KlineResp>(url);
-    const node = resp.data?.[sym];
-    if (resp.code !== 0 || !node) throw new NoHistoryError(instrument, timeframe);
-    const rows = pickSeries(node, plan.kind === 'minute' ? `m${plan.n}` : plan.p);
-    if (rows.length === 0) throw new NoHistoryError(instrument, timeframe);
-
-    // 行格式：[时间, 开, 收, 高, 低, 量]（腾讯把收盘放在第 3 位）
-    const bars: Bar[] = rows.map((r) => ({
-      time: parseBarTime(String(r[0])),
-      open: num(String(r[1])),
-      high: num(String(r[3])),
-      low: num(String(r[4])),
-      close: num(String(r[2])),
-      volume: num(String(r[5])),
-    }));
+    const bars = await fetchSeries(sym, plan, count);
+    if (bars.length === 0) throw new NoHistoryError(instrument, timeframe);
 
     if (!plan.aggregate) return bars.slice(-limit);
     return aggregateBars(bars, tf).slice(-limit);
+  },
+
+  /** 向左翻页：日线族用日期区间取终点之前的 count 根。
+   *  分钟线的区间参数实测不可靠，不支持翻页。 */
+  async barsBefore({ instrument, timeframe, limit, before }): Promise<Bar[]> {
+    const sym = symbolOf(instrument, true);
+    if (!sym) return [];
+    const plan = planFor(timeframe);
+    if (plan.kind !== 'daily') return [];
+
+    const tf = getTimeframe(timeframe);
+    const ratio = plan.aggregate ? Math.max(1, Math.ceil(tf.seconds / 86_400)) : 1;
+    const bars = await fetchSeries(sym, plan, Math.min(800, limit * ratio), toDateParam(before - 86_400_000));
+    if (bars.length === 0) return [];
+    return plan.aggregate ? aggregateBars(bars, tf) : bars;
   },
 };

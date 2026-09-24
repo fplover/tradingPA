@@ -114,7 +114,7 @@ export const sinaSource: MarketSource = {
   name: '新浪财经',
   markets: ['cn-fut', 'us-nasdaq', 'us-nyse', 'us-amex'],
 
-  async bars({ instrument, timeframe, limit }: BarsRequest): Promise<Bar[]> {
+  async bars({ instrument, timeframe }: BarsRequest): Promise<Bar[]> {
     const plan = planFor(timeframe);
     if (plan.kind === 'none') throw new NoHistoryError(instrument, timeframe);
     const url = serviceFor(instrument, plan);
@@ -134,7 +134,12 @@ export const sinaSource: MarketSource = {
 
     const tf = getTimeframe(timeframe);
     const baseSeconds = plan.kind === 'daily' ? 86_400 : plan.type * 60;
-    if (tf.calendar === undefined && tf.seconds <= baseSeconds) return bars.slice(-limit);
-    return aggregateBars(bars, tf).slice(-limit);
+    // 新浪一次给全上市以来的数据，不截断，向左滚动无需再翻页
+    if (tf.calendar === undefined && tf.seconds <= baseSeconds) return bars;
+    return aggregateBars(bars, tf);
+  },
+
+  async barsBefore(): Promise<Bar[]> {
+    return [];
   },
 };

@@ -51,6 +51,7 @@ export function Chart({
   const rendererRef = useRef<ChartRenderer | null>(null);
   const lastBarRef = useRef<Bar | undefined>(bars[bars.length - 1]);
   const barsRef = useRef<Bar[]>(bars);
+  const prevBarsRef = useRef<Bar[]>(bars);
 
   useEffect(() => {
     lastBarRef.current = bars[bars.length - 1];
@@ -78,7 +79,14 @@ export function Chart({
   }, []);
 
   useEffect(() => {
-    rendererRef.current?.setData(bars);
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const prev = prevBarsRef.current;
+    prevBarsRef.current = bars;
+    // 左侧翻页：新数据全是更早的 K 线时走前插，保持视口不跳回右边缘
+    const at = prev.length > 0 ? bars.findIndex((b) => b.time === prev[0].time) : -1;
+    if (at > 0) renderer.prependBars(bars.slice(0, at));
+    else renderer.setData(bars);
   }, [bars]);
 
   useEffect(() => {

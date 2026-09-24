@@ -98,6 +98,20 @@ export const dataRegistry = {
     throw lastError ?? new NoHistoryError(instrument, timeframe);
   },
 
+  /** 向左翻页取更早历史。源不支持（或已到数据起点）时返回空数组。 */
+  async barsBefore(instrument: Instrument, timeframe: TimeframeId, before: number, limit = 500): Promise<Bar[]> {
+    for (const source of BARS_BY_MARKET[instrument.market]) {
+      if (!source.barsBefore) continue;
+      try {
+        const rows = await source.barsBefore({ instrument, timeframe, limit, before });
+        if (rows.length > 0) return rows;
+      } catch {
+        /* 该源取不到就试下一个 */
+      }
+    }
+    return [];
+  },
+
   /** 符号搜索：东财全市场联想；期货分类并上合约全集，加密分类走 Binance 交易对校验 */
   async search(query: string, asset?: AssetClass): Promise<SearchHit[]> {
     const q = query.trim();

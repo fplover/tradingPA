@@ -51,6 +51,8 @@ export interface MarketSource {
   quotes?(instruments: Instrument[]): Promise<Quote[]>;
   /** 历史 K 线。不支持时抛 NoHistoryError。 */
   bars?(req: BarsRequest): Promise<Bar[]>;
+  /** 取 before（不含）之前的更早历史，用于向左翻页。源不支持时返回空数组。 */
+  barsBefore?(req: BarsRequest & { before: number }): Promise<Bar[]>;
 }
 
 export interface SearchSource {
