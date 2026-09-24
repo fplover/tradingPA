@@ -194,6 +194,23 @@ test('图表右键菜单与缩放快捷键', async ({ page }) => {
   expect(await spacingOf()).toBeLessThanOrEqual(before * 1.05);
 });
 
+/** 离开右边缘出现「回到最新」按钮，点击回到实时边缘 */
+test('回到最新按钮', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('button', { name: '回到最新' })).toBeHidden();
+
+  const box = (await page.locator('canvas').first().boundingBox())!;
+  await page.mouse.move(box.x + 600, box.y + 300);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 900, box.y + 300, { steps: 10 });
+  await page.mouse.up();
+  await expect(page.getByRole('button', { name: '回到最新' })).toBeVisible({ timeout: 3000 });
+
+  await page.getByRole('button', { name: '回到最新' }).click();
+  await expect(page.getByRole('button', { name: '回到最新' })).toBeHidden({ timeout: 3000 });
+});
+
 /** 主题切换 */
 test('主题切换改变画布背景', async ({ page }) => {
   await page.goto('/');

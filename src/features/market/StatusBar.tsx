@@ -1,76 +1,73 @@
-import { Eye, EyeOff, Magnet } from 'lucide-react';
-import { useDrawingStore } from '@/store/drawingStore';
 import { fontSize, space } from '@/ui/tokens';
 
 interface StatusBarProps {
   barsCount: number;
   intervalLabel: string;
-  /** 数据源状态文案，如「腾讯财经 · 800 根」 */
+  /** 数据源状态文案，如「腾讯财经」 */
   statusText: string;
+  percent: boolean;
+  onTogglePercent: () => void;
   logScale: boolean;
   onToggleLog: () => void;
   autoScale: boolean;
   onToggleAuto: () => void;
-  hideDrawings: boolean;
-  onToggleHide: () => void;
 }
 
 function timeZoneLabel(): string {
   const offset = -new Date().getTimezoneOffset() / 60;
   const sign = offset >= 0 ? '+' : '-';
-  return `UTC${sign}${Math.abs(offset) % 1 === 0 ? Math.abs(offset) : Math.abs(offset).toFixed(1)}`;
+  const abs = Math.abs(offset);
+  return `UTC${sign}${abs % 1 === 0 ? abs : abs.toFixed(1)}`;
 }
 
-/** 图表底部状态栏：左侧时区与数据状态，右侧轴/画线开关（TradingView 同位置） */
+/**
+ * 图表底部控制栏（TV 39px = 38 内容 + 1 顶边框）：
+ * 左 UTC 时区与数据状态，右 % / log / auto 坐标开关。
+ * 磁吸/锁定/隐藏画线按 TV 归左画线工具栏底部，不在这里。
+ */
 export function StatusBar({
   barsCount,
   intervalLabel,
   statusText,
+  percent,
+  onTogglePercent,
   logScale,
   onToggleLog,
   autoScale,
   onToggleAuto,
-  hideDrawings,
-  onToggleHide,
 }: StatusBarProps) {
-  const magnet = useDrawingStore((s) => s.magnet);
-  const setMagnet = useDrawingStore((s) => s.setMagnet);
-
   return (
     <div
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: space.md,
-        height: 26,
-        padding: `0 ${space.sm}px`,
+        gap: space.sm,
+        height: 38,
+        padding: `0 ${space.xs}px`,
         background: 'var(--panel)',
         borderTop: '1px solid var(--border)',
         color: 'var(--text-faint)',
-        fontSize: fontSize.sm,
+        fontSize: fontSize.lg,
         flexShrink: 0,
         overflow: 'hidden',
         whiteSpace: 'nowrap',
       }}
     >
-      <span style={{ color: 'var(--text-dim)' }}>{timeZoneLabel()}</span>
-      <span>
+      <span style={{ color: 'var(--text-dim)', padding: `0 ${space.xs}px` }}>{timeZoneLabel()}</span>
+      <span style={{ padding: `0 ${space.xs}px` }}>
         {statusText} · {barsCount.toLocaleString()} 根 · {intervalLabel}
       </span>
 
       <span style={{ flex: 1 }} />
 
-      <Toggle label="磁吸（吸附 OHLC）" active={magnet} onClick={() => setMagnet(!magnet)}>
-        <Magnet size={12} />
+      <Toggle label="切换为百分比坐标" active={percent} onClick={onTogglePercent}>
+        %
       </Toggle>
-      <Toggle label="对数坐标" active={logScale} onClick={onToggleLog}>
+      <Toggle label="切换为对数坐标" active={logScale} onClick={onToggleLog}>
         log
       </Toggle>
-      <Toggle label="自动缩放价格域" active={autoScale} onClick={onToggleAuto}>
+      <Toggle label="切换为自动坐标" active={autoScale} onClick={onToggleAuto}>
         auto
-      </Toggle>
-      <Toggle label={hideDrawings ? '显示画线' : '隐藏画线'} active={hideDrawings} onClick={onToggleHide}>
-        {hideDrawings ? <EyeOff size={12} /> : <Eye size={12} />}
       </Toggle>
     </div>
   );
@@ -94,16 +91,13 @@ function Toggle({
       aria-label={label}
       aria-pressed={active}
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 3,
-        height: 20,
-        padding: '0 6px',
-        background: active ? 'var(--panel-2)' : 'transparent',
+        height: 24,
+        padding: `0 ${space.sm - 2}px`,
+        background: 'transparent',
         color: active ? 'var(--accent)' : 'var(--text-faint)',
         border: 'none',
         borderRadius: 3,
-        fontSize: fontSize.sm,
+        fontSize: fontSize.lg,
         cursor: 'pointer',
         flexShrink: 0,
       }}

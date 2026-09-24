@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronsRight } from 'lucide-react';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Bar, ChartTypeId } from '@/types/market';
 import type { ParamValue } from '@/indicators/core/types';
@@ -292,10 +293,49 @@ export function Chart({
     };
   }, [sync]);
 
+  // 离开右边缘时显示「回到最新」（TradingView 同位置按钮）
+  const [atRight, setAtRight] = useState(true);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const r = rendererRef.current;
+      if (r) setAtRight(r.atRightEdge);
+    }, 300);
+    return () => window.clearInterval(id);
+  }, []);
+
   return (
-    <canvas
-      ref={canvasRef}
-      style={{ display: 'block', width: '100%', height: '100%', touchAction: 'none' }}
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        style={{ display: 'block', width: '100%', height: '100%', touchAction: 'none' }}
+      />
+      {!atRight && (
+        <button
+          onClick={() => rendererRef.current?.scrollToRealtime()}
+          title="回到最新"
+          aria-label="回到最新"
+          style={gotoLatestStyle}
+        >
+          <ChevronsRight size={14} />
+        </button>
+      )}
+    </>
   );
 }
+
+const gotoLatestStyle: React.CSSProperties = {
+  position: 'absolute',
+  right: 72,
+  bottom: 30,
+  width: 28,
+  height: 28,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'var(--panel)',
+  color: 'var(--text-dim)',
+  border: '1px solid var(--border)',
+  borderRadius: 4,
+  cursor: 'pointer',
+  zIndex: 12,
+};

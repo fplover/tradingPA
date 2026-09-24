@@ -41,7 +41,7 @@ export function drawCrosshair(
 
   // 价格轴标签（价格按悬停面板的相对坐标换算）
   const price = priceScale.yToPrice(crosshair.y - paneY);
-  drawAxisLabel(ctx, geo.chartW + 1, crosshair.y, price.toFixed(legend.decimals), 'price');
+  drawAxisLabel(ctx, geo.chartW + 1, crosshair.y, priceScale.toLabel(price, legend.decimals), 'price');
 
   // 时间轴标签
   const time = crosshair.barIndex >= 0 ? crosshair.time : 0;
@@ -66,13 +66,14 @@ export function drawLegendBlock(
   ctx.textBaseline = 'top';
 
   let x = 8;
-  const y = 8;
-  ctx.font = `600 12px ${TV_FONT}`;
+  const y = 6;
+  // TV 图例：代码行 16px、其余 13px，字重 400（观感粗来自字号而非 weight）
+  ctx.font = `16px ${TV_FONT}`;
   ctx.fillStyle = theme.legendText;
   ctx.fillText(legend.symbol, x, y);
   x += ctx.measureText(legend.symbol).width;
 
-  ctx.font = `12px ${TV_FONT}`;
+  ctx.font = `13px ${TV_FONT}`;
   const meta = ` · ${legend.interval}${legend.exchange ? ` · ${legend.exchange}` : ''}`;
   ctx.fillStyle = theme.legendDim;
   ctx.fillText(meta, x, y);
@@ -80,14 +81,16 @@ export function drawLegendBlock(
 
   if (bar) {
     const d = legend.decimals;
-    const change = bar.open !== 0 ? ((bar.close - bar.open) / bar.open) * 100 : 0;
+    const change = bar.close - bar.open;
+    const changePct = bar.open !== 0 ? (change / bar.open) * 100 : 0;
     const color = bar.close >= bar.open ? theme.up : theme.down;
+    const sign = change >= 0 ? '+' : '';
     const fields: Array<[string, string, string]> = [
-      ['O', bar.open.toFixed(d), color],
-      ['H', bar.high.toFixed(d), color],
-      ['L', bar.low.toFixed(d), color],
-      ['C', bar.close.toFixed(d), color],
-      ['', `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`, color],
+      ['开=', bar.open.toFixed(d), color],
+      ['高=', bar.high.toFixed(d), color],
+      ['低=', bar.low.toFixed(d), color],
+      ['收=', bar.close.toFixed(d), color],
+      ['涨跌', `${sign}${change.toFixed(d)} (${sign}${changePct.toFixed(2)}%)`, color],
       ['量', formatVolume(bar.volume), theme.legendDim],
     ];
     for (const [label, value, c] of fields) {
@@ -103,8 +106,8 @@ export function drawLegendBlock(
   }
 
   if (indicatorValues && indicatorValues.length > 0) {
-    let iy = 26;
-    ctx.font = `11px ${TV_FONT}`;
+    let iy = 28;
+    ctx.font = `13px ${TV_FONT}`;
     for (const ind of indicatorValues) {
       if (ind.values.length === 0) continue;
       let ix = 8;

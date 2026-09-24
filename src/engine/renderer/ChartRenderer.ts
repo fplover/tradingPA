@@ -70,6 +70,11 @@ export class ChartRenderer {
   private logScale = false;
   private autoScaleOn = true;
   private drawingsHidden = false;
+  private paneResizeIndex: number | null = null;
+  private paneResizeStartY = 0;
+  private paneResizeStartHeight = 0;
+  private percentOn = false;
+  private drawingsLocked = false;
   private brickOpts: BrickOptions = {};
 
   // 画线状态
@@ -205,9 +210,21 @@ export class ChartRenderer {
     return this.autoScaleOn;
   }
 
-  /** 隐藏全部画线（TV 底部眼睛开关） */
+  /** 隐藏全部画线（TV 左工具栏眼睛开关） */
   setDrawingsHidden(hidden: boolean): void {
     this.drawingsHidden = hidden;
+    this.invalidate();
+  }
+
+  /** 百分比坐标（TV 底栏 % 开关）：几何不变，轴与标签改显涨跌幅 */
+  setPercentMode(on: boolean): void {
+    this.percentOn = on;
+    this.invalidate();
+  }
+
+  /** 锁定全部画线：不可选中/拖动（TV 左工具栏锁开关） */
+  setDrawingsLocked(locked: boolean): void {
+    this.drawingsLocked = locked;
     this.invalidate();
   }
 
@@ -418,6 +435,15 @@ export class ChartRenderer {
     this.invalidate();
   }
 
+  scrollToRealtime(): void {
+    this.viewport.scrollToRealtime();
+    this.invalidate();
+  }
+
+  get atRightEdge(): boolean {
+    return this.viewport.isAtRightEdge();
+  }
+
   /** 以画布中心为锚点缩放 */
   zoom(factor: number): void {
     this.viewport.zoomAt(this.manager.width / 2, factor);
@@ -582,6 +608,7 @@ export class ChartRenderer {
   }
 
   private hitDrawings(x: number, y: number, pane: PaneState): { id: string; part: 'body' | 'handle'; index: number } | null {
+    if (this.drawingsLocked) return null;
     const dctx = this.drawingCtx();
     const list = this.drawingLayer.list();
     for (let i = list.length - 1; i >= 0; i--) {
@@ -637,11 +664,46 @@ export class ChartRenderer {
     return this.panes[0];
   }
 
+  /** 面板分隔条命中（面板底边 ±4px，最后一个面板除外） */
+  private separatorIndexAt(y: number): number | null {
+    for (let i = 0; i < this.panes.length - 1; i++) {
+      const edge = this.panes[i].y + this.panes[i].height;
+      if (Math.abs(y - edge) <= 4) return i;
+    }
+    return null;
+  }
+
+  /** 拖分隔条改面板高度：从下一面板借比例，二者都设下限 */
+  private resizePane(index: number, y: number): void {
+    const pane = this.panes[index];
+    const next = this.panes[index + 1];
+    if (!pane || !next) return;
+    const chartH = this.manager.height - AXIS_HEIGHT;
+    const total = this.panes.reduce((s, p) => s + p.heightRatio, 0);
+    const delta = y - this.paneResizeStartY;
+    const minH = 48;
+    const newHeight = Math.min(Math.max(this.paneResizeStartHeight + delta, minH), chartH - minH * this.panes.length);
+    const newRatio = (newHeight * total) / chartH;
+    const taken = newRatio - pane.heightRatio;
+    if (next.heightRatio - taken < 0.08 || pane.heightRatio + taken < 0.08) return;
+    pane.heightRatio += taken;
+    next.heightRatio -= taken;
+    this.layout();
+    this.invalidate();
+  }
+
   private onPointerDown = (e: PointerEvent) => {
     const { x, y } = this.toLocal(e);
     const inPriceAxis = x > this.manager.width - AXIS_WIDTH;
     const inTimeAxis = y > this.manager.height - AXIS_HEIGHT;
     this.manager.canvas.setPointerCapture(e.pointerId);
+    const sep = !inPriceAxis && !inTimeAxis && e.button === 0 ? this.separatorIndexAt(y) : null;
+    if (sep !== null) {
+      this.paneResizeIndex = sep;
+      this.paneResizeStartY = y;
+      this.paneResizeStartHeight = this.panes[sep].height;
+      return;
+    }
     if (inPriceAxis) {
       const pane = this.paneAt(y);
       // 点击“自动”按钮 → 恢复自动适配
@@ -751,6 +813,10 @@ export class ChartRenderer {
 
   private onPointerMove = (e: PointerEvent) => {
     const { x, y } = this.toLocal(e);
+    if (this.paneResizeIndex !== null) {
+      this.resizePane(this.paneResizeIndex, y);
+      return;
+    }
     if (this.dragging) {
       const dx = e.clientX - this.lastPointerX;
       const dy = e.clientY - this.lastPointerY;
@@ -782,9 +848,21 @@ export class ChartRenderer {
       this.previewPoint = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetEnabled);
     this.invalidate();
     } else {
+      this.updateHoverCursor(x, y);
       this.updateCrosshair(x, y);
     }
   };
+
+  /** TV 光标语义：面板分隔条与价格轴 ns-resize，时间轴 ew-resize，可交互元素 pointer */
+  private updateHoverCursor(x: number, y: number): void {
+    let cursor = '';
+    if (this.separatorIndexAt(y) !== null) cursor = 'ns-resize';
+    else if (x > this.manager.width - AXIS_WIDTH) cursor = 'ns-resize';
+    else if (y > this.manager.height - AXIS_HEIGHT) cursor = 'ew-resize';
+    else if (this.tradeHoverCursor) cursor = 'pointer';
+    const canvas = this.manager.canvas;
+    if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
+  }
 
   /** 拖拽画线：整体平移或单手柄移动 */
   private updateDrawingDrag(x: number, y: number): void {
@@ -815,6 +893,7 @@ export class ChartRenderer {
       this.selectPreviewX = null;
       this.crosshairTimeCb?.(null);
       this.setTradeHoverCursor(false);
+      this.updateHoverCursor(x, y);
       this.invalidate();
       return;
     }
@@ -843,11 +922,9 @@ export class ChartRenderer {
     this.invalidate();
   }
 
-  /** 悬停交易可视化元素时切换 pointer 光标（状态不变不写样式） */
+  /** 悬停交易可视化元素时记录 pointer 意图（光标由 updateHoverCursor 统一写） */
   private setTradeHoverCursor(on: boolean): void {
-    if (on === this.tradeHoverCursor) return;
     this.tradeHoverCursor = on;
-    this.manager.canvas.style.cursor = on ? 'pointer' : '';
   }
 
   /** 拖拽交易可视化：挂单改价 / TP-SL 设置或改价 */
@@ -880,6 +957,7 @@ export class ChartRenderer {
   private onPointerUp = (e: PointerEvent) => {
     this.dragging = false;
     this.priceDragging = false;
+    this.paneResizeIndex = null;
     this.dragDrawing = null;
     this.tradeDrag = null;
     this.viewportCommitCb?.(this.getViewport());
@@ -1075,6 +1153,9 @@ export class ChartRenderer {
       }
 
       // 每面板数值轴：主面板全精度，副面板紧凑格式（K/M）
+      if (pane.kind === 'price') {
+        pane.priceScale.setPercentBase(this.percentOn ? (this.displaySeries.barAt(from)?.close ?? null) : null);
+      }
       drawPriceAxis(ctx, pane.priceScale, this.legend.decimals, geo, pane.kind !== 'price');
 
       // 主图最新价：点线 + 右轴方向着色徽章

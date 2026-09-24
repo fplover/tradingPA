@@ -38,7 +38,7 @@ const darkTheme: ChartTheme = {
   border: '#2a2e39',
   tooltipBg: '#1e222d',
   legendText: '#d1d4dc',
-  legendDim: '#787b86',
+  legendDim: '#868993',
   axisLabelText: '#b2b5be',
   /** 选中面板高亮：必须极淡且中性，否则整块画布会被染上底色 */
   paneActive: 'rgba(255, 255, 255, 0.02)',
@@ -57,7 +57,7 @@ const lightTheme: ChartTheme = {
   border: '#e0e3eb',
   tooltipBg: '#131722',
   legendText: '#131722',
-  legendDim: '#787b86',
+  legendDim: '#5d606b',
   /** 浅色主题的光标轴标签用深色底白字，白底上才看得清 */
   axisLabelText: '#ffffff',
   paneActive: 'rgba(19, 23, 34, 0.02)',

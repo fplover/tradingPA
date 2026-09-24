@@ -13,6 +13,8 @@ export class PriceScale {
   private max = 1;
   private height = 0;
   private logMode = false;
+  /** 百分比坐标基准价（首根可见 bar 收盘）；百分比是价格的仿射变换，几何不变只换标签 */
+  private percentBase: number | null = null;
   private options: PriceScaleOptions = { ...DEFAULTS };
 
   setSize(height: number): void {
@@ -25,6 +27,17 @@ export class PriceScale {
 
   get isLog(): boolean {
     return this.logMode;
+  }
+
+  setPercentBase(base: number | null): void {
+    this.percentBase = base;
+  }
+
+  /** 轴/标签读数：百分比模式显示相对基准价的涨跌幅 */
+  toLabel(price: number, decimals: number): string {
+    if (this.percentBase === null || this.percentBase === 0) return price.toFixed(decimals);
+    const pct = (price / this.percentBase - 1) * 100;
+    return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
   }
 
   setOptions(options: Partial<PriceScaleOptions>): void {

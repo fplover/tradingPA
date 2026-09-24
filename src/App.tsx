@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, Camera, CandlestickChart, ChevronDown, Play, RefreshCw, Save, FolderOpen, Moon, Sun } from 'lucide-react';
+import { BarChart3, Camera, CandlestickChart, ChevronDown, Maximize2, Play, Redo2, RefreshCw, Save, Search, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Instrument } from '@/types/instrument';
@@ -94,6 +94,8 @@ export default function App() {
   const [chartType, setChartType] = useState<ChartTypeId>('candles');
   const [logScale, setLogScale] = useState(false);
   const [autoScale, setAutoScale] = useState(true);
+  const [percent, setPercent] = useState(false);
+  const [drawingsLocked, setDrawingsLocked] = useState(false);
   const [hideDrawings, setHideDrawings] = useState(false);
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
@@ -144,13 +146,19 @@ export default function App() {
     checkAlerts(activeInstrument.symbol, activeQuote.price);
   }, [activeInstrument, activeQuote, checkAlerts]);
 
-  // 底部状态栏开关 → 渲染器
+  // 底部状态栏 / 左工具栏开关 → 渲染器
   useEffect(() => {
     renderer?.setAutoScale(autoScale);
   }, [renderer, autoScale]);
   useEffect(() => {
+    renderer?.setPercentMode(percent);
+  }, [renderer, percent]);
+  useEffect(() => {
     renderer?.setDrawingsHidden(hideDrawings);
   }, [renderer, hideDrawings]);
+  useEffect(() => {
+    renderer?.setDrawingsLocked(drawingsLocked);
+  }, [renderer, drawingsLocked]);
 
   // 快捷键：/ 或 Ctrl+K 打开品种搜索（输入框内不劫持）
   useEffect(() => {
@@ -176,6 +184,11 @@ export default function App() {
     a.href = r.screenshot();
     a.download = `tradingpa-${activeInstrument?.symbol ?? 'chart'}-${Date.now()}.png`;
     a.click();
+  };
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen();
   };
 
   // 回放联动：新会话重置引擎；每根回放 K 线驱动挂单触发与盈亏
@@ -259,17 +272,33 @@ export default function App() {
         <IconButton onClick={loadTemplate} title="加载指标模板">
           <FolderOpen size={15} />
         </IconButton>
-        <IconButton onClick={handleScreenshot} title="截图导出 PNG">
-          <Camera size={15} />
-        </IconButton>
         <ActiveIndicatorChips />
         <span style={{ flex: 1 }} />
+        {layout === 1 && (
+          <>
+            <IconButton onClick={() => rendererRef.current?.undoDrawing()} title="复原">
+              <Undo2 size={15} />
+            </IconButton>
+            <IconButton onClick={() => rendererRef.current?.redoDrawing()} title="重做">
+              <Redo2 size={15} />
+            </IconButton>
+          </>
+        )}
+        <LayoutMenu />
+        <IconButton onClick={() => useSymbolSearchStore.getState().openSearch('switch')} title="快速搜索">
+          <Search size={15} />
+        </IconButton>
+        <IconButton onClick={toggleFullscreen} title="全屏模式">
+          <Maximize2 size={15} />
+        </IconButton>
+        <IconButton onClick={handleScreenshot} title="生成快照">
+          <Camera size={15} />
+        </IconButton>
         {layout === 1 && (
           <IconButton onClick={series.reload} title={series.mode === 'mock' ? '重新连接实时数据' : '重新加载历史数据'}>
             <RefreshCw size={15} />
           </IconButton>
         )}
-        <LayoutMenu />
         <ThemeButton />
       </div>
 
@@ -277,7 +306,7 @@ export default function App() {
         <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-              <DrawingToolbar />
+              <DrawingToolbar locked={drawingsLocked} onToggleLock={() => setDrawingsLocked((v) => !v)} hideDrawings={hideDrawings} onToggleHide={() => setHideDrawings((v) => !v)} />
               <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
                 <Chart
                   bars={bars}
@@ -311,12 +340,12 @@ export default function App() {
               barsCount={bars.length}
               intervalLabel={tf.label}
               statusText={series.mode === 'mock' ? '模拟数据' : series.statusDetail || series.status}
+              percent={percent}
+              onTogglePercent={() => setPercent((v) => !v)}
               logScale={logScale}
               onToggleLog={() => setLogScale((v) => !v)}
               autoScale={autoScale}
               onToggleAuto={() => setAutoScale((v) => !v)}
-              hideDrawings={hideDrawings}
-              onToggleHide={() => setHideDrawings((v) => !v)}
             />
             {replayActive && (
               <ReplayBar

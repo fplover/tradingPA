@@ -64,7 +64,7 @@ export function drawPriceAxis(
   for (const price of priceScale.ticks(6)) {
     const y = priceScale.priceToY(price);
     if (y < 10 || y > geo.chartH - 2) continue;
-    ctx.fillText(compact ? formatCompact(price) : price.toFixed(decimals), geo.chartW + 6, y);
+    ctx.fillText(compact ? formatCompact(price) : priceScale.toLabel(price, decimals), geo.chartW + 6, y);
   }
 }
 
@@ -149,7 +149,7 @@ export function drawLastPrice(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  const text = last.close.toFixed(decimals);
+  const text = priceScale.toLabel(last.close, decimals);
   ctx.font = `11px ${TV_FONT}`;
   const w = Math.max(58, ctx.measureText(text).width + 12);
   const h = 18;

@@ -13,6 +13,10 @@ import {
   Type,
   Percent,
   Magnet,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
   Trash2,
   type LucideIcon,
 } from 'lucide-react';
@@ -65,8 +69,18 @@ const TOOL_LABELS: Record<ToolbarItem, string> = {
   magnet: '磁吸（吸附 OHLC）',
 };
 
-/** 左侧画线工具栏：lucide 图标 + tooltip + 分组分隔 */
-export function DrawingToolbar() {
+/** 左侧画线工具栏：TV 为 52px 宽、38×38 按钮；底部依次 磁吸/锁定/隐藏/清空 */
+export function DrawingToolbar({
+  locked,
+  onToggleLock,
+  hideDrawings,
+  onToggleHide,
+}: {
+  locked: boolean;
+  onToggleLock: () => void;
+  hideDrawings: boolean;
+  onToggleHide: () => void;
+}) {
   const activeTool = useDrawingStore((s) => s.activeTool);
   const setActiveTool = useDrawingStore((s) => s.setActiveTool);
   const magnet = useDrawingStore((s) => s.magnet);
@@ -91,7 +105,7 @@ export function DrawingToolbar() {
                 onClick={() => setActiveTool(id === 'cursor' ? null : id)}
                 style={btnStyle}
               >
-                <Icon size={16} strokeWidth={active ? 2.2 : 1.8} />
+                <Icon size={18} strokeWidth={active ? 2 : 1.5} />
               </button>
             );
           })}
@@ -107,7 +121,29 @@ export function DrawingToolbar() {
         onClick={() => setMagnet(!magnet)}
         style={btnStyle}
       >
-        <Magnet size={16} strokeWidth={magnet ? 2.2 : 1.8} />
+        <Magnet size={17} strokeWidth={magnet ? 2.2 : 1.8} />
+      </button>
+      <button
+        className="rail-btn"
+        data-active={locked}
+        title={locked ? '解锁所有绘图' : '锁定所有绘图'}
+        aria-label={locked ? '解锁所有绘图' : '锁定所有绘图'}
+        aria-pressed={locked}
+        onClick={onToggleLock}
+        style={btnStyle}
+      >
+        {locked ? <Lock size={17} /> : <Unlock size={17} />}
+      </button>
+      <button
+        className="rail-btn"
+        data-active={hideDrawings}
+        title={hideDrawings ? '显示所有绘图' : '隐藏所有绘图'}
+        aria-label={hideDrawings ? '显示所有绘图' : '隐藏所有绘图'}
+        aria-pressed={hideDrawings}
+        onClick={onToggleHide}
+        style={btnStyle}
+      >
+        {hideDrawings ? <EyeOff size={17} /> : <Eye size={17} />}
       </button>
       <button
         className="rail-btn"
@@ -116,7 +152,7 @@ export function DrawingToolbar() {
         onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete' }))}
         style={{ ...btnStyle, marginTop: 'auto' }}
       >
-        <Trash2 size={16} strokeWidth={1.8} />
+        <Trash2 size={17} strokeWidth={1.8} />
       </button>
     </div>
   );
@@ -124,7 +160,7 @@ export function DrawingToolbar() {
 
 /** 独立列而非浮层：TV 的工具栏占据图表左侧一列，不遮挡画布与图例 */
 const toolbarStyle: React.CSSProperties = {
-  width: 38,
+  width: 52,
   flexShrink: 0,
   display: 'flex',
   flexDirection: 'column',
@@ -137,6 +173,8 @@ const toolbarStyle: React.CSSProperties = {
 };
 
 const btnStyle: React.CSSProperties = {
+  width: 38,
+  height: 38,
   border: 'none',
   flexShrink: 0,
 };
