@@ -22,6 +22,7 @@ import { LayoutGrid, LayoutMenu } from '@/features/layout/LayoutGrid';
 import { ReplayBar } from '@/features/replay/ReplayBar';
 import { RightSide } from '@/features/rightbar/RightSide';
 import { StatusBar } from '@/features/market/StatusBar';
+import { ChartContextMenu, type ChartMenuState } from '@/features/market/ChartContextMenu';
 import { SymbolSearchDialog } from '@/features/watchlist/SymbolSearchDialog';
 import { useSymbolSearchStore } from '@/features/watchlist/searchStore';
 import { IconButton } from '@/ui/primitives';
@@ -97,6 +98,7 @@ export default function App() {
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [chartMenu, setChartMenu] = useState<ChartMenuState | null>(null);
   const wasReplaying = useRef(false);
   const lastFedBarTime = useRef(0);
   const prevReplayIndex = useRef<number | null>(null);
@@ -291,6 +293,7 @@ export default function App() {
                     setRenderer(r);
                   }}
                   onNeedsMoreHistory={series.loadMore}
+                  onChartContextMenu={(price, _time, x, y) => setChartMenu({ price, x, y })}
                 />
                 {panelOpen && <IndicatorPanel />}
                 {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
@@ -344,6 +347,12 @@ export default function App() {
       )}
 
       <SymbolSearchDialog />
+      <ChartContextMenu
+        state={chartMenu}
+        instrument={activeInstrument}
+        renderer={renderer}
+        onClose={() => setChartMenu(null)}
+      />
     </div>
   );
 }

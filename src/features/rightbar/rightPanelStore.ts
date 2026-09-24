@@ -45,6 +45,7 @@ interface RightDockStore {
   panel: RightPanelId | null;
   width: number;
   toggle: (id: RightPanelId) => void;
+  open: (id: RightPanelId) => void;
   close: () => void;
   setWidth: (width: number) => void;
 }
@@ -59,6 +60,11 @@ export const useRightDockStore = create<RightDockStore>((set) => ({
       save(PANEL_KEY, String(panel));
       return { panel };
     }),
+
+  open: (id) => {
+    save(PANEL_KEY, id);
+    set({ panel: id });
+  },
 
   close: () => {
     save(PANEL_KEY, 'null');

@@ -172,6 +172,28 @@ test('回放模拟交易全流程', async ({ page }) => {
   await expect(page.getByText('盈亏比')).toBeVisible();
 });
 
+/** 图表右键菜单与缩放/平移快捷键 */
+test('图表右键菜单与缩放快捷键', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  await page.locator('canvas').first().click({ button: 'right', position: { x: 400, y: 300 } });
+  await expect(page.getByRole('menuitem', { name: /加入自选股/ })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: /重置图表/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menuitem', { name: /重置图表/ })).toBeHidden();
+
+  const spacingOf = () =>
+    page.evaluate(() => (window as unknown as { __chartRenderer?: { getViewport(): { spacing: number } } }).__chartRenderer?.getViewport().spacing ?? 0);
+  const before = await spacingOf();
+  await page.keyboard.press('+');
+  await page.waitForTimeout(250);
+  expect(await spacingOf()).toBeGreaterThan(before);
+  await page.keyboard.press('-');
+  await page.waitForTimeout(250);
+  expect(await spacingOf()).toBeLessThanOrEqual(before * 1.05);
+});
+
 /** 主题切换 */
 test('主题切换改变画布背景', async ({ page }) => {
   await page.goto('/');

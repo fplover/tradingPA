@@ -32,6 +32,8 @@ interface ChartProps {
   onRendererReady?: (renderer: ChartRenderer | null) => void;
   /** 视口滚动到数据左边缘时触发（懒加载更早历史） */
   onNeedsMoreHistory?: () => void;
+  /** 非回放时右键图表（价格/时间/屏幕坐标） */
+  onChartContextMenu?: (price: number, time: number, clientX: number, clientY: number) => void;
   /** 参与多图表联动（十字光标/视口同步） */
   sync?: boolean;
 }
@@ -48,6 +50,7 @@ export function Chart({
   logScale = false,
   onRendererReady,
   onNeedsMoreHistory,
+  onChartContextMenu,
   sync = false,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -117,10 +120,12 @@ export function Chart({
   }, [magnet]);
 
   // 键盘快捷键：Esc 取消 / Delete 删除 / Ctrl+Z 撤销 / Ctrl+Y 重做 / Enter 完成路径
+  // +/- 缩放、←/→ 平移（对齐 TradingView）；菜单/弹窗打开时不劫持方向键
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return;
+      if (target && target.closest('[role="menu"], [role="dialog"], [role="listbox"]')) return;
       const renderer = rendererRef.current;
       if (!renderer) return;
       if (e.key === 'Escape') {
@@ -136,6 +141,16 @@ export function Chart({
       } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
         e.preventDefault();
         renderer.redoDrawing();
+      } else if (e.key === '+' || e.key === '=') {
+        renderer.zoom(1.2);
+      } else if (e.key === '-' || e.key === '_') {
+        renderer.zoom(1 / 1.2);
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        renderer.pan(-3);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        renderer.pan(3);
       }
     };
     window.addEventListener('keydown', onKey);
@@ -214,6 +229,9 @@ export function Chart({
     rendererRef.current?.setChartClickCallback((price, time, clientX, clientY) => {
       useOrderMenuStore.getState().openMenu(price, time, clientX, clientY);
     });
+    rendererRef.current?.setContextMenuCallback((price, _time, clientX, clientY) => {
+      onChartContextMenu?.(price, _time, clientX, clientY);
+    });
     rendererRef.current?.setPaneActionCallback((action, indicatorId) => {
       if (action === 'settings') useIndicatorStore.getState().setSettingsFor(indicatorId);
       else useIndicatorStore.getState().remove(indicatorId);
@@ -221,6 +239,7 @@ export function Chart({
     return () => {
       rendererRef.current?.setTradeCallbacks({});
       rendererRef.current?.setChartClickCallback(null);
+      rendererRef.current?.setContextMenuCallback(null);
       rendererRef.current?.setPaneActionCallback(null);
     };
   }, []);
