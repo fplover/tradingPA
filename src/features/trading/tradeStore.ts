@@ -55,12 +55,12 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     const exits: TradeMarker[] = [];
     // 当前持仓：开仓点一个
     if (p && e.entryTime > 0) {
-      entries.push({ time: e.entryTime, side: p.side === 'long' ? 'buy' : 'sell', kind: 'entry' });
+      entries.push({ time: e.entryTime, price: p.avgPrice, side: p.side === 'long' ? 'buy' : 'sell', kind: 'entry' });
     }
     // 已平仓交易：入场 + 平仓两点（平多记为卖、平空记为买）
     for (const t of e.trades.slice(0, 200)) {
-      entries.push({ time: t.entryTime, side: t.side === 'long' ? 'buy' : 'sell', kind: 'entry' });
-      exits.push({ time: t.exitTime, side: t.side === 'long' ? 'sell' : 'buy', kind: 'exit' });
+      entries.push({ time: t.entryTime, price: t.entryPrice, side: t.side === 'long' ? 'buy' : 'sell', kind: 'entry' });
+      exits.push({ time: t.exitTime, price: t.exitPrice, side: t.side === 'long' ? 'sell' : 'buy', kind: 'exit' });
     }
     return {
       orders: e.pendingOrders.map((o) => ({

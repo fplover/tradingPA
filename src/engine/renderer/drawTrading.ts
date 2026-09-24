@@ -22,9 +22,10 @@ export interface PositionVisual {
   pnl: number;
 }
 
-/** K 线进出场标记：买=标在 K 线下方，卖=标在上方（平多记为卖、平空记为买） */
+/** K 线进出场标记：圆点标在成交价上，上下箭头标方向（买=上、卖=下） */
 export interface TradeMarker {
   time: number;
+  price: number;
   side: 'buy' | 'sell';
   kind: 'entry' | 'exit';
 }
@@ -142,7 +143,7 @@ function drawPositionLine(
   drawTag(ctx, geo.chartW - TAG_PAD, y, label, color, true);
 }
 
-/** K 线进出场标记徽标（买=绿、卖/平多=红、平空=绿），贴在 K 线高低点外侧 */
+/** K 线进出场标记：成交价处画小圆点，旁配小箭头指示方向（买=上、卖=下） */
 function drawTradeMarkers(
   ctx: CanvasRenderingContext2D,
   markers: TradeMarker[],
@@ -156,37 +157,29 @@ function drawTradeMarkers(
     if (idx < 0) continue;
     const x = viewport.indexToX(idx);
     if (x < -12 || x > geo.chartW + 12) continue;
-    const bar = series.barAt(idx);
-    if (!bar) continue;
+    const y = priceScale.priceToY(m.price);
+    if (y < -12 || y > geo.chartH + 12) continue;
     const buy = m.side === 'buy';
     const color = buy ? '#26a69a' : '#ef5350';
-    const text = m.kind === 'entry' ? (buy ? '买' : '卖') : '平';
-    // 买入类标在 K 线下方、卖出类标在上方，避免遮挡 K 线
-    const anchorY = buy ? priceScale.priceToY(bar.low) : priceScale.priceToY(bar.high);
-    const cy = buy ? anchorY + 12 : anchorY - 12;
-    if (cy < -12 || cy > geo.chartH + 12) continue;
-    // 连接线：徽标 → K 线高低点
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
+    ctx.fillStyle = color;
+    // 方向箭头：买入在点下方尖端朝上，卖出在点上方尖端朝下
+    const ay = buy ? y + 7 : y - 7;
     ctx.beginPath();
     if (buy) {
-      ctx.moveTo(x, cy - 8);
-      ctx.lineTo(x, anchorY + 1);
+      ctx.moveTo(x, ay - 5);
+      ctx.lineTo(x - 3.5, ay + 2);
+      ctx.lineTo(x + 3.5, ay + 2);
     } else {
-      ctx.moveTo(x, anchorY - 1);
-      ctx.lineTo(x, cy + 8);
+      ctx.moveTo(x, ay + 5);
+      ctx.lineTo(x - 3.5, ay - 2);
+      ctx.lineTo(x + 3.5, ay - 2);
     }
-    ctx.stroke();
-    // 圆角徽标
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.roundRect(x - 8, cy - 8, 16, 16, 4);
+    ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, x, cy + 0.5);
+    // 成交价圆点
+    ctx.beginPath();
+    ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
