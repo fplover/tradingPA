@@ -33,22 +33,22 @@ describe('Viewport', () => {
     expect(v.indexToX(anchor)).toBeCloseTo(xBefore, 6);
   });
 
-  it('向右拖（看历史）有左边界，第一根不超过中线', () => {
+  it('向右拖（看历史）有左边界，第一根不超过画面右缘', () => {
     const v = new Viewport(460);
     v.setBarCount(100);
     v.scrollToRealtime();
     v.panByBars(-100000);
     const visibleCount = 460 / v.spacing;
-    expect(v.first).toBeGreaterThanOrEqual(-Math.ceil(visibleCount / 2));
+    expect(v.first).toBeGreaterThanOrEqual(-Math.ceil(visibleCount));
   });
 
-  it('向左拖允许进入右侧空白区（半个视口），不再钉死在右边缘', () => {
+  it('向左拖允许进入右侧空白区（一整个视口），不再钉死在右边缘', () => {
     const v = new Viewport(460);
     v.setBarCount(100);
     v.scrollToRealtime();
     v.panByBars(100000);
     const visibleCount = 460 / v.spacing;
-    const maxFirst = 100 - visibleCount + Math.max(5, visibleCount * 0.5);
+    const maxFirst = 100 - visibleCount + Math.max(5, visibleCount);
     expect(v.first).toBeLessThanOrEqual(maxFirst + 1e-9);
     expect(v.first).toBeGreaterThan(100 - visibleCount + 5); // 确实拖过了实时边缘
   });
@@ -67,17 +67,17 @@ describe('Viewport', () => {
     expect(v.isAtRightEdge()).toBe(true);
   });
 
-  it('复盘边缘：可左右拖动，右界为复盘位置 + 半个视口空白', () => {
+  it('复盘边缘：可左右拖动，右界为复盘位置 + 一整个视口空白', () => {
     const v = new Viewport(460);
     v.setBarCount(1000);
     v.scrollToRealtime();
     v.setReplayEdge(500); // 复盘位置在 500
     const visibleCount = 460 / v.spacing;
-    const maxFirst = 500 - visibleCount + Math.max(5, visibleCount * 0.5);
+    const maxFirst = 500 - visibleCount + Math.max(5, visibleCount);
     // 向左拖（看历史）：有左边界
     v.panByBars(-100000);
-    expect(v.first).toBeGreaterThanOrEqual(-Math.ceil(visibleCount / 2));
-    // 向右拖（看回放点右侧空白）：不超过 复盘位置 + 半个视口
+    expect(v.first).toBeGreaterThanOrEqual(-Math.ceil(visibleCount));
+    // 向右拖（看回放点右侧空白）：不超过 复盘位置 + 一整个视口
     v.panByBars(100000);
     expect(v.first).toBeLessThanOrEqual(maxFirst + 1e-9);
     expect(v.first).toBeGreaterThan(499 - visibleCount); // 确实越过了复盘位置
