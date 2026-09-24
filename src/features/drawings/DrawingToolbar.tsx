@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Crosshair,
   TrendingUp,
@@ -18,10 +20,12 @@ import {
   Eye,
   EyeOff,
   Trash2,
+  Check,
   type LucideIcon,
 } from 'lucide-react';
 import type { DrawingTypeId } from '@/engine/drawing/types';
 import { useDrawingStore } from '@/store/drawingStore';
+import { fontSize, shadow, space, zIndex } from '@/ui/tokens';
 
 type ToolbarItem = DrawingTypeId | 'cursor' | 'magnet';
 
@@ -42,7 +46,7 @@ const ICONS: Record<ToolbarItem, LucideIcon> = {
   magnet: Magnet,
 };
 
-/** 工具分组（组间加分隔线，对齐 TradingView 左侧工具栏结构） */
+/** 工具分组：多变体的组只显示当前变体，长按弹出 flyout（TV 行为） */
 const GROUPS: ToolbarItem[][] = [
   ['cursor'],
   ['trendline', 'ray', 'info-line', 'hline', 'vline', 'arrow'],
@@ -69,6 +73,14 @@ const TOOL_LABELS: Record<ToolbarItem, string> = {
   magnet: '磁吸（吸附 OHLC）',
 };
 
+const HOLD_MS = 350;
+
+interface FlyoutState {
+  group: number;
+  x: number;
+  y: number;
+}
+
 /** 左侧画线工具栏：TV 为 52px 宽、38×38 按钮；底部依次 磁吸/锁定/隐藏/清空 */
 export function DrawingToolbar({
   locked,
@@ -86,31 +98,64 @@ export function DrawingToolbar({
   const magnet = useDrawingStore((s) => s.magnet);
   const setMagnet = useDrawingStore((s) => s.setMagnet);
 
+  const [flyout, setFlyout] = useState<FlyoutState | null>(null);
+  const holdTimer = useRef<number | null>(null);
+  const openedByHold = useRef(false);
+
+  const clearHold = () => {
+    if (holdTimer.current !== null) window.clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  };
+
+  /** 组内当前变体：激活工具属于该组则显示它，否则显示组首工具 */
+  const shownOf = (group: ToolbarItem[]): ToolbarItem =>
+    group.includes('cursor') ? 'cursor' : (group.find((t) => t === activeTool) ?? group[0]);
+
+  const activate = (item: ToolbarItem) => setActiveTool(item === 'cursor' ? null : (item as DrawingTypeId));
+
   return (
     <div style={toolbarStyle} aria-label="画线工具">
-      {GROUPS.map((group, gi) => (
-        <div key={gi} style={{ display: 'contents' }}>
-          {gi > 0 && <div style={sepStyle} />}
-          {group.map((id) => {
-            const Icon = ICONS[id];
-            const active = id === 'cursor' ? activeTool === null : activeTool === id;
-            return (
-              <button
-                key={id}
-                className="rail-btn"
-                data-active={active}
-                title={TOOL_LABELS[id]}
-                aria-label={TOOL_LABELS[id]}
-                aria-pressed={active}
-                onClick={() => setActiveTool(id === 'cursor' ? null : id)}
-                style={btnStyle}
-              >
-                <Icon size={18} strokeWidth={active ? 2 : 1.5} />
-              </button>
-            );
-          })}
-        </div>
-      ))}
+      {GROUPS.map((group, gi) => {
+        const shown = shownOf(group);
+        const Icon = ICONS[shown];
+        const active = shown === 'cursor' ? activeTool === null : activeTool === shown;
+        const hasFlyout = group.length > 1;
+        return (
+          <button
+            key={gi}
+            className="rail-btn"
+            data-active={active}
+            title={hasFlyout ? `${TOOL_LABELS[shown]}（长按选择变体）` : TOOL_LABELS[shown]}
+            aria-label={TOOL_LABELS[shown]}
+            aria-pressed={active}
+            aria-haspopup={hasFlyout ? 'menu' : undefined}
+            onPointerDown={(e) => {
+              if (!hasFlyout) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              openedByHold.current = false;
+              clearHold();
+              holdTimer.current = window.setTimeout(() => {
+                openedByHold.current = true;
+                setFlyout({ group: gi, x: rect.right + 2, y: rect.top });
+              }, HOLD_MS);
+            }}
+            onPointerUp={clearHold}
+            onPointerLeave={clearHold}
+            onClick={() => {
+              if (openedByHold.current) {
+                openedByHold.current = false;
+                return;
+              }
+              activate(shown);
+            }}
+            style={btnStyle}
+          >
+            <Icon size={18} strokeWidth={active ? 2 : 1.5} />
+            {hasFlyout && <span style={caretStyle} aria-hidden />}
+          </button>
+        );
+      })}
+
       <div style={sepStyle} />
       <button
         className="rail-btn"
@@ -121,7 +166,7 @@ export function DrawingToolbar({
         onClick={() => setMagnet(!magnet)}
         style={btnStyle}
       >
-        <Magnet size={17} strokeWidth={magnet ? 2.2 : 1.8} />
+        <Magnet size={17} strokeWidth={magnet ? 2 : 1.5} />
       </button>
       <button
         className="rail-btn"
@@ -152,8 +197,50 @@ export function DrawingToolbar({
         onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete' }))}
         style={{ ...btnStyle, marginTop: 'auto' }}
       >
-        <Trash2 size={17} strokeWidth={1.8} />
+        <Trash2 size={17} strokeWidth={1.5} />
       </button>
+
+      {/* flyout：锚在按钮右侧，列出组内变体 */}
+      <DropdownMenu.Root
+        open={flyout !== null}
+        onOpenChange={(open) => {
+          if (!open) setFlyout(null);
+        }}
+      >
+        <DropdownMenu.Trigger asChild>
+          <span
+            aria-hidden
+            style={{ position: 'fixed', left: flyout?.x ?? 0, top: flyout?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }}
+          />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content align="start" side="right" sideOffset={4} className="tv-scroll" style={menuStyle}>
+            {flyout &&
+              GROUPS[flyout.group].map((id) => {
+                const ItemIcon = ICONS[id];
+                const selected = id === 'cursor' ? activeTool === null : activeTool === id;
+                return (
+                  <DropdownMenu.Item
+                    key={id}
+                    className="tv-menu-item"
+                    style={itemStyle}
+                    onSelect={() => activate(id)}
+                  >
+                    <span style={iconSlot}>
+                      <ItemIcon size={15} />
+                    </span>
+                    {TOOL_LABELS[id]}
+                    {selected && (
+                      <span style={{ marginLeft: 'auto', display: 'flex' }}>
+                        <Check size={13} />
+                      </span>
+                    )}
+                  </DropdownMenu.Item>
+                );
+              })}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
     </div>
   );
 }
@@ -179,8 +266,49 @@ const btnStyle: React.CSSProperties = {
   flexShrink: 0,
 };
 
+/** 组右下角小三角：提示存在变体 flyout */
+const caretStyle: React.CSSProperties = {
+  position: 'absolute',
+  right: 4,
+  bottom: 4,
+  width: 0,
+  height: 0,
+  borderLeft: '4px solid transparent',
+  borderTop: '4px solid currentColor',
+  opacity: 0.65,
+};
+
+const menuStyle: React.CSSProperties = {
+  minWidth: 150,
+  background: 'var(--panel)',
+  border: '1px solid var(--border)',
+  borderRadius: 4,
+  padding: '4px 0',
+  zIndex: zIndex.dropdown,
+  boxShadow: shadow.menu,
+};
+
+const itemStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: space.sm,
+  width: '100%',
+  padding: `6px ${space.sm + 2}px`,
+  border: 'none',
+  color: 'var(--text)',
+  fontSize: fontSize.md,
+  cursor: 'pointer',
+  textAlign: 'left',
+  outline: 'none',
+  whiteSpace: 'nowrap',
+};
+
+const iconSlot: React.CSSProperties = { width: 16, flexShrink: 0, display: 'flex', alignItems: 'center' };
+
 const sepStyle: React.CSSProperties = {
   height: 1,
   background: 'var(--border)',
   margin: '3px 2px',
+  width: 26,
+  flexShrink: 0,
 };
