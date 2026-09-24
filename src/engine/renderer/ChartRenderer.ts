@@ -6,7 +6,7 @@ import { BarSeries } from '@/data/BarSeries';
 import { theme, TV_FONT } from '../theme';
 import type { Bar, ChartTypeId } from '@/types/market';
 import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
-import { IndicatorInstance } from '@/indicators/core/instance';
+import { IndicatorInstance, type IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
 import { DrawingLayer } from '../drawing/DrawingLayer';
 import { getToolDef, type Drawing, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
@@ -17,7 +17,7 @@ import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type PaneButtonRects } from './drawAxes';
 import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
-import { drawCrosshair, drawLegendBlock, type LegendInfo } from './drawCrosshair';
+import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
 
 const AXIS_WIDTH = 64;
@@ -75,6 +75,8 @@ export class ChartRenderer {
   private paneResizeStartHeight = 0;
   private percentOn = false;
   private drawingsLocked = false;
+  private gridVisible = true;
+  private legendOptions: LegendOptions = { ...DEFAULT_LEGEND_OPTIONS };
   private brickOpts: BrickOptions = {};
 
   // 画线状态
@@ -228,6 +230,17 @@ export class ChartRenderer {
     this.invalidate();
   }
 
+  /** 图例可见性（TV 图表设置「状态栏」页） */
+  setLegendOptions(options: Partial<LegendOptions>): void {
+    this.legendOptions = { ...this.legendOptions, ...options };
+    this.invalidate();
+  }
+
+  setGridVisible(visible: boolean): void {
+    this.gridVisible = visible;
+    this.invalidate();
+  }
+
   /** 恢复全部面板为自动价格适配 */
   resetPriceScale(): void {
     for (const pane of this.panes) {
@@ -240,10 +253,10 @@ export class ChartRenderer {
   // ---------- 指标 ----------
 
   /** 添加指标：overlay 进主面板，否则新建独立副图面板。返回实例 uid */
-  addIndicator(id: string, overrides?: Record<string, string | number | boolean>): string | null {
+  addIndicator(id: string, options?: IndicatorOptions): string | null {
     const def = getIndicatorDef(id);
     if (!def) return null;
-    const instance = new IndicatorInstance(def, overrides);
+    const instance = new IndicatorInstance(def, options);
     if (def.overlay) {
       this.panes[0].indicators.push(instance);
     } else {
@@ -268,11 +281,11 @@ export class ChartRenderer {
     this.invalidate();
   }
 
-  updateIndicatorParams(uid: string, params: Record<string, string | number | boolean>): void {
+  updateIndicator(uid: string, options: IndicatorOptions): void {
     for (const pane of this.panes) {
       const inst = pane.indicators.find((i) => i.uid === uid);
       if (inst) {
-        inst.params = { ...inst.params, ...params };
+        inst.applyOptions(options);
         this.invalidate();
         return;
       }
@@ -298,7 +311,7 @@ export class ChartRenderer {
   importIndicatorTemplate(list: Array<{ id: string; params?: Record<string, string | number | boolean> }>): void {
     for (const pane of this.panes) pane.indicators = [];
     this.panes = this.panes.filter((p) => p.kind !== 'indicator');
-    for (const item of list) this.addIndicator(item.id, item.params);
+    for (const item of list) this.addIndicator(item.id, { params: item.params });
   }
 
   /** 数据/图表类型变化后：重建 displaySeries 并重置视口 */
@@ -1138,16 +1151,18 @@ export class ChartRenderer {
 
       if (pane.kind === 'indicator') {
         this.autoscaleIndicators(pane, from, to);
-        drawGrid(ctx, this.viewport, pane.priceScale, geo);
+        if (this.gridVisible) drawGrid(ctx, this.viewport, pane.priceScale, geo);
         for (const inst of pane.indicators) {
+          if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
           drawIndicator(ctx, inst, this.barsArray(), from, to, this.viewport, pane.priceScale, geo);
         }
       } else {
         this.autoscalePrice(pane, from, to);
-        drawGrid(ctx, this.viewport, pane.priceScale, geo);
+        if (this.gridVisible) drawGrid(ctx, this.viewport, pane.priceScale, geo);
         this.drawPriceSeries(ctx, pane, geo, from, to);
         // 主图叠加指标
         for (const inst of pane.indicators) {
+          if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
           drawIndicator(ctx, inst, this.barsArray(), from, to, this.viewport, pane.priceScale, geo);
         }
       }
@@ -1263,13 +1278,18 @@ export class ChartRenderer {
     const hoveredPane = this.panes.find((p) => p.id === this.hoveredPaneId) ?? this.panes[0];
     const hoveredBar = this.crosshair.bar(this.displaySeries);
     // 主图叠加指标在悬停 bar 上的值（图例展示）
-    const legendIndicators: Array<{ name: string; values: Array<{ label: string; value: number }> }> = [];
+    const legendIndicators: LegendStudyValues[] = [];
     const mainPane = this.panes[0];
     const legendIndex = this.crosshair.visible && hoveredBar ? this.crosshair.barIndex : this.displaySeries.length - 1;
     if (mainPane.indicators.length > 0 && legendIndex >= 0) {
       const bars = this.barsArray();
       for (const inst of mainPane.indicators) {
-        legendIndicators.push({ name: inst.name, values: indicatorValuesAt(inst, bars, Math.max(0, legendIndex - 50), legendIndex) });
+        if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
+        legendIndicators.push({
+          name: inst.name,
+          precision: inst.precision,
+          values: indicatorValuesAt(inst, bars, Math.max(0, legendIndex - 50), legendIndex),
+        });
       }
     }
     drawCrosshair(
@@ -1283,7 +1303,7 @@ export class ChartRenderer {
       hoveredPane.height,
     );
     // 图例常驻：悬停跟随十字光标，否则显示最后一根
-    drawLegendBlock(ctx, hoveredBar ?? this.displaySeries.last, this.legend, legendIndicators);
+    drawLegendBlock(ctx, hoveredBar ?? this.displaySeries.last, this.legend, legendIndicators, this.legendOptions);
 
     // 联动：其他图表十字光标时间的垂直参考线
     if (this.syncCrosshairTime !== null && !this.crosshair.visible) {
@@ -1340,6 +1360,7 @@ export class ChartRenderer {
     // 叠加指标参与主图价格域
     const bars = this.barsArray();
     for (const inst of pane.indicators) {
+      if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
       const r = indicatorRange(inst, bars, from, to);
       if (r.low < low) low = r.low;
       if (r.high > high) high = r.high;
@@ -1356,6 +1377,7 @@ export class ChartRenderer {
     let high = -Infinity;
     const bars = this.barsArray();
     for (const inst of pane.indicators) {
+      if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
       const r = indicatorRange(inst, bars, from, to);
       if (r.low < low) low = r.low;
       if (r.high > high) high = r.high;

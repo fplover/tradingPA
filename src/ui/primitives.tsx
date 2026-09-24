@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Tabs from '@radix-ui/react-tabs';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import { X } from 'lucide-react';
 import { control, fontSize, radius, shadow, space, zIndex } from './tokens';
 
@@ -111,36 +112,57 @@ export function IconButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      onClick={onClick}
-      title={title}
-      aria-label={title}
-      aria-pressed={active}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: control.iconBtn,
-        height: control.h,
-        background: active ? 'var(--accent)' : 'transparent',
-        color: active ? 'var(--text-on-accent)' : 'var(--text-dim)',
-        border: 'none',
-        borderRadius: radius.sm,
-        cursor: 'pointer',
-      }}
-      onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.background = 'var(--panel-2)';
-      }}
-      onMouseLeave={(e) => {
-        if (!active) e.currentTarget.style.background = 'transparent';
-      }}
-    >
-      {children}
-    </button>
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <button
+          onClick={onClick}
+          aria-label={title}
+          aria-pressed={active}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: control.iconBtn,
+            height: control.h,
+            background: active ? 'var(--accent)' : 'transparent',
+            color: active ? 'var(--text-on-accent)' : 'var(--text-dim)',
+            border: 'none',
+            borderRadius: radius.sm,
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            if (!active) e.currentTarget.style.background = 'var(--panel-2)';
+          }}
+          onMouseLeave={(e) => {
+            if (!active) e.currentTarget.style.background = 'transparent';
+          }}
+        >
+          {children}
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Portal>
+        <Tooltip.Content side="bottom" sideOffset={6} style={tooltipStyle}>
+          {title}
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
   );
 }
 
 // ---------- 样式 ----------
+
+/** TV tooltip：反色实心矩形、无箭头、12px */
+const tooltipStyle: React.CSSProperties = {
+  background: 'var(--tooltip-bg)',
+  color: 'var(--tooltip-text)',
+  fontSize: fontSize.sm,
+  lineHeight: '16px',
+  padding: '5px 8px',
+  borderRadius: 3,
+  maxWidth: 240,
+  zIndex: zIndex.toast,
+  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.3)',
+};
 
 const overlayStyle: React.CSSProperties = {
   position: 'fixed',

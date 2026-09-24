@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, Camera, CandlestickChart, ChevronDown, Maximize2, Play, Redo2, RefreshCw, Save, Search, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
+import { BarChart3, Camera, CandlestickChart, ChevronDown, Maximize2, Play, Redo2, RefreshCw, Save, Search, Settings2, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Instrument } from '@/types/instrument';
@@ -23,6 +24,9 @@ import { ReplayBar } from '@/features/replay/ReplayBar';
 import { RightSide } from '@/features/rightbar/RightSide';
 import { StatusBar } from '@/features/market/StatusBar';
 import { ChartContextMenu, type ChartMenuState } from '@/features/market/ChartContextMenu';
+import { ChartSettingsDialog } from '@/features/settings/ChartSettingsDialog';
+import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
+import { DEFAULT_LEGEND_OPTIONS } from '@/engine/renderer/drawCrosshair';
 import { SymbolSearchDialog } from '@/features/watchlist/SymbolSearchDialog';
 import { useSymbolSearchStore } from '@/features/watchlist/searchStore';
 import { IconButton } from '@/ui/primitives';
@@ -101,6 +105,9 @@ export default function App() {
   const rendererRef = useRef<ChartRenderer | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [chartMenu, setChartMenu] = useState<ChartMenuState | null>(null);
+  const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
+  const [gridVisible, setGridVisible] = useState(true);
+  const [legendOpts, setLegendOpts] = useState<LegendOptions>({ ...DEFAULT_LEGEND_OPTIONS });
   const wasReplaying = useRef(false);
   const lastFedBarTime = useRef(0);
   const prevReplayIndex = useRef<number | null>(null);
@@ -159,6 +166,12 @@ export default function App() {
   useEffect(() => {
     renderer?.setDrawingsLocked(drawingsLocked);
   }, [renderer, drawingsLocked]);
+  useEffect(() => {
+    renderer?.setGridVisible(gridVisible);
+  }, [renderer, gridVisible]);
+  useEffect(() => {
+    renderer?.setLegendOptions(legendOpts);
+  }, [renderer, legendOpts]);
 
   // 快捷键：/ 或 Ctrl+K 打开品种搜索（输入框内不劫持）
   useEffect(() => {
@@ -230,6 +243,7 @@ export default function App() {
   };
 
   return (
+    <Tooltip.Provider delayDuration={400} skipDelayDuration={100}>
     <div style={{ width: '100vw', height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <div style={topBarStyle}>
         <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 4 }}>TradingPA</strong>
@@ -285,6 +299,9 @@ export default function App() {
           </>
         )}
         <LayoutMenu />
+        <IconButton onClick={() => setChartSettingsOpen(true)} title="图表设置">
+          <Settings2 size={15} />
+        </IconButton>
         <IconButton onClick={() => useSymbolSearchStore.getState().openSearch('switch')} title="快速搜索">
           <Search size={15} />
         </IconButton>
@@ -313,6 +330,7 @@ export default function App() {
                   symbol={activeInstrument?.symbol ?? '—'}
                   interval={tf.label}
                   decimals={decimals}
+                  timeframeId={timeframe}
                   exchange={activeInstrument?.exchange}
                   liveTickMs={series.mode === 'mock' ? 800 : undefined}
                   chartType={chartType}
@@ -376,6 +394,20 @@ export default function App() {
       )}
 
       <SymbolSearchDialog />
+      <ChartSettingsDialog
+        open={chartSettingsOpen}
+        onClose={() => setChartSettingsOpen(false)}
+        logScale={logScale}
+        percent={percent}
+        autoScale={autoScale}
+        grid={gridVisible}
+        legend={legendOpts}
+        onLog={setLogScale}
+        onPercent={setPercent}
+        onAuto={setAutoScale}
+        onGrid={setGridVisible}
+        onLegend={(patch) => setLegendOpts((v) => ({ ...v, ...patch }))}
+      />
       <ChartContextMenu
         state={chartMenu}
         instrument={activeInstrument}
@@ -383,6 +415,7 @@ export default function App() {
         onClose={() => setChartMenu(null)}
       />
     </div>
+    </Tooltip.Provider>
   );
 }
 

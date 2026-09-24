@@ -2,8 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronsRight } from 'lucide-react';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Bar, ChartTypeId } from '@/types/market';
-import type { ParamValue } from '@/indicators/core/types';
-import { getIndicatorDef } from '@/indicators/registry';
+import type { IndicatorOptions } from '@/indicators/core/instance';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
 import { useThemeStore } from '@/store/themeStore';
@@ -12,18 +11,13 @@ import { useTradeStore } from '@/features/trading/tradeStore';
 import { useOrderMenuStore } from '@/store/orderMenuStore';
 import { syncBus } from '@/store/syncBus';
 
-function defaultsFor(id: string): Record<string, ParamValue> {
-  const def = getIndicatorDef(id);
-  const out: Record<string, ParamValue> = {};
-  if (def) for (const p of def.params) out[p.key] = p.default;
-  return out;
-}
-
 interface ChartProps {
   bars: Bar[];
   symbol?: string;
   interval?: string;
   decimals?: number;
+  /** 周期 id，用于指标按周期可见性 */
+  timeframeId?: string;
   /** 交易所名，图例行展示 */
   exchange?: string;
   /** 实时模拟：以该间隔抖动最后一根 K 线（M5 替换为真实 WS） */
@@ -45,6 +39,7 @@ export function Chart({
   symbol = 'BTC/USDT',
   interval = '1m',
   decimals = 2,
+  timeframeId,
   exchange,
   liveTickMs,
   chartType = 'candles',
@@ -68,7 +63,7 @@ export function Chart({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const renderer = new ChartRenderer(canvas, bars, { symbol, interval, decimals, exchange });
+    const renderer = new ChartRenderer(canvas, bars, { symbol, interval, decimals, exchange, timeframeId });
     rendererRef.current = renderer;
     onRendererReady?.(renderer);
     if (import.meta.env.DEV) {
@@ -97,8 +92,8 @@ export function Chart({
   }, [bars]);
 
   useEffect(() => {
-    rendererRef.current?.setLegend({ symbol, interval, decimals, exchange });
-  }, [symbol, interval, decimals, exchange]);
+    rendererRef.current?.setLegend({ symbol, interval, decimals, exchange, timeframeId });
+  }, [symbol, interval, decimals, exchange, timeframeId]);
 
   useEffect(() => {
     rendererRef.current?.setChartType(chartType);
@@ -158,7 +153,7 @@ export function Chart({
     return () => window.removeEventListener('keydown', onKey);
   }, [setActiveToolStore]);
 
-  // 指标同步：store 为意图源，renderer 为实例源（按 id 对齐，去重/移除/改参）
+  // 指标同步：store 为意图源，renderer 为实例源（按 id 对齐，增删与全量选项下发）
   const activeIndicators = useIndicatorStore((s) => s.active);
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -169,12 +164,16 @@ export function Chart({
       if (!desiredIds.has(cur.id)) renderer.removeIndicator(cur.uid);
     }
     for (const des of activeIndicators) {
+      const options: IndicatorOptions = {
+        params: des.params,
+        styles: des.styles,
+        precision: des.precision,
+        displayName: des.displayName,
+        visibleTimeframes: des.visibleTimeframes,
+      };
       const cur = current.find((c) => c.id === des.id);
-      if (!cur) {
-        renderer.addIndicator(des.id, des.params as Record<string, ParamValue>);
-      } else if (JSON.stringify(cur.params) !== JSON.stringify({ ...defaultsFor(des.id), ...des.params })) {
-        renderer.updateIndicatorParams(cur.uid, des.params as Record<string, ParamValue>);
-      }
+      if (!cur) renderer.addIndicator(des.id, options);
+      else renderer.updateIndicator(cur.uid, options);
     }
   }, [activeIndicators]);
 

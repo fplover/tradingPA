@@ -32,8 +32,8 @@ export function drawIndicator(
 
   for (const plot of instance.def.plots) {
     const values = outputs[plot.key];
-    if (!values) continue;
-    const style = plot.style;
+    if (!values || instance.isPlotHidden(plot.key)) continue;
+    const style = instance.styleFor(plot.key, plot.style);
 
     if (style.kind === 'histogram') {
       const spacing = viewport.spacing;
@@ -157,6 +157,7 @@ export function indicatorValuesAt(
   const { outputs, ctxFrom } = instance.computeWindow(bars, from, index);
   const out: Array<{ label: string; value: number }> = [];
   for (const plot of instance.def.plots) {
+    if (instance.isPlotHidden(plot.key)) continue;
     const v = outputs[plot.key]?.[index - ctxFrom];
     if (v !== undefined) out.push({ label: plot.label, value: v });
   }

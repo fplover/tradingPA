@@ -11,6 +11,28 @@ export interface LegendInfo {
   interval: string;
   decimals: number;
   exchange?: string;
+  timeframeId?: string;
+}
+
+/** 图例可见性（TV 图表设置「状态栏」页） */
+export interface LegendOptions {
+  showOHLC: boolean;
+  showChange: boolean;
+  showVolume: boolean;
+  showStudies: boolean;
+}
+
+export const DEFAULT_LEGEND_OPTIONS: LegendOptions = {
+  showOHLC: true,
+  showChange: true,
+  showVolume: true,
+  showStudies: true,
+};
+
+export interface LegendStudyValues {
+  name: string;
+  precision?: number;
+  values: Array<{ label: string; value: number }>;
 }
 
 /** 十字光标：虚线 + 价格轴标签 + 时间轴标签 */
@@ -59,7 +81,8 @@ export function drawLegendBlock(
   ctx: CanvasRenderingContext2D,
   bar: Bar | undefined,
   legend: LegendInfo,
-  indicatorValues?: Array<{ name: string; values: Array<{ label: string; value: number }> }>,
+  indicatorValues?: LegendStudyValues[],
+  options: LegendOptions = DEFAULT_LEGEND_OPTIONS,
 ): void {
   ctx.save();
   ctx.textAlign = 'left';
@@ -85,14 +108,17 @@ export function drawLegendBlock(
     const changePct = bar.open !== 0 ? (change / bar.open) * 100 : 0;
     const color = bar.close >= bar.open ? theme.up : theme.down;
     const sign = change >= 0 ? '+' : '';
-    const fields: Array<[string, string, string]> = [
-      ['开=', bar.open.toFixed(d), color],
-      ['高=', bar.high.toFixed(d), color],
-      ['低=', bar.low.toFixed(d), color],
-      ['收=', bar.close.toFixed(d), color],
-      ['涨跌', `${sign}${change.toFixed(d)} (${sign}${changePct.toFixed(2)}%)`, color],
-      ['量', formatVolume(bar.volume), theme.legendDim],
-    ];
+    const fields: Array<[string, string, string]> = [];
+    if (options.showOHLC) {
+      fields.push(
+        ['开=', bar.open.toFixed(d), color],
+        ['高=', bar.high.toFixed(d), color],
+        ['低=', bar.low.toFixed(d), color],
+        ['收=', bar.close.toFixed(d), color],
+      );
+      if (options.showChange) fields.push(['涨跌', `${sign}${change.toFixed(d)} (${sign}${changePct.toFixed(2)}%)`, color]);
+    }
+    if (options.showVolume) fields.push(['量', formatVolume(bar.volume), theme.legendDim]);
     for (const [label, value, c] of fields) {
       if (label) {
         ctx.fillStyle = theme.legendDim;
@@ -105,7 +131,7 @@ export function drawLegendBlock(
     }
   }
 
-  if (indicatorValues && indicatorValues.length > 0) {
+  if (options.showStudies && indicatorValues && indicatorValues.length > 0) {
     let iy = 28;
     ctx.font = `13px ${TV_FONT}`;
     for (const ind of indicatorValues) {
@@ -116,7 +142,7 @@ export function drawLegendBlock(
       ix += ctx.measureText(ind.name).width + 6;
       for (const v of ind.values) {
         ctx.fillStyle = theme.legendText;
-        const text = `${v.label} ${formatIndicatorValue(v.value)}`;
+        const text = `${v.label} ${ind.precision !== undefined ? v.value.toFixed(ind.precision) : formatIndicatorValue(v.value)}`;
         ctx.fillText(text, ix, iy);
         ix += ctx.measureText(text).width + 8;
       }

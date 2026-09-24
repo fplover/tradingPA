@@ -63,6 +63,8 @@ body.theme-dark {
   --down: #f23645;
   --elevated: #363a45;
   --on-updown: #ffffff;
+  --tooltip-bg: #363a45;
+  --tooltip-text: #d1d4dc;
 }
 
 body.theme-light {
@@ -84,6 +86,8 @@ body.theme-light {
   --down: #f23645;
   --elevated: #e0e3eb;
   --on-updown: #ffffff;
+  --tooltip-bg: #2a2e39;
+  --tooltip-text: #ffffff;
 }
 
 /* 报价刷新闪烁：涨绿跌红底色淡出，密集列表里能一眼看到哪几只在动 */
