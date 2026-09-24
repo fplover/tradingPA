@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   Crosshair,
@@ -20,12 +20,12 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  Check,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import type { DrawingTypeId } from '@/engine/drawing/types';
 import { useDrawingStore } from '@/store/drawingStore';
-import { fontSize, shadow, space, zIndex } from '@/ui/tokens';
+import { fontSize, space, zIndex } from '@/ui/tokens';
 
 type ToolbarItem = DrawingTypeId | 'cursor' | 'magnet';
 
@@ -46,14 +46,20 @@ const ICONS: Record<ToolbarItem, LucideIcon> = {
   magnet: Magnet,
 };
 
-/** 工具分组：多变体的组只显示当前变体，长按弹出 flyout（TV 行为） */
-const GROUPS: ToolbarItem[][] = [
-  ['cursor'],
-  ['trendline', 'ray', 'info-line', 'hline', 'vline', 'arrow'],
-  ['channel'],
-  ['fib'],
-  ['rect', 'ellipse', 'path'],
-  ['text'],
+interface ToolGroup {
+  items: ToolbarItem[];
+  /** caret 的 tooltip，TV zh 文案 */
+  title: string;
+}
+
+/** 工具分组：多变体组只显示当前变体，flyout 列出全部变体 */
+const GROUPS: ToolGroup[] = [
+  { items: ['cursor'], title: '游标' },
+  { items: ['trendline', 'ray', 'info-line', 'hline', 'vline', 'arrow'], title: '趋势线工具' },
+  { items: ['channel'], title: '通道工具' },
+  { items: ['fib'], title: '江恩和斐波那契工具' },
+  { items: ['rect', 'ellipse', 'path'], title: '几何形状' },
+  { items: ['text'], title: '文本工具' },
 ];
 
 const TOOL_LABELS: Record<ToolbarItem, string> = {
@@ -73,7 +79,19 @@ const TOOL_LABELS: Record<ToolbarItem, string> = {
   magnet: '磁吸（吸附 OHLC）',
 };
 
-const HOLD_MS = 350;
+/** TV 的 flyout 行内快捷键提示（仅这七个工具有 selectHotkey） */
+const HOTKEYS: Partial<Record<ToolbarItem, string>> = {
+  trendline: 'Alt + T',
+  hline: 'Alt + H',
+  ray: 'Alt + J',
+  vline: 'Alt + V',
+  fib: 'Alt + F',
+  rect: 'Alt + Shift + R',
+};
+
+/** TV 实测时序：按住 175ms 激活当前变体，300ms 展开 flyout */
+const ACTIVATE_MS = 175;
+const OPEN_MS = 300;
 
 interface FlyoutState {
   group: number;
@@ -81,7 +99,7 @@ interface FlyoutState {
   y: number;
 }
 
-/** 左侧画线工具栏：TV 为 52px 宽、38×38 按钮；底部依次 磁吸/锁定/隐藏/清空 */
+/** 左侧画线工具栏：TV 为 52px 宽；底部依次 磁吸/锁定/隐藏/清空 */
 export function DrawingToolbar({
   locked,
   onToggleLock,
@@ -99,60 +117,184 @@ export function DrawingToolbar({
   const setMagnet = useDrawingStore((s) => s.setMagnet);
 
   const [flyout, setFlyout] = useState<FlyoutState | null>(null);
-  const holdTimer = useRef<number | null>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const activateTimer = useRef<number | null>(null);
+  const openTimer = useRef<number | null>(null);
+  const activatedWhileHeld = useRef(false);
+  /** 本次 flyout 是否由按住展开：是则松开不关闭（TV 观察行为） */
   const openedByHold = useRef(false);
 
-  const clearHold = () => {
-    if (holdTimer.current !== null) window.clearTimeout(holdTimer.current);
-    holdTimer.current = null;
+  const clearTimers = () => {
+    if (activateTimer.current !== null) window.clearTimeout(activateTimer.current);
+    if (openTimer.current !== null) window.clearTimeout(openTimer.current);
+    activateTimer.current = null;
+    openTimer.current = null;
   };
 
-  /** 组内当前变体：激活工具属于该组则显示它，否则显示组首工具 */
-  const shownOf = (group: ToolbarItem[]): ToolbarItem =>
-    group.includes('cursor') ? 'cursor' : (group.find((t) => t === activeTool) ?? group[0]);
+  useEffect(() => clearTimers, []);
+
+  // TV 热键：Alt+T/H/J/V/F、Alt+Shift+R 直接选工具
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.ctrlKey || e.metaKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return;
+      const key = e.key.toLowerCase();
+      const pick: Record<string, DrawingTypeId> = {
+        t: 'trendline',
+        h: 'hline',
+        j: 'ray',
+        v: 'vline',
+        f: 'fib',
+      };
+      if (e.shiftKey && key === 'r') {
+        e.preventDefault();
+        setActiveTool('rect');
+        return;
+      }
+      const tool = pick[key];
+      if (tool) {
+        e.preventDefault();
+        setActiveTool(tool);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setActiveTool]);
 
   const activate = (item: ToolbarItem) => setActiveTool(item === 'cursor' ? null : (item as DrawingTypeId));
+
+  const shownOf = (group: ToolGroup): ToolbarItem =>
+    group.items.includes('cursor') ? 'cursor' : (group.items.find((t) => t === activeTool) ?? group.items[0]);
+
+  const isActive = (group: ToolGroup): boolean => {
+    const shown = shownOf(group);
+    return shown === 'cursor' ? activeTool === null : activeTool === shown;
+  };
+
+  const openFlyout = (gi: number, rect: DOMRect) => {
+    setFlyout({ group: gi, x: rect.right + 1, y: rect.top - 6 });
+  };
+
+  /** 按住：175ms 激活当前变体、300ms 展开 flyout（TV 双定时器） */
+  const onGroupPointerDown = (gi: number, group: ToolGroup, e: React.PointerEvent<HTMLButtonElement>) => {
+    if (group.items.length < 2 || e.button !== 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    activatedWhileHeld.current = false;
+    clearTimers();
+    activateTimer.current = window.setTimeout(() => {
+      activateTimer.current = null;
+      activatedWhileHeld.current = true;
+      activate(shownOf(group));
+    }, ACTIVATE_MS);
+    openTimer.current = window.setTimeout(() => {
+      openTimer.current = null;
+      openedByHold.current = true;
+      openFlyout(gi, rect);
+    }, OPEN_MS);
+  };
+
+  /** 松开：flyout 已开则保持；组已激活则展开；否则补一次激活 */
+  const onGroupPointerUp = (gi: number, group: ToolGroup, e: React.PointerEvent<HTMLButtonElement>) => {
+    if (group.items.length < 2 || e.button !== 0) return;
+    const pendingOpen = openTimer.current !== null;
+    if (pendingOpen) {
+      window.clearTimeout(openTimer.current!);
+      openTimer.current = null;
+    }
+    if (activateTimer.current !== null) {
+      window.clearTimeout(activateTimer.current);
+      activateTimer.current = null;
+    }
+    if (flyout !== null) {
+      // TV：flyout 由点击/caret 打开时再按下本组按钮 = 关闭；按住展开的松开不关闭
+      if (flyout.group === gi && !openedByHold.current) setFlyout(null);
+      return;
+    }
+    if (isActive(group)) {
+      openFlyout(gi, e.currentTarget.getBoundingClientRect());
+      return;
+    }
+    if (!activatedWhileHeld.current) activate(shownOf(group));
+  };
 
   return (
     <div style={toolbarStyle} aria-label="画线工具">
       {GROUPS.map((group, gi) => {
         const shown = shownOf(group);
         const Icon = ICONS[shown];
-        const active = shown === 'cursor' ? activeTool === null : activeTool === shown;
-        const hasFlyout = group.length > 1;
+        const active = isActive(group);
+        const hasFlyout = group.items.length > 1;
+        const open = flyout?.group === gi;
         return (
-          <button
+          <div
             key={gi}
-            className="rail-btn"
-            data-active={active}
-            title={hasFlyout ? `${TOOL_LABELS[shown]}（长按选择变体）` : TOOL_LABELS[shown]}
-            aria-label={TOOL_LABELS[shown]}
-            aria-pressed={active}
-            aria-haspopup={hasFlyout ? 'menu' : undefined}
-            onPointerDown={(e) => {
-              if (!hasFlyout) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              openedByHold.current = false;
-              clearHold();
-              holdTimer.current = window.setTimeout(() => {
-                openedByHold.current = true;
-                setFlyout({ group: gi, x: rect.right + 2, y: rect.top });
-              }, HOLD_MS);
-            }}
-            onPointerUp={clearHold}
-            onPointerLeave={clearHold}
-            onClick={() => {
-              if (openedByHold.current) {
-                openedByHold.current = false;
-                return;
-              }
-              activate(shown);
-            }}
-            style={btnStyle}
+            data-tool-control
+            style={controlStyle}
+            onMouseEnter={() => setHovered(gi)}
+            onMouseLeave={() => setHovered(null)}
           >
-            <Icon size={18} strokeWidth={active ? 2 : 1.5} />
-            {hasFlyout && <span style={caretStyle} aria-hidden />}
-          </button>
+            <button
+              style={mainBtnStyle}
+              title={TOOL_LABELS[shown]}
+              aria-label={TOOL_LABELS[shown]}
+              aria-pressed={active}
+              aria-haspopup={hasFlyout ? 'menu' : undefined}
+              onPointerDown={(e) => onGroupPointerDown(gi, group, e)}
+              onPointerUp={(e) => onGroupPointerUp(gi, group, e)}
+              onClick={(e) => {
+                // 键盘激活（Enter/Space，detail=0）与单变体组走 click
+                if (!hasFlyout || e.detail === 0) activate(shown);
+              }}
+            >
+              <span
+                style={{
+                  ...cellStyle,
+                  background: active ? 'var(--accent)' : hovered === gi ? 'var(--panel-2)' : 'transparent',
+                }}
+              >
+                <Icon
+                  size={17}
+                  strokeWidth={1.5}
+                  style={{ color: active ? 'var(--text-on-accent)' : hovered === gi ? 'var(--text)' : undefined }}
+                />
+              </span>
+            </button>
+            {hasFlyout && (
+              <button
+                style={{ ...caretStyle, opacity: hovered === gi || open ? 1 : 0 }}
+                title={group.title}
+                aria-label={group.title}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                data-role="menu-handle"
+                onClick={(e) => {
+                  if (open) {
+                    setFlyout(null);
+                    return;
+                  }
+                  const main = e.currentTarget.parentElement?.firstElementChild as HTMLElement | undefined;
+                  const rect = main?.getBoundingClientRect();
+                  if (rect) openFlyout(gi, rect);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    const main = e.currentTarget.parentElement?.firstElementChild as HTMLElement | undefined;
+                    const rect = main?.getBoundingClientRect();
+                    if (rect) openFlyout(gi, rect);
+                  } else if (e.key === 'Escape') {
+                    setFlyout(null);
+                  }
+                }}
+              >
+                <ChevronRight
+                  size={11}
+                  style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}
+                />
+              </button>
+            )}
+          </div>
         );
       })}
 
@@ -164,9 +306,9 @@ export function DrawingToolbar({
         aria-label={TOOL_LABELS.magnet}
         aria-pressed={magnet}
         onClick={() => setMagnet(!magnet)}
-        style={btnStyle}
+        style={bottomBtnStyle}
       >
-        <Magnet size={17} strokeWidth={magnet ? 2 : 1.5} />
+        <Magnet size={17} strokeWidth={1.5} />
       </button>
       <button
         className="rail-btn"
@@ -175,7 +317,7 @@ export function DrawingToolbar({
         aria-label={locked ? '解锁所有绘图' : '锁定所有绘图'}
         aria-pressed={locked}
         onClick={onToggleLock}
-        style={btnStyle}
+        style={bottomBtnStyle}
       >
         {locked ? <Lock size={17} /> : <Unlock size={17} />}
       </button>
@@ -186,7 +328,7 @@ export function DrawingToolbar({
         aria-label={hideDrawings ? '显示所有绘图' : '隐藏所有绘图'}
         aria-pressed={hideDrawings}
         onClick={onToggleHide}
-        style={btnStyle}
+        style={bottomBtnStyle}
       >
         {hideDrawings ? <EyeOff size={17} /> : <Eye size={17} />}
       </button>
@@ -195,16 +337,21 @@ export function DrawingToolbar({
         title="删除选中画线（Delete）"
         aria-label="删除选中画线"
         onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete' }))}
-        style={{ ...btnStyle, marginTop: 'auto' }}
+        style={{ ...bottomBtnStyle, marginTop: 'auto' }}
       >
         <Trash2 size={17} strokeWidth={1.5} />
       </button>
 
-      {/* flyout：锚在按钮右侧，列出组内变体 */}
+      {/* flyout：锚在按钮右侧偏上 6px；选中行实心强调色 + 白字，行尾快捷键提示 */}
       <DropdownMenu.Root
         open={flyout !== null}
-        onOpenChange={(open) => {
-          if (!open) setFlyout(null);
+        // 非模态：TV 的 flyout 不锁焦点、不屏蔽工具栏指针事件（caret 需可点）
+        modal={false}
+        onOpenChange={(o) => {
+          if (!o) {
+            openedByHold.current = false;
+            setFlyout(null);
+          }
         }}
       >
         <DropdownMenu.Trigger asChild>
@@ -214,27 +361,34 @@ export function DrawingToolbar({
           />
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content align="start" side="right" sideOffset={4} className="tv-scroll" style={menuStyle}>
+          <DropdownMenu.Content
+            align="start"
+            side="right"
+            sideOffset={0}
+            className="tv-scroll"
+            style={menuStyle}
+            // caret/组按钮不算「外部」：否则关闭与自身 onClick 叠加会变成重开
+            onPointerDownOutside={(e) => {
+              const t = e.target as HTMLElement | null;
+              if (t?.closest?.('[data-tool-control]')) e.preventDefault();
+            }}
+          >
             {flyout &&
-              GROUPS[flyout.group].map((id) => {
+              GROUPS[flyout.group].items.map((id) => {
                 const ItemIcon = ICONS[id];
                 const selected = id === 'cursor' ? activeTool === null : activeTool === id;
                 return (
                   <DropdownMenu.Item
                     key={id}
                     className="tv-menu-item"
-                    style={itemStyle}
+                    style={{ ...itemStyle, background: selected ? 'var(--accent)' : undefined, color: selected ? 'var(--text-on-accent)' : undefined }}
                     onSelect={() => activate(id)}
                   >
                     <span style={iconSlot}>
                       <ItemIcon size={15} />
                     </span>
                     {TOOL_LABELS[id]}
-                    {selected && (
-                      <span style={{ marginLeft: 'auto', display: 'flex' }}>
-                        <Check size={13} />
-                      </span>
-                    )}
+                    {HOTKEYS[id] && <span style={hotkeyStyle}>{HOTKEYS[id]}</span>}
                   </DropdownMenu.Item>
                 );
               })}
@@ -259,33 +413,67 @@ const toolbarStyle: React.CSSProperties = {
   overflowY: 'auto',
 };
 
-const btnStyle: React.CSSProperties = {
+const controlStyle: React.CSSProperties = { position: 'relative', width: 38, height: 38, flexShrink: 0 };
+
+const mainBtnStyle: React.CSSProperties = {
+  width: 38,
+  height: 38,
+  border: 'none',
+  background: 'transparent',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  color: 'var(--text-dim)',
+  borderRadius: 4,
+  padding: 0,
+};
+
+/** 激活态：TV 为强调色实心圆角方块 + 白色图标 */
+const cellStyle: React.CSSProperties = {
+  width: 30,
+  height: 30,
+  borderRadius: 4,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+};
+
+/** caret：独立命中目标，悬停或展开时才可见 */
+const caretStyle: React.CSSProperties = {
+  position: 'absolute',
+  right: 0,
+  top: 1,
+  bottom: 1,
+  width: 11,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--text-dim)',
+  cursor: 'pointer',
+  padding: 0,
+  borderRadius: '4px 0 0 4px',
+  transition: 'opacity 120ms ease-out',
+};
+
+const bottomBtnStyle: React.CSSProperties = {
   width: 38,
   height: 38,
   border: 'none',
   flexShrink: 0,
 };
 
-/** 组右下角小三角：提示存在变体 flyout */
-const caretStyle: React.CSSProperties = {
-  position: 'absolute',
-  right: 4,
-  bottom: 4,
-  width: 0,
-  height: 0,
-  borderLeft: '4px solid transparent',
-  borderTop: '4px solid currentColor',
-  opacity: 0.65,
-};
-
 const menuStyle: React.CSSProperties = {
-  minWidth: 150,
+  minWidth: 168,
+  maxWidth: 340,
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
-  padding: '4px 0',
+  borderRadius: 6,
+  padding: 0,
   zIndex: zIndex.dropdown,
-  boxShadow: shadow.menu,
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
 };
 
 const itemStyle: React.CSSProperties = {
@@ -293,14 +481,22 @@ const itemStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: space.sm,
   width: '100%',
-  padding: `6px ${space.sm + 2}px`,
+  padding: '2px 10px 2px 8px',
+  minHeight: 28,
   border: 'none',
   color: 'var(--text)',
-  fontSize: fontSize.md,
-  cursor: 'pointer',
+  fontSize: fontSize.lg,
+  cursor: 'default',
   textAlign: 'left',
   outline: 'none',
   whiteSpace: 'nowrap',
+};
+
+const hotkeyStyle: React.CSSProperties = {
+  marginLeft: 'auto',
+  paddingLeft: space.md,
+  fontSize: fontSize.sm,
+  color: 'var(--text-faint)',
 };
 
 const iconSlot: React.CSSProperties = { width: 16, flexShrink: 0, display: 'flex', alignItems: 'center' };
@@ -308,7 +504,6 @@ const iconSlot: React.CSSProperties = { width: 16, flexShrink: 0, display: 'flex
 const sepStyle: React.CSSProperties = {
   height: 1,
   background: 'var(--border)',
-  margin: '3px 2px',
-  width: 26,
+  margin: '3px 8px',
   flexShrink: 0,
 };

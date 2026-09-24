@@ -14,7 +14,7 @@ function ramp(n: number): Bar[] {
 function compute(id: string, bars: Bar[], params?: Record<string, string | number | boolean>) {
   const def = getIndicatorDef(id);
   if (!def) throw new Error(`指标不存在: ${id}`);
-  return new IndicatorInstance(def, params).computeWindow(bars, 0, bars.length - 1).outputs;
+  return new IndicatorInstance(def, { params }).computeWindow(bars, 0, bars.length - 1).outputs;
 }
 
 describe('指标注册表', () => {

@@ -86,7 +86,7 @@ test('画线工具创建趋势线并删除', async ({ page }) => {
   const canvas = page.locator('canvas');
   const box = (await canvas.boundingBox())!;
 
-  await page.getByTitle('趋势线').click();
+  await page.getByRole('button', { name: '趋势线', exact: true }).click();
   await page.mouse.click(box.x + 200, box.y + 200);
   await page.mouse.click(box.x + 400, box.y + 300);
 
