@@ -22,6 +22,11 @@ import {
   Trash2,
   ChevronRight,
   MousePointer2,
+  Expand,
+  Fan,
+  Radius,
+  Timer,
+  WandSparkles,
   type LucideIcon,
 } from 'lucide-react';
 import type { DrawingTypeId } from '@/engine/drawing/types';
@@ -44,6 +49,11 @@ const ICONS: Record<ToolbarItem, LucideIcon> = {
   path: PenLine,
   text: Type,
   fib: Percent,
+  'fib-extension': Expand,
+  'fib-fan': Fan,
+  'fib-arc': Radius,
+  'fib-timezone': Timer,
+  'fib-auto': WandSparkles,
   magnet: Magnet,
 };
 
@@ -58,7 +68,7 @@ const GROUPS: ToolGroup[] = [
   { items: ['cursor'], title: '游标' },
   { items: ['trendline', 'ray', 'info-line', 'hline', 'vline', 'arrow'], title: '趋势线工具' },
   { items: ['channel'], title: '通道工具' },
-  { items: ['fib'], title: '江恩和斐波那契工具' },
+  { items: ['fib', 'fib-extension', 'fib-fan', 'fib-arc', 'fib-timezone', 'fib-auto'], title: '江恩和斐波那契工具' },
   { items: ['rect', 'ellipse', 'path'], title: '几何形状' },
   { items: ['text'], title: '文本工具' },
 ];
@@ -73,6 +83,11 @@ const TOOL_LABELS: Record<ToolbarItem, string> = {
   'info-line': '信息线',
   channel: '平行通道',
   fib: '斐波那契回撤',
+  'fib-extension': '斐波那契扩展',
+  'fib-fan': '斐波那契扇形',
+  'fib-arc': '斐波那契弧线',
+  'fib-timezone': '斐波那契时区',
+  'fib-auto': 'Auto Fib（自动回撤）',
   rect: '矩形',
   ellipse: '椭圆',
   path: '路径',

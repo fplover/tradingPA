@@ -11,7 +11,7 @@ import { IndicatorInstance, type IndicatorOptions } from '@/indicators/core/inst
 import { getIndicatorDef } from '@/indicators/registry';
 import { DrawingLayer } from '../drawing/DrawingLayer';
 import { getToolDef, type Drawing, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
-import { drawDrawings, hitTestDrawing, pixelToPoint, type DrawContext } from '../drawing/drawDrawings';
+import { drawDrawings, hitTestDrawing, pixelToPoint, detectVisibleSwing, type DrawContext } from '../drawing/drawDrawings';
 import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
@@ -950,6 +950,16 @@ export class ChartRenderer {
   /** 工具模式下的落点 */
   private handleToolPointerDown(x: number, y: number, pane: PaneState): void {
     const pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
+    // Auto Fib：无锚点点击——一次点击即按可见区间 swing 生成标准回撤对象
+    if (this.activeTool === 'fib-auto') {
+      const swing = this.detectSwingForAutoFib();
+      if (swing) {
+        this.drawingLayer.add('fib-auto', [swing.start, swing.end]);
+        this.toolFinishedCb?.();
+      }
+      this.invalidate();
+      return;
+    }
     const def = getToolDef(this.activeTool!);
     if (def.points === 1) {
       this.drawingLayer.add(this.activeTool!, [pt]);
@@ -965,6 +975,14 @@ export class ChartRenderer {
       this.toolFinishedCb?.();
     }
     this.invalidate();
+  }
+
+  /** Auto Fib 摆动检测：可见 bar 区间的最高/最低点对（不足则 null，本次点击不放置） */
+  private detectSwingForAutoFib(): { start: DrawingPoint; end: DrawingPoint } | null {
+    const chartW = this.manager.width - AXIS_WIDTH;
+    const from = Math.max(0, Math.floor(this.viewport.first));
+    const to = Math.min(this.displaySeries.length - 1, Math.ceil(this.viewport.xToIndex(chartW)));
+    return detectVisibleSwing(this.displaySeries.raw(), from, to);
   }
 
   private onPointerMove = (e: PointerEvent) => {

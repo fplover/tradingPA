@@ -16,7 +16,12 @@ export type DrawingTypeId =
   | 'ellipse'
   | 'path'
   | 'text'
-  | 'fib';
+  | 'fib'
+  | 'fib-extension'
+  | 'fib-fan'
+  | 'fib-arc'
+  | 'fib-timezone'
+  | 'fib-auto';
 
 export interface DrawingStyle {
   color: string;
@@ -61,6 +66,13 @@ export const DRAWING_TOOLS: DrawingToolDef[] = [
   { id: 'path', label: '路径', points: 0, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
   { id: 'text', label: '文本', points: 1, defaultStyle: { color: '#d1d4dc', lineWidth: 1, text: '文本', fontSize: 12 } },
   { id: 'fib', label: '斐波那契回撤', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  // 斐波那契家族（B6）：样式与既有 fib 同源（TV 默认灰 #787B86）
+  { id: 'fib-extension', label: '斐波那契扩展', points: 3, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'fib-fan', label: '斐波那契扇形', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'fib-arc', label: '斐波那契弧线', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'fib-timezone', label: '斐波那契时区', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  // Auto Fib：放置时无锚点点击，由 ChartRenderer 按可见区间 swing 一次生成 2 点对象
+  { id: 'fib-auto', label: 'Auto Fib（自动回撤）', points: 0, defaultStyle: { color: '#787b86', lineWidth: 1 } },
 ];
 
 export function getToolDef(id: DrawingTypeId): DrawingToolDef {
