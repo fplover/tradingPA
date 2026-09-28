@@ -11,11 +11,19 @@ const BASE_URL = `http://localhost:${PORT}`;
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
+  // A3-1：黄金截图基线目录（toHaveScreenshot 经 expect.pathTemplate 落此）
+  snapshotDir: './tests/e2e/__screenshots__',
   // 首个用例会触发 dev server 冷编译（~60 模块），允许 1 次重试消解 flaky
   retries: 1,
   // 图表应用较重（10 万 K 线 + 实时流），并行页面互相抢资源会 flaky，串行执行
   workers: 1,
   fullyParallel: false,
+  expect: {
+    toHaveScreenshot: {
+      // 黄金截图统一落 <snapshotDir>/<name>.png（A3-1：tests/e2e/__screenshots__/）
+      pathTemplate: '{snapshotDir}/{arg}{ext}',
+    },
+  },
   use: {
     baseURL: BASE_URL,
     viewport: { width: 1280, height: 800 },
