@@ -8,7 +8,6 @@ import type { Bar, ChartTypeId, Timeframe } from '@/types/market';
 import { CHART_TYPES, TIMEFRAMES } from '@/types/market';
 import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
 import { isMarketOpen } from '@/data/marketHours';
-import type { MarketId } from '@/types/instrument';
 import { IndicatorInstance, type IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
 import { DrawingLayer } from '../drawing/DrawingLayer';
@@ -66,8 +65,6 @@ export class ChartRenderer {
   private displaySeries: BarSeries = this.baseSeries;
   private crosshair = new Crosshair();
   private legend: LegendInfo;
-  /** 图例市场（开/闭市圆点判定用，setLegend 同步） */
-  private legendMarket: MarketId | null = null;
   private rafId = 0;
   private dirty = true;
   private disposed = false;
@@ -192,7 +189,6 @@ export class ChartRenderer {
 
   setLegend(legend: Partial<LegendInfo>): void {
     this.legend = { ...this.legend, ...legend };
-    this.legendMarket = legend.market ?? this.legendMarket;
     this.countdown.setTimeframe(this.resolveTimeframe()); // 周期切换 → 重算倒计时
     this.invalidate();
   }
@@ -1698,7 +1694,7 @@ export class ChartRenderer {
     drawLegendBlock(
       ctx,
       hoveredBar ?? this.displaySeries.last,
-      { ...this.legend, marketOpen: this.legendMarket ? isMarketOpen(this.legendMarket) : undefined },
+      { ...this.legend, marketOpen: this.legend.market ? isMarketOpen(this.legend.market) : undefined },
       legendIndicators,
       this.legendOptions,
       this.hoverStudyUid,
