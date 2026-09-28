@@ -1,5 +1,6 @@
 import type { Bar, TimeframeId } from '@/types/market';
 import { getTimeframe } from '@/types/market';
+import { customIntervalMinutes } from '@/features/market/customInterval';
 import type { Instrument } from '@/types/instrument';
 import { aggregateBars } from '@/data/aggregate';
 import { fetchGbk } from './http';
@@ -33,10 +34,24 @@ interface SinaBar {
 type ActivePlan = { kind: 'minute'; type: number } | { kind: 'daily' };
 type Plan = ActivePlan | { kind: 'none' };
 
-/** 分钟线只支持 1/5/15/30/60；其余周期取更细的基础数据本地聚合 */
-function planFor(tf: TimeframeId): Plan {
+/** 自定义周期 → 可整除的最大基础分钟周期（分钟线仅支持 1/5/15/30/60）；
+ *  >30 分钟且 [30,15,5] 无一整除时放弃：1m 基期的拉取比过大，收益不抵成本 */
+function customMinutePlan(minutes: number): Plan {
+  for (const n of [30, 15, 5]) {
+    if (minutes % n === 0) return { kind: 'minute', type: n };
+  }
+  return minutes <= 30 ? { kind: 'minute', type: 1 } : { kind: 'none' };
+}
+
+/** 分钟线只支持 1/5/15/30/60；其余周期取更细的基础数据本地聚合（bars() 内 aggregateBars）。
+ *  导出供单测：自定义周期归一化是沉默逻辑错误高发区，必须钉住。 */
+export function planFor(tf: TimeframeId): Plan {
+  const customMinutes = customIntervalMinutes(tf);
+  if (customMinutes !== null) return customMinutePlan(customMinutes);
   switch (tf) {
     case '1m':
+      return { kind: 'minute', type: 1 };
+    case '2m':
       return { kind: 'minute', type: 1 };
     case '3m':
       return { kind: 'minute', type: 1 };
@@ -46,8 +61,11 @@ function planFor(tf: TimeframeId): Plan {
       return { kind: 'minute', type: 15 };
     case '30m':
       return { kind: 'minute', type: 30 };
+    case '45m':
+      return { kind: 'minute', type: 15 };
     case '1H':
     case '2H':
+    case '3H':
     case '4H':
     case '6H':
     case '8H':

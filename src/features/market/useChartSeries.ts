@@ -4,7 +4,8 @@ import { getTimeframe } from '@/types/market';
 import type { Instrument } from '@/types/instrument';
 import type { FeedStatus } from '@/data/feed/types';
 import { LiveDataFeed, toBinanceInterval } from '@/data/feed/LiveDataFeed';
-import { fetchKlines } from '@/data/feed/binance';
+import { BINANCE_LIMIT_MAX, binanceIntervalString, fetchKlines, nativeBaseInterval } from '@/data/feed/binance';
+import { aggregateBars } from '@/data/aggregate';
 import { klineCache } from '@/data/cache/klineCache';
 import { dataRegistry, NoHistoryError } from '@/data/sources/registry';
 import { applyQuote } from '@/data/liveBar';
@@ -94,6 +95,32 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     });
 
     if (inst.market === 'crypto') {
+      // B5：非原生周期（2m/45m/3H/自定义）没有 Binance interval——拉最大可整除原生基期，
+      // 经既有聚合器聚合后走 onHistory 同款通路，缓存以目标周期 id 为键。
+      // 已知边界：该路径不起 WS（桶状态机不覆盖聚合），实时尾柱由报价轮询 applyQuote 维持；
+      // 向左翻页（loadMore）在该路径下为空操作，历史深度 = 单页基期数据的聚合结果。
+      const baseSeconds = tf.seconds > 0 ? nativeBaseInterval(tf.seconds) : null;
+      if (baseSeconds !== null) {
+        const base = binanceIntervalString(baseSeconds);
+        const ratio = Math.ceil(tf.seconds / baseSeconds);
+        setStatusDetail(`拉取 ${base} 基期 K 线并聚合`);
+        void fetchKlines(inst.code, base, { limit: Math.min(BINANCE_LIMIT_MAX, HISTORY_LIMIT * ratio) })
+          .then((baseBars) => {
+            if (disposed) return;
+            const bars = ratio > 1 ? aggregateBars(baseBars, tf) : baseBars;
+            readyRef.current = true;
+            setHistory(bars);
+            setStatus('live');
+            setStatusDetail(`聚合自 ${base} 基期`);
+            void klineCache.put(inst.id, timeframe, bars);
+          })
+          .catch((err: unknown) => {
+            if (!disposed) degradeToMock(err instanceof Error ? err.message : '历史数据获取失败');
+          });
+        return () => {
+          disposed = true;
+        };
+      }
       const feed = new LiveDataFeed({
         symbol: inst.code,
         interval: toBinanceInterval(timeframe),

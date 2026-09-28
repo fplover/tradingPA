@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { aggregateBars, needsAggregation } from '@/data/aggregate';
-import { getTimeframe, TIMEFRAMES } from '@/types/market';
+import { getTimeframe, registerTimeframe, TIMEFRAMES } from '@/types/market';
 import type { Bar, Timeframe, TimeframeId } from '@/types/market';
+import { migrateSnapshot } from '@/types/layout';
+import {
+  BINANCE_LIMIT_MAX,
+  binanceIntervalString,
+  nativeBaseInterval,
+} from '@/data/feed/binance';
+import { planFor as planForSina } from '@/data/sources/sina';
+import { planFor as planForTencent } from '@/data/sources/tencent';
 import {
   CUSTOM_INTERVAL_STORAGE_KEY,
   MAX_CUSTOM_INTERVALS,
@@ -395,5 +403,102 @@ describe('自定义间隔：localStorage 持久化（fake storage）', () => {
     initCustomIntervals();
     expect(getTimeframe('custom:11' as TimeframeId).seconds).toBe(660);
     expect(getTimeframe('custom:11' as TimeframeId).label).toBe('11分');
+  });
+});
+
+describe('数据源接线：Binance 原生基期推导', () => {
+  it('nativeBaseInterval：取能整除目标的最大原生间隔，目标原生返回 null', () => {
+    expect(nativeBaseInterval(120)).toBe(60); // 2m ← 1m
+    expect(nativeBaseInterval(2700)).toBe(900); // 45m ← 15m
+    expect(nativeBaseInterval(10800)).toBe(3600); // 3H ← 1H
+    expect(nativeBaseInterval(420)).toBe(60); // 自定义 7m ← 1m
+    expect(nativeBaseInterval(5400)).toBe(1800); // 自定义 90m ← 30m
+    expect(nativeBaseInterval(18000)).toBe(3600); // 自定义 5H ← 1H
+    expect(nativeBaseInterval(6000)).toBe(300); // 自定义 100m ← 5m
+    expect(nativeBaseInterval(2220)).toBe(60); // 自定义 37m ← 1m
+    expect(nativeBaseInterval(60)).toBeNull(); // 1m 原生
+    expect(nativeBaseInterval(14400)).toBeNull(); // 4H 原生
+    expect(nativeBaseInterval(259200)).toBeNull(); // 3D 原生
+    expect(nativeBaseInterval(0)).toBeNull(); // 日历周期（seconds=0）不推导
+  });
+
+  it('binanceIntervalString：秒 → Binance interval 字符串（与 toBinanceInterval 同格式）', () => {
+    expect(binanceIntervalString(1)).toBe('1s');
+    expect(binanceIntervalString(60)).toBe('1m');
+    expect(binanceIntervalString(900)).toBe('15m');
+    expect(binanceIntervalString(3600)).toBe('1h');
+    expect(binanceIntervalString(43200)).toBe('12h');
+    expect(binanceIntervalString(86400)).toBe('1d');
+  });
+
+  it('BINANCE_LIMIT_MAX 与 LiveDataFeed 分页口径一致', () => {
+    expect(BINANCE_LIMIT_MAX).toBe(1000);
+  });
+});
+
+describe('数据源接线：planFor 归一化（沉默逻辑高发区）', () => {
+  it('sina planFor：新档位取可整除基期', () => {
+    expect(planForSina('2m')).toEqual({ kind: 'minute', type: 1 });
+    expect(planForSina('45m')).toEqual({ kind: 'minute', type: 15 });
+    expect(planForSina('3H')).toEqual({ kind: 'minute', type: 60 });
+    expect(planForSina('1m')).toEqual({ kind: 'minute', type: 1 });
+    expect(planForSina('3m')).toEqual({ kind: 'minute', type: 1 });
+  });
+
+  it('sina planFor：自定义周期按 [30,15,5,1] 取最大可整除基期，>30 无整除则放弃', () => {
+    expect(planForSina('custom:45' as TimeframeId)).toEqual({ kind: 'minute', type: 15 });
+    expect(planForSina('custom:90' as TimeframeId)).toEqual({ kind: 'minute', type: 30 });
+    expect(planForSina('custom:100' as TimeframeId)).toEqual({ kind: 'minute', type: 5 });
+    expect(planForSina('custom:30' as TimeframeId)).toEqual({ kind: 'minute', type: 30 });
+    expect(planForSina('custom:7' as TimeframeId)).toEqual({ kind: 'minute', type: 1 });
+    expect(planForSina('custom:37' as TimeframeId)).toEqual({ kind: 'none' }); // >30 且 [30,15,5] 无一整除
+  });
+
+  it('tencent planFor：新档位 aggregate=true（bars() 内聚合）', () => {
+    expect(planForTencent('2m')).toEqual({ kind: 'minute', n: 1, aggregate: true });
+    expect(planForTencent('45m')).toEqual({ kind: 'minute', n: 15, aggregate: true });
+    expect(planForTencent('3H')).toEqual({ kind: 'minute', n: 60, aggregate: true });
+    expect(planForTencent('1H')).toEqual({ kind: 'minute', n: 60, aggregate: false });
+  });
+
+  it('tencent planFor：自定义周期 aggregate = 目标粗于基期', () => {
+    expect(planForTencent('custom:45' as TimeframeId)).toEqual({ kind: 'minute', n: 15, aggregate: true });
+    expect(planForTencent('custom:30' as TimeframeId)).toEqual({ kind: 'minute', n: 30, aggregate: false });
+    expect(planForTencent('custom:7' as TimeframeId)).toEqual({ kind: 'minute', n: 1, aggregate: true });
+    expect(planForTencent('custom:37' as TimeframeId)).toEqual({ kind: 'none' });
+  });
+
+  it('两源对同一自定义分钟的基期选择一致（避免同周期不同源口径漂移）', () => {
+    for (const minutes of [7, 45, 90, 100, 120, 300]) {
+      const tf = `custom:${minutes}` as TimeframeId;
+      const sina = planForSina(tf);
+      const tencent = planForTencent(tf);
+      expect(sina.kind).toBe(tencent.kind);
+      if (sina.kind === 'minute' && tencent.kind === 'minute') {
+        expect(sina.type).toBe(tencent.n);
+      }
+    }
+  });
+});
+
+describe('布局快照：自定义周期过检（配合 layout.ts isKnownTimeframeId 活校验）', () => {
+  it('含 custom:15 的快照过 migrateSnapshot 不被回退 1m', () => {
+    registerTimeframe(createCustomInterval(15)); // 运行时注册（等效 localStorage 持久化项）
+    const snap = migrateSnapshot({
+      version: 1,
+      name: 'B5 自定义周期布局',
+      savedAt: 0,
+      layout: 1,
+      activeInstrumentId: null,
+      timeframe: 'custom:15',
+      chartType: 'candles',
+      indicators: [],
+      drawings: [],
+      theme: 'dark',
+      cells: [{ symbol: 'BTCUSDT', timeframe: 'custom:15', chartType: 'candles' }],
+    });
+    expect(snap).not.toBeNull();
+    expect(snap?.timeframe).toBe('custom:15');
+    expect(snap?.cells[0].timeframe).toBe('custom:15');
   });
 });

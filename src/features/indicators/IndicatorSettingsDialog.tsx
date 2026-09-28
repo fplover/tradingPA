@@ -6,6 +6,7 @@ import type { ParamValue } from '@/indicators/core/types';
 import type { PlotStyleOverride } from '@/store/indicatorStore';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { TIMEFRAMES, type TimeframeId } from '@/types/market';
+import { isCustomIntervalId } from '@/features/market/customInterval';
 import { CheckRow, Checkbox } from '@/ui/primitives';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
@@ -25,6 +26,7 @@ const PRECISIONS: Array<{ label: string; value: number | undefined }> = [
 const LINE_WIDTH_OPTIONS: ToolbarOption[] = [1, 2, 3, 4].map((w) => ({ value: String(w), label: `${w}px` }));
 
 function tfGroup(id: TimeframeId): string {
+  if (isCustomIntervalId(id)) return '自定义';
   if (id.endsWith('s')) return '秒';
   if (id.endsWith('m')) return '分钟';
   if (id.endsWith('H')) return '小时';
@@ -47,10 +49,18 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
   const setStyle = (plotKey: string, patch: PlotStyleOverride) =>
     updateInstance(id, { styles: { ...active.styles, [plotKey]: { ...active.styles?.[plotKey], ...patch } } });
 
-  const checkedTfs = active.visibleTimeframes ?? TIMEFRAMES.map((t) => t.id);
+  // 可见周期活校验（B5）：自定义档位运行时才注册进 TIMEFRAMES，不能用
+  // 「next.length === TIMEFRAMES.length」数量偶合判断全选；覆盖全部内置档位的
+  // 显式旧存档 ≡ 无限制（自定义档位天然不在旧列表里，应正常显示指标）。
+  const allTfIds = TIMEFRAMES.map((t) => t.id);
+  const builtinIds = TIMEFRAMES.filter((t) => !isCustomIntervalId(t.id)).map((t) => t.id);
+  const listCoversBuiltins = (list: string[]): boolean => builtinIds.every((id) => list.includes(id));
+  const savedTfs = active.visibleTimeframes;
+  const checkedTfs = !savedTfs || listCoversBuiltins(savedTfs) ? allTfIds : savedTfs;
+  const allChecked = allTfIds.every((id) => checkedTfs.includes(id));
   const setTf = (tfId: TimeframeId, on: boolean) => {
     const next = on ? [...checkedTfs, tfId] : checkedTfs.filter((t) => t !== tfId);
-    updateInstance(id, { visibleTimeframes: next.length === TIMEFRAMES.length ? undefined : next });
+    updateInstance(id, { visibleTimeframes: allTfIds.every((tf) => next.includes(tf)) ? undefined : next });
   };
 
   return (
@@ -189,12 +199,12 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                 <>
                   <Row label="全部周期">
                     <Checkbox
-                      checked={active.visibleTimeframes === undefined}
+                      checked={allChecked}
                       ariaLabel="全部周期"
                       onChange={(e) => updateInstance(id, { visibleTimeframes: e ? undefined : [] })}
                     />
                   </Row>
-                  {['秒', '分钟', '小时', '日', '周/月'].map((group) => {
+                  {['秒', '分钟', '小时', '日', '周/月', '自定义'].map((group) => {
                     const items = TIMEFRAMES.filter((t) => tfGroup(t.id) === group);
                     if (items.length === 0) return null;
                     const allOn = items.every((t) => checkedTfs.includes(t.id));
@@ -208,7 +218,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                               const next = e
                                 ? [...new Set([...checkedTfs, ...items.map((t) => t.id)])]
                                 : checkedTfs.filter((t) => !items.some((i) => i.id === t));
-                              updateInstance(id, { visibleTimeframes: next.length === TIMEFRAMES.length ? undefined : next });
+                              updateInstance(id, { visibleTimeframes: allTfIds.every((tf) => next.includes(tf)) ? undefined : next });
                             }}
                           />
                         </div>

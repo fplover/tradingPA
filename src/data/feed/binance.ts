@@ -112,3 +112,32 @@ export function toBinanceInterval(timeframeId: string): string {
   if (timeframeId === '1M') return '1M';
   return timeframeId.toLowerCase();
 }
+
+/** Binance 原生 interval（秒）：1s/1m/3m/5m/15m/30m/1H/2H/4H/6H/8H/12H/1D/3D/1W。
+ *  1M 为日历分桶不参与纪元整除推导。 */
+const BINANCE_NATIVE_SECONDS = [
+  1, 5, 15, 30, 60, 180, 300, 900, 1800, 3600, 7200, 14400, 21600, 28800, 43200, 86400, 259200, 604_800,
+];
+
+/** 单次 REST 拉取上限（Binance klines limit 最大值，超出会被拒） */
+export const BINANCE_LIMIT_MAX = 1000;
+
+/** 目标周期的最大可整除原生基期（秒）；目标本身即原生返回 null（无需聚合，走既有 WS 通路）。
+ *  B5：2m/45m/3H/自定义间隔无原生 interval，经此推导基期后由既有聚合器聚合。 */
+export function nativeBaseInterval(seconds: number): number | null {
+  if (!Number.isFinite(seconds) || seconds <= 0) return null; // 日历周期（seconds=0）不推导
+  if (BINANCE_NATIVE_SECONDS.includes(seconds)) return null;
+  let best: number | null = null;
+  for (const n of BINANCE_NATIVE_SECONDS) {
+    if (seconds % n === 0 && (best === null || n > best)) best = n;
+  }
+  return best;
+}
+
+/** 秒 → Binance interval 字符串（与 toBinanceInterval 输出同格式：1s/1m/1h/1d） */
+export function binanceIntervalString(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${seconds / 60}m`;
+  if (seconds < 86_400) return `${seconds / 3600}h`;
+  return `${seconds / 86_400}d`;
+}
