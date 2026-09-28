@@ -4,20 +4,26 @@ import { TIMEFRAMES, type TimeframeId } from '@/types/market';
 import { fontSize, radius, space } from '@/ui/tokens';
 
 /** 解析 TV 式周期输入：纯数字 = 分钟（60 的倍数折合小时）；数字 + 单位 s/m/h/d/w
- *  （大写 M = 月）；裸单位字母 = 1 个单位。不在项目周期档位表内返回 null。 */
+ *  （大写 M = 月）；裸单位字母 = 1 个单位。按秒数/日历匹配档位表（内置 + 运行时注册的
+ *  自定义周期一并命中，如已存 custom:7 时输 7 即命中）；不在表内返回 null。 */
 export function parseIntervalInput(raw: string): TimeframeId | null {
   const m = /^\s*(\d*)\s*([smhdwSMHDW]?)\s*$/.exec(raw);
   if (!m) return null;
   const n = m[1] ? Number(m[1]) : 1;
   if (!Number.isInteger(n) || n < 1) return null;
   const unit = m[2];
-  if (!unit) {
-    if (TIMEFRAMES.some((t) => t.id === `${n}m`)) return `${n}m` as TimeframeId;
-    if (n % 60 === 0 && TIMEFRAMES.some((t) => t.id === `${n / 60}H`)) return `${n / 60}H` as TimeframeId;
-    return null;
+  // 周/月秒数为 0 走日历分桶，按 calendar 匹配；其余按秒数匹配
+  if (unit === 'w' || unit === 'W') {
+    const hit = TIMEFRAMES.find((t) => t.calendar === 'week');
+    return hit ? hit.id : null;
   }
-  const id = `${n}${unit}`;
-  return TIMEFRAMES.some((t) => t.id === id) ? (id as TimeframeId) : null;
+  if (unit === 'M') {
+    const hit = TIMEFRAMES.find((t) => t.calendar === 'month');
+    return hit ? hit.id : null;
+  }
+  const sec = !unit ? n * 60 : unit === 's' ? n : unit === 'm' ? n * 60 : unit === 'h' ? n * 3600 : n * 86400;
+  const hit = TIMEFRAMES.find((t) => t.seconds === sec && !t.calendar);
+  return hit ? hit.id : null;
 }
 
 /** 变更周期浮层：TV featureset show_interval_dialog_on_key_press（数字键 / 逗号即开，回车确认） */
@@ -48,7 +54,7 @@ export function IntervalInputDialog({
   const submit = () => {
     const tf = parseIntervalInput(text);
     if (!tf) {
-      setError('无法识别，示例：15 / 1H / 1D / 1W');
+      setError('无法识别，示例：15 / 1H / 1D / 1W；其他分钟数请用顶栏周期下拉「自定义间隔…」');
       return;
     }
     onApply(tf);
