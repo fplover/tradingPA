@@ -130,7 +130,8 @@ export function drawPaneLegend(
   ctx.fillText(value, x, 6);
 }
 
-/** 最新价：横贯图表的点线 + 右轴方向着色徽章（TradingView 默认开启） */
+/** 最新价：横贯图表的点线 + 右轴方向着色徽章（TradingView 默认开启）。
+ *  countdown：收盘倒计时文本（TV：徽章旁实时 mm:ss），null/undefined 不绘制 */
 export function drawLastPrice(
   ctx: CanvasRenderingContext2D,
   priceScale: PriceScale,
@@ -138,6 +139,7 @@ export function drawLastPrice(
   prevClose: number,
   decimals: number,
   geo: DrawGeometry,
+  countdown?: string | null,
 ): void {
   const y = Math.round(priceScale.priceToY(last.close)) + 0.5;
   if (y < -20 || y > geo.chartH + 20) return;
@@ -166,6 +168,17 @@ export function drawLastPrice(
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, geo.chartW + 2 + w / 2, by + h / 2 + 0.5);
+
+  // 收盘倒计时：徽章下方右对齐贴徽章右缘；底部空间不足时上翻到徽章上方
+  if (countdown) {
+    ctx.font = `11px ${TV_FONT}`;
+    ctx.fillStyle = theme.axisText;
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    const belowY = by + h + 9;
+    const cy = belowY <= geo.chartH - 6 ? belowY : Math.max(by - 9, 8);
+    ctx.fillText(countdown, geo.chartW + 2 + w, cy);
+  }
   ctx.restore();
 }
 

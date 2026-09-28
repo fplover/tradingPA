@@ -4,7 +4,8 @@ import { PriceScale } from '../scale/PriceScale';
 import { Crosshair } from '../crosshair/Crosshair';
 import { BarSeries } from '@/data/BarSeries';
 import { theme, TV_FONT } from '../theme';
-import type { Bar, ChartTypeId } from '@/types/market';
+import type { Bar, ChartTypeId, Timeframe } from '@/types/market';
+import { CHART_TYPES, TIMEFRAMES } from '@/types/market';
 import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
 import { IndicatorInstance, type IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
@@ -15,6 +16,7 @@ import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type PaneButtonRects } from './drawAxes';
+import { CloseCountdown } from '../countdown';
 import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline, drawColumns, drawHighLow, drawStepLine, drawLineMarkers, drawHlcArea, drawVolumeCandles } from './seriesRenderers';
 import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, type StudyLegendRect, type LegendDrawInfo, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
@@ -91,6 +93,10 @@ export class ChartRenderer {
   private legendMenuCb: ((x: number, y: number) => void) | null = null;
   private drawingMenuCb: ((id: string, x: number, y: number) => void) | null = null;
   private brickOpts: BrickOptions = {};
+  /** K 线收盘倒计时（TV 价格轴右端徽章旁 mm:ss）：状态/节流在 countdown.ts，此处仅接线 */
+  private countdown = new CloseCountdown();
+  /** 当前图表类型是否时间-based（砖块类无收盘概念，不显示倒计时） */
+  private timeBasedChart = true;
 
   // 画线状态
   private drawingLayer = new DrawingLayer();
@@ -152,6 +158,7 @@ export class ChartRenderer {
     this.manager = new CanvasManager(canvas);
     this.viewport = new Viewport(this.manager.width - AXIS_WIDTH);
     this.legend = { symbol: 'BTC/USDT', interval: '1m', decimals: 2, ...legend };
+    this.countdown.setTimeframe(this.resolveTimeframe());
     this.baseSeries.replace(bars);
     this.brickOpts = brickOptions(bars);
     this.panes = [this.createPane('main', 'price', 3)];
@@ -172,6 +179,7 @@ export class ChartRenderer {
 
   setLegend(legend: Partial<LegendInfo>): void {
     this.legend = { ...this.legend, ...legend };
+    this.countdown.setTimeframe(this.resolveTimeframe()); // 周期切换 → 重算倒计时
     this.invalidate();
   }
 
@@ -387,9 +395,11 @@ export class ChartRenderer {
     } else {
       this.displaySeries = this.baseSeries;
     }
+    this.timeBasedChart = CHART_TYPES.find((t) => t.id === this.chartType)?.timeBased ?? true;
     this.viewport.setBarCount(this.displaySeries.length);
     if (resetView && this.displaySeries.length > 0) this.viewport.scrollToRealtime();
     this.crosshair.clear();
+    this.countdown.setLastBar(this.lastBarTime); // 新 bar / 数据替换 → 重算收盘时刻
     this.invalidate();
   }
 
@@ -407,6 +417,10 @@ export class ChartRenderer {
       if (this.dirty) {
         this.dirty = false;
         this.draw();
+      } else if (this.countdown.needsRedraw(Date.now())) {
+        // 收盘倒计时秒级唤醒：借既有 rAF 合帧机制，不另起定时器抢帧
+        // （Date.now 为纪元毫秒，与 bar time 同一时钟；performance.now 是页面相对时间，不可用）
+        this.dirty = true;
       }
       this.rafId = requestAnimationFrame(loop);
     };
@@ -421,6 +435,7 @@ export class ChartRenderer {
   dispose(): void {
     this.disposed = true;
     this.stop();
+    this.countdown.reset();
     this.unbindInput(this.manager.canvas);
     this.manager.dispose();
   }
@@ -599,6 +614,22 @@ export class ChartRenderer {
   /** 当前全部 bar（缺口回补合并用） */
   getBars(): Bar[] {
     return [...this.baseSeries.raw()];
+  }
+
+  /** 图例 timeframeId → Timeframe（缺失/无效时倒计时停用） */
+  private resolveTimeframe(): Timeframe | null {
+    const id = this.legend.timeframeId;
+    return id ? TIMEFRAMES.find((t) => t.id === id) ?? null : null;
+  }
+
+  /**
+   * 收盘倒计时文本：价格轴右端、最新价徽章旁的实时 mm:ss。
+   * 回放模式 / 砖块类图表（无收盘概念）不显示；视口是否贴右缘不影响显示——
+   * 与 TV 一致：倒计时跟随当前周期而非可视位置；数据断开时末 bar 过期，自动隐藏。
+   */
+  private countdownText(now: number): string | null {
+    if (this.replayIndex !== null || !this.timeBasedChart) return null;
+    return this.countdown.sample(now);
   }
 
   // ---------- 画线 ----------
@@ -1284,6 +1315,7 @@ export class ChartRenderer {
 
   private draw(): void {
     const t0 = performance.now();
+    const now = Date.now(); // 倒计时用墙钟（纪元毫秒），与 bar time 同时钟
     const ctx = this.manager.context;
     const w = this.manager.width;
     const h = this.manager.height;
@@ -1334,13 +1366,13 @@ export class ChartRenderer {
       }
       drawPriceAxis(ctx, pane.priceScale, this.legend.decimals, geo, pane.kind !== 'price');
 
-      // 主图最新价：点线 + 右轴方向着色徽章
+      // 主图最新价：点线 + 右轴方向着色徽章（徽章旁附带收盘倒计时）
       if (pane.kind === 'price') {
         const bs = this.barsArray();
         if (bs.length > 0) {
           const lastBar = bs[bs.length - 1];
           const prevClose = bs.length > 1 ? bs[bs.length - 2].close : lastBar.open;
-          drawLastPrice(ctx, pane.priceScale, lastBar, prevClose, this.legend.decimals, geo);
+          drawLastPrice(ctx, pane.priceScale, lastBar, prevClose, this.legend.decimals, geo, this.countdownText(now));
         }
       }
 
