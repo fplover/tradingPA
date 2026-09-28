@@ -23,6 +23,7 @@ import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline, drawColumns, drawHighLow, drawStepLine, drawLineMarkers, drawHlcArea, drawVolumeCandles } from './seriesRenderers';
 import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, type StudyLegendRect, type LegendDrawInfo, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
+import type { ViewportTimeRange } from '@/store/syncBus';
 
 const AXIS_WIDTH = 64;
 const AXIS_HEIGHT = 24;
@@ -622,6 +623,38 @@ export class ChartRenderer {
   setSyncViewport(v: { first: number; spacing: number }): void {
     this.viewport.setBarSpacing(v.spacing);
     this.viewport.setFirstPublic(v.first);
+    this.invalidate();
+  }
+
+  /**
+   * 联动发布：当前视口的时间空间范围 {fromTime, toTime}（供 syncBus 广播）。
+   * 跨周期/跨品种图表按 TV 语义对齐时间轴——接收方用自己的 series 换算，
+   * 因此这里广播时间而非索引（索引空间跨周期会错位）。
+   */
+  getViewportTimeRange(): ViewportTimeRange {
+    const chartW = this.manager.width - AXIS_WIDTH;
+    const first = this.viewport.first;
+    return {
+      fromTime: timeAtFractionalIndex(this.displaySeries, first),
+      toTime: timeAtFractionalIndex(this.displaySeries, first + chartW / this.viewport.spacing),
+    };
+  }
+
+  /**
+   * 联动接收：按时间范围对齐视口——用自己的 BarSeries.fractionalIndexAt 把
+   * {fromTime, toTime} 换算回索引/间距（TV 时间轴同步语义）。
+   * 无效载荷（非有限值/空区间/空序列）安全忽略，不扰动当前视口。
+   */
+  setViewportTimeRange(range: ViewportTimeRange): void {
+    if (!Number.isFinite(range.fromTime) || !Number.isFinite(range.toTime) || range.toTime <= range.fromTime) return;
+    const series = this.displaySeries;
+    if (series.length === 0) return;
+    const fromIdx = series.fractionalIndexAt(range.fromTime);
+    const toIdx = series.fractionalIndexAt(range.toTime);
+    const visible = toIdx - fromIdx;
+    if (!(visible > 0)) return;
+    this.viewport.setBarSpacing((this.manager.width - AXIS_WIDTH) / visible);
+    this.viewport.setFirstPublic(fromIdx);
     this.invalidate();
   }
 
@@ -1713,21 +1746,19 @@ export class ChartRenderer {
       ctx.restore();
     }
 
-    // 联动：其他图表十字光标时间的垂直参考线
+    // 联动：其他图表十字光标时间的垂直参考线（小数 index 插值定位——
+    // 跨周期图表的时间戳不落在 bar 上时也能对齐，不再因精确匹配失败而错位/消失）
     if (this.syncCrosshairTime !== null && !this.crosshair.visible) {
-      const idx = this.displaySeries.indexOfTime(this.syncCrosshairTime);
-      if (idx >= 0) {
-        const sx = this.viewport.indexToX(idx);
-        if (sx >= 0 && sx <= mainGeo.chartW) {
-          ctx.strokeStyle = theme.crosshair;
-          ctx.lineWidth = 1;
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.moveTo(Math.round(sx) + 0.5, 0);
-          ctx.lineTo(Math.round(sx) + 0.5, mainGeo.chartH);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
+      const sx = this.viewport.indexToX(this.displaySeries.fractionalIndexAt(this.syncCrosshairTime));
+      if (sx >= 0 && sx <= mainGeo.chartW) {
+        ctx.strokeStyle = theme.crosshair;
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(Math.round(sx) + 0.5, 0);
+        ctx.lineTo(Math.round(sx) + 0.5, mainGeo.chartH);
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
     }
 
@@ -1849,6 +1880,20 @@ export class ChartRenderer {
         drawCandles(ctx, this.displaySeries, from, to, vs, ps, geo);
     }
   }
+}
+
+/** 小数 index → 时间（BarSeries.fractionalIndexAt 的逆运算：相邻 bar 线性插值，范围外按统一间隔外推）。
+ *  供视口联动把索引空间的 {first, 右缘} 换算成时间空间的 {fromTime, toTime}。 */
+function timeAtFractionalIndex(series: BarSeries, index: number): number {
+  const n = series.length;
+  if (n === 0) return 0;
+  const raw = series.raw();
+  const iv = n > 1 ? raw[1].time - raw[0].time : 60_000;
+  if (index <= 0) return raw[0].time + index * iv;
+  const last = n - 1;
+  if (index >= last) return raw[last].time + (index - last) * iv;
+  const lo = Math.floor(index);
+  return raw[lo].time + (index - lo) * (raw[lo + 1].time - raw[lo].time);
 }
 
 /** 绘制剪刀图标（选择K线预览线顶端标记，蓝底白字）。

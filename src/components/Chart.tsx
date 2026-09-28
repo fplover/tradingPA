@@ -307,21 +307,18 @@ export function Chart({
     rendererRef.current?.redraw();
   }, [themeName]);
 
-  // 多图表联动：十字光标时间 + 视口广播
+  // 多图表联动：十字光标时间 + 视口广播。
+  // 载荷为时间空间 {fromTime, toTime}（TV 时间轴同步语义）；sourceId 显式防环；
+  // 30Hz 限频统一在 syncBus（原每实例 32ms 闭包已上移，此处只做桥接不做策略）。
   useEffect(() => {
     if (!sync) return;
     const renderer = rendererRef.current;
     if (!renderer) return;
-    let lastEmit = 0;
-    const offViewport = syncBus.onViewport((v) => renderer.setSyncViewport(v));
-    const offCrosshair = syncBus.onCrosshair((t) => renderer.setSyncCrosshair(t));
-    renderer.onCrosshairTime((t) => {
-      const now = performance.now();
-      if (now - lastEmit < 32) return; // 限频，避免刷屏
-      lastEmit = now;
-      syncBus.emitCrosshair(t);
-    });
-    renderer.onViewportCommit((v) => syncBus.emitViewport(v));
+    const sourceId = Symbol('chart-sync');
+    const offViewport = syncBus.onViewport((range) => renderer.setViewportTimeRange(range), sourceId);
+    const offCrosshair = syncBus.onCrosshair((t) => renderer.setSyncCrosshair(t), sourceId);
+    renderer.onCrosshairTime((t) => syncBus.emitCrosshair(t, sourceId));
+    renderer.onViewportCommit(() => syncBus.emitViewport(renderer.getViewportTimeRange(), sourceId));
     return () => {
       offViewport();
       offCrosshair();
