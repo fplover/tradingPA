@@ -87,11 +87,9 @@ function mountCell(index: number): ChartRenderer {
   const cfg = CELLS[index];
   const bars = seededBars(cfg.symbol);
   baseBars[index] = bars;
+  // CELLS.market 经构造函数 spread 进 legend（单一数据源，b0a2579 起渲染处
+  // 直读 this.legend.market）→ 图例开/闭市圆点；crypto 恒开市，确定性。
   const r = new ChartRenderer(canvas, bars, cfg);
-  // 市场状态圆点（Wave5 项4）：构造函数不初始化 legendMarket（仅 setLegend 同步，
-  // 见 ChartRenderer 构造 vs setLegend 分歧——App 经 effect 调 setLegend 而无恙），
-  // 直连构造后须补一次 setLegend 才能激活圆点。crypto 恒开市 → 涨色圆点，确定性。
-  r.setLegend({ market: cfg.market });
   r.start();
   renderers[index] = r;
   return r;
