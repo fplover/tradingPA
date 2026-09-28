@@ -27,12 +27,15 @@ export type TimeframeId =
   | '15s'
   | '30s'
   | '1m'
+  | '2m'
   | '3m'
   | '5m'
   | '15m'
   | '30m'
+  | '45m'
   | '1H'
   | '2H'
+  | '3H'
   | '4H'
   | '6H'
   | '8H'
@@ -57,12 +60,15 @@ export const TIMEFRAMES: Timeframe[] = [
   { id: '15s', label: '15秒', seconds: 15 },
   { id: '30s', label: '30秒', seconds: 30 },
   { id: '1m', label: '1分', seconds: 60 },
+  { id: '2m', label: '2分', seconds: 120 },
   { id: '3m', label: '3分', seconds: 180 },
   { id: '5m', label: '5分', seconds: 300 },
   { id: '15m', label: '15分', seconds: 900 },
   { id: '30m', label: '30分', seconds: 1800 },
+  { id: '45m', label: '45分', seconds: 2700 },
   { id: '1H', label: '1时', seconds: 3600 },
   { id: '2H', label: '2时', seconds: 7200 },
+  { id: '3H', label: '3时', seconds: 10800 },
   { id: '4H', label: '4时', seconds: 14400 },
   { id: '6H', label: '6时', seconds: 21600 },
   { id: '8H', label: '8时', seconds: 28800 },
@@ -75,6 +81,21 @@ export const TIMEFRAMES: Timeframe[] = [
 
 export function getTimeframe(id: TimeframeId): Timeframe {
   return TIMEFRAMES.find((t) => t.id === id) ?? TIMEFRAMES[4];
+}
+
+/** 运行时注册自定义周期（B5 自定义间隔）：幂等追加到档位表末尾，同 id 不覆盖。
+ *  注册后 getTimeframe 及一切 TIMEFRAMES 派生（顶栏下拉、图表单元格、指标可见周期）
+ *  立即认得该周期；内置档位不受影响。自定义周期 id 形如 custom:<分钟数>。 */
+export function registerTimeframe(tf: Timeframe): void {
+  if (TIMEFRAMES.some((t) => t.id === tf.id)) return;
+  TIMEFRAMES.push(tf);
+}
+
+/** id 是否为已知周期（内置 + 运行时注册的自定义周期）。
+ *  布局快照校验用：自定义周期 id 不在编译期 TimeframeId 联合类型内，但运行时合法，
+ *  模块级快照（new Set(TIMEFRAMES.map)）认不得后注册的周期，须用本函数做活校验。 */
+export function isKnownTimeframeId(id: unknown): boolean {
+  return typeof id === 'string' && TIMEFRAMES.some((t) => t.id === id);
 }
 
 export type ChartTypeId =

@@ -8,7 +8,13 @@ function bucketStart(time: number, tf: Timeframe): number {
   if (tf.calendar === 'week') {
     const d = new Date(time);
     const day = (d.getUTCDay() + 6) % 7; // 周一 = 0
-    return time - day * 86_400_000 - (d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds()) * MS;
+    // 毫秒尾数一并归零：否则带亚秒时间戳的输入会产出未对齐的桶起点
+    return (
+      time -
+      day * 86_400_000 -
+      (d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds()) * MS -
+      d.getUTCMilliseconds()
+    );
   }
   if (tf.calendar === 'month') {
     const d = new Date(time);
