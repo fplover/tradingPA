@@ -22,6 +22,16 @@ function lcg(seed: number): () => number {
 
 const BASE_TIME = Date.UTC(2024, 0, 8, 0, 0, 0); // 固定基准（标签按本地时区渲染，同机一致）
 
+/**
+ * 冻结时钟（B3 收盘倒计时护栏）：ChartRenderer 会在最新价徽章旁渲染实时 mm:ss 倒计时
+ * （CloseCountdown.sample(Date.now())，inWindow = now ∈ [lastBarTime, closeTime)）。
+ * 不冻结 → 黄金截图随真实时钟每秒变化 → flaky。冻结点取「末 bar 收盘之后」：
+ * 窗口判定为 false，倒计时不绘制，基线保持纯数据驱动；
+ * 若未来窗口语义/数据时点变化，按 spec 头部说明走 UPDATE_SNAPSHOTS=1 重产基线。
+ */
+const FROZEN_NOW = BASE_TIME + 600 * 60_000 + 60_000; // 末 bar（09:59）收盘后 1 分钟
+Date.now = () => FROZEN_NOW;
+
 function seededBars(symbol: string, count = 600, intervalMs = 60_000): Bar[] {
   let h = 2166136261;
   for (let i = 0; i < symbol.length; i++) {
