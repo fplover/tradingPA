@@ -25,6 +25,7 @@ import type { ChartTypeId, TimeframeId } from '@/types/market';
  *   ⑰ countdown-badge         B3 收盘倒计时徽章（时变语义——禁像素基线，双态差分断言）
  *   ⑱ timeframe-2m            B5 2 分钟档位（1m 种子聚合渲染）
  *   ⑲ timeframe-45m           B5 45 分钟档位（1m 种子聚合渲染）
+ *   ⑳ timeframe-1H            Wave5 项7 时间 zh 化视觉覆盖（M月D日 日级标签 + 1H 聚合）
  *
  * 稳定性约定（防 flaky）：
  *   - deviceScaleFactor 锁 1（见 test.use）
@@ -32,6 +33,9 @@ import type { ChartTypeId, TimeframeId } from '@/types/market';
  *   - 每次截图前等 document.fonts.ready + __vh.frames 推进 ≥2（两个 rAF）
  *   - 数据走 harness 确定性模拟数据（固定基准时间 + 符号种子），不依赖真实 Binance
  *   - Date.now 冻结在「末 bar 收盘后」（B3 护栏）：倒计时不绘制，基线纯数据驱动
+ *   - 图例市场状态圆点（Wave5 项4）：harness 种子符号均为 crypto，isMarketOpen
+ *     首行短路恒开市——不读时钟，圆点颜色/显隐与采集时点无关（确定性）；
+ *     若引入时段依赖市场的符号，须连 new Date() 一并冻结（仅冻 Date.now 不够）
  *   - B4 三个 accent 依赖型（step-line/line-markers/hlc-area）：harness 页面不引
  *     global.css，body.theme-dark 下 --accent 令牌缺失会使 seriesLineColor 回落
  *     theme.up（青）；截图前必须注入 /src/styles/global.css 并 setTheme('dark')，
@@ -356,5 +360,25 @@ test.describe('A3-1 扩容（B4 六类型 + B3 倒计时 + B5 新档位）', () 
     await settle(page, 3);
     expect(await page.evaluate(() => window.__vh.barCount())).toBe(14); // 600 × 1m → 14 × 45m（末桶不满）
     await golden(page, 'timeframe-45m');
+  });
+
+  /**
+   * ⑳ 1H 档位（Wave5 项7 时间 zh 化的视觉覆盖）：600 × 1m → 10 × 1H。
+   * 默认间距（~6px/bar）下 10 根只占 60px，时间轴仍是日内 HH:mm；
+   * 在数据条带处（x≈1185）向下滚轮 25 档（1.1×/档，锚定光标处的 bar）→
+   * 间距 ~65px ≥ formatTime 的 60px 阈值 → 标签落入「M月D日」日级区间
+   * （既有表面全为日内格式，zh 日期标签此前零视觉覆盖）。
+   * 注：绕屏幕中心的 zoom() 不可用——10 根 bar 贴右缘，中心锚定会落入
+   * 无数据区；滚轮锚在光标处（须在数据条带内）才能保持视口有数据。
+   */
+  test('⑳ 1H 档位（timeframe-1H，zh 日期标签 + 聚合）', async ({ page }) => {
+    await openHarness(page);
+    await page.evaluate(() => window.__vh.setTimeframe('1H'));
+    await settle(page, 3);
+    expect(await page.evaluate(() => window.__vh.barCount())).toBe(10); // 600 × 1m → 10 × 1H
+    await page.mouse.move(1185, 400); // 数据条带内（10 根 1H bar 位于右缘 ~60px 宽）
+    for (let i = 0; i < 25; i++) await page.mouse.wheel(0, 120); // deltaY>0 = 放大 1.1×/档
+    await settle(page, 3);
+    await golden(page, 'timeframe-1H');
   });
 });

@@ -64,9 +64,12 @@ function seededBars(symbol: string, count = 600, intervalMs = 60_000): Bar[] {
 
 const CELLS = [
   // timeframeId 必传：ChartRenderer.resolveTimeframe 靠它解析倒计时周期（缺失 = 停用），
-  // 与 App 运行环境一致（Chart.tsx 构造/setLegend 均传 timeframeId）
-  { symbol: 'BTC/USDT', interval: '1m', timeframeId: '1m', decimals: 2, exchange: 'Binance' },
-  { symbol: 'ETH/USDT', interval: '1m', timeframeId: '1m', decimals: 2, exchange: 'Binance' },
+  // 与 App 运行环境一致（Chart.tsx 构造/setLegend 均传 timeframeId）。
+  // market 必传：图例开/闭市圆点（Wave5 项4）。crypto 在 isMarketOpen 首行短路
+  // （7×24 恒开市）——不读时钟，基线确定性不受采集时点影响；若将来引入
+  // 时段依赖市场的种子符号，需同步冻结 new Date() 而非仅 Date.now。
+  { symbol: 'BTC/USDT', interval: '1m', timeframeId: '1m', market: 'crypto' as const, decimals: 2, exchange: 'Binance' },
+  { symbol: 'ETH/USDT', interval: '1m', timeframeId: '1m', market: 'crypto' as const, decimals: 2, exchange: 'Binance' },
 ];
 
 const grid = document.getElementById('grid')!;
@@ -85,6 +88,10 @@ function mountCell(index: number): ChartRenderer {
   const bars = seededBars(cfg.symbol);
   baseBars[index] = bars;
   const r = new ChartRenderer(canvas, bars, cfg);
+  // 市场状态圆点（Wave5 项4）：构造函数不初始化 legendMarket（仅 setLegend 同步，
+  // 见 ChartRenderer 构造 vs setLegend 分歧——App 经 effect 调 setLegend 而无恙），
+  // 直连构造后须补一次 setLegend 才能激活圆点。crypto 恒开市 → 涨色圆点，确定性。
+  r.setLegend({ market: cfg.market });
   r.start();
   renderers[index] = r;
   return r;
