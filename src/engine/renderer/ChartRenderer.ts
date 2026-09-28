@@ -22,8 +22,10 @@ import { CloseCountdown } from '../countdown';
 import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline, drawColumns, drawHighLow, drawStepLine, drawLineMarkers, drawHlcArea, drawVolumeCandles } from './seriesRenderers';
 import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, type StudyLegendRect, type LegendDrawInfo, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
-import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
+import { drawIndicator, indicatorValuesAt } from './drawIndicator';
 import type { ViewportTimeRange } from '@/store/syncBus';
+import { SyncBridge } from './SyncBridge';
+import { autoscaleIndicators, autoscalePrice, ensurePriceScaleReady, type AutoscaleOptions } from './autoscale';
 
 const AXIS_WIDTH = 64;
 const AXIS_HEIGHT = 24;
@@ -60,6 +62,8 @@ function brickOptions(bars: Bar[]): BrickOptions {
 export class ChartRenderer {
   private manager: CanvasManager;
   private viewport: Viewport;
+  /** 跨图表联动边界（D 批次拆分①：联动状态/回调/时间空间换算/参考线绘制） */
+  private sync: SyncBridge;
   private panes: PaneState[] = [];
   private baseSeries = new BarSeries();
   /** 当前图表类型下实际渲染的序列（砖块/HA 为变换结果） */
@@ -136,14 +140,11 @@ export class ChartRenderer {
   private paneActionCb: ((action: 'settings' | 'remove', indicatorId: string) => void) | null = null;
 
   // 联动 / 复盘
-  private syncCrosshairTime: number | null = null;
   private replayIndex: number | null = null;
   private barSelectMode = false;
   /** 选择K线预览线 x（跟随光标，选中后清除） */
   private selectPreviewX: number | null = null;
   private barSelectCb: ((index: number) => void) | null = null;
-  private viewportCommitCb: ((v: { first: number; spacing: number }) => void) | null = null;
-  private crosshairTimeCb: ((t: number | null) => void) | null = null;
 
   /** 订阅画线变更（对象树等 React UI 用） */
   onDrawingsChanged(cb: () => void): () => void {
@@ -168,6 +169,8 @@ export class ChartRenderer {
   constructor(canvas: HTMLCanvasElement, bars: Bar[] = [], legend?: Partial<LegendInfo>) {
     this.manager = new CanvasManager(canvas);
     this.viewport = new Viewport(this.manager.width - AXIS_WIDTH);
+    // 联动边界：viewport 直接注入；displaySeries/画布宽/重绘请求用 getter（随图表类型与尺寸变化）
+    this.sync = new SyncBridge(this.viewport, () => this.displaySeries, () => this.manager.width - AXIS_WIDTH, () => this.invalidate());
     this.legend = { symbol: 'BTC/USDT', interval: '1m', decimals: 2, ...legend };
     this.countdown.setTimeframe(this.resolveTimeframe());
     this.baseSeries.replace(bars);
@@ -582,13 +585,13 @@ export class ChartRenderer {
   /** 以画布中心为锚点缩放 */
   zoom(factor: number): void {
     this.viewport.zoomAt(this.manager.width / 2, factor);
-    this.viewportCommitCb?.(this.getViewport());
+    this.sync.publishViewport();
     this.invalidate();
   }
 
   pan(bars: number): void {
     this.viewport.panByBars(bars);
-    this.viewportCommitCb?.(this.getViewport());
+    this.sync.publishViewport();
     this.invalidate();
   }
 
@@ -615,15 +618,12 @@ export class ChartRenderer {
 
   /** 联动：外部图表十字光标时间（绘制垂直参考线） */
   setSyncCrosshair(time: number | null): void {
-    this.syncCrosshairTime = time;
-    this.invalidate();
+    this.sync.setSyncCrosshair(time);
   }
 
-  /** 联动：外部视口变化（平移/缩放广播） */
+  /** 联动：外部视口变化（平移/缩放广播，索引空间） */
   setSyncViewport(v: { first: number; spacing: number }): void {
-    this.viewport.setBarSpacing(v.spacing);
-    this.viewport.setFirstPublic(v.first);
-    this.invalidate();
+    this.sync.setSyncViewport(v);
   }
 
   /**
@@ -632,12 +632,7 @@ export class ChartRenderer {
    * 因此这里广播时间而非索引（索引空间跨周期会错位）。
    */
   getViewportTimeRange(): ViewportTimeRange {
-    const chartW = this.manager.width - AXIS_WIDTH;
-    const first = this.viewport.first;
-    return {
-      fromTime: timeAtFractionalIndex(this.displaySeries, first),
-      toTime: timeAtFractionalIndex(this.displaySeries, first + chartW / this.viewport.spacing),
-    };
+    return this.sync.getViewportTimeRange();
   }
 
   /**
@@ -646,30 +641,21 @@ export class ChartRenderer {
    * 无效载荷（非有限值/空区间/空序列）安全忽略，不扰动当前视口。
    */
   setViewportTimeRange(range: ViewportTimeRange): void {
-    if (!Number.isFinite(range.fromTime) || !Number.isFinite(range.toTime) || range.toTime <= range.fromTime) return;
-    const series = this.displaySeries;
-    if (series.length === 0) return;
-    const fromIdx = series.fractionalIndexAt(range.fromTime);
-    const toIdx = series.fractionalIndexAt(range.toTime);
-    const visible = toIdx - fromIdx;
-    if (!(visible > 0)) return;
-    this.viewport.setBarSpacing((this.manager.width - AXIS_WIDTH) / visible);
-    this.viewport.setFirstPublic(fromIdx);
-    this.invalidate();
+    this.sync.setViewportTimeRange(range);
   }
 
   getViewport(): { first: number; spacing: number } {
-    return { first: this.viewport.first, spacing: this.viewport.spacing };
+    return this.sync.getViewport();
   }
 
   /** 视口提交（拖拽/缩放结束）回调，用于多图表联动 */
   onViewportCommit(cb: ((v: { first: number; spacing: number }) => void) | null): void {
-    this.viewportCommitCb = cb;
+    this.sync.onViewportCommit(cb);
   }
 
   /** 十字光标所在 bar 时间回调，用于多图表联动 */
   onCrosshairTime(cb: ((t: number | null) => void) | null): void {
-    this.crosshairTimeCb = cb;
+    this.sync.onCrosshairTime(cb);
   }
 
   /** 最新 bar 时间戳（缺口检测用） */
@@ -1257,7 +1243,7 @@ export class ChartRenderer {
     if (x < 0 || x > chartW || y < 0 || y > chartH) {
       this.crosshair.clear();
       this.selectPreviewX = null;
-      this.crosshairTimeCb?.(null);
+      this.sync.publishCrosshairTime(null);
       this.setTradeHoverCursor(false);
       this.updateHoverCursor(x, y);
       this.invalidate();
@@ -1292,10 +1278,10 @@ export class ChartRenderer {
     if (bar) {
       const price = pane.priceScale.yToPrice(y - pane.y);
       this.crosshair.set(x, y, idx, bar.time, price);
-      this.crosshairTimeCb?.(bar.time);
+      this.sync.publishCrosshairTime(bar.time);
     } else {
       this.crosshair.clear();
-      this.crosshairTimeCb?.(null);
+      this.sync.publishCrosshairTime(null);
     }
     this.invalidate();
   }
@@ -1358,7 +1344,7 @@ export class ChartRenderer {
     this.paneResizeIndex = null;
     this.dragDrawing = null;
     this.tradeDrag = null;
-    this.viewportCommitCb?.(this.getViewport());
+    this.sync.publishViewport();
     if (this.manager.canvas.hasPointerCapture(e.pointerId)) {
       this.manager.canvas.releasePointerCapture(e.pointerId);
     }
@@ -1378,7 +1364,7 @@ export class ChartRenderer {
       // 命中交易可视化/画线时不弹下单
       if (hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height })) return;
       if (this.hitDrawings(x, y, pane)) return;
-      this.ensurePriceScaleReady(pane);
+      this.ensurePaneScaleReady(pane);
       const price = pane.priceScale.yToPrice(y - pane.y);
       const bar = this.displaySeries.barAt(this.replayIndex);
       this.chartClickCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
@@ -1398,7 +1384,7 @@ export class ChartRenderer {
       this.legendMenuCb?.(e.clientX, e.clientY);
       return;
     }
-    this.ensurePriceScaleReady(pane);
+    this.ensurePaneScaleReady(pane);
     const price = pane.priceScale.yToPrice(y - pane.y);
     const idx = Math.round(this.viewport.xToIndex(x));
     const bar = this.displaySeries.barAt(idx);
@@ -1457,7 +1443,7 @@ export class ChartRenderer {
       const factor = e.deltaY > 0 ? 1.1 : 0.9;
       this.viewport.zoomAt(x, factor);
     }
-    this.viewportCommitCb?.(this.getViewport());
+    this.sync.publishViewport();
     this.invalidate();
   };
 
@@ -1497,22 +1483,12 @@ export class ChartRenderer {
     }
   }
 
-  /** 确保面板价格轴尺寸与自适应范围最新（rAF 暂停时拖拽换算也正确） */
-  private ensurePriceScaleReady(pane: PaneState): void {
+  /** 确保面板价格轴尺寸与自适应范围最新（rAF 暂停时拖拽换算也正确）：
+   *  layout + 可视区间换算是渲染器关注点，价格域适配本身在 autoscale.ts */
+  private ensurePaneScaleReady(pane: PaneState): void {
     this.layout();
     const { from, to } = this.visibleRange();
-    if (to < from) return;
-    let low = Infinity;
-    let high = -Infinity;
-    for (let i = from; i <= to; i++) {
-      const bar = this.displaySeries.barAt(i)!;
-      if (bar.low < low) low = bar.low;
-      if (bar.high > high) high = bar.high;
-    }
-    if (low !== Infinity) {
-      pane.priceScale.setLogMode(this.logScale);
-      pane.priceScale.autoScale(low, high);
-    }
+    ensurePriceScaleReady(pane, this.displaySeries, from, to, this.logScale);
   }
 
   private visibleRange(): { from: number; to: number } {
@@ -1560,20 +1536,21 @@ export class ChartRenderer {
     }
 
     const selected = this.selectedPane();
+    const autoscaleOpts: AutoscaleOptions = { autoScaleOn: this.autoScaleOn, logScale: this.logScale, timeframeId: this.legend.timeframeId };
     for (const pane of this.panes) {
       const geo: DrawGeometry = { chartW: w - AXIS_WIDTH, chartH: pane.height };
       ctx.save();
       ctx.translate(0, pane.y);
 
       if (pane.kind === 'indicator') {
-        this.autoscaleIndicators(pane, from, to);
+        autoscaleIndicators(pane, this.displaySeries, from, to, autoscaleOpts);
         drawGrid(ctx, this.viewport, pane.priceScale, geo, this.gridMode);
         for (const inst of pane.indicators) {
           if (this.hideStudies || !inst.isVisibleOn(this.legend.timeframeId)) continue;
           drawIndicator(ctx, inst, this.barsArray(), from, to, this.viewport, pane.priceScale, geo);
         }
       } else {
-        this.autoscalePrice(pane, from, to);
+        autoscalePrice(pane, this.displaySeries, from, to, autoscaleOpts);
         drawGrid(ctx, this.viewport, pane.priceScale, geo, this.gridMode);
         this.drawPriceSeries(ctx, pane, geo, from, to);
         // 主图叠加指标
@@ -1748,19 +1725,7 @@ export class ChartRenderer {
 
     // 联动：其他图表十字光标时间的垂直参考线（小数 index 插值定位——
     // 跨周期图表的时间戳不落在 bar 上时也能对齐，不再因精确匹配失败而错位/消失）
-    if (this.syncCrosshairTime !== null && !this.crosshair.visible) {
-      const sx = this.viewport.indexToX(this.displaySeries.fractionalIndexAt(this.syncCrosshairTime));
-      if (sx >= 0 && sx <= mainGeo.chartW) {
-        ctx.strokeStyle = theme.crosshair;
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.moveTo(Math.round(sx) + 0.5, 0);
-        ctx.lineTo(Math.round(sx) + 0.5, mainGeo.chartH);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-    }
+    this.sync.drawReferenceLine(ctx, mainGeo.chartW, mainGeo.chartH, this.crosshair.visible);
 
     // 选择K线预览线：实线 + 剪刀图标 + 线右侧淡蒙层（选中后由复盘标记线取代）
     if (this.barSelectMode && this.selectPreviewX !== null) {
@@ -1786,45 +1751,6 @@ export class ChartRenderer {
     this.lastFrameMs = performance.now() - t0;
   }
 
-
-  private autoscalePrice(pane: PaneState, from: number, to: number): void {
-    if (!this.autoScaleOn) return;
-    let low = Infinity;
-    let high = -Infinity;
-    for (let i = from; i <= to; i++) {
-      const bar = this.displaySeries.barAt(i)!;
-      if (bar.low < low) low = bar.low;
-      if (bar.high > high) high = bar.high;
-    }
-    // 叠加指标参与主图价格域
-    const bars = this.barsArray();
-    for (const inst of pane.indicators) {
-      if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
-      const r = indicatorRange(inst, bars, from, to);
-      if (r.low < low) low = r.low;
-      if (r.high > high) high = r.high;
-    }
-    if (low === Infinity) return;
-    pane.priceScale.setLogMode(this.logScale);
-    if (pane.manual) return; // 手动价格域：保持当前范围
-    pane.priceScale.autoScale(low, high);
-  }
-
-  private autoscaleIndicators(pane: PaneState, from: number, to: number): void {
-    if (pane.manual) return;
-    let low = Infinity;
-    let high = -Infinity;
-    const bars = this.barsArray();
-    for (const inst of pane.indicators) {
-      if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
-      const r = indicatorRange(inst, bars, from, to);
-      if (r.low < low) low = r.low;
-      if (r.high > high) high = r.high;
-    }
-    if (low === Infinity) return;
-    // 含零轴（histogram 需要）
-    pane.priceScale.autoScale(Math.min(low, 0), Math.max(high, 0));
-  }
 
   private drawPriceSeries(
     ctx: CanvasRenderingContext2D,
@@ -1880,20 +1806,6 @@ export class ChartRenderer {
         drawCandles(ctx, this.displaySeries, from, to, vs, ps, geo);
     }
   }
-}
-
-/** 小数 index → 时间（BarSeries.fractionalIndexAt 的逆运算：相邻 bar 线性插值，范围外按统一间隔外推）。
- *  供视口联动把索引空间的 {first, 右缘} 换算成时间空间的 {fromTime, toTime}。 */
-function timeAtFractionalIndex(series: BarSeries, index: number): number {
-  const n = series.length;
-  if (n === 0) return 0;
-  const raw = series.raw();
-  const iv = n > 1 ? raw[1].time - raw[0].time : 60_000;
-  if (index <= 0) return raw[0].time + index * iv;
-  const last = n - 1;
-  if (index >= last) return raw[last].time + (index - last) * iv;
-  const lo = Math.floor(index);
-  return raw[lo].time + (index - lo) * (raw[lo + 1].time - raw[lo].time);
 }
 
 /** 绘制剪刀图标（选择K线预览线顶端标记，蓝底白字）。
