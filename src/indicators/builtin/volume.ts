@@ -95,15 +95,26 @@ export const VOL: IndicatorDef = {
   category: '成交量',
   overlay: false,
   lookback: 1,
-  params: [],
+  // length 随 vol_ma 线隐藏而隐藏（TV Volume 的 hideWhenPlotsHidden）
+  params: [{ key: 'length', label: 'MA Length', type: 'number', default: 20, min: 1, max: 500, hideWhenPlotsHidden: ['vol_ma'] }],
   plots: [
     {
       key: 'vol',
       label: 'VOL',
       style: { kind: 'histogram', color: '#26a69a', upColor: '#26a69a80', downColor: '#ef535080', colorByBar: true },
     },
+    {
+      key: 'vol_ma',
+      label: 'MA',
+      style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 },
+    },
   ],
-  compute: (bars) => ({ vol: bars.map((b) => b.volume) }),
+  compute: (bars, params) => {
+    const n = Math.max(1, Math.floor(num(params.length ?? 20)));
+    const vol = bars.map((b) => b.volume);
+    const ma = sma(vol, n);
+    return { vol, vol_ma: ma };
+  },
 };
 
 export const volumeIndicators = [VOL, OBV, VWAP, CVD, VolumeMA];

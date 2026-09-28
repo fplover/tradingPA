@@ -11,6 +11,8 @@ export interface IndicatorParam {
   max?: number;
   step?: number;
   options?: Array<{ label: string; value: string }>;
+  /** 关联 plot 全部隐藏时，设置对话框「输入」页隐藏该参数（TV Volume 的 length） */
+  hideWhenPlotsHidden?: string[];
 }
 
 export type PlotKind = 'line' | 'histogram' | 'band' | 'level';

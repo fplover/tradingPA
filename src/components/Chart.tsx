@@ -30,6 +30,8 @@ interface ChartProps {
   onNeedsMoreHistory?: () => void;
   /** 非回放时右键图表（价格/时间/屏幕坐标） */
   onChartContextMenu?: (price: number, time: number, clientX: number, clientY: number) => void;
+  /** 图例区右键（屏幕坐标） */
+  onLegendMenu?: (clientX: number, clientY: number) => void;
   /** 参与多图表联动（十字光标/视口同步） */
   sync?: boolean;
 }
@@ -48,6 +50,7 @@ export function Chart({
   onRendererReady,
   onNeedsMoreHistory,
   onChartContextMenu,
+  onLegendMenu,
   sync = false,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -264,6 +267,8 @@ export function Chart({
     });
     // 双击画线 → 画线设置
     rendererRef.current?.setDrawingSettingsCallback((drawingId) => useDrawingStore.getState().setSettingsFor(drawingId));
+    // 图例区右键 → 图例菜单
+    rendererRef.current?.setLegendMenuCallback((x, y) => onLegendMenu?.(x, y));
     return () => {
       rendererRef.current?.setTradeCallbacks({});
       rendererRef.current?.setChartClickCallback(null);
@@ -271,6 +276,7 @@ export function Chart({
       rendererRef.current?.setStudyActionCallback(null);
       rendererRef.current?.setToolFinishedCallback(null);
       rendererRef.current?.setDrawingSettingsCallback(null);
+      rendererRef.current?.setLegendMenuCallback(null);
       rendererRef.current?.setPaneActionCallback(null);
     };
   }, []);

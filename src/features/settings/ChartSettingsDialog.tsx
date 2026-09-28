@@ -68,10 +68,13 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
               )}
               {tab === '状态栏' && (
                 <>
+                  <CheckRow label="商品行" checked={p.legend.showSeriesTitle} onChange={(v) => p.onLegend({ showSeriesTitle: v })} />
                   <CheckRow label="OHLC 值" checked={p.legend.showOHLC} onChange={(v) => p.onLegend({ showOHLC: v })} />
                   <CheckRow label="涨跌与涨跌幅" checked={p.legend.showChange} onChange={(v) => p.onLegend({ showChange: v })} />
                   <CheckRow label="成交量" checked={p.legend.showVolume} onChange={(v) => p.onLegend({ showVolume: v })} />
-                  <CheckRow label="指标图例" checked={p.legend.showStudies} onChange={(v) => p.onLegend({ showStudies: v })} />
+                  <CheckRow label="指标名称" checked={p.legend.showStudyNames} onChange={(v) => p.onLegend({ showStudyNames: v })} />
+                  <CheckRow label="指标参数" checked={p.legend.showStudyArgs} onChange={(v) => p.onLegend({ showStudyArgs: v })} />
+                  <CheckRow label="指标数值" checked={p.legend.showStudyValues} onChange={(v) => p.onLegend({ showStudyValues: v })} />
                 </>
               )}
               {tab === '外观' && <CheckRow label="网格线" checked={p.grid} onChange={p.onGrid} />}

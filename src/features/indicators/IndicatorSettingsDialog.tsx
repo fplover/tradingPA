@@ -121,6 +121,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                         <label style={checkLabelStyle}>
                           <input
                             type="checkbox"
+                            aria-label={`${plot.label} 显示`}
                             checked={st?.hidden !== true}
                             onChange={(e) => setStyle(plot.key, { hidden: !e.target.checked })}
                           />
@@ -149,7 +150,13 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
               {tab === '输入' && (
                 <>
                   {def.params.length === 0 && <div style={emptyStyle}>该指标无可调参数</div>}
-                  {def.params.map((p) => (
+                  {def.params
+                    .filter((p) => {
+                      // 关联 plot 全部隐藏时隐藏该输入（TV hideWhenPlotsHidden）
+                      if (!p.hideWhenPlotsHidden || p.hideWhenPlotsHidden.length === 0) return true;
+                      return !p.hideWhenPlotsHidden.every((k) => active.styles?.[k]?.hidden === true);
+                    })
+                    .map((p) => (
                     <Row key={p.key} label={p.label}>
                       {p.type === 'number' && (
                         <input
@@ -187,8 +194,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                 </>
               )}
 
-              {tab === '可见范围' && (
-                <>
+              {tab === '可见范围' && (                <>
                   <Row label="全部周期">
                     <input
                       type="checkbox"

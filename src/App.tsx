@@ -26,6 +26,7 @@ import { RightSide } from '@/features/rightbar/RightSide';
 import { StatusBar } from '@/features/market/StatusBar';
 import { ChartContextMenu, type ChartMenuState } from '@/features/market/ChartContextMenu';
 import { ChartSettingsDialog } from '@/features/settings/ChartSettingsDialog';
+import { LegendContextMenu } from '@/features/indicators/LegendContextMenu';
 import { PineEditorPanel } from '@/features/pine/PineEditorPanel';
 import { usePineStore } from '@/store/pineStore';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
@@ -108,6 +109,7 @@ export default function App() {
   const rendererRef = useRef<ChartRenderer | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [chartMenu, setChartMenu] = useState<ChartMenuState | null>(null);
+  const [legendMenu, setLegendMenu] = useState<{ x: number; y: number } | null>(null);
   const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
@@ -353,6 +355,7 @@ export default function App() {
                   }}
                   onNeedsMoreHistory={series.loadMore}
                   onChartContextMenu={(price, _time, x, y) => setChartMenu({ price, x, y })}
+                  onLegendMenu={(x, y) => setLegendMenu({ x, y })}
                 />
                 {panelOpen && <IndicatorPanel />}
                 {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
@@ -429,6 +432,13 @@ export default function App() {
         instrument={activeInstrument}
         renderer={renderer}
         onClose={() => setChartMenu(null)}
+      />
+      <LegendContextMenu
+        state={legendMenu}
+        legend={legendOpts}
+        onLegend={(patch) => setLegendOpts((v) => ({ ...v, ...patch }))}
+        onOpenSettings={() => setChartSettingsOpen(true)}
+        onClose={() => setLegendMenu(null)}
       />
     </div>
     </Tooltip.Provider>

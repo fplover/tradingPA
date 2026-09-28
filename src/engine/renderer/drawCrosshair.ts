@@ -14,20 +14,33 @@ export interface LegendInfo {
   timeframeId?: string;
 }
 
-/** 图例可见性（TV 图表设置「状态栏」页） */
+/** 图例可见性（TV 图表设置「状态栏」页 + 图例右键菜单） */
 export interface LegendOptions {
+  /** 商品行（代码 · 周期 · 交易所） */
+  showSeriesTitle: boolean;
   showOHLC: boolean;
   showChange: boolean;
   showVolume: boolean;
-  showStudies: boolean;
+  /** 指标名称 / 参数 / 数值 三档可分别开关 */
+  showStudyNames: boolean;
+  showStudyArgs: boolean;
+  showStudyValues: boolean;
 }
 
 export const DEFAULT_LEGEND_OPTIONS: LegendOptions = {
+  showSeriesTitle: true,
   showOHLC: true,
   showChange: true,
   showVolume: true,
-  showStudies: true,
+  showStudyNames: true,
+  showStudyArgs: true,
+  showStudyValues: true,
 };
+
+/** 图例绘制附加信息：超出可用高度的折叠行数 */
+export interface LegendDrawInfo {
+  collapsed: number;
+}
 
 export interface LegendStudyValues {
   uid: string;
@@ -97,6 +110,8 @@ export function drawLegendBlock(
   options: LegendOptions = DEFAULT_LEGEND_OPTIONS,
   hoverUid: string | null = null,
   outRects?: StudyLegendRect[],
+  outInfo?: LegendDrawInfo,
+  geo?: DrawGeometry,
 ): void {
   ctx.save();
   ctx.textAlign = 'left';
@@ -106,15 +121,19 @@ export function drawLegendBlock(
   const y = 6;
   // TV 图例：代码行 16px、其余 13px，字重 400（观感粗来自字号而非 weight）
   ctx.font = `16px ${TV_FONT}`;
-  ctx.fillStyle = theme.legendText;
-  ctx.fillText(legend.symbol, x, y);
-  x += ctx.measureText(legend.symbol).width;
+  if (options.showSeriesTitle) {
+    ctx.fillStyle = theme.legendText;
+    ctx.fillText(legend.symbol, x, y);
+    x += ctx.measureText(legend.symbol).width;
+  }
 
   ctx.font = `13px ${TV_FONT}`;
-  const meta = ` · ${legend.interval}${legend.exchange ? ` · ${legend.exchange}` : ''}`;
-  ctx.fillStyle = theme.legendDim;
-  ctx.fillText(meta, x, y);
-  x += ctx.measureText(meta).width + 14;
+  if (options.showSeriesTitle) {
+    const meta = ` · ${legend.interval}${legend.exchange ? ` · ${legend.exchange}` : ''}`;
+    ctx.fillStyle = theme.legendDim;
+    ctx.fillText(meta, x, y);
+    x += ctx.measureText(meta).width + 14;
+  }
 
   if (bar) {
     const d = legend.decimals;
@@ -145,28 +164,44 @@ export function drawLegendBlock(
     }
   }
 
-  if (options.showStudies && indicatorValues && indicatorValues.length > 0) {
+  let collapsed = 0;
+  const rows = indicatorValues ?? [];
+  const maxY = geo ? geo.chartH - 4 : Infinity;
+  if ((options.showStudyNames || options.showStudyArgs || options.showStudyValues) && rows.length > 0) {
     let iy = 28;
     ctx.font = `13px ${TV_FONT}`;
-    for (const ind of indicatorValues) {
+    for (const ind of rows) {
       if (ind.values.length === 0) continue;
+      if (iy + 16 > maxY) {
+        collapsed += 1;
+        continue;
+      }
       let ix = 8;
-      ctx.fillStyle = theme.legendDim;
-      ctx.fillText(ind.name, ix, iy);
-      ix += ctx.measureText(ind.name).width + 6;
-      for (const v of ind.values) {
-        ctx.fillStyle = theme.legendText;
-        const text = `${v.label} ${ind.precision !== undefined ? v.value.toFixed(ind.precision) : formatIndicatorValue(v.value)}`;
-        ctx.fillText(text, ix, iy);
-        ix += ctx.measureText(text).width + 8;
+      if (options.showStudyNames) {
+        ctx.fillStyle = theme.legendDim;
+        ctx.fillText(ind.name, ix, iy);
+        ix += ctx.measureText(ind.name).width + 6;
+      }
+      if (options.showStudyValues) {
+        for (const v of ind.values) {
+          if (options.showStudyArgs) {
+            ctx.fillStyle = theme.legendDim;
+            ctx.fillText(v.label, ix, iy);
+            ix += ctx.measureText(v.label).width + 4;
+          }
+          ctx.fillStyle = theme.legendText;
+          const text = ind.precision !== undefined ? v.value.toFixed(ind.precision) : formatIndicatorValue(v.value);
+          ctx.fillText(text, ix, iy);
+          ix += ctx.measureText(text).width + 8;
+        }
       }
       const btnX = ix + 4;
-      // 命中区与文本行同高同行（textBaseline=top，iy 即行顶）
       outRects?.push({ uid: ind.uid, x: 8, y: iy, w: btnX + 48 - 8, h: 16, btnX });
       if (hoverUid === ind.uid) drawStudyButtons(ctx, btnX, iy);
       iy += 16;
     }
   }
+  if (outInfo) outInfo.collapsed = collapsed;
   ctx.restore();
 }
 

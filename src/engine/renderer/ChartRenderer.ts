@@ -17,7 +17,7 @@ import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type PaneButtonRects } from './drawAxes';
 import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
-import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, type StudyLegendRect, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
+import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, type StudyLegendRect, type LegendDrawInfo, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
 
 const AXIS_WIDTH = 64;
@@ -88,6 +88,7 @@ export class ChartRenderer {
   private drawingHoverCursor = '';
   private toolFinishedCb: (() => void) | null = null;
   private drawingSettingsCb: ((id: string) => void) | null = null;
+  private legendMenuCb: ((x: number, y: number) => void) | null = null;
   private brickOpts: BrickOptions = {};
 
   // 画线状态
@@ -257,6 +258,10 @@ export class ChartRenderer {
 
   setDrawingSettingsCallback(cb: ((id: string) => void) | null): void {
     this.drawingSettingsCb = cb;
+  }
+
+  setLegendMenuCallback(cb: ((x: number, y: number) => void) | null): void {
+    this.legendMenuCb = cb;
   }
 
   /** 隐藏全部指标（TV 底栏 hide-indicators 开关） */
@@ -1067,6 +1072,12 @@ export class ChartRenderer {
 
     if (!this.contextMenuCb) return;
     if (this.hitDrawings(x, y, pane)) return;
+    // 图例区（商品行或研究行）右键 → 图例菜单（TV legend_context_menu）
+    const inStudyRow = this.studyRects.some((r) => x >= r.x && x <= r.btnX + 48 && y >= r.y && y <= r.y + r.h);
+    if (y <= 24 || inStudyRow) {
+      this.legendMenuCb?.(e.clientX, e.clientY);
+      return;
+    }
     this.ensurePriceScaleReady(pane);
     const price = pane.priceScale.yToPrice(y - pane.y);
     const idx = Math.round(this.viewport.xToIndex(x));
@@ -1379,7 +1390,27 @@ export class ChartRenderer {
     );
     // 图例常驻：悬停跟随十字光标，否则显示最后一根；同时收集研究行命中区
     this.studyRects = [];
-    drawLegendBlock(ctx, hoveredBar ?? this.displaySeries.last, this.legend, legendIndicators, this.legendOptions, this.hoverStudyUid, this.studyRects);
+    const legendInfo: LegendDrawInfo = { collapsed: 0 };
+    drawLegendBlock(
+      ctx,
+      hoveredBar ?? this.displaySeries.last,
+      this.legend,
+      legendIndicators,
+      this.legendOptions,
+      this.hoverStudyUid,
+      this.studyRects,
+      legendInfo,
+      mainGeo,
+    );
+    if (legendInfo.collapsed > 0) {
+      ctx.save();
+      ctx.font = `11px ${TV_FONT}`;
+      ctx.fillStyle = theme.legendDim;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`+${legendInfo.collapsed}`, this.studyRects.length ? this.studyRects[this.studyRects.length - 1].btnX + 56 : 120, 28);
+      ctx.restore();
+    }
 
     // 联动：其他图表十字光标时间的垂直参考线
     if (this.syncCrosshairTime !== null && !this.crosshair.visible) {
