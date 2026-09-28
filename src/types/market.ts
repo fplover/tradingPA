@@ -81,10 +81,16 @@ export type ChartTypeId =
   | 'candles'
   | 'ohlc'
   | 'line'
+  | 'step-line'
+  | 'line-markers'
   | 'area'
+  | 'hlc-area'
+  | 'columns'
+  | 'high-low'
   | 'baseline'
   | 'hollow'
   | 'heikin-ashi'
+  | 'volume-candles'
   | 'renko'
   | 'kagi'
   | 'line-break'
@@ -102,10 +108,16 @@ export const CHART_TYPES: ChartTypeDef[] = [
   { id: 'candles', label: '蜡烛图', timeBased: true },
   { id: 'ohlc', label: '竹线图', timeBased: true },
   { id: 'line', label: '线形图', timeBased: true },
+  { id: 'step-line', label: '阶梯线', timeBased: true },
+  { id: 'line-markers', label: '带标记线形', timeBased: true },
   { id: 'area', label: '面积图', timeBased: true },
+  { id: 'hlc-area', label: 'HLC 面积', timeBased: true },
+  { id: 'columns', label: '柱状图', timeBased: true },
+  { id: 'high-low', label: '高低图', timeBased: true },
   { id: 'baseline', label: '基线图', timeBased: true },
   { id: 'hollow', label: '空心蜡烛', timeBased: true },
   { id: 'heikin-ashi', label: '平均K线', timeBased: true },
+  { id: 'volume-candles', label: '成交量蜡烛', timeBased: true },
   { id: 'renko', label: '砖形图', timeBased: false },
   { id: 'kagi', label: '卡吉图', timeBased: false },
   { id: 'line-break', label: '新价图', timeBased: false },

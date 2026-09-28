@@ -16,7 +16,7 @@ import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type PaneButtonRects } from './drawAxes';
 import { formatCompact } from '@/data/format';
-import { drawOhlc, drawLine, drawArea, drawBaseline } from './seriesRenderers';
+import { drawOhlc, drawLine, drawArea, drawBaseline, drawColumns, drawHighLow, drawStepLine, drawLineMarkers, drawHlcArea, drawVolumeCandles } from './seriesRenderers';
 import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, type LegendStudyValues, type StudyLegendRect, type LegendDrawInfo, DEFAULT_LEGEND_OPTIONS } from './drawCrosshair';
 import { drawIndicator, indicatorRange, indicatorValuesAt } from './drawIndicator';
 
@@ -1587,8 +1587,23 @@ export class ChartRenderer {
       case 'line':
         drawLine(ctx, this.displaySeries, from, to, vs, ps, geo);
         break;
+      case 'step-line':
+        drawStepLine(ctx, this.displaySeries, from, to, vs, ps, geo);
+        break;
+      case 'line-markers':
+        drawLineMarkers(ctx, this.displaySeries, from, to, vs, ps, geo);
+        break;
       case 'area':
         drawArea(ctx, this.displaySeries, from, to, vs, ps, geo);
+        break;
+      case 'hlc-area':
+        drawHlcArea(ctx, this.displaySeries, from, to, vs, ps, geo);
+        break;
+      case 'columns':
+        drawColumns(ctx, this.displaySeries, from, to, vs, ps, geo);
+        break;
+      case 'high-low':
+        drawHighLow(ctx, this.displaySeries, from, to, vs, ps, geo);
         break;
       case 'baseline': {
         let low = Infinity;
@@ -1601,6 +1616,9 @@ export class ChartRenderer {
         drawBaseline(ctx, this.displaySeries, from, to, vs, ps, geo, (low + high) / 2);
         break;
       }
+      case 'volume-candles':
+        drawVolumeCandles(ctx, this.displaySeries, from, to, vs, ps, geo);
+        break;
       default:
         // candles / hollow / heikin-ashi / renko / kagi / line-break / pnf / range
         drawCandles(ctx, this.displaySeries, from, to, vs, ps, geo);
