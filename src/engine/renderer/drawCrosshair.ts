@@ -161,8 +161,9 @@ export function drawLegendBlock(
         ix += ctx.measureText(text).width + 8;
       }
       const btnX = ix + 4;
-      outRects?.push({ uid: ind.uid, x: 8, y: iy - 15, w: btnX + 48 - 8, h: 16, btnX });
-      if (hoverUid === ind.uid) drawStudyButtons(ctx, btnX, iy - 15);
+      // 命中区与文本行同高同行（textBaseline=top，iy 即行顶）
+      outRects?.push({ uid: ind.uid, x: 8, y: iy, w: btnX + 48 - 8, h: 16, btnX });
+      if (hoverUid === ind.uid) drawStudyButtons(ctx, btnX, iy);
       iy += 16;
     }
   }

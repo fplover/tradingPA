@@ -8,7 +8,8 @@ import { useIndicatorStore } from '@/store/indicatorStore';
 import { TIMEFRAMES, type TimeframeId } from '@/types/market';
 import { fontSize, shadow, space, zIndex } from '@/ui/tokens';
 
-const TABS = ['样式', '输入', '精度', '可见性'] as const;
+/** TV 页签顺序：输入 → 样式 → 可见范围（精度折进样式页的「覆盖最小tick」） */
+const TABS = ['输入', '样式', '可见范围'] as const;
 type Tab = (typeof TABS)[number];
 
 const PRECISIONS: Array<{ label: string; value: number | undefined }> = [
@@ -34,7 +35,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
   const updateParams = useIndicatorStore((s) => s.updateParams);
   const updateInstance = useIndicatorStore((s) => s.updateInstance);
   const setSettingsFor = useIndicatorStore((s) => s.setSettingsFor);
-  const [tab, setTab] = useState<Tab>('样式');
+  const [tab, setTab] = useState<Tab>('输入');
 
   if (!def || !active) return null;
 
@@ -128,6 +129,20 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                       </Row>
                     );
                   })}
+                  <Row label="覆盖最小tick">
+                    <select
+                      value={String(active.precision ?? '')}
+                      onChange={(e) => updateInstance(id, { precision: e.target.value === '' ? undefined : Number(e.target.value) })}
+                      style={{ ...inputStyle, width: 120 }}
+                      aria-label="覆盖最小tick"
+                    >
+                      {PRECISIONS.map((p) => (
+                        <option key={p.label} value={p.value ?? ''}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Row>
                 </>
               )}
 
@@ -172,22 +187,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                 </>
               )}
 
-              {tab === '精度' && (
-                <>
-                  {PRECISIONS.map((p) => (
-                    <Row key={p.label} label={p.label}>
-                      <input
-                        type="radio"
-                        name={`precision-${id}`}
-                        checked={active.precision === p.value}
-                        onChange={() => updateInstance(id, { precision: p.value })}
-                      />
-                    </Row>
-                  ))}
-                </>
-              )}
-
-              {tab === '可见性' && (
+              {tab === '可见范围' && (
                 <>
                   <Row label="全部周期">
                     <input

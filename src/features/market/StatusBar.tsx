@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from 'lucide-react';
 import { fontSize, space } from '@/ui/tokens';
 
 interface StatusBarProps {
@@ -11,6 +12,8 @@ interface StatusBarProps {
   onToggleLog: () => void;
   autoScale: boolean;
   onToggleAuto: () => void;
+  hideStudies: boolean;
+  onToggleHideStudies: () => void;
 }
 
 function timeZoneLabel(): string {
@@ -35,6 +38,8 @@ export function StatusBar({
   onToggleLog,
   autoScale,
   onToggleAuto,
+  hideStudies,
+  onToggleHideStudies,
 }: StatusBarProps) {
   return (
     <div
@@ -60,6 +65,26 @@ export function StatusBar({
 
       <span style={{ flex: 1 }} />
 
+      <button
+        onClick={onToggleHideStudies}
+        title={hideStudies ? '显示所有指标' : '隐藏所有指标'}
+        aria-label={hideStudies ? '显示所有指标' : '隐藏所有指标'}
+        aria-pressed={hideStudies}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          height: 22,
+          padding: `0 ${space.xs + 2}px`,
+          background: 'transparent',
+          color: hideStudies ? 'var(--accent)' : 'var(--text-faint)',
+          border: 'none',
+          borderRadius: 3,
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
+        {hideStudies ? <EyeOff size={13} /> : <Eye size={13} />}
+      </button>
       <Toggle label="切换为百分比坐标" active={percent} onClick={onTogglePercent}>
         %
       </Toggle>

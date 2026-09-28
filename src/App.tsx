@@ -19,6 +19,7 @@ import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
 import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
+import { DrawingSettingsDialog } from '@/features/drawings/DrawingSettingsDialog';
 import { LayoutGrid, LayoutMenu } from '@/features/layout/LayoutGrid';
 import { ReplayBar } from '@/features/replay/ReplayBar';
 import { RightSide } from '@/features/rightbar/RightSide';
@@ -111,6 +112,7 @@ export default function App() {
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
   const [gridVisible, setGridVisible] = useState(true);
+  const [hideStudies, setHideStudies] = useState(false);
   const [legendOpts, setLegendOpts] = useState<LegendOptions>({ ...DEFAULT_LEGEND_OPTIONS });
   const wasReplaying = useRef(false);
   const lastFedBarTime = useRef(0);
@@ -173,6 +175,9 @@ export default function App() {
   useEffect(() => {
     renderer?.setGridVisible(gridVisible);
   }, [renderer, gridVisible]);
+  useEffect(() => {
+    renderer?.setHideStudies(hideStudies);
+  }, [renderer, hideStudies]);
   useEffect(() => {
     renderer?.setLegendOptions(legendOpts);
   }, [renderer, legendOpts]);
@@ -351,6 +356,7 @@ export default function App() {
                 />
                 {panelOpen && <IndicatorPanel />}
                 {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
+                <DrawingSettingsDialog renderer={renderer} />
 
                 {/* 该市场没有历史数据源时，明确说明原因而不是留一块空白画布 */}
                 {bars.length === 0 && series.status === 'error' && (
@@ -372,6 +378,8 @@ export default function App() {
               onToggleLog={() => setLogScale((v) => !v)}
               autoScale={autoScale}
               onToggleAuto={() => setAutoScale((v) => !v)}
+              hideStudies={hideStudies}
+              onToggleHideStudies={() => setHideStudies((v) => !v)}
             />
             {replayActive && (
               <ReplayBar

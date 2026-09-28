@@ -21,6 +21,7 @@ import {
   EyeOff,
   Trash2,
   ChevronRight,
+  MousePointer2,
   type LucideIcon,
 } from 'lucide-react';
 import type { DrawingTypeId } from '@/engine/drawing/types';
@@ -115,6 +116,8 @@ export function DrawingToolbar({
   const setActiveTool = useDrawingStore((s) => s.setActiveTool);
   const magnet = useDrawingStore((s) => s.magnet);
   const setMagnet = useDrawingStore((s) => s.setMagnet);
+  const stayMode = useDrawingStore((s) => s.stayMode);
+  const setStayMode = useDrawingStore((s) => s.setStayMode);
 
   const [flyout, setFlyout] = useState<FlyoutState | null>(null);
   const [hovered, setHovered] = useState<number | null>(null);
@@ -309,6 +312,17 @@ export function DrawingToolbar({
         style={bottomBtnStyle}
       >
         <Magnet size={17} strokeWidth={1.5} />
+      </button>
+      <button
+        className="rail-btn"
+        data-active={stayMode}
+        title={stayMode ? '保持绘图模式：开' : '保持绘图模式：关（完成后退出工具）'}
+        aria-label="保持绘图模式"
+        aria-pressed={stayMode}
+        onClick={() => setStayMode(!stayMode)}
+        style={bottomBtnStyle}
+      >
+        <MousePointer2 size={17} strokeWidth={1.5} />
       </button>
       <button
         className="rail-btn"

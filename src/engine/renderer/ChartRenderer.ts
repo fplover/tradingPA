@@ -76,6 +76,7 @@ export class ChartRenderer {
   private percentOn = false;
   private drawingsLocked = false;
   private gridVisible = true;
+  private hideStudies = false;
   private legendOptions: LegendOptions = { ...DEFAULT_LEGEND_OPTIONS };
   /** 研究图例行命中区与悬停态（图例右侧 眼睛/设置/移除 按钮） */
   private studyRects: StudyLegendRect[] = [];
@@ -83,6 +84,10 @@ export class ChartRenderer {
   private studyHoverBtn: number | null = null;
   private movedFar = false;
   private studyActionCb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null = null;
+  /** 画线悬停光标：body=move、handle=pointer */
+  private drawingHoverCursor = '';
+  private toolFinishedCb: (() => void) | null = null;
+  private drawingSettingsCb: ((id: string) => void) | null = null;
   private brickOpts: BrickOptions = {};
 
   // 画线状态
@@ -244,6 +249,24 @@ export class ChartRenderer {
 
   setStudyActionCallback(cb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null): void {
     this.studyActionCb = cb;
+  }
+
+  setToolFinishedCallback(cb: (() => void) | null): void {
+    this.toolFinishedCb = cb;
+  }
+
+  setDrawingSettingsCallback(cb: ((id: string) => void) | null): void {
+    this.drawingSettingsCb = cb;
+  }
+
+  /** 隐藏全部指标（TV 底栏 hide-indicators 开关） */
+  setHideStudies(hidden: boolean): void {
+    this.hideStudies = hidden;
+    this.invalidate();
+  }
+
+  get studiesHidden(): boolean {
+    return this.hideStudies;
   }
 
   setGridVisible(visible: boolean): void {
@@ -823,7 +846,8 @@ export class ChartRenderer {
     const def = getToolDef(this.activeTool!);
     if (def.points === 1) {
       this.drawingLayer.add(this.activeTool!, [pt]);
-    this.invalidate();
+      this.invalidate();
+      this.toolFinishedCb?.();
       return;
     }
     this.placing.push(pt);
@@ -831,6 +855,7 @@ export class ChartRenderer {
       this.drawingLayer.add(this.activeTool!, this.placing);
       this.placing = [];
       this.previewPoint = null;
+      this.toolFinishedCb?.();
     }
     this.invalidate();
   }
@@ -885,6 +910,7 @@ export class ChartRenderer {
     else if (x > this.manager.width - AXIS_WIDTH) cursor = 'ns-resize';
     else if (y > this.manager.height - AXIS_HEIGHT) cursor = 'ew-resize';
     else if (this.studyHoverBtn !== null) cursor = 'pointer';
+    else if (this.drawingHoverCursor) cursor = this.drawingHoverCursor;
     else if (this.tradeHoverCursor) cursor = 'pointer';
     const canvas = this.manager.canvas;
     if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
@@ -942,7 +968,9 @@ export class ChartRenderer {
     }
     const pane = this.paneAt(y);
     this.hoveredPaneId = pane.id;
-    // 悬停交易可视化元素（标签/关闭按钮/TP-SL 线）→ pointer 光标提示可交互
+    // 画线悬停光标：顶点手柄 pointer、线体 move
+    const dHit = this.hitDrawings(x, y, pane);
+    this.drawingHoverCursor = dHit ? (dHit.part === 'handle' ? 'pointer' : 'move') : '';
     const hit = hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height });
     this.setTradeHoverCursor(hit !== null);
     const idx = Math.round(this.viewport.xToIndex(x));
@@ -991,6 +1019,13 @@ export class ChartRenderer {
   }
 
   private onPointerUp = (e: PointerEvent) => {
+    // TV：中键点击研究图例行 = 移除该研究
+    if (e.button === 1 && this.hoverStudyUid) {
+      const uid = this.hoverStudyUid;
+      this.hoverStudyUid = null;
+      this.studyActionCb?.('remove', uid);
+      return;
+    }
     const studyBtn = this.studyHoverBtn;
     const studyUid = this.hoverStudyUid;
     this.studyHoverBtn = null;
@@ -1045,6 +1080,13 @@ export class ChartRenderer {
     if (x > this.manager.width - AXIS_WIDTH) {
       this.paneAt(y).manual = false;
       this.invalidate();
+      return;
+    }
+    // 双击画线 → 打开画线设置（TV 行为）
+    const pane = this.paneAt(y);
+    const dHit = this.hitDrawings(x, y, pane);
+    if (dHit) {
+      this.drawingSettingsCb?.(dHit.id);
       return;
     }
     this.finishPlacing();
@@ -1185,7 +1227,7 @@ export class ChartRenderer {
         this.autoscaleIndicators(pane, from, to);
         if (this.gridVisible) drawGrid(ctx, this.viewport, pane.priceScale, geo);
         for (const inst of pane.indicators) {
-          if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
+          if (this.hideStudies || !inst.isVisibleOn(this.legend.timeframeId)) continue;
           drawIndicator(ctx, inst, this.barsArray(), from, to, this.viewport, pane.priceScale, geo);
         }
       } else {
@@ -1194,7 +1236,7 @@ export class ChartRenderer {
         this.drawPriceSeries(ctx, pane, geo, from, to);
         // 主图叠加指标
         for (const inst of pane.indicators) {
-          if (!inst.isVisibleOn(this.legend.timeframeId)) continue;
+          if (this.hideStudies || !inst.isVisibleOn(this.legend.timeframeId)) continue;
           drawIndicator(ctx, inst, this.barsArray(), from, to, this.viewport, pane.priceScale, geo);
         }
       }
@@ -1313,7 +1355,7 @@ export class ChartRenderer {
     const legendIndicators: LegendStudyValues[] = [];
     const mainPane = this.panes[0];
     const legendIndex = this.crosshair.visible && hoveredBar ? this.crosshair.barIndex : this.displaySeries.length - 1;
-    if (mainPane.indicators.length > 0 && legendIndex >= 0) {
+    if (!this.hideStudies && mainPane.indicators.length > 0 && legendIndex >= 0) {
       const bars = this.barsArray();
       for (const inst of mainPane.indicators) {
         if (!inst.isVisibleOn(this.legend.timeframeId)) continue;

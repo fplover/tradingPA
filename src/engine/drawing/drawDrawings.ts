@@ -151,6 +151,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
   ctx.strokeStyle = d.style.color;
   ctx.fillStyle = d.style.color;
   ctx.lineWidth = d.style.lineWidth;
+  ctx.setLineDash(d.style.dash ? [6, 4] : []);
   ctx.font = `${d.style.fontSize ?? 12}px ${TV_FONT}`;
   ctx.textBaseline = 'middle';
 
@@ -285,6 +286,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
       break;
     }
   }
+  ctx.setLineDash([]);
 }
 
 function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align: CanvasTextAlign) {

@@ -237,7 +237,6 @@ export function Chart({
       if (action === 'settings') useIndicatorStore.getState().setSettingsFor(indicatorId);
       else useIndicatorStore.getState().remove(indicatorId);
     });
-    // 研究图例悬停按钮：眼睛=隐藏/显示全部 plot，齿轮=设置，×=移除
     rendererRef.current?.setStudyActionCallback((action, uid) => {
       const found = (rendererRef.current?.listIndicators() ?? []).find((l) => l.uid === uid);
       if (!found) return;
@@ -258,11 +257,20 @@ export function Chart({
       for (const p of def.plots) styles[p.key] = { hidden: !allHidden };
       store.updateInstance(found.id, { styles });
     });
+    // 放置完成后：未开「保持绘图模式」则退回光标（TV 行为）
+    rendererRef.current?.setToolFinishedCallback(() => {
+      const ds = useDrawingStore.getState();
+      if (!ds.stayMode) ds.setActiveTool(null);
+    });
+    // 双击画线 → 画线设置
+    rendererRef.current?.setDrawingSettingsCallback((drawingId) => useDrawingStore.getState().setSettingsFor(drawingId));
     return () => {
       rendererRef.current?.setTradeCallbacks({});
       rendererRef.current?.setChartClickCallback(null);
       rendererRef.current?.setContextMenuCallback(null);
       rendererRef.current?.setStudyActionCallback(null);
+      rendererRef.current?.setToolFinishedCallback(null);
+      rendererRef.current?.setDrawingSettingsCallback(null);
       rendererRef.current?.setPaneActionCallback(null);
     };
   }, []);

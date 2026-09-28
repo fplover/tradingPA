@@ -21,6 +21,8 @@ export type DrawingTypeId =
 export interface DrawingStyle {
   color: string;
   lineWidth: number;
+  /** 虚线线型（TV 样式页 Line style） */
+  dash?: boolean;
   /** 填充类工具的背景色（含透明度） */
   fillColor?: string;
   /** 文本内容 */
