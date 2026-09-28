@@ -107,19 +107,21 @@ export function drawFibFan(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[]
   }
 }
 
-/** 弧线：基线 + 以第 2 点为圆心、比率 × 锚距 为半径的半圆（TV 速度阻力弧） */
+/** 弧线：基线 + 以第 1 锚点为圆心、比率 × (时间跨度, 价格跨度) 为双轴半径的椭圆象限弧 */
 export function drawFibArc(ctx: CanvasRenderingContext2D, pts: Pix[]): void {
   if (pts.length < 2) return;
   const [a, b] = pts;
+  const rx = Math.abs(b.x - a.x);
+  const ry = Math.abs(b.y - a.y);
   const [a0, a1] = fibArcAngles(a, b);
-  const r = Math.hypot(a.x - b.x, a.y - b.y);
-  strokeLine(ctx, a.x, a.y, b.x, b.y);
+  strokeLine(ctx, a.x, a.y, b.x, b.y); // 基线（两锚点连线）
   for (const lv of FIB_ARC_LEVELS) {
     ctx.beginPath();
-    ctx.arc(b.x, b.y, r * lv, a0, a1);
+    ctx.ellipse(a.x, a.y, rx * lv, ry * lv, 0, a0, a1);
     ctx.stroke();
+    // 标签落在弧中点（半径 = 比率 × 锚距；x 用时间跨度、y 用价格跨度分别缩放）
     const mid = (a0 + a1) / 2;
-    levelLabel(ctx, `${(lv * 100).toFixed(1)}%`, b.x + r * lv * Math.cos(mid) + 4, b.y + r * lv * Math.sin(mid), 'left');
+    levelLabel(ctx, `${(lv * 100).toFixed(1)}%`, a.x + rx * lv * Math.cos(mid) + 4, a.y + ry * lv * Math.sin(mid), 'left');
   }
 }
 

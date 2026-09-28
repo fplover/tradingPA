@@ -50,8 +50,11 @@ describe('斐波那契比率常量（TV 默认档）', () => {
   it('回撤 7 档：0/0.236/0.382/0.5/0.618/0.786/1', () => {
     expect([...FIB_RETRACEMENT_LEVELS]).toEqual([0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]);
   });
-  it('扩展 4 档：0.618/1/1.618/2.618', () => {
-    expect([...FIB_EXTENSION_LEVELS]).toEqual([0.618, 1, 1.618, 2.618]);
+  it('扩展 9 档：0.236/0.382/0.5/0.618/0.786/1/1.272/1.618/2.618', () => {
+    expect([...FIB_EXTENSION_LEVELS]).toEqual([0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, 2.618]);
+    for (let i = 1; i < FIB_EXTENSION_LEVELS.length; i++) {
+      expect(FIB_EXTENSION_LEVELS[i]).toBeGreaterThan(FIB_EXTENSION_LEVELS[i - 1]);
+    }
   });
   it('扇形/弧线各 3 档：0.382/0.5/0.618', () => {
     expect([...FIB_FAN_LEVELS]).toEqual([0.382, 0.5, 0.618]);
@@ -75,12 +78,18 @@ describe('fibRetracementPrice', () => {
 describe('fibExtensionPrice（枢轴 = 第 3 点）', () => {
   it('上升趋势：比率线落在枢轴上方', () => {
     // 起点 100 → 终点 200，回撤枢轴 150
+    expect(fibExtensionPrice(100, 200, 150, 0.236)).toBeCloseTo(173.6, 10);
+    expect(fibExtensionPrice(100, 200, 150, 0.382)).toBeCloseTo(188.2, 10);
+    expect(fibExtensionPrice(100, 200, 150, 0.5)).toBe(200);
     expect(fibExtensionPrice(100, 200, 150, 0.618)).toBeCloseTo(211.8, 10);
+    expect(fibExtensionPrice(100, 200, 150, 0.786)).toBeCloseTo(228.6, 10);
     expect(fibExtensionPrice(100, 200, 150, 1)).toBe(250);
+    expect(fibExtensionPrice(100, 200, 150, 1.272)).toBeCloseTo(277.2, 10);
     expect(fibExtensionPrice(100, 200, 150, 1.618)).toBeCloseTo(311.8, 10);
     expect(fibExtensionPrice(100, 200, 150, 2.618)).toBeCloseTo(411.8, 10);
   });
   it('下降趋势：符号天然反转，比率线落在枢轴下方', () => {
+    expect(fibExtensionPrice(200, 100, 150, 0.236)).toBeCloseTo(126.4, 10);
     expect(fibExtensionPrice(200, 100, 150, 1)).toBe(50);
     expect(fibExtensionPrice(200, 100, 150, 2.618)).toBeCloseTo(-111.8, 10);
   });
@@ -127,30 +136,45 @@ describe('fibZoneOffsets / fibZoneTimes', () => {
 // ---------- fibMath：弧线角度与命中 ----------
 
 describe('fibArcAngles / fibArcHit', () => {
-  it('水平锚线（第 1 点在左）：半圆从角 π 扫到 2π', () => {
-    const [a0, a1] = fibArcAngles({ x: 0, y: 0 }, { x: 100, y: 0 });
-    expect(a0).toBeCloseTo(Math.PI, 12);
-    expect(a1).toBeCloseTo(Math.PI * 2, 12);
+  it('第 2 锚点在右上（canvas 角）：象限弧从 -π/2 扫到 0', () => {
+    const [a0, a1] = fibArcAngles({ x: 0, y: 0 }, { x: 100, y: -80 });
+    expect(a0).toBeCloseTo(-Math.PI / 2, 12);
+    expect(a1).toBeCloseTo(0, 12);
   });
-  it('水平锚线（第 1 点在右）：半圆从角 0 扫到 π', () => {
-    const [a0, a1] = fibArcAngles({ x: 100, y: 0 }, { x: 0, y: 0 });
+  it('第 2 锚点在右下：从 0 扫到 π/2', () => {
+    const [a0, a1] = fibArcAngles({ x: 0, y: 0 }, { x: 100, y: 80 });
     expect(a0).toBeCloseTo(0, 12);
-    expect(a1).toBeCloseTo(Math.PI, 12);
+    expect(a1).toBeCloseTo(Math.PI / 2, 12);
   });
-  it('垂直锚线（第 1 点在下）：半圆从 π/2 扫到 3π/2', () => {
-    const [a0, a1] = fibArcAngles({ x: 0, y: 100 }, { x: 0, y: 0 });
-    expect(a0).toBeCloseTo(Math.PI / 2, 12);
+  it('第 2 锚点在左上：从 π 扫到 3π/2', () => {
+    const [a0, a1] = fibArcAngles({ x: 0, y: 0 }, { x: -100, y: -80 });
+    expect(a0).toBeCloseTo(Math.PI, 12);
     expect(a1).toBeCloseTo((Math.PI * 3) / 2, 12);
   });
-  it('弧上点命中、弧外点不中、半圆背面不中', () => {
-    const p0 = { x: 100, y: 0 };
-    const p1 = { x: 0, y: 0 }; // 圆心在原点，锚点在其右侧 → 半圆扫掠右下左（canvas +y 侧）
-    expect(fibArcHit(p0, p1, -50, 0)).toBe(true); // 0.5 弧上（扫掠终点）
-    expect(fibArcHit(p0, p1, -61.8, 0)).toBe(true); // 0.618 弧上
-    expect(fibArcHit(p0, p1, -70, 0)).toBe(false); // 距任一弧 > 6px
-    expect(fibArcHit(p0, p1, 0, 50)).toBe(true); // 弧底（0.5，扫掠区内）
-    expect(fibArcHit(p0, p1, 0, -50)).toBe(false); // 半圆背面
-    expect(fibArcHit(p0, p1, 500, 0)).toBe(false); // 远离
+  it('第 2 锚点在左下：从 π/2 扫到 π', () => {
+    const [a0, a1] = fibArcAngles({ x: 0, y: 0 }, { x: -100, y: 80 });
+    expect(a0).toBeCloseTo(Math.PI / 2, 12);
+    expect(a1).toBeCloseTo(Math.PI, 12);
+  });
+  it('弧上点命中、弧外不中、象限背面不中、基线可命中', () => {
+    // 圆心（第 1 锚点）在原点，第 2 锚点在右上 → 弧向右上象限张开
+    const p0 = { x: 0, y: 0 };
+    const p1 = { x: 100, y: -80 };
+    // 0.5 弧：rx=50, ry=40；顶点 (0,-40)、右点 (50,0)、弧中点 (35.36,-28.28)
+    expect(fibArcHit(p0, p1, 0, -40)).toBe(true);
+    expect(fibArcHit(p0, p1, 50, 0)).toBe(true);
+    expect(fibArcHit(p0, p1, 35.36, -28.28)).toBe(true);
+    // 0.618 弧顶点 (0,-49.44)
+    expect(fibArcHit(p0, p1, 0, -49.44)).toBe(true);
+    // 象限背面（左上/左下）不中
+    expect(fibArcHit(p0, p1, -50, 0)).toBe(false);
+    expect(fibArcHit(p0, p1, 0, 50)).toBe(false);
+    // 距任一弧 > 6px
+    expect(fibArcHit(p0, p1, 0, -60)).toBe(false);
+    // 远离
+    expect(fibArcHit(p0, p1, 500, 0)).toBe(false);
+    // 基线（两锚点连线）可命中，与渲染一致
+    expect(fibArcHit(p0, p1, 50, -40)).toBe(true);
   });
 });
 
@@ -263,7 +287,7 @@ describe('drawFibRetracement（回撤水平组）', () => {
 });
 
 describe('drawFibExtension（扩展）', () => {
-  it('锚点连线 1→2→3 + 4 条以第 3 点为枢轴的扩展线', () => {
+  it('锚点连线 1→2→3 + 9 条以第 3 点为枢轴的扩展线', () => {
     const { ctx, dctx, priceScale } = makeDctx();
     const d = drawing({
       type: 'fib-extension',
@@ -272,15 +296,25 @@ describe('drawFibExtension（扩展）', () => {
     const pts = d.points.map((p) => toPix(p, dctx));
     drawFibExtension(asCtx(ctx), d, pts, dctx, 2);
 
-    // 2 条锚线 + 4 条水平扩展线 = 6 次 stroke
-    expect(callsOf(ctx, 'stroke')).toHaveLength(6);
+    // 2 条锚线 + 9 条水平扩展线 = 11 次 stroke
+    expect(callsOf(ctx, 'stroke')).toHaveLength(11);
     // 锚线 1→2
     expect(hasPair(ctx, 'moveTo', [pts[0].x, pts[0].y], 'lineTo', [pts[1].x, pts[1].y])).toBe(true);
     // 锚线 2→3
     expect(hasPair(ctx, 'moveTo', [pts[1].x, pts[1].y], 'lineTo', [pts[2].x, pts[2].y])).toBe(true);
     // 扩展价 = 枢轴 104 + (108-100) × 比率；100% 档 = 112
     expect(hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(112)) + 0.5], 'lineTo', [W, Math.round(priceScale.priceToY(112)) + 0.5])).toBe(true);
-    expect(fillTexts(ctx)).toEqual(['61.8% 108.94', '100.0% 112.00', '161.8% 116.94', '261.8% 124.94']);
+    expect(fillTexts(ctx)).toEqual([
+      '23.6% 105.89',
+      '38.2% 107.06',
+      '50.0% 108.00',
+      '61.8% 108.94',
+      '78.6% 110.29',
+      '100.0% 112.00',
+      '127.2% 114.18',
+      '161.8% 116.94',
+      '261.8% 124.94',
+    ]);
   });
 
   it('放置中仅 2 点（预览态）：只画锚线，不画扩展线', () => {
@@ -313,7 +347,7 @@ describe('drawFibFan（扇形）', () => {
 });
 
 describe('drawFibArc（弧线）', () => {
-  it('基线 + 3 条以第 2 点为圆心、比率 × 锚距 为半径的弧', () => {
+  it('基线 + 3 条以第 1 锚点为圆心、比率 × (时间跨度, 价格跨度) 为双轴半径的椭圆象限弧', () => {
     const { ctx, dctx } = makeDctx();
     const p0 = { time: T0 + IV, price: 100 };
     const p1 = { time: T0 + 3 * IV, price: 104 };
@@ -325,10 +359,12 @@ describe('drawFibArc（弧线）', () => {
     // 基线 1 次 + 弧 3 次
     expect(callsOf(ctx, 'stroke')).toHaveLength(4);
     expect(hasPair(ctx, 'moveTo', [a.x, a.y], 'lineTo', [b.x, b.y])).toBe(true);
-    const r = Math.hypot(a.x - b.x, a.y - b.y);
+    const rx = Math.abs(b.x - a.x);
+    const ry = Math.abs(b.y - a.y);
     const [a0, a1] = fibArcAngles(a, b);
-    expect(hasCall(ctx, 'arc', [b.x, b.y, r * 0.5, a0, a1])).toBe(true);
-    expect(callsOf(ctx, 'arc')).toHaveLength(3);
+    // 圆心 = 第 1 锚点；半径 = 比率 × (时间跨度, 价格跨度)；右上象限 [-π/2, 0]
+    expect(hasCall(ctx, 'ellipse', [a.x, a.y, rx * 0.5, ry * 0.5, 0, a0, a1])).toBe(true);
+    expect(callsOf(ctx, 'ellipse')).toHaveLength(3);
     expect(fillTexts(ctx)).toEqual(['38.2%', '50.0%', '61.8%']);
   });
 });
@@ -396,10 +432,14 @@ describe('hitTestFib', () => {
     const d = drawing({ type: 'fib-arc', points: [p0, p1] });
     const a = toPix(p0, dctx);
     const b = toPix(p1, dctx);
-    const r = Math.hypot(a.x - b.x, a.y - b.y);
+    const rx = Math.abs(b.x - a.x);
+    const ry = Math.abs(b.y - a.y);
     const [a0, a1] = fibArcAngles(a, b);
     const mid = (a0 + a1) / 2;
-    expect(hitTestFib(d, [a, b], b.x + r * 0.5 * Math.cos(mid), b.y + r * 0.5 * Math.sin(mid), dctx)).toBe(true);
+    // 0.5 弧中点（圆心 = 第 1 锚点 + 双轴半径 × 方向）
+    expect(hitTestFib(d, [a, b], a.x + rx * 0.5 * Math.cos(mid), a.y + ry * 0.5 * Math.sin(mid), dctx)).toBe(true);
+    // 基线中点可命中
+    expect(hitTestFib(d, [a, b], (a.x + b.x) / 2, (a.y + b.y) / 2, dctx)).toBe(true);
     expect(hitTestFib(d, [a, b], 50, 10, dctx)).toBe(false);
   });
 

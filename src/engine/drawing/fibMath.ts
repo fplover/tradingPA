@@ -1,14 +1,15 @@
 /** 斐波那契家族纯几何计算（B6）：比率常量 + 锚点 → 价位/时间/角度换算。
  *  不依赖 canvas / DOM：渲染（fibRender）、命中测试（drawDrawings）、单测共用。
  *  水平位价格公式与 TV 一致：回撤 price = p0 + (p1 - p0) × 比率；
- *  扩展 price = 枢轴(第3点) + (终点 - 起点) × 比率（TV trend-based fib extension）。 */
+ *  扩展 price = 枢轴(第3点) + (终点 - 起点) × 比率（向下趋势符号天然反转）。 */
 import type { Bar } from '@/types/market';
 import type { DrawingPoint } from './types';
+import { distToSegment } from './geom';
 
 /** 回撤比率（既有 fib 与 Auto Fib 共用；TV 默认 7 档） */
 export const FIB_RETRACEMENT_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1] as const;
-/** 扩展比率（TV trend-based fib extension 标准 4 档） */
-export const FIB_EXTENSION_LEVELS = [0.618, 1, 1.618, 2.618] as const;
+/** 扩展比率（TV Fib Extension 默认 9 档：0.236-1.0 回撤子档 + 1.272/1.618/2.618 扩展档） */
+export const FIB_EXTENSION_LEVELS = [0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, 2.618] as const;
 /** 扇形射线比率（TV 默认 3 条） */
 export const FIB_FAN_LEVELS = [0.382, 0.5, 0.618] as const;
 /** 弧线比率（TV 默认 3 条） */
@@ -69,16 +70,47 @@ export function fibZoneTimes(anchorTime: number, interval: number, count: number
 }
 
 /**
- * 弧线扫掠角（canvas 坐标系：0 = +x 右，PI/2 = +y 下）：以第 2 点为圆心，
- * 从"圆心 → 第 1 点"方向起扫 180° 的半圆（TV 速度阻力弧默认半圆，
- * 与趋势线交于比率 × 锚距处）。
+ * 弧线扫掠象限（canvas 坐标系：0 = +x 右，PI/2 = +y 下）→ [起始角, 结束角]。
+ * 圆心 = 第 1 锚点（p0）；按第 2 锚点（p1）相对圆心的方向取 90° 象限：
+ * 右上 → [-π/2, 0]，右下 → [0, π/2]，左上 → [π, 3π/2]，左下 → [π/2, π]。
  */
 export function fibArcAngles(p0: { x: number; y: number }, p1: { x: number; y: number }): [number, number] {
-  const start = Math.atan2(p0.y - p1.y, p0.x - p1.x);
-  return [start, start + Math.PI];
+  const right = p1.x >= p0.x;
+  const up = p1.y < p0.y;
+  if (right && up) return [-Math.PI / 2, 0];
+  if (right && !up) return [0, Math.PI / 2];
+  if (!right && up) return [Math.PI, Math.PI * 1.5];
+  return [Math.PI / 2, Math.PI];
 }
 
-/** 弧线命中：点到任一比率弧的像素距离 ≤ tol，且落在扫掠的半圆内 */
+/**
+ * 弧线采样折线（命中判定用）：圆心 p0，半径 = 比率 × (|时间跨度|, |价格跨度|)，
+ * 在扫掠象限内均匀取 segments+1 个点。渲染用原生 ctx.ellipse（平滑），
+ * 命中以 24 段折线近似（弦误差 < 1px，命中与肉眼均不可辨）。
+ */
+export function fibArcPolyline(
+  p0: { x: number; y: number },
+  p1: { x: number; y: number },
+  ratio: number,
+  segments = 24,
+): { x: number; y: number }[] {
+  const rx = Math.abs(p1.x - p0.x) * ratio;
+  const ry = Math.abs(p1.y - p0.y) * ratio;
+  const [a0, a1] = fibArcAngles(p0, p1);
+  const out: { x: number; y: number }[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = a0 + ((a1 - a0) * i) / segments;
+    out.push({ x: p0.x + rx * Math.cos(t), y: p0.y + ry * Math.sin(t) });
+  }
+  return out;
+}
+
+/**
+ * 弧线命中：基线（两锚点连线，与渲染一致可命中）+ 任一比率弧距离 ≤ tol。
+ * 椭圆弧无闭式解析距离，采用采样折线 + 点到线段距离（uniform 像素容差）；
+ * 象限外天然不命中——折线只覆盖扫掠区间。锚点退化（时间/价格跨度为 0）时
+ * 折线收敛为点/线段，distToSegment 自然处理。
+ */
 export function fibArcHit(
   p0: { x: number; y: number },
   p1: { x: number; y: number },
@@ -86,14 +118,14 @@ export function fibArcHit(
   y: number,
   tol = 6,
 ): boolean {
-  const [a0] = fibArcAngles(p0, p1);
-  const r0 = Math.hypot(p0.x - p1.x, p0.y - p1.y);
-  let rel = Math.atan2(y - p1.y, x - p1.x) - a0;
-  while (rel < 0) rel += Math.PI * 2;
-  while (rel >= Math.PI * 2) rel -= Math.PI * 2;
-  if (rel > Math.PI) return false; // 半圆外不命中
-  const d = Math.hypot(x - p1.x, y - p1.y);
-  return FIB_ARC_LEVELS.some((lv) => Math.abs(d - r0 * lv) <= tol);
+  if (distToSegment(x, y, p0.x, p0.y, p1.x, p1.y) <= tol) return true;
+  for (const lv of FIB_ARC_LEVELS) {
+    const poly = fibArcPolyline(p0, p1, lv);
+    for (let i = 0; i < poly.length - 1; i++) {
+      if (distToSegment(x, y, poly[i].x, poly[i].y, poly[i + 1].x, poly[i + 1].y) <= tol) return true;
+    }
+  }
+  return false;
 }
 
 /**
