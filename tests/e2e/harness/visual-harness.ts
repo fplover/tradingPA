@@ -1,6 +1,8 @@
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
-import { setTheme, type ThemeName } from '@/engine/theme';
-import type { Bar, ChartTypeId } from '@/types/market';
+import { setTheme, theme, type ThemeName } from '@/engine/theme';
+import { aggregateBars } from '@/data/aggregate';
+import { getTimeframe, type Bar, type ChartTypeId, type TimeframeId } from '@/types/market';
+import { nextCloseTime } from '@/engine/countdown';
 import type { DrawingTypeId } from '@/engine/drawing/types';
 
 /**
@@ -25,12 +27,18 @@ const BASE_TIME = Date.UTC(2024, 0, 8, 0, 0, 0); // 固定基准（标签按本�
 /**
  * 冻结时钟（B3 收盘倒计时护栏）：ChartRenderer 会在最新价徽章旁渲染实时 mm:ss 倒计时
  * （CloseCountdown.sample(Date.now())，inWindow = now ∈ [lastBarTime, closeTime)）。
- * 不冻结 → 黄金截图随真实时钟每秒变化 → flaky。冻结点取「末 bar 收盘之后」：
+ * 不冻结 → 黄金截图随真实时钟每秒变化 → flaky。默认冻结点取「末 bar 收盘之后」：
  * 窗口判定为 false，倒计时不绘制，基线保持纯数据驱动；
+ * __vh.setFrozenNow 可把冻结点改到窗口内（收盘前 N 秒），供 countdown-badge
+ * 表面做「窗口内/外双态差分」的行为断言（该表面时变语义，禁像素基线）。
  * 若未来窗口语义/数据时点变化，按 spec 头部说明走 UPDATE_SNAPSHOTS=1 重产基线。
  */
-const FROZEN_NOW = BASE_TIME + 600 * 60_000 + 60_000; // 末 bar（09:59）收盘后 1 分钟
-Date.now = () => FROZEN_NOW;
+const FROZEN_NOW_DEFAULT = BASE_TIME + 600 * 60_000 + 60_000; // 末 bar（09:59）收盘后 1 分钟
+let frozenNow = FROZEN_NOW_DEFAULT;
+Date.now = () => frozenNow;
+
+/** 当前档位秒数（setTimeframe 切换；countdownProbe 的收盘时刻按它重算） */
+let intervalSeconds = 60;
 
 function seededBars(symbol: string, count = 600, intervalMs = 60_000): Bar[] {
   let h = 2166136261;
@@ -55,12 +63,16 @@ function seededBars(symbol: string, count = 600, intervalMs = 60_000): Bar[] {
 }
 
 const CELLS = [
-  { symbol: 'BTC/USDT', interval: '1m', decimals: 2, exchange: 'Binance' },
-  { symbol: 'ETH/USDT', interval: '1m', decimals: 2, exchange: 'Binance' },
+  // timeframeId 必传：ChartRenderer.resolveTimeframe 靠它解析倒计时周期（缺失 = 停用），
+  // 与 App 运行环境一致（Chart.tsx 构造/setLegend 均传 timeframeId）
+  { symbol: 'BTC/USDT', interval: '1m', timeframeId: '1m', decimals: 2, exchange: 'Binance' },
+  { symbol: 'ETH/USDT', interval: '1m', timeframeId: '1m', decimals: 2, exchange: 'Binance' },
 ];
 
 const grid = document.getElementById('grid')!;
 const renderers: ChartRenderer[] = [];
+/** 每格的基础 1m 种子（setTimeframe 聚合源；与 renderers 同索引，splice 同步） */
+const baseBars: Bar[][] = [];
 
 function mountCell(index: number): ChartRenderer {
   const cell = document.createElement('div');
@@ -70,7 +82,9 @@ function mountCell(index: number): ChartRenderer {
   const canvas = document.createElement('canvas');
   cell.appendChild(canvas);
   const cfg = CELLS[index];
-  const r = new ChartRenderer(canvas, seededBars(cfg.symbol), cfg);
+  const bars = seededBars(cfg.symbol);
+  baseBars[index] = bars;
+  const r = new ChartRenderer(canvas, bars, cfg);
   r.start();
   renderers[index] = r;
   return r;
@@ -79,6 +93,7 @@ function mountCell(index: number): ChartRenderer {
 function unmountCell(index: number): void {
   renderers[index]?.dispose();
   renderers.splice(index, 1);
+  baseBars.splice(index, 1);
   document.getElementById(`cell-${index}`)?.remove();
 }
 
@@ -106,6 +121,40 @@ const main = (): ChartRenderer => renderers[0];
   },
   setChartType(t: ChartTypeId): void {
     for (const r of renderers) r?.setChartType(t);
+  },
+  /**
+   * 周期切换（B5 新档位 2m/45m/3H）：与 App 数据层同路径——
+   * useChartSeries/ChartCell 用 aggregateBars 把 1m 基础数据聚合成目标档位后 setData，
+   * ChartRenderer 引擎本身不做聚合（只渲染传入的 bars）。harness 复刻该路径。
+   */
+  setTimeframe(id: TimeframeId): void {
+    const tf = getTimeframe(id);
+    intervalSeconds = tf.seconds;
+    renderers.forEach((r, i) => {
+      const base = baseBars[i];
+      if (!base || !r) return;
+      const bars = tf.seconds > 60 ? aggregateBars(base, tf) : base;
+      r.setData(bars);
+      r.setLegend({ timeframeId: id, interval: id });
+    });
+  },
+  /** 倒计时调试探针：末 bar 开盘时刻 + 当前档位的收盘时刻（引擎 nextCloseTime 同公式） */
+  countdownProbe(): { lastBarTime: number; closeTime: number } {
+    const last = main().lastBarTime;
+    return { lastBarTime: last, closeTime: nextCloseTime(intervalSeconds * 1000, last) };
+  },
+  /** 主题轴文字色（canvas 文本像素比对用，单例当前值） */
+  axisTextRgb(): [number, number, number] {
+    const h = theme.axisText;
+    return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  },
+  /** 主图当前 bar 数（B5 聚合断言：600 根 1m → 2m 300 根 / 45m 14 根） */
+  barCount(): number {
+    return main().getBars().length;
+  },
+  /** 改写冻结时钟（B3 countdown-badge 表面：窗口内/外双态差分） */
+  setFrozenNow(ts: number): void {
+    frozenNow = ts;
   },
   addIndicator(id: string): string | null {
     return main().addIndicator(id);
