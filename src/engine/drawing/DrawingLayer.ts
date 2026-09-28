@@ -101,6 +101,32 @@ export class DrawingLayer {
     if (d) d.locked = locked;
   }
 
+  /** 视觉顺序（TV 图例「更多」→ 视觉顺序）：数组末尾 = 最顶层 */
+  setOrder(id: string, action: 'front' | 'forward' | 'backward' | 'back'): void {
+    const from = this.drawings.findIndex((d) => d.id === id);
+    if (from < 0) return;
+    const drawings = [...this.drawings];
+    const [moved] = drawings.splice(from, 1);
+    let to: number;
+    switch (action) {
+      case 'front':
+        to = drawings.length;
+        break;
+      case 'forward':
+        to = Math.min(drawings.length, from + 1);
+        break;
+      case 'backward':
+        to = Math.max(0, from - 1);
+        break;
+      default:
+        to = 0;
+    }
+    drawings.splice(to, 0, moved);
+    if (drawings.every((d, i) => d === this.drawings[i])) return;
+    this.snapshot();
+    this.drawings = drawings;
+  }
+
   undo(): void {
     const prev = this.undoStack.pop();
     if (!prev) return;

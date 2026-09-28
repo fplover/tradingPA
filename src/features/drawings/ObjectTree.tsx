@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Undo2, Redo2, X, Eye, EyeOff, Lock, Unlock, Trash2 } from 'lucide-react';
+import { Undo2, Redo2, X, Eye, EyeOff, Lock, Unlock, Trash2, ArrowUpToLine, ChevronUp, ChevronDown, ArrowDownToLine, Settings } from 'lucide-react';
 import type { Drawing } from '@/engine/drawing/types';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
+import { useDrawingStore } from '@/store/drawingStore';
 
 interface ObjectTreeProps {
   renderer: ChartRenderer | null;
@@ -41,10 +42,12 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
       {drawings.map((d) => (
         <div
           key={d.id}
+          data-testid="object-row"
+          onDoubleClick={() => useDrawingStore.getState().setSettingsFor(d.id)}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 6,
+            gap: 4,
             padding: '4px 6px',
             borderRadius: 4,
             fontSize: 11,
@@ -53,14 +56,33 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
           }}
         >
           <span style={{ width: 10, height: 10, background: d.style.color, borderRadius: 2, flexShrink: 0 }} />
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span
+            style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
+            onClick={() => renderer.selectDrawing(d.id)}
+            title={labelOf(d)}
+          >
             {labelOf(d)}
           </span>
+          <button style={miniBtn} onClick={() => renderer.setDrawingOrder(d.id, 'front')} title="置于顶层" aria-label="置于顶层">
+            <ArrowUpToLine size={12} />
+          </button>
+          <button style={miniBtn} onClick={() => renderer.setDrawingOrder(d.id, 'forward')} title="上移一层" aria-label="上移一层">
+            <ChevronUp size={12} />
+          </button>
+          <button style={miniBtn} onClick={() => renderer.setDrawingOrder(d.id, 'backward')} title="下移一层" aria-label="下移一层">
+            <ChevronDown size={12} />
+          </button>
+          <button style={miniBtn} onClick={() => renderer.setDrawingOrder(d.id, 'back')} title="置于底层" aria-label="置于底层">
+            <ArrowDownToLine size={12} />
+          </button>
           <button style={miniBtn} onClick={() => renderer.setDrawingVisible(d.id, !d.visible)} title="显示/隐藏">
             {d.visible ? <Eye size={13} /> : <EyeOff size={13} />}
           </button>
           <button style={miniBtn} onClick={() => renderer.setDrawingLocked(d.id, !d.locked)} title="锁定">
             {d.locked ? <Lock size={13} /> : <Unlock size={13} />}
+          </button>
+          <button style={miniBtn} onClick={() => useDrawingStore.getState().setSettingsFor(d.id)} title="设置" aria-label="画线设置">
+            <Settings size={12} />
           </button>
           <button style={miniBtn} onClick={() => renderer.removeDrawing(d.id)} title="删除">
             <X size={13} />

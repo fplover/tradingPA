@@ -54,6 +54,31 @@ test('指标面板收藏与键盘操作', async ({ page }) => {
   await expect(page.getByRole('option').first()).toContainText('RSI 相对强弱');
 });
 
+/** 对象树：视觉顺序（置于顶层）改变行序 */
+test('对象树视觉顺序', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  const canvas = page.locator('canvas').first();
+  // 先放矩形，再放趋势线
+  await page.getByRole('button', { name: '矩形', exact: true }).click();
+  await canvas.click({ position: { x: 300, y: 200 } });
+  await canvas.click({ position: { x: 420, y: 300 } });
+  await page.getByRole('button', { name: '趋势线', exact: true }).click();
+  await canvas.click({ position: { x: 300, y: 200 } });
+  await canvas.click({ position: { x: 500, y: 320 } });
+
+  await page.getByRole('button', { name: '对象树' }).click();
+  const rows = page.getByTestId('object-row');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText('矩形');
+
+  // 矩形置于顶层 → 行序末尾
+  await rows.nth(0).getByLabel('置于顶层').click();
+  await expect(rows.nth(0)).toContainText('趋势线');
+  await expect(rows.nth(1)).toContainText('矩形');
+});
+
 /** 研究图例中键删除 + 底栏隐藏所有指标 */
 test('研究图例中键删除与隐藏指标开关', async ({ page }) => {
   await page.goto('/');

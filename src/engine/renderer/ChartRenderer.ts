@@ -607,6 +607,19 @@ export class ChartRenderer {
     this.invalidate();
   }
 
+  /** 选中画线（对象树点击行） */
+  selectDrawing(id: string | null): void {
+    this.drawingLayer.select(id);
+    this.invalidate();
+  }
+
+  /** 视觉顺序：置于顶层/上移一层/下移一层/置于底层 */
+  setDrawingOrder(id: string, action: 'front' | 'forward' | 'backward' | 'back'): void {
+    this.drawingLayer.setOrder(id, action);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
   removeDrawing(id: string): void {
     this.drawingLayer.remove(id);
     this.notifyDrawings();
