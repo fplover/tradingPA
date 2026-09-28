@@ -61,6 +61,11 @@ body.theme-dark {
   /* 界面涨跌色，刻意区别于画布蜡烛色（#26a69a/#ef5350）——TradingView 就是两套 */
   --up: #089981;
   --down: #f23645;
+  /* 预警/已触发态：TV 用橙色区分「进行中的警报」与涨跌语义 */
+  --warn: #ff9800;
+  /* 交易色：买卖按钮语义（TV 买=蓝 / 卖=红），与涨跌色各司其职 */
+  --buy: #2962ff;
+  --sell: #f23645;
   --elevated: #363a45;
   --on-updown: #ffffff;
   --tooltip-bg: #363a45;
@@ -84,6 +89,10 @@ body.theme-light {
   --row-hover: #f0f3fa;
   --up: #089981;
   --down: #f23645;
+  --warn: #ff9800;
+  /* 交易色：买卖按钮语义（TV 买=蓝 / 卖=红），与涨跌色各司其职 */
+  --buy: #2962ff;
+  --sell: #f23645;
   --elevated: #e0e3eb;
   --on-updown: #ffffff;
   --tooltip-bg: #2a2e39;

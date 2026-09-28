@@ -201,15 +201,15 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
       {/* 右：模拟下单（对齐 TV 回放底条） */}
       {!selecting && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <button style={{ ...orderBtn, background: '#ef5350' }} onClick={() => quick('sell')} title="市价卖出/做空">
+          <button style={{ ...orderBtn, background: 'var(--down)' }} onClick={() => quick('sell')} title="市价卖出/做空">
             卖出
           </button>
           <input value={qty} onChange={(e) => setQty(e.target.value)} style={qtyInput} title="数量" />
-          <button style={{ ...orderBtn, background: '#26a69a' }} onClick={() => quick('buy')} title="市价买入/做多">
+          <button style={{ ...orderBtn, background: 'var(--up)' }} onClick={() => quick('buy')} title="市价买入/做多">
             买入
           </button>
           <button
-            style={{ ...orderBtn, background: position ? '#ff9800' : 'var(--panel-2)', color: position ? '#fff' : 'var(--text-faint)' }}
+            style={{ ...orderBtn, background: position ? 'var(--warn)' : 'var(--panel-2)', color: position ? '#fff' : 'var(--text-faint)' }}
             onClick={() => position && closePosition(price, time)}
             title="市价平仓"
             disabled={!position}
@@ -220,7 +220,7 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
       )}
 
       <button style={btnStyle} title="退出回放" onClick={exit}>
-        <X size={15} />
+        <X size={16} />
       </button>
     </div>
   );

@@ -9,7 +9,7 @@ export function SummaryReport({ onClose }: { onClose: () => void }) {
   const engine = useTradeStore((s) => s.engine);
   void version;
   const s = engine.summary();
-  const pnlColor = (v: number) => (v >= 0 ? '#26a69a' : '#ef5350');
+  const pnlColor = (v: number) => (v >= 0 ? 'var(--up)' : 'var(--down)');
 
   return (
     <Modal open onOpenChange={(o) => !o && onClose()} title="交易总结报告" width={480}>
@@ -26,9 +26,9 @@ export function SummaryReport({ onClose }: { onClose: () => void }) {
             label="盈亏比"
             value={s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2)}
           />
-          <Stat label="最大回撤" value={`${s.maxDrawdownPct.toFixed(2)}%`} color="#ef5350" />
-          <Stat label="平均盈利" value={s.avgWin.toFixed(2)} color="#26a69a" />
-          <Stat label="平均亏损" value={s.avgLoss.toFixed(2)} color="#ef5350" />
+          <Stat label="最大回撤" value={`${s.maxDrawdownPct.toFixed(2)}%`} color="var(--down)" />
+          <Stat label="平均盈利" value={s.avgWin.toFixed(2)} color="var(--up)" />
+          <Stat label="平均亏损" value={s.avgLoss.toFixed(2)} color="var(--down)" />
         </div>
 
         {/* 未平状态 */}
@@ -64,7 +64,7 @@ export function SummaryReport({ onClose }: { onClose: () => void }) {
               <tbody>
                 {engine.trades.map((t) => (
                   <tr key={t.id} style={{ color: 'var(--text)' }}>
-                    <td style={{ ...tdStyle, color: t.side === 'long' ? '#26a69a' : '#ef5350' }}>{t.side === 'long' ? '多' : '空'}</td>
+                    <td style={{ ...tdStyle, color: t.side === 'long' ? 'var(--up)' : 'var(--down)' }}>{t.side === 'long' ? '多' : '空'}</td>
                     <td style={tdStyle}>{fmtQty(t.qty)}</td>
                     <td style={tdStyle}>{t.entryPrice.toFixed(2)}</td>
                     <td style={tdStyle}>{t.exitPrice.toFixed(2)}</td>

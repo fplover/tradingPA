@@ -53,7 +53,7 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
   void version;
   const pending = engine.pendingOrders;
   const position = engine.position;
-  const pnlColor = (v: number) => (v >= 0 ? '#26a69a' : '#ef5350');
+  const pnlColor = (v: number) => (v >= 0 ? 'var(--up)' : 'var(--down)');
 
   return (
     <div style={{ ...panelStyle, height: panelOpen ? panelHeight : 'auto' }}>
@@ -76,13 +76,13 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
         </span>
         <div style={{ flex: 1 }} />
         <button style={iconBtn} title="限价 / 止损挂单" onClick={() => setDialogOpen(true)}>
-          <Plus size={13} />
+          <Plus size={14} />
         </button>
         <button style={iconBtn} title="交易报告" onClick={onReport}>
-          <FileChartLine size={13} />
+          <FileChartLine size={14} />
         </button>
         <button style={iconBtn} title={panelOpen ? '收起面板' : '展开面板'} onClick={togglePanel}>
-          {panelOpen ? <FoldVertical size={13} /> : <UnfoldVertical size={13} />}
+          {panelOpen ? <FoldVertical size={14} /> : <UnfoldVertical size={14} />}
         </button>
       </div>
 
@@ -110,7 +110,7 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
             ) : (
               pending.map((o) => (
                 <Row key={o.id}>
-                  <span style={{ color: o.side === 'buy' ? '#26a69a' : '#ef5350' }}>{o.side === 'buy' ? '买' : '卖'}</span>
+                  <span style={{ color: o.side === 'buy' ? 'var(--up)' : 'var(--down)' }}>{o.side === 'buy' ? '买' : '卖'}</span>
                   <span style={{ color: 'var(--text-dim)' }}>{ORDER_TYPE_LABELS[o.type]}</span>
                   <span style={{ color: 'var(--text)' }}>{fmtQty(o.qty)}</span>
                   <span style={{ color: 'var(--text-faint)' }}>
@@ -128,7 +128,7 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
           <Tabs.Content value="position">
             {position ? (
               <Row>
-                <span style={{ color: position.side === 'long' ? '#26a69a' : '#ef5350' }}>{position.side === 'long' ? '多' : '空'}</span>
+                <span style={{ color: position.side === 'long' ? 'var(--up)' : 'var(--down)' }}>{position.side === 'long' ? '多' : '空'}</span>
                 <span style={{ color: 'var(--text)' }}>{fmtQty(position.qty)}</span>
                 <span style={{ color: 'var(--text-dim)' }}>@ {position.avgPrice.toFixed(2)}</span>
                 <div style={{ flex: 1 }} />
@@ -147,7 +147,7 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
             ) : (
               engine.trades.slice(0, 20).map((t) => (
                 <Row key={t.id}>
-                  <span style={{ color: t.side === 'long' ? '#26a69a' : '#ef5350' }}>{t.side === 'long' ? '多' : '空'}</span>
+                  <span style={{ color: t.side === 'long' ? 'var(--up)' : 'var(--down)' }}>{t.side === 'long' ? '多' : '空'}</span>
                   <span style={{ color: 'var(--text-dim)' }}>{fmtQty(t.qty)}</span>
                   <span style={{ color: 'var(--text-faint)' }}>
                     {t.entryPrice.toFixed(2)} → {t.exitPrice.toFixed(2)}
@@ -229,13 +229,13 @@ function OrderDialog({
       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
         <button
           onClick={() => setSide('buy')}
-          style={{ ...chipStyle, flex: 1, background: side === 'buy' ? '#26a69a' : 'var(--panel-2)', color: side === 'buy' ? '#fff' : 'var(--text-dim)' }}
+          style={{ ...chipStyle, flex: 1, background: side === 'buy' ? 'var(--up)' : 'var(--panel-2)', color: side === 'buy' ? '#fff' : 'var(--text-dim)' }}
         >
           买入
         </button>
         <button
           onClick={() => setSide('sell')}
-          style={{ ...chipStyle, flex: 1, background: side === 'sell' ? '#ef5350' : 'var(--panel-2)', color: side === 'sell' ? '#fff' : 'var(--text-dim)' }}
+          style={{ ...chipStyle, flex: 1, background: side === 'sell' ? 'var(--down)' : 'var(--panel-2)', color: side === 'sell' ? '#fff' : 'var(--text-dim)' }}
         >
           卖出
         </button>

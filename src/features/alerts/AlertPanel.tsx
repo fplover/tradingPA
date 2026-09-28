@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, X, Bell } from 'lucide-react';
 import { useAlertStore, type PriceAlert } from '@/store/alertStore';
+import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 
 interface AlertPanelProps {
   symbol: string;
@@ -8,6 +9,11 @@ interface AlertPanelProps {
 }
 
 /** 价格警报面板：新建（价格+方向）+ 列表 + 触发状态 */
+const DIRECTION_OPTIONS: ToolbarOption[] = [
+  { value: 'above', label: '上穿' },
+  { value: 'below', label: '下穿' },
+];
+
 export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
   const alerts = useAlertStore((s) => s.alerts);
   const add = useAlertStore((s) => s.add);
@@ -27,7 +33,7 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
     <div style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <strong style={{ color: 'var(--text)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Bell size={13} /> 价格警报
+          <Bell size={14} /> 价格警报
         </strong>
         <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>当前 {currentPrice > 0 ? currentPrice.toFixed(2) : '--'}</span>
       </div>
@@ -39,10 +45,13 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
           onChange={(e) => setPrice(e.target.value)}
           style={inputStyle}
         />
-        <select value={direction} onChange={(e) => setDirection(e.target.value as 'above' | 'below')} style={{ ...inputStyle, width: 76 }}>
-          <option value="above">上穿</option>
-          <option value="below">下穿</option>
-        </select>
+        <ToolbarSelect
+          ariaLabel="警报方向"
+          value={direction}
+          options={DIRECTION_OPTIONS}
+          minWidth={72}
+          onChange={(v) => setDirection(v as 'above' | 'below')}
+        />
         <button style={{ ...btnStyle, display: 'flex', alignItems: 'center', gap: 3 }} onClick={submit}>
           <Plus size={12} /> 添加
         </button>
@@ -61,7 +70,7 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
 }
 
 function AlertRow({ alert, onRemove }: { alert: PriceAlert; onRemove: () => void }) {
-  const color = alert.triggered ? '#ff9800' : alert.direction === 'above' ? '#26a69a' : '#ef5350';
+  const color = alert.triggered ? 'var(--warn)' : alert.direction === 'above' ? 'var(--up)' : 'var(--down)';
   return (
     <div
       style={{
@@ -77,7 +86,7 @@ function AlertRow({ alert, onRemove }: { alert: PriceAlert; onRemove: () => void
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
       <span style={{ flex: 1 }}>
         {alert.symbol} {alert.direction === 'above' ? '≥' : '≤'} {alert.price}
-        {alert.triggered && <span style={{ color: '#ff9800' }}> · 已触发</span>}
+        {alert.triggered && <span style={{ color: 'var(--warn)' }}> · 已触发</span>}
       </span>
       <button onClick={onRemove} style={miniBtn} title="删除警报">
         <X size={12} />
