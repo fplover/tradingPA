@@ -12,6 +12,7 @@ import { useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { useOrderMenuStore } from '@/store/orderMenuStore';
 import { syncBus } from '@/store/syncBus';
+import { registerChartRenderer, unregisterChartRenderer } from '@/hooks/useTvShortcuts';
 
 interface ChartProps {
   bars: Bar[];
@@ -38,10 +39,6 @@ interface ChartProps {
   /** 参与多图表联动（十字光标/视口同步） */
   sync?: boolean;
 }
-
-/** 布局快捷键的多实例事件去重（同一 KeyboardEvent 只处理一次）；
- *  TODO(B1): 快捷键统一进 hooks/useTvShortcuts.ts 后删除 */
-const handledLayoutKeys = new WeakSet<KeyboardEvent>();
 
 /** React 只负责挂载/卸载引擎与同步配置，渲染循环完全不经过 React */
 export function Chart({
@@ -77,6 +74,8 @@ export function Chart({
     if (!canvas) return;
     const renderer = new ChartRenderer(canvas, bars, { symbol, interval, decimals, exchange, timeframeId });
     rendererRef.current = renderer;
+    // B1：图表级快捷键（缩放/平移/画线等）统一经 useTvShortcuts 的注册表作用到各渲染器
+    registerChartRenderer(renderer);
     onRendererReady?.(renderer);
     if (import.meta.env.DEV) {
       (window as unknown as { __chartRenderer?: ChartRenderer }).__chartRenderer = renderer;
@@ -85,6 +84,7 @@ export function Chart({
     renderer.setLogScale(logScale);
     renderer.start();
     return () => {
+      unregisterChartRenderer(renderer);
       onRendererReady?.(null);
       renderer.dispose();
       rendererRef.current = null;
@@ -118,7 +118,6 @@ export function Chart({
   // 画线工具/磁吸同步
   const activeTool = useDrawingStore((s) => s.activeTool);
   const magnet = useDrawingStore((s) => s.magnet);
-  const setActiveToolStore = useDrawingStore((s) => s.setActiveTool);
   useEffect(() => {
     rendererRef.current?.setActiveTool(activeTool as Parameters<ChartRenderer['setActiveTool']>[0]);
   }, [activeTool]);
@@ -127,60 +126,20 @@ export function Chart({
     rendererRef.current?.setMagnet(magnet);
   }, [magnet]);
 
-  // 键盘快捷键：Esc 取消 / Delete 删除 / Ctrl+Z 撤销 / Ctrl+Y 重做 / Enter 完成路径
-  // +/- 缩放、←/→ 平移（对齐 TradingView）；菜单/弹窗打开时不劫持方向键
-  // B8 布局快捷键：Ctrl+S 保存当前布局 / . 打开布局菜单。多图表下同一 keydown 会派发到
-  // 每个 Chart 实例，用事件对象去重；TODO(B1): 快捷键统一收敛到 hooks/useTvShortcuts.ts 后移除本段
+  // Shift+滚轮：图表左右平移（TV 官方映射）。渲染器自身的 wheel 监听挂在 canvas 上，
+  // 这里在 window 捕获阶段抢先处理并阻断传播，避免与「普通滚轮缩放」叠加。
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return;
-      if (target && target.closest('[role="menu"], [role="dialog"], [role="listbox"]')) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        if (!handledLayoutKeys.has(e)) {
-          handledLayoutKeys.add(e);
-          e.preventDefault(); // 阻止浏览器「网页另存为」对话框
-          useLayoutStore.getState().saveCurrentLayout();
-        }
-        return;
-      }
-      if (e.key === '.' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (!handledLayoutKeys.has(e)) {
-          handledLayoutKeys.add(e);
-          useLayoutStore.getState().setSaveMenuOpen(true);
-        }
-        return;
-      }
-      const renderer = rendererRef.current;
-      if (!renderer) return;
-      if (e.key === 'Escape') {
-        renderer.cancelPlacing();
-        setActiveToolStore(null);
-      } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        renderer.removeSelectedDrawing();
-      } else if (e.key === 'Enter') {
-        renderer.finishPlacing();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        renderer.undoDrawing();
-      } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        renderer.redoDrawing();
-      } else if (e.key === '+' || e.key === '=') {
-        renderer.zoom(1.2);
-      } else if (e.key === '-' || e.key === '_') {
-        renderer.zoom(1 / 1.2);
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        renderer.pan(-3);
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        renderer.pan(3);
-      }
+    const onWheelCapture = (e: WheelEvent) => {
+      if (!e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return;
+      const canvas = canvasRef.current;
+      if (!canvas || !(e.target instanceof Node) || !canvas.contains(e.target)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      rendererRef.current?.pan(e.deltaY > 0 ? 12 : -12);
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [setActiveToolStore]);
+    window.addEventListener('wheel', onWheelCapture, { capture: true, passive: false });
+    return () => window.removeEventListener('wheel', onWheelCapture, { capture: true });
+  }, []);
 
   // 指标同步：store 为意图源，renderer 为实例源（按 id 对齐，增删与全量选项下发）
   const activeIndicators = useIndicatorStore((s) => s.active);
@@ -367,11 +326,27 @@ export function Chart({
     return () => window.clearInterval(id);
   }, []);
 
+  // 多图表：画布可聚焦（Tab/Shift+Tab 切换单元格，TV 行为），聚焦态描边标示当前单元格
+  const layout = useLayoutStore((s) => s.layout);
+  const [chartFocused, setChartFocused] = useState(false);
+  const multi = layout > 1;
+
   return (
     <>
       <canvas
         ref={canvasRef}
-        style={{ display: 'block', width: '100%', height: '100%', touchAction: 'none' }}
+        data-tv-chart=""
+        tabIndex={multi ? 0 : -1}
+        onFocus={() => setChartFocused(true)}
+        onBlur={() => setChartFocused(false)}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          touchAction: 'none',
+          outline: multi && chartFocused ? '2px solid var(--accent)' : 'none',
+          outlineOffset: -2,
+        }}
       />
       {!atRight && (
         <button

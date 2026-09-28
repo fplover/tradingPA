@@ -2,45 +2,61 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
-/** 快捷键分组：只收录本项目已实现的快捷键（与 Chart.tsx / App.tsx 实际绑定一致） */
+/** 快捷键分组：只收录本项目已实现的快捷键（与 useTvShortcuts / DrawingToolbar 实际绑定一致） */
 const GROUPS: Array<{ title: string; items: Array<[string, string]> }> = [
   {
     title: '图表',
     items: [
-      ['快速搜索', 'Ctrl + K'],
-      ['打开指标面板', 'Alt + D'],
-      ['图表向左移动', '←'],
-      ['图表向右移动', '→'],
-      ['放大', 'Ctrl + ↑'],
-      ['缩小', 'Ctrl + ↓'],
+      ['放大 / 缩小', 'Ctrl + ↑ / Ctrl + ↓'],
+      ['聚焦缩放', 'Ctrl + 滚轮'],
+      ['大幅左移 / 右移', 'Ctrl + ← / Ctrl + →'],
+      ['左移 / 右移 1 根', '← / →'],
+      ['左右平移', 'Shift + 滚轮'],
+      ['缩放', '+ / -'],
+      ['移至第一根 / 最后一根', 'Alt + Shift + ← / Alt + Shift + →'],
       ['重置图表视图', 'Alt + R'],
       ['对数坐标', 'Alt + L'],
       ['百分比坐标', 'Alt + P'],
-      ['全屏模式', 'Shift + F'],
       ['生成快照', 'Alt + S'],
+      ['全屏 / 最大化图表', 'Shift + F / Alt + Enter'],
       ['复原 / 重做', 'Ctrl + Z / Ctrl + Y'],
     ],
   },
   {
-    title: '警报与自选',
-    items: [
-      ['添加警报', 'Alt + A'],
-      ['加入自选股', 'Alt + W'],
-      ['添加文本注释', 'Alt + N'],
-      ['隐藏所有图形', 'Ctrl + Alt + H'],
-    ],
-  },
-  {
-    title: '指标和绘图',
+    title: '画线',
     items: [
       ['趋势线', 'Alt + T'],
       ['水平线', 'Alt + H'],
       ['水平射线', 'Alt + J'],
       ['垂直线', 'Alt + V'],
       ['斐波那契回撤', 'Alt + F'],
-      ['矩形', 'Shift + Alt + R'],
-      ['移除对象', 'Delete / Backspace'],
+      ['矩形', 'Alt + Shift + R'],
+      ['添加文本注释', 'Alt + N'],
       ['完成路径 / 取消放置', 'Enter / Esc'],
+      ['移除对象', 'Delete / Backspace'],
+      ['隐藏所有图形', 'Ctrl + Alt + H'],
+    ],
+  },
+  {
+    title: '布局',
+    items: [
+      ['保存布局', 'Ctrl + S'],
+      ['打开布局菜单', '.'],
+      ['切换图表单元格', 'Tab / Shift + Tab'],
+    ],
+  },
+  {
+    title: '其他',
+    items: [
+      ['快速搜索', 'Ctrl + K 或 /'],
+      ['变更品种', '字母键'],
+      ['变更周期', '数字键 或 ,'],
+      ['打开指标面板', 'Alt + D'],
+      ['添加警报', 'Alt + A'],
+      ['加入自选股', 'Alt + W'],
+      ['加入自选股…', 'Ctrl + Alt + W'],
+      ['前往日期', 'Alt + G'],
+      ['键盘快捷键面板', '?'],
     ],
   },
 ];

@@ -36,6 +36,7 @@ const RESULT_MAX = 40;
 export function SymbolSearchDialog() {
   const open = useSymbolSearchStore((s) => s.open);
   const mode = useSymbolSearchStore((s) => s.mode);
+  const initialQuery = useSymbolSearchStore((s) => s.initialQuery);
   const close = useSymbolSearchStore((s) => s.close);
   const recent = useWatchlistStore((s) => s.recent);
   const { setActive, add, activeListId } = useWatchlistStore.getState();
@@ -52,15 +53,15 @@ export function SymbolSearchDialog() {
 
   const tab = TABS.find((t) => t.id === tabId) ?? TABS[0];
 
-  // 每次打开重置，避免上次的查询残留；并把焦点交给输入框
+  // 每次打开重置，避免上次的查询残留；字母键直开时预填触发字母；并把焦点交给输入框
   useEffect(() => {
     if (!open) return;
-    setQuery('');
+    setQuery(initialQuery);
     setHits([]);
     setSelected(0);
     reqId.current += 1;
     inputRef.current?.focus();
-  }, [open]);
+  }, [open, initialQuery]);
 
   useEffect(() => {
     if (!open) return;

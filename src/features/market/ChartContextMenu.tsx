@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { BarChart3, BellRing, Copy, ListTree, Moon, RotateCcw, Settings, Star, Sun, Trash2, Type } from 'lucide-react';
+import { BarChart3, BellRing, CalendarSearch, Copy, ListTree, Moon, RotateCcw, Settings, Star, Sun, Trash2, Type } from 'lucide-react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Instrument } from '@/types/instrument';
 import { useAlertStore } from '@/store/alertStore';
@@ -24,11 +24,13 @@ interface ChartContextMenuProps {
   instrument: Instrument | null;
   renderer: ChartRenderer | null;
   onOpenSettings: () => void;
+  /** 前往日期（Alt+G） */
+  onGoToDate: () => void;
   onClose: () => void;
 }
 
 /** 图表右键菜单：对齐 TradingView 图表空白区菜单（重置/复制价格/警报/自选/注释/对象树/主题/移除/设置） */
-export function ChartContextMenu({ state, instrument, renderer, onOpenSettings, onClose }: ChartContextMenuProps) {
+export function ChartContextMenu({ state, instrument, renderer, onOpenSettings, onGoToDate, onClose }: ChartContextMenuProps) {
   const [alertOpen, setAlertOpen] = useState(false);
   const themeName = useThemeStore((s) => s.name);
 
@@ -70,6 +72,13 @@ export function ChartContextMenu({ state, instrument, renderer, onOpenSettings, 
               </span>
               重置图表
               <span style={hintStyle}>Alt + R</span>
+            </DropdownMenu.Item>
+            <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={onGoToDate}>
+              <span style={iconSlot}>
+                <CalendarSearch size={14} />
+              </span>
+              前往日期…
+              <span style={hintStyle}>Alt + G</span>
             </DropdownMenu.Item>
             <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={copyPrice}>
               <span style={iconSlot}>

@@ -6,13 +6,16 @@ export type SearchMode = 'switch' | 'add';
 interface SymbolSearchStore {
   open: boolean;
   mode: SearchMode;
-  openSearch: (mode?: SearchMode) => void;
+  /** 打开时预填的查询词（字母键直开品种搜索用；按钮 / Ctrl+K 打开为空） */
+  initialQuery: string;
+  openSearch: (mode?: SearchMode, initialQuery?: string) => void;
   close: () => void;
 }
 
 export const useSymbolSearchStore = create<SymbolSearchStore>((set) => ({
   open: false,
   mode: 'switch',
-  openSearch: (mode = 'switch') => set({ open: true, mode }),
+  initialQuery: '',
+  openSearch: (mode = 'switch', initialQuery = '') => set({ open: true, mode, initialQuery }),
   close: () => set({ open: false }),
 }));

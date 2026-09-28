@@ -16,8 +16,6 @@ import { useReplayStore } from '@/store/replayStore';
 import { useAlertStore } from '@/store/alertStore';
 import { decimalsFor } from '@/data/format';
 import { useChartSeries } from '@/features/market/useChartSeries';
-import { useRightDockStore } from '@/features/rightbar/rightPanelStore';
-import { useDrawingStore } from '@/store/drawingStore';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
@@ -31,6 +29,9 @@ import { StatusBar } from '@/features/market/StatusBar';
 import { ChartContextMenu, type ChartMenuState } from '@/features/market/ChartContextMenu';
 import { ChartSettingsDialog } from '@/features/settings/ChartSettingsDialog';
 import { ShortcutsDialog } from '@/features/settings/ShortcutsDialog';
+import { GoToDateDialog } from '@/features/market/GoToDateDialog';
+import { IntervalInputDialog } from '@/features/market/IntervalInputDialog';
+import { eachChartRenderer, useTvShortcuts } from '@/hooks/useTvShortcuts';
 import { LegendContextMenu } from '@/features/indicators/LegendContextMenu';
 import { PineEditorPanel } from '@/features/pine/PineEditorPanel';
 import { usePineStore } from '@/store/pineStore';
@@ -122,6 +123,7 @@ export default function App() {
   const [drawingMenu, setDrawingMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [goToDateOpen, setGoToDateOpen] = useState(false);
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
   const [gridVisible, setGridVisible] = useState(true);
@@ -227,23 +229,6 @@ export default function App() {
     if (id) useLayoutStore.getState().loadLayout(id);
   }, []);
 
-  // 快捷键：/ 或 Ctrl+K 打开品种搜索（输入框内不劫持）
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        useSymbolSearchStore.getState().openSearch('switch');
-      } else if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        useSymbolSearchStore.getState().openSearch('switch');
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
   const handleScreenshot = () => {
     const r = rendererRef.current;
     if (!r) return;
@@ -253,55 +238,27 @@ export default function App() {
     a.click();
   };
 
-  // TV 高频快捷键（图表级，输入框/菜单/对话框内不劫持）
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
-      if (el && el.closest('[role="menu"], [role="dialog"], [role="listbox"]')) return;
-      if (!e.altKey || e.ctrlKey || e.metaKey) {
-        // Ctrl+Alt+H 隐藏所有图形 / ? 打开快捷键面板（无 Alt）
-        if (e.ctrlKey && e.altKey && !e.metaKey && e.key.toLowerCase() === 'h') {
-          e.preventDefault();
-          setHideDrawings((v) => !v);
-        } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '?') {
-          e.preventDefault();
-          setShortcutsOpen(true);
-        }
-        return;
-      }
-      const key = e.key.toLowerCase();
-      if (key === 'a') {
-        e.preventDefault();
-        useRightDockStore.getState().open('alerts');
-      } else if (key === 'w') {
-        e.preventDefault();
-        if (activeInstrument) useWatchlistStore.getState().add(activeInstrument);
-      } else if (key === 'n') {
-        e.preventDefault();
-        useDrawingStore.getState().setActiveTool('text');
-      } else if (key === 'r') {
-        e.preventDefault();
-        rendererRef.current?.resetView();
-      } else if (key === 'l') {
-        e.preventDefault();
-        setLogScale((v) => !v);
-      } else if (key === 'p') {
-        e.preventDefault();
-        setPercent((v) => !v);
-      } else if (key === 's') {
-        e.preventDefault();
-        handleScreenshot();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [activeInstrument, handleScreenshot]);
-
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void document.documentElement.requestFullscreen();
   };
+
+  // B1：TV 默认快捷键统一注册（原 App.tsx 与 Chart.tsx 的图表级按键收敛于此）
+  const { intervalOpen, intervalInitial, setIntervalOpen, applyInterval } = useTvShortcuts({
+    rendererRef,
+    onAddToWatchlist: () => {
+      if (activeInstrument) useWatchlistStore.getState().add(activeInstrument);
+    },
+    onToggleHideDrawings: () => setHideDrawings((v) => !v),
+    onToggleLog: () => setLogScale((v) => !v),
+    onTogglePercent: () => setPercent((v) => !v),
+    onScreenshot: handleScreenshot,
+    onOpenShortcuts: () => setShortcutsOpen(true),
+    onOpenIndicators: () => setPanelOpen(true),
+    onOpenGoToDate: () => setGoToDateOpen(true),
+    onApplyInterval: (tf) => setTimeframe(tf),
+    onToggleFullscreen: toggleFullscreen,
+  });
 
   // 回放联动：新会话重置引擎；每根回放 K 线驱动挂单触发与盈亏
   useEffect(() => {
@@ -339,6 +296,19 @@ export default function App() {
       }
     }
     useReplayStore.getState().setIndex(Math.max(0, ans));
+  };
+
+  /** 前往日期定位：复盘模式走 store（与 ReplayBar 定位同一路径，未来 K 线不越权）；
+   *  普通模式把目标 bar 居中显示——借用 setReplayIndex 首次选中的居中逻辑后立即关闭复盘边缘 */
+  const handleGoToDate = (index: number) => {
+    if (useReplayStore.getState().index !== null) {
+      useReplayStore.getState().setIndex(index);
+      return;
+    }
+    eachChartRenderer((r) => {
+      r.setReplayIndex(index);
+      r.setReplayIndex(null);
+    });
   };
 
   return (
@@ -530,6 +500,14 @@ export default function App() {
 
       <SymbolSearchDialog />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <IntervalInputDialog
+        open={intervalOpen}
+        initial={intervalInitial}
+        currentLabel={tf.label}
+        onOpenChange={setIntervalOpen}
+        onApply={applyInterval}
+      />
+      <GoToDateDialog open={goToDateOpen} onClose={() => setGoToDateOpen(false)} bars={bars} onGoToDate={handleGoToDate} />
       <ChartSettingsDialog
         open={chartSettingsOpen}
         onClose={() => setChartSettingsOpen(false)}
@@ -549,6 +527,7 @@ export default function App() {
         instrument={activeInstrument}
         renderer={renderer}
         onOpenSettings={() => setChartSettingsOpen(true)}
+        onGoToDate={() => setGoToDateOpen(true)}
         onClose={() => setChartMenu(null)}
       />
       <LegendContextMenu
