@@ -145,7 +145,9 @@
 # 1. 类型检查 + 单测 + E2E（全绿才算批次完成）
 npm run typecheck && npm run test && npm run test:e2e
 
-# 2. 生产构建（产物 ≤ 预算，当前 49KB gzip 基线）
+# 2. 生产构建（产物预算基线：172KB gzip——2026-09-28 实测，M7 时 49KB，
+#    差距为 A/B/C 批次功能累积属正常；单 chunk >500KB 警告为存量无 code-split，
+#    架构师在 D 批次拆分时评估是否顺带做路由级分割）
 npm run build
 
 # 3. B1 快捷键抽验（E2E 覆盖）

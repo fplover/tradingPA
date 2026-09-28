@@ -144,3 +144,12 @@
 - 图表设置对话框 9 页签深度（水印/背景色/坐标位置/网格四态等依赖渲染引擎能力，归属任务 #4）
 - Toast 系统、对话框 150ms 进入动效、market status 圆点、当日累计涨跌、watermark、收盘倒计时、价格轴「+」按钮、Bid/Ask 标签、时间格式 zh 化、字重三档收敛、浅色 elevated 分层
 - 指标对话框样式页 plot 类型下拉、输入页 number stepper（TV 规格深化）
+
+### 5.4 E2E 回归修复（前端队友回报，2026-09-28 闭环）
+
+| 回归 | 根因 | 修复 |
+|---|---|---|
+| settings.spec.ts:32 strict mode 命中 2 个「图表设置」 | 底部齿轮与顶栏 IconButton aria-label 重复；且 `getByRole` name 默认**子串匹配**，第一版「图表设置（底部）」仍含目标子串、修复无效 | 底部齿轮 aria-label → 「图表底部设置」（StatusBar.tsx:102），title 保持「图表设置」 |
+| settings.spec.ts:35 getByLabel('网格线') 潜在落空 | 原生 input 靠包裹 `<label>` 被 getByLabel 命中；换 TV 化 CheckRow（button role=checkbox）后需 aria-label | primitives.tsx CheckRow 补 `aria-label={label}`；全部 6 类 getByLabel 查询审计无恙 |
+
+运行时 E2E 复跑受阻：本沙盒 @playwright/test runner 环境性挂起（safe-delete shim ETIMEDOUT + 僵尸 Chrome 累积），已交前端队友在健康环境复跑闭环。
