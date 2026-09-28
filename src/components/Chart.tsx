@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ChevronsRight } from 'lucide-react';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Bar, ChartTypeId } from '@/types/market';
+import type { MarketId } from '@/types/instrument';
 import type { IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
@@ -21,6 +22,8 @@ interface ChartProps {
   decimals?: number;
   /** 周期 id，用于指标按周期可见性 */
   timeframeId?: string;
+  /** 市场（图例开/闭市圆点） */
+  market?: MarketId;
   /** 交易所名，图例行展示 */
   exchange?: string;
   /** 实时模拟：以该间隔抖动最后一根 K 线（M5 替换为真实 WS） */
@@ -34,6 +37,8 @@ interface ChartProps {
   onChartContextMenu?: (price: number, time: number, clientX: number, clientY: number) => void;
   /** 图例区右键（屏幕坐标） */
   onLegendMenu?: (clientX: number, clientY: number) => void;
+  /** 双击最新价线 → 打开图表设置（TV 行为） */
+  onPriceLineDblClick?: () => void;
   /** 右键命中画线（画线 id + 屏幕坐标） */
   onDrawingMenu?: (id: string, clientX: number, clientY: number) => void;
   /** 参与多图表联动（十字光标/视口同步） */
@@ -47,6 +52,7 @@ export function Chart({
   interval = '1m',
   decimals = 2,
   timeframeId,
+  market,
   exchange,
   liveTickMs,
   chartType = 'candles',
@@ -56,6 +62,7 @@ export function Chart({
   onChartContextMenu,
   onLegendMenu,
   onDrawingMenu,
+  onPriceLineDblClick,
   sync = false,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -104,8 +111,8 @@ export function Chart({
   }, [bars]);
 
   useEffect(() => {
-    rendererRef.current?.setLegend({ symbol, interval, decimals, exchange, timeframeId });
-  }, [symbol, interval, decimals, exchange, timeframeId]);
+    rendererRef.current?.setLegend({ symbol, interval, decimals, exchange, timeframeId, market });
+  }, [symbol, interval, decimals, exchange, timeframeId, market]);
 
   useEffect(() => {
     rendererRef.current?.setChartType(chartType);
@@ -265,8 +272,15 @@ export function Chart({
       rendererRef.current?.setLegendMenuCallback(null);
       rendererRef.current?.setDrawingMenuCallback(null);
       rendererRef.current?.setPaneActionCallback(null);
+      rendererRef.current?.setPriceLineDblClickCallback(null);
     };
   }, []);
+
+  // 双击最新价线 → 打开图表设置（回调变更时重绑）
+  useEffect(() => {
+    rendererRef.current?.setPriceLineDblClickCallback(() => onPriceLineDblClick?.());
+    return () => rendererRef.current?.setPriceLineDblClickCallback(null);
+  }, [onPriceLineDblClick]);
 
 
 

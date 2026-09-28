@@ -6,35 +6,44 @@ import type { PriceScale } from '../scale/PriceScale';
 import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
 
+/** 网格模式：TV 图表设置「画布」页四态 */
+export type GridMode = 'none' | 'horizontal' | 'vertical' | 'both';
+
 export function drawGrid(
   ctx: CanvasRenderingContext2D,
   viewport: Viewport,
   priceScale: PriceScale,
   geo: DrawGeometry,
+  mode: GridMode = 'both',
 ): void {
+  if (mode === 'none') return;
   // 网格线统一为 1 物理像素（DPR 自适应），比 1 CSS 像素更细且边缘清晰
   const dpr = window.devicePixelRatio || 1;
   const align = (v: number) => (Math.round(v * dpr) + 0.5) / dpr;
   ctx.strokeStyle = theme.grid;
   ctx.lineWidth = 1 / dpr;
   ctx.beginPath();
-  for (const price of priceScale.ticks(6)) {
-    const y = align(priceScale.priceToY(price));
-    if (y < 0 || y > geo.chartH) continue;
-    ctx.moveTo(0, y);
-    ctx.lineTo(geo.chartW, y);
+  if (mode !== 'vertical') {
+    for (const price of priceScale.ticks(6)) {
+      const y = align(priceScale.priceToY(price));
+      if (y < 0 || y > geo.chartH) continue;
+      ctx.moveTo(0, y);
+      ctx.lineTo(geo.chartW, y);
+    }
   }
-  // 垂直网格线：以 step 倍数对齐的 index 步进，覆盖整个画布宽度
-  // （含右侧无 K 线的空白区：rightOffset 间隙 / 拖拽越界空白 / 回放未来区）
-  const spacing = viewport.spacing;
-  const step = Math.max(1, Math.ceil(80 / spacing));
-  const startIdx = Math.floor(viewport.first / step) * step;
-  const endIdx = viewport.first + geo.chartW / spacing;
-  for (let i = startIdx; i <= endIdx; i += step) {
-    const x = align(viewport.indexToX(i));
-    if (x < 0 || x > geo.chartW) continue;
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, geo.chartH);
+  if (mode !== 'horizontal') {
+    // 垂直网格线：以 step 倍数对齐的 index 步进，覆盖整个画布宽度
+    // （含右侧无 K 线的空白区：rightOffset 间隙 / 拖拽越界空白 / 回放未来区）
+    const spacing = viewport.spacing;
+    const step = Math.max(1, Math.ceil(80 / spacing));
+    const startIdx = Math.floor(viewport.first / step) * step;
+    const endIdx = viewport.first + geo.chartW / spacing;
+    for (let i = startIdx; i <= endIdx; i += step) {
+      const x = align(viewport.indexToX(i));
+      if (x < 0 || x > geo.chartW) continue;
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, geo.chartH);
+    }
   }
   ctx.stroke();
 }
@@ -98,12 +107,17 @@ export function drawTimeAxis(
   const startIdx = Math.floor(viewport.first / step) * step;
   const endIdx = viewport.first + geo.chartW / spacing;
   const last = series.length - 1;
+  let lastLabeledYear = -1;
   for (let i = startIdx; i <= endIdx; i += step) {
     if (i < 0 || i > last) continue; // 仅标注有 K 线的位置（空白区不标）
     const bar = series.barAt(i)!;
     const x = viewport.indexToX(i);
     if (x < 30 || x > geo.chartW - 30) continue;
-    ctx.fillText(formatTime(bar.time, spacing), x, top + 12);
+    // 跨年标签带年份（TV：与上一个标签不同年才显式标注）
+    const year = new Date(bar.time).getFullYear();
+    const showYear = lastLabeledYear !== -1 && year !== lastLabeledYear;
+    lastLabeledYear = year;
+    ctx.fillText(formatTime(bar.time, spacing, showYear), x, top + 12);
   }
 }
 
@@ -224,10 +238,15 @@ function drawXIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
   ctx.stroke();
 }
 
-export function formatTime(time: number, spacing: number): string {
+/** 时间轴标签（TV 中文界面规格）：
+ *  日内（间距 <60px）HH:mm；日线（60-300px）M月D日；周/月以上（≥300px）M月；
+ *  跨年标签（1 月或与上一标签不同年，由调用方判定 showYear）带 YYYY 年。 */
+export function formatTime(time: number, spacing: number, showYear = false): string {
   const d = new Date(time);
   const pad = (n: number) => String(n).padStart(2, '0');
-  if (spacing >= 300) return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-  if (spacing >= 60) return `${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  if (spacing < 60) return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (spacing < 300) return showYear ? `${y}年${m}月${d.getDate()}日` : `${m}月${d.getDate()}日`;
+  return showYear || m === 1 ? `${y}年${m}月` : `${m}月`;
 }

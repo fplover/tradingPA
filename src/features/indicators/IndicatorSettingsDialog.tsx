@@ -7,9 +7,10 @@ import type { PlotStyleOverride } from '@/store/indicatorStore';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { TIMEFRAMES, type TimeframeId } from '@/types/market';
 import { isCustomIntervalId } from '@/features/market/customInterval';
-import { CheckRow, Checkbox } from '@/ui/primitives';
+import { CheckRow, Checkbox, NumberStepper } from '@/ui/controls';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
+import type { PlotKind } from '@/indicators/core/types';
 
 /** TV 页签顺序：输入 → 样式 → 可见范围（精度折进样式页的「覆盖最小tick」） */
 const TABS = ['输入', '样式', '可见范围'] as const;
@@ -24,6 +25,19 @@ const PRECISIONS: Array<{ label: string; value: number | undefined }> = [
 ];
 
 const LINE_WIDTH_OPTIONS: ToolbarOption[] = [1, 2, 3, 4].map((w) => ({ value: String(w), label: `${w}px` }));
+
+/** plot 类型下拉（TV 样式页）：band 需成对 plot，仅多 plot 指标可选 */
+const PLOT_KIND_LABELS: Record<PlotKind, string> = {
+  line: '线形',
+  histogram: '柱状',
+  band: '带状',
+  level: '水平线',
+};
+
+const PLOT_KIND_OPTIONS: ToolbarOption[] = (['line', 'histogram', 'band', 'level'] as PlotKind[]).map((k) => ({
+  value: k,
+  label: PLOT_KIND_LABELS[k],
+}));
 
 function tfGroup(id: TimeframeId): string {
   if (isCustomIntervalId(id)) return '自定义';
@@ -72,7 +86,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
     >
       <Dialog.Portal>
         <Dialog.Overlay style={overlayStyle} />
-        <Dialog.Content style={contentStyle} aria-describedby={undefined}>
+        <Dialog.Content style={contentStyle} className="tv-dialog" aria-describedby={undefined}>
           <div style={headerStyle}>
             <Dialog.Title style={titleStyle}>{active.displayName || def.name} 设置</Dialog.Title>
             <Dialog.Close asChild>
@@ -109,8 +123,21 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                   </Row>
                   {def.plots.map((plot) => {
                     const st = active.styles?.[plot.key];
+                    const kind = st?.kind ?? plot.style.kind;
+                    // band 需与另一 plot 成对；单 plot 指标不提供该选项
+                    const kindOptions =
+                      def.plots.length > 1
+                        ? PLOT_KIND_OPTIONS
+                        : PLOT_KIND_OPTIONS.filter((o) => o.value !== 'band');
                     return (
                       <Row key={plot.key} label={plot.label}>
+                        <ToolbarSelect
+                          ariaLabel={`${plot.label} 类型`}
+                          value={kind}
+                          options={kindOptions}
+                          minWidth={88}
+                          onChange={(v) => setStyle(plot.key, { kind: v as PlotKind })}
+                        />
                         <input
                           type="color"
                           value={st?.color ?? plot.style.color}
@@ -118,7 +145,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                           style={swatchStyle}
                           aria-label={`${plot.label} 颜色`}
                         />
-                        {(plot.style.kind === 'line' || plot.style.kind === 'band') && (
+                        {(kind === 'line' || kind === 'band') && (
                           <ToolbarSelect
                             ariaLabel={`${plot.label} 线宽`}
                             value={String(st?.lineWidth ?? plot.style.lineWidth ?? 1)}
@@ -160,14 +187,13 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                     .map((p) => (
                     <Row key={p.key} label={p.label}>
                       {p.type === 'number' && (
-                        <input
-                          type="number"
+                        <NumberStepper
                           value={Number(active.params[p.key] ?? p.default)}
                           min={p.min}
                           max={p.max}
                           step={p.step ?? 1}
-                          onChange={(e) => setParam(p.key, Number(e.target.value))}
-                          style={{ ...inputStyle, width: 80 }}
+                          ariaLabel={p.label}
+                          onChange={(v) => setParam(p.key, v)}
                         />
                       )}
                       {p.type === 'color' && (

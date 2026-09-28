@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
+import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
+import type { GridMode } from '@/engine/renderer/drawAxes';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
-import { CheckRow } from '@/ui/primitives';
+import { CheckRow, Segmented } from '@/ui/controls';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
-const TABS = ['坐标轴', '状态栏', '外观'] as const;
+const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观'] as const;
 type Tab = (typeof TABS)[number];
+
+/** 网格四态（TV 画布页）：无 / 横 / 竖 / 全 */
+const GRID_OPTIONS: Array<{ value: GridMode; label: string }> = [
+  { value: 'none', label: '无' },
+  { value: 'horizontal', label: '横' },
+  { value: 'vertical', label: '竖' },
+  { value: 'both', label: '全' },
+];
 
 interface ChartSettingsDialogProps {
   open: boolean;
@@ -14,18 +24,30 @@ interface ChartSettingsDialogProps {
   logScale: boolean;
   percent: boolean;
   autoScale: boolean;
-  grid: boolean;
   legend: LegendOptions;
+  /** 主图渲染器：网格四态/边框/水印实时下发 */
+  renderer: ChartRenderer | null;
   onLog: (v: boolean) => void;
   onPercent: (v: boolean) => void;
   onAuto: (v: boolean) => void;
-  onGrid: (v: boolean) => void;
   onLegend: (patch: Partial<LegendOptions>) => void;
 }
 
-/** 图表设置：TV 左导航 + 实时生效（无确定按钮） */
+/** 图表设置：TV 左导航 + 实时生效（无确定按钮）。
+ *  画布类偏好（网格/边框/水印）由对话框自持状态并即时下发 renderer。 */
 export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
   const [tab, setTab] = useState<Tab>('坐标轴');
+  const [gridMode, setGridMode] = useState<GridMode>('both');
+  const [borders, setBorders] = useState(true);
+  /** 预留：引擎水印渲染未实现，开关态先落 renderer（setWatermarkVisible） */
+  const [watermark, setWatermark] = useState(false);
+
+  // renderer 就绪/偏好变更即下发（renderer 异步创建，就绪时补一次当前值）
+  useEffect(() => {
+    p.renderer?.setGridMode(gridMode);
+    p.renderer?.setBordersVisible(borders);
+    p.renderer?.setWatermarkVisible(watermark);
+  }, [p.renderer, gridMode, borders, watermark]);
 
   return (
     <Dialog.Root
@@ -36,7 +58,7 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
     >
       <Dialog.Portal>
         <Dialog.Overlay style={overlayStyle} />
-        <Dialog.Content style={contentStyle} aria-describedby={undefined}>
+        <Dialog.Content style={contentStyle} className="tv-dialog" aria-describedby={undefined}>
           <div style={headerStyle}>
             <Dialog.Title style={titleStyle}>图表设置</Dialog.Title>
             <Dialog.Close asChild>
@@ -67,6 +89,25 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
                   <CheckRow label="自动坐标（适应数据）" checked={p.autoScale} onChange={p.onAuto} />
                 </>
               )}
+
+              {tab === 'Scales' && (
+                <>
+                  <SettingRow label="价格坐标位置">
+                    <Segmented
+                      ariaLabel="价格坐标位置"
+                      value="right"
+                      options={[
+                        { value: 'right', label: '右' },
+                        { value: 'left', label: '左', disabled: true, title: '引擎侧支持中，敬请期待' },
+                        { value: 'none', label: '无', disabled: true, title: '引擎侧支持中，敬请期待' },
+                      ]}
+                      onChange={() => undefined}
+                    />
+                  </SettingRow>
+                  <p style={hintStyle}>坐标位置切换需引擎支持（画布偏移），当前版本仅右侧；左/无为预留态。</p>
+                </>
+              )}
+
               {tab === '状态栏' && (
                 <>
                   <CheckRow label="商品行" checked={p.legend.showSeriesTitle} onChange={(v) => p.onLegend({ showSeriesTitle: v })} />
@@ -78,7 +119,20 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
                   <CheckRow label="指标数值" checked={p.legend.showStudyValues} onChange={(v) => p.onLegend({ showStudyValues: v })} />
                 </>
               )}
-              {tab === '外观' && <CheckRow label="网格线" checked={p.grid} onChange={p.onGrid} />}
+
+              {tab === 'Canvas' && (
+                <>
+                  <CheckRow label="画布边框" checked={borders} onChange={setBorders} />
+                  <CheckRow label="水印" checked={watermark} onChange={setWatermark} />
+                  <p style={hintStyle}>水印（商品代码 + 周期）渲染待引擎支持，当前仅记录开关状态。</p>
+                </>
+              )}
+
+              {tab === '外观' && (
+                <SettingRow label="网格线">
+                  <Segmented ariaLabel="网格线" value={gridMode} options={GRID_OPTIONS} onChange={setGridMode} />
+                </SettingRow>
+              )}
             </div>
           </div>
         </Dialog.Content>
@@ -87,6 +141,14 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
   );
 }
 
+function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md, minHeight: 32 }}>
+      <span style={{ color: 'var(--text)', fontSize: fontSize.lg }}>{label}</span>
+      {children}
+    </div>
+  );
+}
 
 const overlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: zIndex.modal };
 
@@ -126,7 +188,7 @@ const closeStyle: React.CSSProperties = {
   height: 28,
   background: 'transparent',
   border: 'none',
-  borderRadius: 3,
+  borderRadius: radius.xs,
   color: 'var(--text-faint)',
   cursor: 'pointer',
 };
@@ -144,5 +206,6 @@ const navItemStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const paneStyle: React.CSSProperties = { flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space.xl}px` };
+const paneStyle: React.CSSProperties = { flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space.xl}px`, display: 'flex', flexDirection: 'column', gap: space.xs };
 
+const hintStyle: React.CSSProperties = { color: 'var(--text-faint)', fontSize: fontSize.sm, lineHeight: 1.7, margin: `${space.xs}px 0 0` };

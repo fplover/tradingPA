@@ -9,6 +9,7 @@ import { useIndicatorStore } from '@/store/indicatorStore';
 import { useRightDockStore } from '@/features/rightbar/rightPanelStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useDrawingStore } from '@/store/drawingStore';
+import { useToast } from '@/features/ui/Toast';
 import { Modal } from '@/ui/primitives';
 import { decimalsFor } from '@/data/format';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
@@ -33,6 +34,7 @@ interface ChartContextMenuProps {
 export function ChartContextMenu({ state, instrument, renderer, onOpenSettings, onGoToDate, onClose }: ChartContextMenuProps) {
   const [alertOpen, setAlertOpen] = useState(false);
   const themeName = useThemeStore((s) => s.name);
+  const toast = useToast();
 
   const close = () => {
     setAlertOpen(false);
@@ -44,6 +46,7 @@ export function ChartContextMenu({ state, instrument, renderer, onOpenSettings, 
     const d = decimalsFor(state.price, instrument?.decimals ?? 2);
     try {
       await navigator.clipboard.writeText(state.price.toFixed(d));
+      toast(`已复制价格 ${state.price.toFixed(d)}`);
     } catch {
       /* 剪贴板不可用时静默失败，不阻断菜单其他动作 */
     }
@@ -105,7 +108,10 @@ export function ChartContextMenu({ state, instrument, renderer, onOpenSettings, 
               className="tv-menu-item"
               style={itemStyle}
               onSelect={() => {
-                if (instrument) useWatchlistStore.getState().add(instrument);
+                if (instrument) {
+                  useWatchlistStore.getState().add(instrument);
+                  toast(`已将 ${instrument.symbol} 加入自选股`);
+                }
               }}
             >
               <span style={iconSlot}>
@@ -219,6 +225,7 @@ function ChartAlertDialog({
   const decimals = decimalsFor(price, instrument?.decimals ?? 2);
   const [text, setText] = useState(() => price.toFixed(decimals));
   const [direction, setDirection] = useState<'above' | 'below'>('above');
+  const toast = useToast();
 
   // 每次打开用最新右键价格重置（价格随 state 变化时才需要）
   const lastPrice = useRef(price);
@@ -232,6 +239,7 @@ function ChartAlertDialog({
     if (!instrument || !Number.isFinite(p) || p <= 0) return;
     add({ symbol: instrument.symbol, price: p, direction });
     useRightDockStore.getState().open('alerts');
+    toast(`已创建 ${instrument.symbol} ${direction === 'above' ? '上穿' : '下穿'} ${p} 警报`);
     onClose();
   };
 

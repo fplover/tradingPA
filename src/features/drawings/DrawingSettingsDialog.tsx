@@ -1,7 +1,8 @@
 import { useReducer } from 'react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useDrawingStore } from '@/store/drawingStore';
-import { Checkbox, Modal } from '@/ui/primitives';
+import { Modal } from '@/ui/primitives';
+import { Checkbox } from '@/ui/controls';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { fontSize, radius, space } from '@/ui/tokens';
 

@@ -16,6 +16,7 @@ import { useReplayStore } from '@/store/replayStore';
 import { useAlertStore } from '@/store/alertStore';
 import { decimalsFor } from '@/data/format';
 import { useChartSeries } from '@/features/market/useChartSeries';
+import { ToastProvider } from '@/features/ui/Toast';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
@@ -139,7 +140,6 @@ export default function App() {
   const [goToDateOpen, setGoToDateOpen] = useState(false);
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
-  const [gridVisible, setGridVisible] = useState(true);
   const [hideStudies, setHideStudies] = useState(false);
   const [legendOpts, setLegendOpts] = useState<LegendOptions>({ ...DEFAULT_LEGEND_OPTIONS });
   const wasReplaying = useRef(false);
@@ -200,9 +200,6 @@ export default function App() {
   useEffect(() => {
     renderer?.setDrawingsLocked(drawingsLocked);
   }, [renderer, drawingsLocked]);
-  useEffect(() => {
-    renderer?.setGridVisible(gridVisible);
-  }, [renderer, gridVisible]);
   useEffect(() => {
     renderer?.setHideStudies(hideStudies);
   }, [renderer, hideStudies]);
@@ -326,6 +323,7 @@ export default function App() {
 
   return (
     <Tooltip.Provider delayDuration={400} skipDelayDuration={100}>
+    <ToastProvider>
     <div style={{ width: '100vw', height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
       <div style={topBarStyle}>
         <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 4 }}>TradingPA</strong>
@@ -434,6 +432,7 @@ export default function App() {
                   decimals={decimals}
                   timeframeId={timeframe}
                   exchange={activeInstrument?.exchange}
+                  market={activeInstrument?.market}
                   liveTickMs={series.mode === 'mock' ? 800 : undefined}
                   chartType={chartType}
                   logScale={logScale}
@@ -450,6 +449,7 @@ export default function App() {
                   onChartContextMenu={(price, _time, x, y) => setChartMenu({ price, x, y })}
                   onLegendMenu={(x, y) => setLegendMenu({ x, y })}
                   onDrawingMenu={(id, x, y) => setDrawingMenu({ id, x, y })}
+                  onPriceLineDblClick={() => setChartSettingsOpen(true)}
                 />
                 {panelOpen && <IndicatorPanel />}
                 {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
@@ -479,6 +479,7 @@ export default function App() {
               barsCount={bars.length}
               intervalLabel={tf.label}
               statusText={series.mode === 'mock' ? '模拟数据' : series.statusDetail || series.status}
+              dayChangePct={activeQuote?.changePct}
               percent={percent}
               onTogglePercent={() => setPercent((v) => !v)}
               logScale={logScale}
@@ -543,12 +544,11 @@ export default function App() {
         logScale={logScale}
         percent={percent}
         autoScale={autoScale}
-        grid={gridVisible}
         legend={legendOpts}
+        renderer={renderer}
         onLog={setLogScale}
         onPercent={setPercent}
         onAuto={setAutoScale}
-        onGrid={setGridVisible}
         onLegend={(patch) => setLegendOpts((v) => ({ ...v, ...patch }))}
       />
       <ChartContextMenu
@@ -572,6 +572,7 @@ export default function App() {
         onClose={() => setDrawingMenu(null)}
       />
     </div>
+    </ToastProvider>
     </Tooltip.Provider>
   );
 }

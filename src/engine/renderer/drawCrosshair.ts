@@ -1,4 +1,5 @@
-import type { Bar } from '@/types/market';
+import type { Bar, ChartTypeId } from '@/types/market';
+import type { MarketId } from '@/types/instrument';
 import type { Crosshair } from '../crosshair/Crosshair';
 import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
@@ -12,6 +13,10 @@ export interface LegendInfo {
   decimals: number;
   exchange?: string;
   timeframeId?: string;
+  /** 市场（用于开/闭市圆点判定，调用方每帧计算 marketOpen） */
+  market?: MarketId;
+  /** 市场开/闭市状态（TV 图例品种名旁圆点）；undefined = 未知不画 */
+  marketOpen?: boolean;
 }
 
 /** 图例可见性（TV 图表设置「状态栏」页 + 图例右键菜单） */
@@ -103,10 +108,32 @@ export function drawCrosshair(
   }
 }
 
+/** 图例 OHLCV 字段按图表类型收窄（TV 规格）：
+ *  高低图 H L C；柱状图 O C；线族（线形/阶梯/带标记/HLC面积）仅 C；
+ *  成交量蜡烛 O H L C + 柱宽语义提示；其余类型（蜡烛/竹线/空心/平均K/基线/面积/砖块）O H L C。 */
+export function legendFieldsFor(chartType: ChartTypeId): { open: boolean; high: boolean; low: boolean; close: boolean; volumeWidthHint: boolean } {
+  switch (chartType) {
+    case 'high-low':
+      return { open: false, high: true, low: true, close: true, volumeWidthHint: false };
+    case 'columns':
+      return { open: true, high: false, low: false, close: true, volumeWidthHint: false };
+    case 'line':
+    case 'step-line':
+    case 'line-markers':
+    case 'hlc-area':
+      return { open: false, high: false, low: false, close: true, volumeWidthHint: false };
+    case 'volume-candles':
+      return { open: true, high: true, low: true, close: true, volumeWidthHint: true };
+    default:
+      return { open: true, high: true, low: true, close: true, volumeWidthHint: false };
+  }
+}
+
 /**
  * 左上角图例：常驻单行（TradingView 样式）。
  * 代码加粗 + 周期/交易所灰字 + O H L C 按该根涨跌着色 + 涨跌幅 + 量；
  * 悬停时跟随十字光标，否则显示最后一根。叠加指标值换行附在其下。
+ * OHLCV 字段按 chartType 收窄（见 legendFieldsFor）。
  */
 export function drawLegendBlock(
   ctx: CanvasRenderingContext2D,
@@ -118,6 +145,7 @@ export function drawLegendBlock(
   outRects?: StudyLegendRect[],
   outInfo?: LegendDrawInfo,
   geo?: DrawGeometry,
+  chartType: ChartTypeId = 'candles',
 ): void {
   ctx.save();
   ctx.textAlign = 'left';
@@ -128,6 +156,14 @@ export function drawLegendBlock(
   // TV 图例：代码行 16px、其余 13px，字重 400（观感粗来自字号而非 weight）
   ctx.font = `16px ${TV_FONT}`;
   if (options.showSeriesTitle) {
+    // 市场状态圆点：开市=涨色，闭市=暗灰（TV market status）
+    if (legend.marketOpen !== undefined) {
+      ctx.fillStyle = legend.marketOpen ? theme.up : theme.legendDim;
+      ctx.beginPath();
+      ctx.arc(x + 3, y + 8, 3, 0, Math.PI * 2);
+      ctx.fill();
+      x += 10;
+    }
     ctx.fillStyle = theme.legendText;
     ctx.fillText(legend.symbol, x, y);
     x += ctx.measureText(legend.symbol).width;
@@ -147,15 +183,16 @@ export function drawLegendBlock(
     const changePct = bar.open !== 0 ? (change / bar.open) * 100 : 0;
     const color = bar.close >= bar.open ? theme.up : theme.down;
     const sign = change >= 0 ? '+' : '';
+    const f = legendFieldsFor(chartType);
     const fields: Array<[string, string, string]> = [];
     if (options.showOHLC) {
-      fields.push(
-        ['开=', bar.open.toFixed(d), color],
-        ['高=', bar.high.toFixed(d), color],
-        ['低=', bar.low.toFixed(d), color],
-        ['收=', bar.close.toFixed(d), color],
-      );
+      if (f.open) fields.push(['开=', bar.open.toFixed(d), color]);
+      if (f.high) fields.push(['高=', bar.high.toFixed(d), color]);
+      if (f.low) fields.push(['低=', bar.low.toFixed(d), color]);
+      if (f.close) fields.push(['收=', bar.close.toFixed(d), color]);
       if (options.showChange) fields.push(['涨跌', `${sign}${change.toFixed(d)} (${sign}${changePct.toFixed(2)}%)`, color]);
+      // 成交量蜡烛：柱宽编码成交量，TV 图例附语义提示
+      if (f.volumeWidthHint) fields.push(['量宽', '表示成交量', theme.legendDim]);
     }
     if (options.showVolume) fields.push(['量', formatVolume(bar.volume), theme.legendDim]);
     for (const [label, value, c] of fields) {

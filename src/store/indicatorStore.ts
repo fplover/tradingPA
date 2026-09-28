@@ -1,10 +1,12 @@
 import { create } from 'zustand';
-import type { ParamValue } from '@/indicators/core/types';
+import type { ParamValue, PlotKind } from '@/indicators/core/types';
 
 /** 逐 plot 的样式覆盖（TV 指标设置「样式」页） */
 export interface PlotStyleOverride {
   color?: string;
   lineWidth?: number;
+  /** 绘制类型覆盖（TV 样式页 plot 类型下拉） */
+  kind?: PlotKind;
   hidden?: boolean;
 }
 

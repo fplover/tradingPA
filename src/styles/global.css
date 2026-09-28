@@ -33,6 +33,50 @@ svg.lucide {
   outline-offset: 1px;
 }
 
+/* 对话框进入/退出动效（TV 规格）：150ms 缩放淡入，禁弹跳缓动；
+   Radix 依 data-state 在退出动画结束后卸载，reduced-motion 由下方全局规则收敛 */
+@keyframes tv-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes tv-dialog-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+.tv-dialog[data-state='open'] {
+  animation: tv-dialog-in 150ms ease-out;
+}
+.tv-dialog[data-state='closed'] {
+  animation: tv-dialog-out 150ms ease-in;
+}
+
+/* Toast：150ms 淡入下落（TV 顶部居中反馈） */
+@keyframes tv-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.tv-toast {
+  animation: tv-toast-in 150ms ease-out;
+}
+
 /* 尊重减少动效 */
 @media (prefers-reduced-motion: reduce) {
   *,

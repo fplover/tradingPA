@@ -59,7 +59,7 @@ export class IndicatorInstance {
   styleFor(plotKey: string, base: PlotStyle): PlotStyle {
     const o = this.styles[plotKey];
     if (!o) return base;
-    return { ...base, color: o.color ?? base.color, lineWidth: o.lineWidth ?? base.lineWidth };
+    return { ...base, color: o.color ?? base.color, lineWidth: o.lineWidth ?? base.lineWidth, kind: o.kind ?? base.kind };
   }
 
   isPlotHidden(plotKey: string): boolean {

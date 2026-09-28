@@ -247,9 +247,11 @@ describe('drawAxes', () => {
   });
 
   it('formatTime：三档粒度（时:分 / 月-日 / 年-月）', () => {
+    // Wave5 项7：时间格式 zh 化（TV 中文界面）——M月D日 / YYYY年M月
+    // （设计侧变更，QA 既有断言随规格更新；视觉黄金截图需重新基线）
     expect(formatTime(T0, 8)).toBe('09:30');
-    expect(formatTime(T0, 120)).toBe('01-08');
-    expect(formatTime(T0, 600)).toBe('2024-01');
+    expect(formatTime(T0, 120)).toBe('1月8日');
+    expect(formatTime(T0, 600)).toBe('2024年1月');
   });
 });
 

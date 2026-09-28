@@ -6,6 +6,8 @@ interface StatusBarProps {
   intervalLabel: string;
   /** 数据源状态文案，如「腾讯财经」 */
   statusText: string;
+  /** 当日累计涨跌幅（vs 昨收）；undefined = 无行情数据，显示 -- */
+  dayChangePct?: number;
   percent: boolean;
   onTogglePercent: () => void;
   logScale: boolean;
@@ -48,6 +50,7 @@ export function StatusBar({
   barsCount,
   intervalLabel,
   statusText,
+  dayChangePct,
   percent,
   onTogglePercent,
   logScale,
@@ -79,6 +82,23 @@ export function StatusBar({
       <span style={{ color: 'var(--text-dim)', padding: `0 ${space.xs}px` }}>{timeZoneLabel()}</span>
       <span style={{ padding: `0 ${space.xs}px` }}>
         {statusText} · {barsCount.toLocaleString()} 根 · {intervalLabel}
+      </span>
+      {/* 当日累计涨跌（TV 底部状态）：涨绿跌红，无行情显示 -- */}
+      <span
+        style={{
+          padding: `0 ${space.xs}px`,
+          color:
+            dayChangePct === undefined
+              ? 'var(--text-faint)'
+              : dayChangePct > 0
+                ? 'var(--up)'
+                : dayChangePct < 0
+                  ? 'var(--down)'
+                  : 'var(--text-faint)',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        今日 {dayChangePct === undefined ? '--' : `${dayChangePct > 0 ? '+' : ''}${dayChangePct.toFixed(2)}%`}
       </span>
 
       {/* 时间范围预设（TV 预设条）：按自然日回看 */}

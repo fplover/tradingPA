@@ -7,6 +7,8 @@ import { theme, TV_FONT } from '../theme';
 import type { Bar, ChartTypeId, Timeframe } from '@/types/market';
 import { CHART_TYPES, TIMEFRAMES } from '@/types/market';
 import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
+import { isMarketOpen } from '@/data/marketHours';
+import type { MarketId } from '@/types/instrument';
 import { IndicatorInstance, type IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
 import { DrawingLayer } from '../drawing/DrawingLayer';
@@ -16,7 +18,7 @@ import { detectVisibleSwing } from '../drawing/fibMath';
 import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
-import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type PaneButtonRects } from './drawAxes';
+import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type GridMode, type PaneButtonRects } from './drawAxes';
 import { CloseCountdown } from '../countdown';
 import { formatCompact } from '@/data/format';
 import { drawOhlc, drawLine, drawArea, drawBaseline, drawColumns, drawHighLow, drawStepLine, drawLineMarkers, drawHlcArea, drawVolumeCandles } from './seriesRenderers';
@@ -64,6 +66,8 @@ export class ChartRenderer {
   private displaySeries: BarSeries = this.baseSeries;
   private crosshair = new Crosshair();
   private legend: LegendInfo;
+  /** 图例市场（开/闭市圆点判定用，setLegend 同步） */
+  private legendMarket: MarketId | null = null;
   private rafId = 0;
   private dirty = true;
   private disposed = false;
@@ -78,7 +82,10 @@ export class ChartRenderer {
   private paneResizeStartHeight = 0;
   private percentOn = false;
   private drawingsLocked = false;
-  private gridVisible = true;
+  private gridMode: GridMode = 'both';
+  private bordersVisible = true;
+  /** 预留：水印渲染未实现，开关态先落 renderer */
+  private watermarkVisible = false;
   private hideStudies = false;
   private legendOptions: LegendOptions = { ...DEFAULT_LEGEND_OPTIONS };
   /** 研究图例行命中区与悬停态（图例右侧 眼睛/设置/移除 按钮） */
@@ -91,6 +98,8 @@ export class ChartRenderer {
   private drawingHoverCursor = '';
   private toolFinishedCb: (() => void) | null = null;
   private drawingSettingsCb: ((id: string) => void) | null = null;
+  /** 双击最新价线 → 打开图表设置（TV 行为） */
+  private priceLineDblClickCb: (() => void) | null = null;
   private legendMenuCb: ((x: number, y: number) => void) | null = null;
   private drawingMenuCb: ((id: string, x: number, y: number) => void) | null = null;
   private brickOpts: BrickOptions = {};
@@ -183,6 +192,7 @@ export class ChartRenderer {
 
   setLegend(legend: Partial<LegendInfo>): void {
     this.legend = { ...this.legend, ...legend };
+    this.legendMarket = legend.market ?? this.legendMarket;
     this.countdown.setTimeframe(this.resolveTimeframe()); // 周期切换 → 重算倒计时
     this.invalidate();
   }
@@ -273,6 +283,11 @@ export class ChartRenderer {
     this.drawingSettingsCb = cb;
   }
 
+  /** 双击最新价线打开图表设置（TV：double-click on the price line → settings） */
+  setPriceLineDblClickCallback(cb: (() => void) | null): void {
+    this.priceLineDblClickCb = cb;
+  }
+
   setLegendMenuCallback(cb: ((x: number, y: number) => void) | null): void {
     this.legendMenuCb = cb;
   }
@@ -291,9 +306,27 @@ export class ChartRenderer {
     return this.hideStudies;
   }
 
-  setGridVisible(visible: boolean): void {
-    this.gridVisible = visible;
+  /** 网格四态（TV 画布页）：none / horizontal / vertical / both */
+  setGridMode(mode: GridMode): void {
+    this.gridMode = mode;
     this.invalidate();
+  }
+
+  /** 画布边框显隐（TV 画布页） */
+  setBordersVisible(visible: boolean): void {
+    this.bordersVisible = visible;
+    this.invalidate();
+  }
+
+  /** 水印显隐（TV 画布页）。预留：引擎水印渲染未实现，状态先落 renderer，
+   *  渲染侧支持后 drawWatermark 直接读 this.watermarkVisible。 */
+  setWatermarkVisible(visible: boolean): void {
+    this.watermarkVisible = visible;
+    this.invalidate();
+  }
+
+  get watermarkOn(): boolean {
+    return this.watermarkVisible;
   }
 
   /** 恢复全部面板为自动价格适配 */
@@ -1351,6 +1384,16 @@ export class ChartRenderer {
       this.invalidate();
       return;
     }
+    // 双击最新价线（±4px 命中区）→ 打开图表设置（TV 行为）
+    const main = this.panes[0];
+    const lastBar = this.displaySeries.last;
+    if (lastBar && y >= main.y && y < main.y + main.height) {
+      const lineY = main.priceScale.priceToY(lastBar.close);
+      if (Math.abs(y - main.y - lineY) <= 4) {
+        this.priceLineDblClickCb?.();
+        return;
+      }
+    }
     // 双击画线 → 打开画线设置（TV 行为）
     const pane = this.paneAt(y);
     const dHit = this.hitDrawings(x, y, pane);
@@ -1495,14 +1538,14 @@ export class ChartRenderer {
 
       if (pane.kind === 'indicator') {
         this.autoscaleIndicators(pane, from, to);
-        if (this.gridVisible) drawGrid(ctx, this.viewport, pane.priceScale, geo);
+        drawGrid(ctx, this.viewport, pane.priceScale, geo, this.gridMode);
         for (const inst of pane.indicators) {
           if (this.hideStudies || !inst.isVisibleOn(this.legend.timeframeId)) continue;
           drawIndicator(ctx, inst, this.barsArray(), from, to, this.viewport, pane.priceScale, geo);
         }
       } else {
         this.autoscalePrice(pane, from, to);
-        if (this.gridVisible) drawGrid(ctx, this.viewport, pane.priceScale, geo);
+        drawGrid(ctx, this.viewport, pane.priceScale, geo, this.gridMode);
         this.drawPriceSeries(ctx, pane, geo, from, to);
         // 主图叠加指标
         for (const inst of pane.indicators) {
@@ -1587,7 +1630,7 @@ export class ChartRenderer {
     // 共享时间轴 + 边框 + 十字光标（全画布坐标）
     const mainGeo: DrawGeometry = { chartW: w - AXIS_WIDTH, chartH: h - AXIS_HEIGHT };
     drawTimeAxis(ctx, this.displaySeries, this.viewport, mainGeo);
-    drawBorders(ctx, mainGeo);
+    if (this.bordersVisible) drawBorders(ctx, mainGeo);
 
     // 画线层（主面板局部坐标）
     const main = this.panes[0];
@@ -1655,13 +1698,14 @@ export class ChartRenderer {
     drawLegendBlock(
       ctx,
       hoveredBar ?? this.displaySeries.last,
-      this.legend,
+      { ...this.legend, marketOpen: this.legendMarket ? isMarketOpen(this.legendMarket) : undefined },
       legendIndicators,
       this.legendOptions,
       this.hoverStudyUid,
       this.studyRects,
       legendInfo,
       mainGeo,
+      this.chartType,
     );
     if (legendInfo.collapsed > 0) {
       ctx.save();
