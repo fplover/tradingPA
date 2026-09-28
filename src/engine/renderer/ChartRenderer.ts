@@ -10,8 +10,9 @@ import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, typ
 import { IndicatorInstance, type IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
 import { DrawingLayer } from '../drawing/DrawingLayer';
-import { getToolDef, type Drawing, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
-import { drawDrawings, hitTestDrawing, pixelToPoint, detectVisibleSwing, type DrawContext } from '../drawing/drawDrawings';
+import { getToolDef, isConstrainableTool, type Drawing, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
+import { drawDrawings, hitTestDrawing, pixelToPoint, pointToPixel, type DrawContext } from '../drawing/drawDrawings';
+import { detectVisibleSwing } from '../drawing/fibMath';
 import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
@@ -103,7 +104,10 @@ export class ChartRenderer {
   private activeTool: DrawingTypeId | null = null;
   private placing: DrawingPoint[] = [];
   private previewPoint: DrawingPoint | null = null;
-  private dragDrawing: { id: string; part: 'body' | 'handle'; index: number; start: DrawingPoint; origin: DrawingPoint[] } | null = null;
+  /** 拖拽画线：ids 为本次受动的对象集合（单选=1 个；多选整体拖拽=全部选中；手柄拖拽=1 个） */
+  private dragDrawing: { ids: string[]; part: 'body' | 'handle'; index: number; start: DrawingPoint; origins: Map<string, DrawingPoint[]> } | null = null;
+  /** B7 Ctrl+按下待克隆：首次移动超过阈值才懒克隆（无移动的 Ctrl+点击 = 多选切换） */
+  private pendingClone: { id: string; part: 'body' | 'handle'; index: number; start: DrawingPoint } | null = null;
   private drawingsListeners = new Set<() => void>();
 
   // 交易可视化（挂单线/持仓线/TP-SL）
@@ -708,6 +712,41 @@ export class ChartRenderer {
     this.invalidate();
   }
 
+  /** Ctrl+点击切换多选集合成员（对象树/画布同语义） */
+  toggleDrawingSelection(id: string): void {
+    this.drawingLayer.toggleSelect(id);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  /** 多选集合（B7：Ctrl+点击累积；对象树高亮/ Delete 删除用） */
+  get selectedDrawingIds(): string[] {
+    return this.drawingLayer.selectedIdList;
+  }
+
+  /** 是否存在选中画线（方向键微调 vs 视口平移的路由判据） */
+  hasSelectedDrawing(): boolean {
+    return this.drawingLayer.selectedIdList.length > 0;
+  }
+
+  /** 方向键微调（B7）：以像素步长平移全部选中对象，Shift = 大步长。
+   *  每次调用为单步历史（入撤销栈）；无选中返回 false 不改动。 */
+  nudgeSelectedDrawing(dxPx: number, dyPx: number): boolean {
+    if (this.drawingLayer.selectedIdList.length === 0) return false;
+    const dctx = this.drawingCtx();
+    const p0 = pixelToPoint(0, 0, dctx, 'off');
+    const p1 = pixelToPoint(dxPx, dyPx, dctx, 'off');
+    const dt = p1.time - p0.time;
+    const dp = p1.price - p0.price;
+    if (dt === 0 && dp === 0) return false;
+    this.drawingLayer.beginHistory();
+    const moved = this.drawingLayer.translateSelected(dt, dp);
+    if (!moved) return false;
+    this.notifyDrawings();
+    this.invalidate();
+    return true;
+  }
+
   /** 视觉顺序：置于顶层/上移一层/下移一层/置于底层 */
   setDrawingOrder(id: string, action: 'front' | 'forward' | 'backward' | 'back'): void {
     this.drawingLayer.setOrder(id, action);
@@ -799,6 +838,9 @@ export class ChartRenderer {
   cancelPlacing(): void {
     this.placing = [];
     this.previewPoint = null;
+    this.pendingClone = null;
+    // Esc 同时退出多选态（TV：Esc 取消当前操作并取消选择）
+    this.drawingLayer.select(null);
     this.notifyDrawings();
     this.invalidate();
   }
@@ -884,7 +926,7 @@ export class ChartRenderer {
         return;
       }
       if (this.activeTool) {
-        this.handleToolPointerDown(x, y, pane);
+        this.handleToolPointerDown(x, y, pane, e.shiftKey);
         return;
       }
       // 面板头部按钮（设置/移除指标）优先于画线/交易命中
@@ -897,17 +939,36 @@ export class ChartRenderer {
       this.selectedPaneId = pane.id;
       const hit = this.hitDrawings(x, y, pane);
       if (hit) {
-        this.drawingLayer.select(hit.id);
-        const d = this.drawingLayer.list().find((dd) => dd.id === hit.id)!;
+        // B7：Ctrl+按下 = 待克隆（移动超阈值才克隆）；无移动的 Ctrl+点击 = 多选切换
+        if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
+          this.pendingClone = {
+            id: hit.id,
+            part: hit.part,
+            index: hit.index,
+            start: pixelToPoint(x, y - pane.y, this.drawingCtx(), 'off'),
+          };
+          this.invalidate();
+          return;
+        }
+        // 多选态下点击已选中对象 = 整组拖拽；否则单选该对象
+        const groupDrag =
+          hit.part === 'body' && this.drawingLayer.isSelected(hit.id) && this.drawingLayer.selectedIdList.length > 1;
+        if (!groupDrag) this.drawingLayer.select(hit.id);
+        const ids = groupDrag ? this.drawingLayer.selectedIdList : [hit.id];
+        const origins = new Map<string, DrawingPoint[]>();
+        for (const id of ids) {
+          const dd = this.drawingLayer.list().find((z) => z.id === id);
+          if (dd && !dd.locked) origins.set(id, dd.points.map((p) => ({ ...p })));
+        }
         this.drawingLayer.beginHistory();
         this.dragDrawing = {
-          id: hit.id,
+          ids: [...origins.keys()],
           part: hit.part,
           index: hit.index,
           start: pixelToPoint(x, y - pane.y, this.drawingCtx(), 'off'),
-          origin: d.points.map((p) => ({ ...p })),
+          origins,
         };
-    this.invalidate();
+        this.invalidate();
         return;
       }
       // 交易可视化命中：挂单线拖动改价 / 撤单 / 持仓详情块拖动设 TP-SL
@@ -948,8 +1009,8 @@ export class ChartRenderer {
   };
 
   /** 工具模式下的落点 */
-  private handleToolPointerDown(x: number, y: number, pane: PaneState): void {
-    const pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
+  private handleToolPointerDown(x: number, y: number, pane: PaneState, shift: boolean): void {
+    let pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
     // Auto Fib：无锚点点击——一次点击即按可见区间 swing 生成标准回撤对象
     if (this.activeTool === 'fib-auto') {
       const swing = this.detectSwingForAutoFib();
@@ -959,6 +1020,10 @@ export class ChartRenderer {
       }
       this.invalidate();
       return;
+    }
+    // B7：Shift 约束——新落点相对上一个锚点按主导轴锁轴（TV 肌肉记忆）
+    if (shift && this.placing.length > 0 && isConstrainableTool(this.activeTool!)) {
+      pt = this.constrainPoint(this.placing[this.placing.length - 1], x, y - pane.y);
     }
     const def = getToolDef(this.activeTool!);
     if (def.points === 1) {
@@ -975,6 +1040,15 @@ export class ChartRenderer {
       this.toolFinishedCb?.();
     }
     this.invalidate();
+  }
+
+  /** Shift 约束：像素域按主导轴锁轴——|Δx| ≥ |Δy| 锁水平（价格固定），否则锁垂直（时间固定） */
+  private constrainPoint(anchor: DrawingPoint, px: number, py: number): DrawingPoint {
+    const dctx = this.drawingCtx();
+    const a = pointToPixel(anchor, dctx);
+    const magnet = this.drawingLayer.magnetModeForDraw;
+    if (Math.abs(px - a.x) >= Math.abs(py - a.y)) return pixelToPoint(px, a.y, dctx, magnet);
+    return pixelToPoint(a.x, py, dctx, magnet);
   }
 
   /** Auto Fib 摆动检测：可见 bar 区间的最高/最低点对（不足则 null，本次点击不放置） */
@@ -1014,14 +1088,44 @@ export class ChartRenderer {
       pane.manual = true;
       pane.priceScale.shift(shift);
       this.invalidate();
+    } else if (this.pendingClone) {
+      // B7：Ctrl+拖动——首次移动超过 2px 阈值即懒克隆并进入克隆体拖拽（原对象不动）
+      const pane = this.paneAt(y);
+      const dctx = this.drawingCtx();
+      const sp = pointToPixel(this.pendingClone.start, dctx);
+      if (Math.hypot(x - sp.x, y - pane.y - sp.y) > 2) {
+        const pc = this.pendingClone;
+        this.pendingClone = null;
+        const src = this.drawingLayer.list().find((d) => d.id === pc.id);
+        if (src && !src.locked) {
+          // 先快照再克隆：克隆 + 拖拽 = 单步撤销
+          this.drawingLayer.beginHistory();
+          const clone = this.drawingLayer.cloneDrawing(src.id)!;
+          this.dragDrawing = {
+            ids: [clone.id],
+            part: pc.part,
+            index: pc.index,
+            start: pc.start,
+            origins: new Map([[clone.id, clone.points.map((p) => ({ ...p }))]]),
+          };
+          this.updateDrawingDrag(x, y, e.shiftKey);
+        } else {
+          this.invalidate();
+        }
+      }
     } else if (this.dragDrawing) {
-      this.updateDrawingDrag(x, y);
+      this.updateDrawingDrag(x, y, e.shiftKey);
     } else if (this.tradeDrag) {
       this.updateTradeDrag(y);
     } else if (this.activeTool && this.placing.length > 0) {
       const pane = this.paneAt(y);
-      this.previewPoint = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
-    this.invalidate();
+      let pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
+      // B7：Shift 约束预览——与落点约束同规则（相对上一个锚点按主导轴锁轴）
+      if (e.shiftKey && isConstrainableTool(this.activeTool)) {
+        pt = this.constrainPoint(this.placing[this.placing.length - 1], x, y - pane.y);
+      }
+      this.previewPoint = pt;
+      this.invalidate();
     } else {
       this.updateHoverCursor(x, y);
       this.updateCrosshair(x, y);
@@ -1041,23 +1145,46 @@ export class ChartRenderer {
     if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
   }
 
-  /** 拖拽画线：整体平移或单手柄移动 */
-  private updateDrawingDrag(x: number, y: number): void {
+  /** 拖拽画线：整体平移（单选/多选整组）或单手柄移动；Shift = 水平/垂直约束（按主导轴） */
+  private updateDrawingDrag(x: number, y: number, shift: boolean): void {
     const drag = this.dragDrawing;
     if (!drag) return;
     const pane = this.panes[0];
-    const cur = pixelToPoint(x, y - pane.y, this.drawingCtx(), 'off');
+    const dctx = this.drawingCtx();
+    const cur = pixelToPoint(x, y - pane.y, dctx, 'off');
+    // Shift 约束仅对线类工具生效（趋势线/射线/箭头/信息线/斐波那契家族）
+    const constrain =
+      shift &&
+      drag.ids.some((id) => isConstrainableTool(this.drawingLayer.list().find((d) => d.id === id)?.type ?? 'rect'));
     if (drag.part === 'body') {
-      const dt = cur.time - drag.start.time;
-      const dp = cur.price - drag.start.price;
-      this.drawingLayer.updatePoints(
-        drag.id,
-        drag.origin.map((p) => ({ time: p.time + dt, price: p.price + dp })),
-      );
+      let dt = cur.time - drag.start.time;
+      let dp = cur.price - drag.start.price;
+      if (constrain) {
+        const sp = pointToPixel(drag.start, dctx);
+        if (Math.abs(x - sp.x) >= Math.abs(y - pane.y - sp.y)) dp = 0;
+        else dt = 0;
+      }
+      for (const [id, origin] of drag.origins) {
+        this.drawingLayer.updatePoints(
+          id,
+          origin.map((p) => ({ time: p.time + dt, price: p.price + dp })),
+        );
+      }
     } else {
-      const pts = drag.origin.map((p) => ({ ...p }));
-      if (pts[drag.index]) pts[drag.index] = { time: cur.time, price: cur.price };
-      this.drawingLayer.updatePoints(drag.id, pts);
+      let target = cur;
+      if (constrain) {
+        const h = drag.origins.get(drag.ids[0])?.[drag.index];
+        if (h) {
+          const hp = pointToPixel(h, dctx);
+          target =
+            Math.abs(x - hp.x) >= Math.abs(y - pane.y - hp.y)
+              ? pixelToPoint(x, hp.y, dctx, 'off')
+              : pixelToPoint(hp.x, y - pane.y, dctx, 'off');
+        }
+      }
+      const pts = (drag.origins.get(drag.ids[0]) ?? []).map((p) => ({ ...p }));
+      if (pts[drag.index]) pts[drag.index] = target;
+      this.drawingLayer.updatePoints(drag.ids[0], pts);
     }
     this.invalidate();
   }
@@ -1158,6 +1285,12 @@ export class ChartRenderer {
       this.studyActionCb?.(studyBtn === 0 ? 'hide' : studyBtn === 1 ? 'settings' : 'remove', studyUid);
     }
     this.movedFar = false;
+    // B7：无移动的 Ctrl+点击 = 多选切换（TV）；移动过的已在 onPointerMove 懒克隆并清空
+    if (this.pendingClone) {
+      this.drawingLayer.toggleSelect(this.pendingClone.id);
+      this.notifyDrawings();
+    }
+    this.pendingClone = null;
     this.dragging = false;
     this.priceDragging = false;
     this.paneResizeIndex = null;
@@ -1461,7 +1594,9 @@ export class ChartRenderer {
     ctx.save();
     ctx.translate(0, main.y);
     if (!this.drawingsHidden) {
-      drawDrawings(ctx, this.drawingLayer.list(), this.drawingLayer.selected?.id ?? null, this.drawingCtx(), this.legend.decimals);
+      const sel = this.drawingLayer.selectedIdList;
+      const primary = sel.length > 0 ? sel[sel.length - 1] : null;
+      drawDrawings(ctx, this.drawingLayer.list(), primary, this.drawingCtx(), this.legend.decimals, sel.slice(0, -1));
     }
     // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记
     drawTrading(

@@ -9,13 +9,17 @@ interface ObjectTreeProps {
   onClose: () => void;
 }
 
-/** 对象树：画线列表的显示/锁定/删除/选中 */
+/** 对象树：画线列表的显示/锁定/删除/选中/多选 */
 export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
   const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!renderer) return;
-    const sync = () => setDrawings(renderer.listDrawings());
+    const sync = () => {
+      setDrawings(renderer.listDrawings());
+      setSelectedIds(renderer.selectedDrawingIds);
+    };
     sync();
     return renderer.onDrawingsChanged(sync);
   }, [renderer]);
@@ -25,7 +29,10 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
   return (
     <div style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <strong style={{ color: 'var(--text)', fontSize: 12 }}>对象树（{drawings.length}）</strong>
+        <strong style={{ color: 'var(--text)', fontSize: 12 }}>
+          对象树（{drawings.length}）
+          {selectedIds.length > 1 && <span style={{ color: 'var(--accent)', fontWeight: 400 }}>{` · 已选 ${selectedIds.length}`}</span>}
+        </strong>
         <div style={{ display: 'flex', gap: 6 }}>
           <button style={btn} onClick={() => renderer.undoDrawing()} title="撤销 (Ctrl+Z)">
             <Undo2 size={14} />
@@ -43,6 +50,7 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
         <div
           key={d.id}
           data-testid="object-row"
+          data-selected={selectedIds.includes(d.id)}
           onDoubleClick={() => useDrawingStore.getState().setSettingsFor(d.id)}
           style={{
             display: 'flex',
@@ -52,13 +60,17 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             borderRadius: 4,
             fontSize: 11,
             color: 'var(--text)',
-            background: renderer.selectedDrawingId === d.id ? 'var(--panel-2)' : 'transparent',
+            background: selectedIds.includes(d.id) ? 'var(--panel-2)' : 'transparent',
           }}
         >
           <span style={{ width: 10, height: 10, background: d.style.color, borderRadius: 2, flexShrink: 0 }} />
           <span
             style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
-            onClick={() => renderer.selectDrawing(d.id)}
+            onClick={(e) => {
+              // B7：Ctrl+点击行 = 加入/移出多选集合（与画布 Ctrl+点击同语义）
+              if (e.ctrlKey || e.metaKey) renderer.toggleDrawingSelection(d.id);
+              else renderer.selectDrawing(d.id);
+            }}
             title={labelOf(d)}
           >
             {labelOf(d)}
@@ -106,6 +118,8 @@ function labelOf(d: Drawing): string {
     trendline: '趋势线', ray: '射线', hline: '水平线', vline: '垂直线', arrow: '箭头',
     'info-line': '信息线', channel: '平行通道', rect: '矩形', ellipse: '椭圆', path: '路径',
     text: `文本「${d.style.text ?? ''}」`, fib: '斐波那契回撤',
+    'fib-extension': '斐波那契扩展', 'fib-fan': '斐波那契扇形', 'fib-arc': '斐波那契弧线',
+    'fib-timezone': '斐波那契时区', 'fib-auto': 'Auto Fib（自动回撤）',
   };
   return names[d.type] ?? d.type;
 }

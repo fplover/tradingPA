@@ -79,6 +79,23 @@ export function getToolDef(id: DrawingTypeId): DrawingToolDef {
   return DRAWING_TOOLS.find((t) => t.id === id) ?? DRAWING_TOOLS[0];
 }
 
+/** Shift 拖动约束工具（TV：限制水平/垂直）：线类工具 + 斐波那契家族。
+ *  hline/vline 天然单轴无需约束；rect/ellipse/path/text/channel 不约束（TV 同） */
+const CONSTRAINABLE_TOOLS: ReadonlySet<DrawingTypeId> = new Set<DrawingTypeId>([
+  'trendline',
+  'ray',
+  'arrow',
+  'info-line',
+  'fib',
+  'fib-extension',
+  'fib-fan',
+  'fib-arc',
+]);
+
+export function isConstrainableTool(id: DrawingTypeId): boolean {
+  return CONSTRAINABLE_TOOLS.has(id);
+}
+
 /** 序列化（对象树/导入导出用） */
 export function serializeDrawings(drawings: readonly Drawing[]): string {
   return JSON.stringify(drawings);

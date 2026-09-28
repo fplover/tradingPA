@@ -175,12 +175,18 @@ export function useTvShortcuts(options: TvShortcutsOptions) {
       } else if (k === '-' || k === '_') {
         e.preventDefault();
         eachChartRenderer((r) => r.zoom(1 / 1.2));
-      } else if (k === 'ArrowLeft') {
+      } else if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowUp' || k === 'ArrowDown') {
+        // B7：有选中画线时方向键 = 像素步长微调（Shift = 大步长 10px，TV 肌肉记忆）；
+        // 无选中时保留 TV 默认：左右方向键平移视口（3 格）
         e.preventDefault();
-        eachChartRenderer((r) => r.pan(-3));
-      } else if (k === 'ArrowRight') {
-        e.preventDefault();
-        eachChartRenderer((r) => r.pan(3));
+        const step = e.shiftKey ? 10 : 1;
+        const dx = k === 'ArrowLeft' ? -step : k === 'ArrowRight' ? step : 0;
+        const dy = k === 'ArrowUp' ? -step : k === 'ArrowDown' ? step : 0;
+        let nudged = false;
+        eachChartRenderer((r) => {
+          if (r.nudgeSelectedDrawing(dx, dy)) nudged = true;
+        });
+        if (!nudged && dx !== 0) eachChartRenderer((r) => r.pan(dx > 0 ? 3 : -3));
       } else if (k === 'Escape') {
         eachChartRenderer((r) => r.cancelPlacing());
         useDrawingStore.getState().setActiveTool(null);
