@@ -99,7 +99,7 @@ export function StatusBar({
       <button
         onClick={onOpenSettings}
         title="图表设置"
-        aria-label="图表设置"
+        aria-label="图表底部设置"
         style={{
           display: 'flex',
           alignItems: 'center',
