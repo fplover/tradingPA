@@ -7,7 +7,8 @@ import type { Instrument } from '@/types/instrument';
 import { MARKETS } from '@/types/instrument';
 import { CHART_TYPES, TIMEFRAMES, getTimeframe, type ChartTypeId, type TimeframeId } from '@/types/market';
 import { useIndicatorStore } from '@/store/indicatorStore';
-import { useLayoutStore } from '@/store/layoutStore';
+import { useLayoutStore, setLayoutBridges } from '@/store/layoutStore';
+import { LayoutSaveMenu } from '@/features/layout/LayoutSaveMenu';
 import { useThemeStore } from '@/store/themeStore';
 import { selectActiveInstrument, useWatchlistStore } from '@/store/watchlistStore';
 import { useQuotePolling, useQuoteStore } from '@/store/quoteStore';
@@ -108,6 +109,10 @@ export default function App() {
   const [hideDrawings, setHideDrawings] = useState(false);
   const [renderer, setRenderer] = useState<ChartRenderer | null>(null);
   const rendererRef = useRef<ChartRenderer | null>(null);
+  // B8 布局存取：周期/图表类型经 ref 供 store 桥接读取；主图画线在 renderer 未就绪时暂存
+  const timeframeRef = useRef(timeframe);
+  const chartTypeRef = useRef(chartType);
+  const pendingDrawingsRef = useRef<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [chartMenu, setChartMenu] = useState<ChartMenuState | null>(null);
   const [legendMenu, setLegendMenu] = useState<{ x: number; y: number } | null>(null);
@@ -185,6 +190,38 @@ export default function App() {
   useEffect(() => {
     renderer?.setLegendOptions(legendOpts);
   }, [renderer, legendOpts]);
+
+  useEffect(() => {
+    timeframeRef.current = timeframe;
+  }, [timeframe]);
+  useEffect(() => {
+    chartTypeRef.current = chartType;
+  }, [chartType]);
+
+  // B8：向 layoutStore 注册桥接（周期/类型是 App state，画线在主图 renderer 里，store 不直接持有）
+  useEffect(() => {
+    setLayoutBridges({
+      getChartState: () => ({ timeframe: timeframeRef.current, chartType: chartTypeRef.current }),
+      setChartState: (tf, ct) => {
+        setTimeframe(tf);
+        setChartType(ct);
+      },
+      getDrawings: () => rendererRef.current?.exportDrawings() ?? null,
+      applyDrawings: (raw) => {
+        // 始终记录最近一次下发的画线：renderer 未就绪（刷新恢复早于 Chart 挂载）或
+        // renderer 重建（StrictMode 双挂载 / 布局档位切换回单图）时由 onRendererReady 补放
+        pendingDrawingsRef.current = raw;
+        rendererRef.current?.importDrawings(raw);
+      },
+    });
+    return () => setLayoutBridges(null);
+  }, []);
+
+  // B8：刷新后自动恢复上次激活布局（无存档时 consumePendingRestore 返回 null，走默认）
+  useEffect(() => {
+    const id = useLayoutStore.getState().consumePendingRestore();
+    if (id) useLayoutStore.getState().loadLayout(id);
+  }, []);
 
   // 快捷键：/ 或 Ctrl+K 打开品种搜索（输入框内不劫持）
   useEffect(() => {
@@ -311,6 +348,7 @@ export default function App() {
             </IconButton>
           </>
         )}
+        <LayoutSaveMenu />
         <LayoutMenu />
         <IconButton onClick={() => setChartSettingsOpen(true)} title="图表设置">
           <Settings2 size={15} />
@@ -363,6 +401,11 @@ export default function App() {
                   onRendererReady={(r) => {
                     rendererRef.current = r;
                     setRenderer(r);
+                    // 布局还原的画线在 renderer 就绪前已暂存，这里补放后清空
+                    if (r && pendingDrawingsRef.current) {
+                      r.importDrawings(pendingDrawingsRef.current);
+                      pendingDrawingsRef.current = null;
+                    }
                   }}
                   onNeedsMoreHistory={series.loadMore}
                   onChartContextMenu={(price, _time, x, y) => setChartMenu({ price, x, y })}

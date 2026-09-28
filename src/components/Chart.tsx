@@ -6,6 +6,7 @@ import type { IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
+import { useLayoutStore } from '@/store/layoutStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
@@ -37,6 +38,10 @@ interface ChartProps {
   /** 参与多图表联动（十字光标/视口同步） */
   sync?: boolean;
 }
+
+/** 布局快捷键的多实例事件去重（同一 KeyboardEvent 只处理一次）；
+ *  TODO(B1): 快捷键统一进 hooks/useTvShortcuts.ts 后删除 */
+const handledLayoutKeys = new WeakSet<KeyboardEvent>();
 
 /** React 只负责挂载/卸载引擎与同步配置，渲染循环完全不经过 React */
 export function Chart({
@@ -124,11 +129,28 @@ export function Chart({
 
   // 键盘快捷键：Esc 取消 / Delete 删除 / Ctrl+Z 撤销 / Ctrl+Y 重做 / Enter 完成路径
   // +/- 缩放、←/→ 平移（对齐 TradingView）；菜单/弹窗打开时不劫持方向键
+  // B8 布局快捷键：Ctrl+S 保存当前布局 / . 打开布局菜单。多图表下同一 keydown 会派发到
+  // 每个 Chart 实例，用事件对象去重；TODO(B1): 快捷键统一收敛到 hooks/useTvShortcuts.ts 后移除本段
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA')) return;
       if (target && target.closest('[role="menu"], [role="dialog"], [role="listbox"]')) return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        if (!handledLayoutKeys.has(e)) {
+          handledLayoutKeys.add(e);
+          e.preventDefault(); // 阻止浏览器「网页另存为」对话框
+          useLayoutStore.getState().saveCurrentLayout();
+        }
+        return;
+      }
+      if (e.key === '.' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (!handledLayoutKeys.has(e)) {
+          handledLayoutKeys.add(e);
+          useLayoutStore.getState().setSaveMenuOpen(true);
+        }
+        return;
+      }
       const renderer = rendererRef.current;
       if (!renderer) return;
       if (e.key === 'Escape') {
