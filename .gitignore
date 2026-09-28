@@ -10,3 +10,8 @@ playwright-report
 .vscode/*
 !.vscode/extensions.json
 .shots/
+
+# agent 工作数据与诊断草稿
+.workbuddy/
+*.log
+vite.config.ts.timestamp-*
