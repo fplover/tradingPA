@@ -2,7 +2,7 @@ import type { Drawing, DrawingPoint, DrawingTypeId } from '@/engine/drawing/type
 import { DRAWING_TOOLS, getToolDef } from '@/engine/drawing/types';
 import type { ParamValue } from '@/indicators/core/types';
 import type { ActiveIndicator } from '@/store/indicatorStore';
-import { CHART_TYPES, TIMEFRAMES, type ChartTypeId, type TimeframeId } from '@/types/market';
+import { CHART_TYPES, isKnownTimeframeId, type ChartTypeId, type TimeframeId } from '@/types/market';
 
 /** 布局快照 schema 版本。v1 = B8 首发；未来不兼容变更递增版本号，由 migrateSnapshot 负责升级 */
 export const LAYOUT_SNAPSHOT_VERSION = 1;
@@ -57,7 +57,8 @@ export interface LayoutsFile {
 
 // ---------- 迁移与校验 ----------
 
-const TIMEFRAME_IDS = new Set<string>(TIMEFRAMES.map((t) => t.id));
+// 周期 id 校验用活注册表（isKnownTimeframeId）：自定义周期 custom:N 为运行时注册，
+// 模块级 Set 快照认不得 → 含自定义周期的布局恢复会被静默回退 '1m'（B5 接线修复）
 const CHART_TYPE_IDS = new Set<string>(CHART_TYPES.map((c) => c.id));
 const DRAWING_TYPE_IDS = new Set<string>(DRAWING_TOOLS.map((t) => t.id));
 const LAYOUT_IDS = new Set([1, 2, 4, 6, 8]);
@@ -126,7 +127,7 @@ function normalizeCell(v: unknown): LayoutCellSnapshot | null {
   if (!isPlainObject(v)) return null;
   const { symbol, timeframe, chartType } = v;
   if (typeof symbol !== 'string' || symbol.length === 0) return null;
-  if (!TIMEFRAME_IDS.has(timeframe as string) || !CHART_TYPE_IDS.has(chartType as string)) return null;
+  if (!isKnownTimeframeId(timeframe as string) || !CHART_TYPE_IDS.has(chartType as string)) return null;
   return { symbol, timeframe: timeframe as TimeframeId, chartType: chartType as ChartTypeId };
 }
 
@@ -159,7 +160,7 @@ export function migrateSnapshot(raw: unknown): LayoutSnapshot | null {
     savedAt: asFiniteNumber(raw.savedAt, 0),
     layout: LAYOUT_IDS.has(layout) ? layout : 1,
     activeInstrumentId: typeof raw.activeInstrumentId === 'string' ? raw.activeInstrumentId : null,
-    timeframe: TIMEFRAME_IDS.has(raw.timeframe as string) ? (raw.timeframe as TimeframeId) : '1m',
+    timeframe: isKnownTimeframeId(raw.timeframe as string) ? (raw.timeframe as TimeframeId) : '1m',
     chartType: CHART_TYPE_IDS.has(raw.chartType as string) ? (raw.chartType as ChartTypeId) : 'candles',
     indicators,
     drawings: drawings.length > 0 ? drawings : null,

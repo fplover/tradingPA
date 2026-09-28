@@ -31,6 +31,8 @@ import { ChartSettingsDialog } from '@/features/settings/ChartSettingsDialog';
 import { ShortcutsDialog } from '@/features/settings/ShortcutsDialog';
 import { GoToDateDialog } from '@/features/market/GoToDateDialog';
 import { IntervalInputDialog } from '@/features/market/IntervalInputDialog';
+import { CustomIntervalDialog } from '@/features/market/CustomIntervalDialog';
+import { CUSTOM_INTERVAL_ACTION, customIntervalOptions, isCustomIntervalId } from '@/features/market/customInterval';
 import { eachChartRenderer, useTvShortcuts } from '@/hooks/useTvShortcuts';
 import { LegendContextMenu } from '@/features/indicators/LegendContextMenu';
 import { PineEditorPanel } from '@/features/pine/PineEditorPanel';
@@ -54,7 +56,15 @@ function tfGroup(id: TimeframeId): string {
   return '日及以上';
 }
 
-const TF_OPTIONS: ToolbarOption[] = TIMEFRAMES.map((t) => ({ value: t.id, label: t.label, group: tfGroup(t.id) }));
+/** 周期下拉选项：内置档位（自定义 id 运行时注册进 TIMEFRAMES，此处滤掉改由「自定义」分组展示）
+ *  + 已存自定义周期 + 「自定义间隔…」动作项。运行时增删自定义周期后经 customVer 刷新重算。 */
+function buildTfOptions(): ToolbarOption[] {
+  return [
+    ...TIMEFRAMES.filter((t) => !isCustomIntervalId(t.id)).map((t) => ({ value: t.id, label: t.label, group: tfGroup(t.id) })),
+    ...customIntervalOptions(),
+    { value: CUSTOM_INTERVAL_ACTION, label: '自定义间隔…', group: '自定义' },
+  ];
+}
 const CT_OPTIONS: ToolbarOption[] = CHART_TYPES.map((c) => ({ value: c.id, label: c.label, group: c.timeBased ? '常规' : '特殊' }));
 
 function ThemeButton() {
@@ -105,6 +115,9 @@ function SymbolButton({ instrument }: { instrument: Instrument | null }) {
 
 export default function App() {
   const [timeframe, setTimeframe] = useState<TimeframeId>('1m');
+  const [customIntervalOpen, setCustomIntervalOpen] = useState(false);
+  const [customVer, setCustomVer] = useState(0); // 自定义周期增删后刷新下拉选项快照
+  const tfOptions = useMemo(buildTfOptions, [customVer]);
   const [chartType, setChartType] = useState<ChartTypeId>('candles');
   const [logScale, setLogScale] = useState(false);
   const [autoScale, setAutoScale] = useState(true);
@@ -322,9 +335,16 @@ export default function App() {
             <ToolbarSelect
               ariaLabel="周期"
               value={timeframe}
-              options={TF_OPTIONS}
+              options={tfOptions}
+              label={tf.label}
               minWidth={104}
-              onChange={(v) => setTimeframe(v as TimeframeId)}
+              onChange={(v) => {
+                if (v === CUSTOM_INTERVAL_ACTION) {
+                  setCustomIntervalOpen(true);
+                  return;
+                }
+                setTimeframe(v as TimeframeId);
+              }}
             />
             <ToolbarSelect
               ariaLabel="图表类型"
@@ -506,6 +526,15 @@ export default function App() {
         currentLabel={tf.label}
         onOpenChange={setIntervalOpen}
         onApply={applyInterval}
+      />
+      <CustomIntervalDialog
+        open={customIntervalOpen}
+        onOpenChange={(o) => {
+          setCustomIntervalOpen(o);
+          if (!o) setCustomVer((v) => v + 1); // 关闭浮层后刷新下拉（可能新增/删除了自定义周期）
+        }}
+        currentLabel={tf.label}
+        onApply={(t) => setTimeframe(t.id as TimeframeId)}
       />
       <GoToDateDialog open={goToDateOpen} onClose={() => setGoToDateOpen(false)} bars={bars} onGoToDate={handleGoToDate} />
       <ChartSettingsDialog
