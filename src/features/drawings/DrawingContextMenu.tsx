@@ -2,7 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ChevronRight, Settings, Trash2, Copy } from 'lucide-react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useDrawingStore } from '@/store/drawingStore';
-import { fontSize, shadow, space, zIndex } from '@/ui/tokens';
+import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 export interface DrawingMenuState {
   id: string;
@@ -44,7 +44,7 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
             }}
           >
             <span style={slot}>
-              <Settings size={13} />
+              <Settings size={14} />
             </span>
             设置
           </DropdownMenu.Item>
@@ -57,7 +57,7 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
             }}
           >
             <span style={slot}>
-              <Trash2 size={13} />
+              <Trash2 size={14} />
             </span>
             移除
           </DropdownMenu.Item>
@@ -70,7 +70,7 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
             }}
           >
             <span style={slot}>
-              <Copy size={13} />
+              <Copy size={14} />
             </span>
             克隆
           </DropdownMenu.Item>
@@ -78,7 +78,7 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
           <DropdownMenu.Sub>
             <DropdownMenu.SubTrigger className="tv-menu-item" style={itemStyle}>
               <span style={slot}>
-                <ChevronRight size={13} />
+                <ChevronRight size={14} />
               </span>
               视觉顺序
             </DropdownMenu.SubTrigger>
@@ -109,7 +109,7 @@ const menuStyle: React.CSSProperties = {
   minWidth: 150,
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.md,
   padding: '4px 0',
   zIndex: zIndex.dropdown,
   boxShadow: shadow.menu,

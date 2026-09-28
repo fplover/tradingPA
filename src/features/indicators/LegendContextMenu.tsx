@@ -1,7 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, Settings } from 'lucide-react';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
-import { fontSize, shadow, space, zIndex } from '@/ui/tokens';
+import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 export interface LegendMenuState {
   x: number;
@@ -49,7 +49,7 @@ export function LegendContextMenu({ state, legend, onLegend, onOpenSettings, onC
               onSelect={(e) => e.preventDefault()}
               onCheckedChange={(v) => onLegend({ [t.key]: v } as Partial<LegendOptions>)}
             >
-              <span style={checkSlot}>{legend[t.key] ? <Check size={13} /> : null}</span>
+              <span style={checkSlot}>{legend[t.key] ? <Check size={14} /> : null}</span>
               {t.label}
             </DropdownMenu.CheckboxItem>
           ))}
@@ -63,7 +63,7 @@ export function LegendContextMenu({ state, legend, onLegend, onOpenSettings, onC
             }}
           >
             <span style={checkSlot}>
-              <Settings size={13} />
+              <Settings size={14} />
             </span>
             设置
           </DropdownMenu.Item>
@@ -77,7 +77,7 @@ const menuStyle: React.CSSProperties = {
   minWidth: 160,
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.md,
   padding: '4px 0',
   zIndex: zIndex.dropdown,
   boxShadow: shadow.menu,

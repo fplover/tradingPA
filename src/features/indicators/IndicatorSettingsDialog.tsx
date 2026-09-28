@@ -6,7 +6,9 @@ import type { ParamValue } from '@/indicators/core/types';
 import type { PlotStyleOverride } from '@/store/indicatorStore';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { TIMEFRAMES, type TimeframeId } from '@/types/market';
-import { fontSize, shadow, space, zIndex } from '@/ui/tokens';
+import { CheckRow, Checkbox } from '@/ui/primitives';
+import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
+import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 /** TV 页签顺序：输入 → 样式 → 可见范围（精度折进样式页的「覆盖最小tick」） */
 const TABS = ['输入', '样式', '可见范围'] as const;
@@ -19,6 +21,8 @@ const PRECISIONS: Array<{ label: string; value: number | undefined }> = [
   { label: '1/1000 (0.000)', value: 3 },
   { label: '1/10000 (0.0000)', value: 4 },
 ];
+
+const LINE_WIDTH_OPTIONS: ToolbarOption[] = [1, 2, 3, 4].map((w) => ({ value: String(w), label: `${w}px` }));
 
 function tfGroup(id: TimeframeId): string {
   if (id.endsWith('s')) return '秒';
@@ -63,7 +67,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
             <Dialog.Title style={titleStyle}>{active.displayName || def.name} 设置</Dialog.Title>
             <Dialog.Close asChild>
               <button style={closeStyle} aria-label="关闭">
-                <X size={15} />
+                <X size={16} />
               </button>
             </Dialog.Close>
           </div>
@@ -105,44 +109,31 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                           aria-label={`${plot.label} 颜色`}
                         />
                         {(plot.style.kind === 'line' || plot.style.kind === 'band') && (
-                          <select
+                          <ToolbarSelect
+                            ariaLabel={`${plot.label} 线宽`}
                             value={String(st?.lineWidth ?? plot.style.lineWidth ?? 1)}
-                            onChange={(e) => setStyle(plot.key, { lineWidth: Number(e.target.value) })}
-                            style={{ ...inputStyle, width: 64 }}
-                            aria-label={`${plot.label} 线宽`}
-                          >
-                            {[1, 2, 3, 4].map((w) => (
-                              <option key={w} value={w}>
-                                {w}px
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <label style={checkLabelStyle}>
-                          <input
-                            type="checkbox"
-                            aria-label={`${plot.label} 显示`}
-                            checked={st?.hidden !== true}
-                            onChange={(e) => setStyle(plot.key, { hidden: !e.target.checked })}
+                            options={LINE_WIDTH_OPTIONS}
+                            minWidth={72}
+                            onChange={(v) => setStyle(plot.key, { lineWidth: Number(v) })}
                           />
-                          显示
-                        </label>
+                        )}
+                        <Checkbox
+                          checked={st?.hidden !== true}
+                          ariaLabel={`${plot.label} 显示`}
+                          onChange={(e) => setStyle(plot.key, { hidden: !e })}
+                        />
+                        显示
                       </Row>
                     );
                   })}
                   <Row label="覆盖最小tick">
-                    <select
+                    <ToolbarSelect
+                      ariaLabel="覆盖最小tick"
                       value={String(active.precision ?? '')}
-                      onChange={(e) => updateInstance(id, { precision: e.target.value === '' ? undefined : Number(e.target.value) })}
-                      style={{ ...inputStyle, width: 120 }}
-                      aria-label="覆盖最小tick"
-                    >
-                      {PRECISIONS.map((p) => (
-                        <option key={p.label} value={p.value ?? ''}>
-                          {p.label}
-                        </option>
-                      ))}
-                    </select>
+                      options={PRECISIONS.map((p) => ({ value: String(p.value ?? ''), label: p.label }))}
+                      minWidth={132}
+                      onChange={(v) => updateInstance(id, { precision: v === '' ? undefined : Number(v) })}
+                    />
                   </Row>
                 </>
               )}
@@ -178,28 +169,29 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                         />
                       )}
                       {p.type === 'boolean' && (
-                        <input type="checkbox" checked={Boolean(active.params[p.key] ?? p.default)} onChange={(e) => setParam(p.key, e.target.checked)} />
+                        <Checkbox checked={Boolean(active.params[p.key] ?? p.default)} ariaLabel={p.label} onChange={(v) => setParam(p.key, v)} />
                       )}
                       {p.type === 'select' && (
-                        <select value={String(active.params[p.key] ?? p.default)} onChange={(e) => setParam(p.key, e.target.value)} style={{ ...inputStyle, width: 120 }}>
-                          {p.options?.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
+                        <ToolbarSelect
+                          ariaLabel={p.label}
+                          value={String(active.params[p.key] ?? p.default)}
+                          options={(p.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))}
+                          minWidth={120}
+                          onChange={(v) => setParam(p.key, v)}
+                        />
                       )}
                     </Row>
                   ))}
                 </>
               )}
 
-              {tab === '可见范围' && (                <>
+              {tab === '可见范围' && (
+                <>
                   <Row label="全部周期">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={active.visibleTimeframes === undefined}
-                      onChange={(e) => updateInstance(id, { visibleTimeframes: e.target.checked ? undefined : [] })}
+                      ariaLabel="全部周期"
+                      onChange={(e) => updateInstance(id, { visibleTimeframes: e ? undefined : [] })}
                     />
                   </Row>
                   {['秒', '分钟', '小时', '日', '周/月'].map((group) => {
@@ -209,24 +201,21 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                     return (
                       <div key={group} style={{ marginBottom: space.md }}>
                         <div style={groupLabelStyle}>
-                          <label style={checkLabelStyle}>
-                            <input
-                              type="checkbox"
-                              checked={allOn}
-                              onChange={(e) => {
-                                const next = e.target.checked
-                                  ? [...new Set([...checkedTfs, ...items.map((t) => t.id)])]
-                                  : checkedTfs.filter((t) => !items.some((i) => i.id === t));
-                                updateInstance(id, { visibleTimeframes: next.length === TIMEFRAMES.length ? undefined : next });
-                              }}
-                            />
-                            {group}
-                          </label>
+                          <CheckRow
+                            label={group}
+                            checked={allOn}
+                            onChange={(e) => {
+                              const next = e
+                                ? [...new Set([...checkedTfs, ...items.map((t) => t.id)])]
+                                : checkedTfs.filter((t) => !items.some((i) => i.id === t));
+                              updateInstance(id, { visibleTimeframes: next.length === TIMEFRAMES.length ? undefined : next });
+                            }}
+                          />
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.sm, paddingLeft: 22 }}>
                           {items.map((t) => (
                             <label key={t.id} style={checkLabelStyle}>
-                              <input type="checkbox" checked={checkedTfs.includes(t.id)} onChange={(e) => setTf(t.id, e.target.checked)} />
+                              <Checkbox checked={checkedTfs.includes(t.id)} ariaLabel={t.label} onChange={(e) => setTf(t.id, e)} />
                               {t.label}
                             </label>
                           ))}
@@ -280,8 +269,8 @@ const contentStyle: React.CSSProperties = {
   flexDirection: 'column',
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
-  boxShadow: shadow.menu,
+  borderRadius: radius.lg,
+  boxShadow: shadow.modal,
   zIndex: zIndex.modal,
   outline: 'none',
 };

@@ -118,7 +118,7 @@ export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps)
                   }}
                 />
               )}
-              <Icon size={17} />
+              <Icon size={18} />
               {id === 'alerts' && alertCount > 0 && <span style={badgeStyle}>{alertCount}</span>}
             </button>
           );

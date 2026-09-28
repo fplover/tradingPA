@@ -1,6 +1,6 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronDown } from 'lucide-react';
-import { fontSize, shadow, space, zIndex } from './tokens';
+import { fontSize, radius, shadow, space, zIndex } from './tokens';
 
 export interface ToolbarOption {
   value: string;
@@ -50,7 +50,7 @@ export function ToolbarSelect({ value, options, onChange, ariaLabel, icon, label
               {g.name && <DropdownMenu.Label style={groupLabelStyle}>{g.name}</DropdownMenu.Label>}
               {g.items.map((o) => (
                 <DropdownMenu.Item key={o.value} className="tv-menu-item" style={itemStyle} onSelect={() => onChange(o.value)}>
-                  <span style={checkSlot}>{o.value === value ? <Check size={13} /> : null}</span>
+                  <span style={checkSlot}>{o.value === value ? <Check size={14} /> : null}</span>
                   {o.label}
                 </DropdownMenu.Item>
               ))}
@@ -70,7 +70,7 @@ const triggerStyle: React.CSSProperties = {
   height: 26,
   padding: `0 ${space.sm}px`,
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   fontSize: fontSize.md,
   cursor: 'pointer',
   flexShrink: 0,
@@ -81,7 +81,7 @@ const menuStyle: React.CSSProperties = {
   overflowY: 'auto',
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.md,
   padding: '4px 0',
   zIndex: zIndex.dropdown,
   boxShadow: shadow.menu,

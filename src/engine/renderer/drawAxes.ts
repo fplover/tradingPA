@@ -41,6 +41,9 @@ export function drawGrid(
 
 /** 紧凑数字格式见 @/data/format（画布与 UI 共用） */
 
+/** 价格轴文字距轴右缘的内缩（TV 规格） */
+const AXIS_TEXT_INSET = 58;
+
 export function drawPriceAxis(
   ctx: CanvasRenderingContext2D,
   priceScale: PriceScale,
@@ -59,12 +62,13 @@ export function drawPriceAxis(
 
   ctx.fillStyle = theme.axisText;
   ctx.font = `11px ${TV_FONT}`;
-  ctx.textAlign = 'left';
+  // TV 价格轴标签右对齐贴轴右缘（alignLabels 默认 right），留 6px 呼吸
+  ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (const price of priceScale.ticks(6)) {
     const y = priceScale.priceToY(price);
     if (y < 10 || y > geo.chartH - 2) continue;
-    ctx.fillText(compact ? formatCompact(price) : priceScale.toLabel(price, decimals), geo.chartW + 6, y);
+    ctx.fillText(compact ? formatCompact(price) : priceScale.toLabel(price, decimals), geo.chartW + AXIS_TEXT_INSET, y);
   }
 }
 

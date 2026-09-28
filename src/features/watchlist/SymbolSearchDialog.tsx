@@ -7,7 +7,7 @@ import type { SearchHit } from '@/data/sources/types';
 import { dataRegistry } from '@/data/sources/registry';
 import { useWatchlistStore } from '@/store/watchlistStore';
 import { useSymbolSearchStore } from './searchStore';
-import { fontSize, shadow, space, zIndex } from '@/ui/tokens';
+import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 /** 顶部分类。按市场而非纯资产类别切分，A股/美股/国内外期货才能各自成组。 */
 interface TabDef {
@@ -140,7 +140,7 @@ export function SymbolSearchDialog() {
 
           {/* 搜索输入 */}
           <div style={inputRowStyle}>
-            <Search size={19} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+            <Search size={16} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
             <input
               ref={inputRef}
               value={query}
@@ -154,7 +154,7 @@ export function SymbolSearchDialog() {
             {loading && <LoaderCircle size={16} className="spin" style={{ color: 'var(--text-faint)', flexShrink: 0 }} />}
             {query && !loading && (
               <button onClick={() => setQuery('')} aria-label="清空搜索" style={clearBtnStyle}>
-                <X size={15} />
+                <X size={16} />
               </button>
             )}
           </div>
@@ -356,8 +356,8 @@ const contentStyle: React.CSSProperties = {
   flexDirection: 'column',
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 8,
-  boxShadow: shadow.menu,
+  borderRadius: radius.lg,
+  boxShadow: shadow.modal,
   zIndex: zIndex.modal,
   overflow: 'hidden',
   outline: 'none',

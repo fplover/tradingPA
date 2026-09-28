@@ -68,13 +68,13 @@ export function PineEditorPanel() {
           </select>
         )}
         <button style={btnStyle} onClick={() => run()} title="运行（编译草稿）">
-          <Play size={13} /> 运行
+          <Play size={14} /> 运行
         </button>
         <button style={btnStyle} onClick={() => save()} title="保存脚本">
-          <Save size={13} /> 保存
+          <Save size={14} /> 保存
         </button>
         <button style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={() => addDraftToChart()} title="添加到图表">
-          <Plus size={13} /> 添加到图表
+          <Plus size={14} /> 添加到图表
         </button>
         <button style={iconBtnStyle} onClick={() => setCollapsed(!collapsed)} title={collapsed ? '展开编辑器' : '收起编辑器'} aria-label={collapsed ? '展开编辑器' : '收起编辑器'}>
           {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, Camera, CandlestickChart, ChevronDown, FileCode2, Maximize2, Play, Redo2, RefreshCw, Save, Search, Settings2, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
+import { BarChart3, Camera, CandlestickChart, ChevronDown, FileCode2, LoaderCircle, Maximize2, Play, Redo2, RefreshCw, Save, Search, Settings2, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
@@ -16,6 +16,8 @@ import { useReplayStore } from '@/store/replayStore';
 import { useAlertStore } from '@/store/alertStore';
 import { decimalsFor } from '@/data/format';
 import { useChartSeries } from '@/features/market/useChartSeries';
+import { useRightDockStore } from '@/features/rightbar/rightPanelStore';
+import { useDrawingStore } from '@/store/drawingStore';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
@@ -28,6 +30,7 @@ import { RightSide } from '@/features/rightbar/RightSide';
 import { StatusBar } from '@/features/market/StatusBar';
 import { ChartContextMenu, type ChartMenuState } from '@/features/market/ChartContextMenu';
 import { ChartSettingsDialog } from '@/features/settings/ChartSettingsDialog';
+import { ShortcutsDialog } from '@/features/settings/ShortcutsDialog';
 import { LegendContextMenu } from '@/features/indicators/LegendContextMenu';
 import { PineEditorPanel } from '@/features/pine/PineEditorPanel';
 import { usePineStore } from '@/store/pineStore';
@@ -58,7 +61,7 @@ function ThemeButton() {
   const toggle = useThemeStore((s) => s.toggle);
   return (
     <IconButton onClick={toggle} title={name === 'dark' ? '切换到浅色' : '切换到深色'}>
-      {name === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+      {name === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
     </IconButton>
   );
 }
@@ -94,7 +97,7 @@ function SymbolButton({ instrument }: { instrument: Instrument | null }) {
           </span>
         )}
       </span>
-      <ChevronDown size={13} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+      <ChevronDown size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
     </button>
   );
 }
@@ -118,6 +121,7 @@ export default function App() {
   const [legendMenu, setLegendMenu] = useState<{ x: number; y: number } | null>(null);
   const [drawingMenu, setDrawingMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
   const [gridVisible, setGridVisible] = useState(true);
@@ -249,6 +253,51 @@ export default function App() {
     a.click();
   };
 
+  // TV 高频快捷键（图表级，输入框/菜单/对话框内不劫持）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+      if (el && el.closest('[role="menu"], [role="dialog"], [role="listbox"]')) return;
+      if (!e.altKey || e.ctrlKey || e.metaKey) {
+        // Ctrl+Alt+H 隐藏所有图形 / ? 打开快捷键面板（无 Alt）
+        if (e.ctrlKey && e.altKey && !e.metaKey && e.key.toLowerCase() === 'h') {
+          e.preventDefault();
+          setHideDrawings((v) => !v);
+        } else if (!e.ctrlKey && !e.metaKey && !e.altKey && e.key === '?') {
+          e.preventDefault();
+          setShortcutsOpen(true);
+        }
+        return;
+      }
+      const key = e.key.toLowerCase();
+      if (key === 'a') {
+        e.preventDefault();
+        useRightDockStore.getState().open('alerts');
+      } else if (key === 'w') {
+        e.preventDefault();
+        if (activeInstrument) useWatchlistStore.getState().add(activeInstrument);
+      } else if (key === 'n') {
+        e.preventDefault();
+        useDrawingStore.getState().setActiveTool('text');
+      } else if (key === 'r') {
+        e.preventDefault();
+        rendererRef.current?.resetView();
+      } else if (key === 'l') {
+        e.preventDefault();
+        setLogScale((v) => !v);
+      } else if (key === 'p') {
+        e.preventDefault();
+        setPercent((v) => !v);
+      } else if (key === 's') {
+        e.preventDefault();
+        handleScreenshot();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeInstrument, handleScreenshot]);
+
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
     else void document.documentElement.requestFullscreen();
@@ -323,51 +372,51 @@ export default function App() {
               }}
               title="回放：点击后在图表上选择 K 线作为起点"
             >
-              <Play size={15} />
+              <Play size={16} />
             </IconButton>
           </>
         )}
         <IconButton active={panelOpen} onClick={() => setPanelOpen(!panelOpen)} title="指标">
-          <BarChart3 size={15} />
+          <BarChart3 size={16} />
         </IconButton>
         <IconButton onClick={saveTemplate} title="保存指标模板">
-          <Save size={15} />
+          <Save size={16} />
         </IconButton>
         <IconButton onClick={loadTemplate} title="加载指标模板">
-          <FolderOpen size={15} />
+          <FolderOpen size={16} />
         </IconButton>
         <ActiveIndicatorChips />
         <span style={{ flex: 1 }} />
         {layout === 1 && (
           <>
             <IconButton onClick={() => rendererRef.current?.undoDrawing()} title="复原">
-              <Undo2 size={15} />
+              <Undo2 size={16} />
             </IconButton>
             <IconButton onClick={() => rendererRef.current?.redoDrawing()} title="重做">
-              <Redo2 size={15} />
+              <Redo2 size={16} />
             </IconButton>
           </>
         )}
         <LayoutSaveMenu />
         <LayoutMenu />
         <IconButton onClick={() => setChartSettingsOpen(true)} title="图表设置">
-          <Settings2 size={15} />
+          <Settings2 size={16} />
         </IconButton>
         <IconButton active={pineOpen} onClick={() => setPineOpen(!pineOpen)} title="Pine 编辑器">
-          <FileCode2 size={15} />
+          <FileCode2 size={16} />
         </IconButton>
         <IconButton onClick={() => useSymbolSearchStore.getState().openSearch('switch')} title="快速搜索">
-          <Search size={15} />
+          <Search size={16} />
         </IconButton>
         <IconButton onClick={toggleFullscreen} title="全屏模式">
-          <Maximize2 size={15} />
+          <Maximize2 size={16} />
         </IconButton>
         <IconButton onClick={handleScreenshot} title="生成快照">
-          <Camera size={15} />
+          <Camera size={16} />
         </IconButton>
         {layout === 1 && (
           <IconButton onClick={series.reload} title={series.mode === 'mock' ? '重新连接实时数据' : '重新加载历史数据'}>
-            <RefreshCw size={15} />
+            <RefreshCw size={16} />
           </IconButton>
         )}
         <ThemeButton />
@@ -423,6 +472,16 @@ export default function App() {
                     <div style={{ fontSize: fontSize.md, color: 'var(--text-faint)', lineHeight: 1.7 }}>{series.statusDetail}</div>
                   </div>
                 )}
+
+                {/* 首批数据未就绪：居中加载指示，避免画布空白无反馈 */}
+                {bars.length === 0 && (series.status === 'idle' || series.status === 'loading' || series.status === 'reconnecting') && (
+                  <div style={noDataStyle}>
+                    <LoaderCircle size={24} className="spin" style={{ color: 'var(--text-faint)', marginBottom: space.sm }} />
+                    <div style={{ fontSize: fontSize.md, color: 'var(--text-faint)' }}>
+                      {series.status === 'reconnecting' ? '正在重新连接数据…' : series.statusDetail || '正在载入 K 线…'}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             {layout === 1 && pineOpen && <PineEditorPanel />}
@@ -438,6 +497,8 @@ export default function App() {
               onToggleAuto={() => setAutoScale((v) => !v)}
               hideStudies={hideStudies}
               onToggleHideStudies={() => setHideStudies((v) => !v)}
+              onOpenSettings={() => setChartSettingsOpen(true)}
+              onShowRange={(fromTime) => rendererRef.current?.showRange(fromTime)}
             />
             {replayActive && (
               <ReplayBar
@@ -468,6 +529,7 @@ export default function App() {
       )}
 
       <SymbolSearchDialog />
+      <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <ChartSettingsDialog
         open={chartSettingsOpen}
         onClose={() => setChartSettingsOpen(false)}
@@ -486,6 +548,7 @@ export default function App() {
         state={chartMenu}
         instrument={activeInstrument}
         renderer={renderer}
+        onOpenSettings={() => setChartSettingsOpen(true)}
         onClose={() => setChartMenu(null)}
       />
       <LegendContextMenu

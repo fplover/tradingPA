@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import type { DrawingTypeId } from '@/engine/drawing/types';
 import { useDrawingStore } from '@/store/drawingStore';
-import { fontSize, space, zIndex } from '@/ui/tokens';
+import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 type ToolbarItem = DrawingTypeId | 'cursor' | 'magnet';
 
@@ -264,7 +264,7 @@ export function DrawingToolbar({
                 }}
               >
                 <Icon
-                  size={17}
+                  size={18}
                   strokeWidth={1.5}
                   style={{ color: active ? 'var(--text-on-accent)' : hovered === gi ? 'var(--text)' : undefined }}
                 />
@@ -299,7 +299,7 @@ export function DrawingToolbar({
                 }}
               >
                 <ChevronRight
-                  size={11}
+                  size={12}
                   style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}
                 />
               </button>
@@ -319,7 +319,7 @@ export function DrawingToolbar({
           onClick={() => setMagnet(!magnet)}
         >
           <span style={{ ...cellStyle, background: magnet ? 'var(--accent)' : hovered === 'magnet' ? 'var(--panel-2)' : 'transparent' }}>
-            <Magnet size={17} strokeWidth={1.5} style={{ color: magnet ? 'var(--text-on-accent)' : undefined }} />
+            <Magnet size={18} strokeWidth={1.5} style={{ color: magnet ? 'var(--text-on-accent)' : undefined }} />
           </span>
         </button>
         <button
@@ -334,7 +334,7 @@ export function DrawingToolbar({
             setBottomMenu(bottomMenu?.kind === 'magnet' ? null : { kind: 'magnet', x: r.right + 1, y: r.top - 6 });
           }}
         >
-          <ChevronRight size={11} style={{ transform: bottomMenu?.kind === 'magnet' ? 'rotate(180deg)' : undefined }} />
+          <ChevronRight size={12} style={{ transform: bottomMenu?.kind === 'magnet' ? 'rotate(180deg)' : undefined }} />
         </button>
       </div>
       <button
@@ -346,7 +346,7 @@ export function DrawingToolbar({
         onClick={() => setStayMode(!stayMode)}
         style={bottomBtnStyle}
       >
-        <MousePointer2 size={17} strokeWidth={1.5} />
+        <MousePointer2 size={18} strokeWidth={1.5} />
       </button>
       <button
         className="rail-btn"
@@ -357,7 +357,7 @@ export function DrawingToolbar({
         onClick={onToggleLock}
         style={bottomBtnStyle}
       >
-        {locked ? <Lock size={17} /> : <Unlock size={17} />}
+        {locked ? <Lock size={18} /> : <Unlock size={18} />}
       </button>
       <button
         className="rail-btn"
@@ -368,7 +368,7 @@ export function DrawingToolbar({
         onClick={onToggleHide}
         style={bottomBtnStyle}
       >
-        {hideDrawings ? <EyeOff size={17} /> : <Eye size={17} />}
+        {hideDrawings ? <EyeOff size={18} /> : <Eye size={18} />}
       </button>
       {/* 清空全部：caret 展开 移除画线/移除指标/移除画线和指标（TV removeAllDrawingTools） */}
       <div style={{ ...controlStyle, marginTop: 'auto' }} onMouseEnter={() => setHovered('remove')} onMouseLeave={() => setHovered(null)}>
@@ -379,7 +379,7 @@ export function DrawingToolbar({
           onClick={() => onRemoveAll('drawings')}
         >
           <span style={{ ...cellStyle, background: hovered === 'remove' ? 'var(--panel-2)' : 'transparent' }}>
-            <Trash2 size={17} strokeWidth={1.5} />
+            <Trash2 size={18} strokeWidth={1.5} />
           </span>
         </button>
         <button
@@ -394,7 +394,7 @@ export function DrawingToolbar({
             setBottomMenu(bottomMenu?.kind === 'remove' ? null : { kind: 'remove', x: r.right + 1, y: r.top - 6 });
           }}
         >
-          <ChevronRight size={11} style={{ transform: bottomMenu?.kind === 'remove' ? 'rotate(180deg)' : undefined }} />
+          <ChevronRight size={12} style={{ transform: bottomMenu?.kind === 'remove' ? 'rotate(180deg)' : undefined }} />
         </button>
       </div>
 
@@ -485,7 +485,7 @@ export function DrawingToolbar({
                     onSelect={() => activate(id)}
                   >
                     <span style={iconSlot}>
-                      <ItemIcon size={15} />
+                      <ItemIcon size={14} />
                     </span>
                     {TOOL_LABELS[id]}
                     {HOTKEYS[id] && <span style={hotkeyStyle}>{HOTKEYS[id]}</span>}
@@ -570,10 +570,10 @@ const menuStyle: React.CSSProperties = {
   maxWidth: 340,
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 6,
+  borderRadius: radius.md,
   padding: 0,
   zIndex: zIndex.dropdown,
-  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+  boxShadow: shadow.popover,
 };
 
 const itemStyle: React.CSSProperties = {

@@ -3,7 +3,7 @@ import { Star, X } from 'lucide-react';
 import { indicatorsByCategory } from '@/indicators/registry';
 import type { IndicatorDef } from '@/indicators/core/types';
 import { useIndicatorStore } from '@/store/indicatorStore';
-import { fontSize, space } from '@/ui/tokens';
+import { fontSize, radius, shadow, space } from '@/ui/tokens';
 
 /** 指标选择面板：TV 形态——搜索 + 扁平列表（收藏置顶）+ 每行星标 + ↑↓/Enter */
 export function IndicatorPanel() {
@@ -87,7 +87,7 @@ export function IndicatorPanel() {
             flexShrink: 0,
           }}
         >
-          <Star size={13} fill={isFav ? 'currentColor' : 'none'} />
+          <Star size={14} fill={isFav ? 'currentColor' : 'none'} />
         </button>
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           <Highlight text={def.name} query={q} />
@@ -112,9 +112,9 @@ export function IndicatorPanel() {
         flexDirection: 'column',
         background: 'var(--panel)',
         border: '1px solid var(--border)',
-        borderRadius: 4,
+        borderRadius: radius.md,
         zIndex: 20,
-        boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
+        boxShadow: shadow.popover,
       }}
     >
       <div style={{ display: 'flex', gap: space.sm, padding: `${space.sm}px ${space.sm}px ${space.xs}px`, flexShrink: 0 }}>
@@ -149,7 +149,7 @@ export function IndicatorPanel() {
           }}
         />
         <button onClick={() => setPanelOpen(false)} style={closeBtnStyle} title="关闭" aria-label="关闭指标面板">
-          <X size={13} />
+          <X size={14} />
         </button>
       </div>
 

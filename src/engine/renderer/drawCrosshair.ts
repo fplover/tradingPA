@@ -86,14 +86,20 @@ export function drawCrosshair(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // 价格轴标签（价格按悬停面板的相对坐标换算）
+  // 价格轴标签（价格按悬停面板的相对坐标换算，标签钳制在该面板内）
   const price = priceScale.yToPrice(crosshair.y - paneY);
-  drawAxisLabel(ctx, geo.chartW + 1, crosshair.y, priceScale.toLabel(price, legend.decimals), 'price');
+  drawAxisLabel(ctx, geo.chartW + 1, crosshair.y, priceScale.toLabel(price, legend.decimals), 'price', {
+    minY: paneY,
+    maxY: paneY + paneHeight - 18,
+  });
 
-  // 时间轴标签
+  // 时间轴标签（水平 clamp 在图表宽度内）
   const time = crosshair.barIndex >= 0 ? crosshair.time : 0;
   if (time > 0) {
-    drawAxisLabel(ctx, snapX, geo.chartH + 1, formatTime(time, viewport.spacing), 'time');
+    drawAxisLabel(ctx, snapX, geo.chartH + 1, formatTime(time, viewport.spacing), 'time', {
+      minX: 0,
+      maxX: geo.chartW,
+    });
   }
 }
 
@@ -258,18 +264,25 @@ function drawAxisLabel(
   y: number,
   text: string,
   kind: 'price' | 'time',
+  bounds?: { minY?: number; maxY?: number; minX?: number; maxX?: number },
 ): void {
   ctx.font = `11px ${TV_FONT}`;
   const w = ctx.measureText(text).width + 12;
   const h = 18;
-  let bx = x - w / 2;
-  let by = y - h / 2;
+  let bx: number;
+  let by: number;
   if (kind === 'price') {
+    // 价格标签贴价格轴左缘，垂直方向钳制在悬停面板内（TV 同行为）
     bx = x + 2;
-    by = Math.max(0, Math.min(by, 9999));
+    by = y - h / 2;
+    if (bounds?.minY !== undefined) by = Math.max(by, bounds.minY);
+    if (bounds?.maxY !== undefined) by = Math.min(by, bounds.maxY);
   } else {
-    bx = Math.max(0, bx);
+    // 时间标签水平居中于光标，左右越界时 clamp 在时间轴内（maxX 指标签右缘上限）
+    bx = x - w / 2;
     by = y + 3;
+    if (bounds?.minX !== undefined) bx = Math.max(bx, bounds.minX);
+    if (bounds?.maxX !== undefined) bx = Math.min(bx, bounds.maxX - w);
   }
   ctx.fillStyle = theme.tooltipBg;
   ctx.fillRect(bx, by, w, h);

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
-import { fontSize, shadow, space, zIndex } from '@/ui/tokens';
+import { CheckRow } from '@/ui/primitives';
+import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 const TABS = ['坐标轴', '状态栏', '外观'] as const;
 type Tab = (typeof TABS)[number];
@@ -40,7 +41,7 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
             <Dialog.Title style={titleStyle}>图表设置</Dialog.Title>
             <Dialog.Close asChild>
               <button style={closeStyle} aria-label="关闭">
-                <X size={15} />
+                <X size={16} />
               </button>
             </Dialog.Close>
           </div>
@@ -86,14 +87,6 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
   );
 }
 
-function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <label style={rowStyle}>
-      <span style={{ color: 'var(--text)', fontSize: fontSize.lg }}>{label}</span>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-    </label>
-  );
-}
 
 const overlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: zIndex.modal };
 
@@ -108,8 +101,8 @@ const contentStyle: React.CSSProperties = {
   flexDirection: 'column',
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
-  boxShadow: shadow.menu,
+  borderRadius: radius.lg,
+  boxShadow: shadow.modal,
   zIndex: zIndex.modal,
   outline: 'none',
 };
@@ -153,11 +146,3 @@ const navItemStyle: React.CSSProperties = {
 
 const paneStyle: React.CSSProperties = { flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space.xl}px` };
 
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  minHeight: 32,
-  marginBottom: space.xs,
-  cursor: 'pointer',
-};

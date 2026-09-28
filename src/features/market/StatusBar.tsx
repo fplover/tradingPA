@@ -1,4 +1,4 @@
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Settings2 } from 'lucide-react';
 import { fontSize, space } from '@/ui/tokens';
 
 interface StatusBarProps {
@@ -14,7 +14,23 @@ interface StatusBarProps {
   onToggleAuto: () => void;
   hideStudies: boolean;
   onToggleHideStudies: () => void;
+  /** 底部齿轮：打开图表设置（TV 底部入口） */
+  onOpenSettings: () => void;
+  /** 时间范围预设：fromTime 毫秒时间戳；0 = 全部 */
+  onShowRange: (fromTime: number) => void;
 }
+
+/** 底部时间范围预设（TV 时间轴下方预设条）：天数 → 按钮 */
+const RANGES: Array<{ label: string; days: number }> = [
+  { label: '1D', days: 1 },
+  { label: '5D', days: 5 },
+  { label: '1M', days: 30 },
+  { label: '3M', days: 90 },
+  { label: '6M', days: 182 },
+  { label: '1Y', days: 365 },
+  { label: '5Y', days: 1825 },
+  { label: 'All', days: 0 },
+];
 
 function timeZoneLabel(): string {
   const offset = -new Date().getTimezoneOffset() / 60;
@@ -25,7 +41,7 @@ function timeZoneLabel(): string {
 
 /**
  * 图表底部控制栏（TV 39px = 38 内容 + 1 顶边框）：
- * 左 UTC 时区与数据状态，右 % / log / auto 坐标开关。
+ * 左 UTC 时区与数据状态 + 时间范围预设 + 齿轮，右 % / log / auto 坐标开关。
  * 磁吸/锁定/隐藏画线按 TV 归左画线工具栏底部，不在这里。
  */
 export function StatusBar({
@@ -40,6 +56,8 @@ export function StatusBar({
   onToggleAuto,
   hideStudies,
   onToggleHideStudies,
+  onOpenSettings,
+  onShowRange,
 }: StatusBarProps) {
   return (
     <div
@@ -63,6 +81,42 @@ export function StatusBar({
         {statusText} · {barsCount.toLocaleString()} 根 · {intervalLabel}
       </span>
 
+      {/* 时间范围预设（TV 预设条）：按自然日回看 */}
+      <span style={{ display: 'flex', alignItems: 'center', gap: 2, padding: `0 ${space.xs}px` }}>
+        {RANGES.map((r) => (
+          <button
+            key={r.label}
+            onClick={() => onShowRange(r.days === 0 ? 0 : Date.now() - r.days * 86400000)}
+            title={`显示${r.label === 'All' ? '全部' : `最近${r.label}`}数据`}
+            aria-label={`显示${r.label === 'All' ? '全部' : `最近${r.label}`}数据`}
+            style={rangeBtnStyle}
+          >
+            {r.label}
+          </button>
+        ))}
+      </span>
+
+      <button
+        onClick={onOpenSettings}
+        title="图表设置"
+        aria-label="图表设置"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 24,
+          height: 24,
+          background: 'transparent',
+          color: 'var(--text-faint)',
+          border: 'none',
+          borderRadius: 3,
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
+      >
+        <Settings2 size={14} />
+      </button>
+
       <span style={{ flex: 1 }} />
 
       <button
@@ -83,7 +137,7 @@ export function StatusBar({
           flexShrink: 0,
         }}
       >
-        {hideStudies ? <EyeOff size={13} /> : <Eye size={13} />}
+        {hideStudies ? <EyeOff size={14} /> : <Eye size={14} />}
       </button>
       <Toggle label="切换为百分比坐标" active={percent} onClick={onTogglePercent}>
         %
@@ -97,6 +151,17 @@ export function StatusBar({
     </div>
   );
 }
+
+const rangeBtnStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  color: 'var(--text-faint)',
+  fontSize: fontSize.md,
+  cursor: 'pointer',
+  padding: '2px 5px',
+  borderRadius: 3,
+  flexShrink: 0,
+};
 
 function Toggle({
   label,

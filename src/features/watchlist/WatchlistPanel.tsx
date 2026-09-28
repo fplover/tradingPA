@@ -22,7 +22,7 @@ import { COLUMNS, useWatchlistStore, type ColumnId, type SortKey } from '@/store
 import { useQuoteStore } from '@/store/quoteStore';
 import { useSymbolSearchStore } from './searchStore';
 import { RenameListDialog } from './RenameListDialog';
-import { control, fontSize, shadow, space, zIndex } from '@/ui/tokens';
+import { control, fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 /** 列 → Quote 字段。代码/名称列不走报价。 */
 const QUOTE_FIELD: Record<ColumnId, keyof Quote> = {
@@ -123,14 +123,14 @@ export function WatchlistPanel() {
           <DropdownMenu.Trigger asChild>
             <button className="tv-icon-btn" style={{ ...listTriggerStyle, color: 'var(--text)' }} aria-label="切换自选股列表">
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{list?.name}</span>
-              <ChevronDown size={13} style={{ flexShrink: 0, opacity: 0.7 }} />
+              <ChevronDown size={14} style={{ flexShrink: 0, opacity: 0.7 }} />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
             <DropdownMenu.Content align="start" sideOffset={4} style={menuStyle}>
               {lists.map((l) => (
                 <DropdownMenu.Item key={l.id} className="tv-menu-item" style={menuItemStyle} onSelect={() => switchList(l.id)}>
-                  <span style={leadingIconSlot}>{l.id === activeListId ? <Check size={13} /> : null}</span>
+                  <span style={leadingIconSlot}>{l.id === activeListId ? <Check size={14} /> : null}</span>
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
                   <span style={{ color: 'var(--text-faint)', fontSize: fontSize.xs }}>{l.items.length}</span>
                 </DropdownMenu.Item>
@@ -138,7 +138,7 @@ export function WatchlistPanel() {
               <DropdownMenu.Separator style={sepStyle} />
               <DropdownMenu.Item className="tv-menu-item" style={menuItemStyle} onSelect={() => createList()}>
                 <span style={leadingIconSlot}>
-                  <Plus size={13} />
+                  <Plus size={14} />
                 </span>
                 新建列表
               </DropdownMenu.Item>
@@ -149,7 +149,7 @@ export function WatchlistPanel() {
         <span style={{ flex: 1 }} />
 
         <HeaderButton label="添加品种" onClick={() => openSearch('add')}>
-          <Plus size={15} />
+          <Plus size={16} />
         </HeaderButton>
         <HeaderButton label={flagFilter ? '显示全部品种' : '只看标记品种'} active={flagFilter} onClick={() => setFlagFilter((v) => !v)}>
           <Flag size={14} />
@@ -158,7 +158,7 @@ export function WatchlistPanel() {
         <DropdownMenu.Root>
           <DropdownMenu.Trigger asChild>
             <button className="tv-icon-btn" style={iconBtnStyle} aria-label="列表设置">
-              <Settings2 size={15} />
+              <Settings2 size={16} />
             </button>
           </DropdownMenu.Trigger>
           <DropdownMenu.Portal>
@@ -174,26 +174,26 @@ export function WatchlistPanel() {
                   onSelect={(e) => e.preventDefault()}
                   onCheckedChange={() => toggleColumn(c.id)}
                 >
-                  <span style={leadingIconSlot}>{columns.includes(c.id) ? <Check size={13} /> : null}</span>
+                  <span style={leadingIconSlot}>{columns.includes(c.id) ? <Check size={14} /> : null}</span>
                   {c.label}
                 </DropdownMenu.CheckboxItem>
               ))}
               <DropdownMenu.Separator style={sepStyle} />
               <DropdownMenu.Item className="tv-menu-item" style={menuItemStyle} onSelect={() => setRenaming(true)}>
                 <span style={leadingIconSlot}>
-                  <Pencil size={13} />
+                  <Pencil size={14} />
                 </span>
                 重命名列表
               </DropdownMenu.Item>
               <DropdownMenu.Item className="tv-menu-item" style={menuItemStyle} onSelect={() => duplicateList(activeListId)}>
                 <span style={leadingIconSlot}>
-                  <Copy size={13} />
+                  <Copy size={14} />
                 </span>
                 复制列表
               </DropdownMenu.Item>
               <DropdownMenu.Item className="tv-menu-item" style={menuItemStyle} onSelect={exportCsv}>
                 <span style={leadingIconSlot}>
-                  <Download size={13} />
+                  <Download size={14} />
                 </span>
                 导出 CSV
               </DropdownMenu.Item>
@@ -202,7 +202,7 @@ export function WatchlistPanel() {
                   <DropdownMenu.Separator style={sepStyle} />
                   <DropdownMenu.Item className="tv-menu-item" style={{ ...menuItemStyle, color: 'var(--down)' }} onSelect={() => deleteList(activeListId)}>
                     <span style={leadingIconSlot}>
-                      <X size={13} />
+                      <X size={14} />
                     </span>
                     删除列表
                   </DropdownMenu.Item>
@@ -305,7 +305,7 @@ export function WatchlistPanel() {
               }}
             >
               <span style={leadingIconSlot}>
-                <LineChart size={13} />
+                <LineChart size={14} />
               </span>
               在图表中打开
             </DropdownMenu.Item>
@@ -316,7 +316,7 @@ export function WatchlistPanel() {
               }}
             >
               <span style={leadingIconSlot}>
-                <Flag size={13} />
+                <Flag size={14} />
               </span>
               {menu && flagged.includes(menu.inst.id) ? '取消标记' : '标记'}
             </DropdownMenu.Item>
@@ -327,7 +327,7 @@ export function WatchlistPanel() {
               }}
             >
               <span style={leadingIconSlot}>
-                <X size={13} />
+                <X size={14} />
               </span>
               从列表移除
             </DropdownMenu.Item>
@@ -425,7 +425,7 @@ function WatchlistRow({
       {isActive && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: 'var(--accent)' }} />}
 
       <div style={{ flex: 1, minWidth: 108, display: 'flex', alignItems: 'center', gap: 5 }}>
-        {isFlagged && <Flag size={11} style={{ color: 'var(--accent)', flexShrink: 0 }} aria-label="已标记" />}
+        {isFlagged && <Flag size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} aria-label="已标记" />}
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: fontSize.lg, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {instrument.symbol}
@@ -459,7 +459,7 @@ function WatchlistRow({
             padding: 0,
           }}
         >
-          <X size={13} />
+          <X size={14} />
         </button>
       </span>
     </div>
@@ -603,7 +603,7 @@ function SortLabel({
       }}
     >
       {label}
-      {active && (sort.dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+      {active && (sort.dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
     </button>
   );
 }
@@ -687,7 +687,7 @@ const menuStyle: React.CSSProperties = {
   minWidth: 180,
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.md,
   padding: '4px 0',
   zIndex: zIndex.dropdown,
   boxShadow: shadow.menu,
@@ -701,7 +701,6 @@ const menuItemStyle: React.CSSProperties = {
   padding: '5px 8px',
   background: 'transparent',
   border: 'none',
-  borderRadius: 4,
   color: 'var(--text)',
   fontSize: fontSize.md,
   cursor: 'pointer',

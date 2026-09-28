@@ -1,8 +1,11 @@
 import { useReducer } from 'react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useDrawingStore } from '@/store/drawingStore';
-import { Modal } from '@/ui/primitives';
-import { fontSize, space } from '@/ui/tokens';
+import { Checkbox, Modal } from '@/ui/primitives';
+import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
+import { fontSize, radius, space } from '@/ui/tokens';
+
+const LINE_WIDTH_OPTIONS: ToolbarOption[] = [1, 2, 3, 4].map((w) => ({ value: String(w), label: `${w}px` }));
 
 /** 画线设置（TV 双击画线打开）：样式实时生效，无确定按钮 */
 export function DrawingSettingsDialog({ renderer }: { renderer: ChartRenderer | null }) {
@@ -30,33 +33,33 @@ export function DrawingSettingsDialog({ renderer }: { renderer: ChartRenderer | 
         />
       </Row>
       <Row label="线宽">
-        <select value={String(drawing.style.lineWidth)} onChange={(e) => setStyle({ lineWidth: Number(e.target.value) })} style={inputStyle} aria-label="线宽">
-          {[1, 2, 3, 4].map((w) => (
-            <option key={w} value={w}>
-              {w}px
-            </option>
-          ))}
-        </select>
+        <ToolbarSelect
+          ariaLabel="线宽"
+          value={String(drawing.style.lineWidth)}
+          options={LINE_WIDTH_OPTIONS}
+          minWidth={72}
+          onChange={(v) => setStyle({ lineWidth: Number(v) })}
+        />
       </Row>
       <Row label="虚线">
-        <input type="checkbox" checked={drawing.style.dash === true} onChange={(e) => setStyle({ dash: e.target.checked })} />
+        <Checkbox checked={drawing.style.dash === true} ariaLabel="虚线" onChange={(v) => setStyle({ dash: v })} />
       </Row>
       <Row label="显示">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={drawing.visible}
-          onChange={(e) => {
-            renderer.setDrawingVisible(id, e.target.checked);
+          ariaLabel="显示"
+          onChange={(v) => {
+            renderer.setDrawingVisible(id, v);
             force();
           }}
         />
       </Row>
       <Row label="锁定">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={drawing.locked}
-          onChange={(e) => {
-            renderer.setDrawingLocked(id, e.target.checked);
+          ariaLabel="锁定"
+          onChange={(v) => {
+            renderer.setDrawingLocked(id, v);
             force();
           }}
         />
@@ -67,20 +70,11 @@ export function DrawingSettingsDialog({ renderer }: { renderer: ChartRenderer | 
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, marginBottom: space.xs, cursor: 'pointer' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, marginBottom: space.xs }}>
       <span style={{ color: 'var(--text)', fontSize: fontSize.lg }}>{label}</span>
       {children}
-    </label>
+    </div>
   );
 }
 
-const swatchStyle: React.CSSProperties = { width: 22, height: 22, padding: 0, border: '1px solid var(--border)', borderRadius: 3, background: 'none', cursor: 'pointer' };
-
-const inputStyle: React.CSSProperties = {
-  background: 'var(--input-bg)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
-  color: 'var(--text)',
-  padding: '4px 8px',
-  fontSize: fontSize.md,
-};
+const swatchStyle: React.CSSProperties = { width: 22, height: 22, padding: 0, border: '1px solid var(--border)', borderRadius: radius.xs, background: 'none', cursor: 'pointer' };

@@ -2,9 +2,8 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { control, fontSize, radius, shadow, space, zIndex } from './tokens';
-
 /** Radix 原语的 TradingView 风格封装：可访问性（焦点陷阱/Esc/ARIA/键盘导航）由 Radix 提供，
  *  视觉由这里统一收拢。颜色全部走 CSS 变量，自动适配深浅主题。 */
 
@@ -32,7 +31,7 @@ export function Modal({
             <Dialog.Title style={titleStyle}>{title}</Dialog.Title>
             <Dialog.Close asChild>
               <button style={closeBtnStyle} aria-label="关闭">
-                <X size={15} />
+                <X size={16} />
               </button>
             </Dialog.Close>
           </div>
@@ -85,6 +84,72 @@ export function MenuItem({
   );
 }
 // ---------- Tabs ----------
+
+/** TV 化复选框（裸）：16px 方块，选中强调色底白勾；role="checkbox" 键盘可达 */
+export function Checkbox({
+  checked,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
+      style={{
+        width: 16,
+        height: 16,
+        flexShrink: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: checked ? 'var(--accent)' : 'var(--input-bg)',
+        border: `1px solid ${checked ? 'var(--accent)' : 'var(--border)'}`,
+        borderRadius: radius.xs,
+        color: 'var(--text-on-accent)',
+        cursor: 'pointer',
+        padding: 0,
+      }}
+    >
+      {checked && <Check size={12} strokeWidth={2.5} />}
+    </button>
+  );
+}
+
+/** TV 化复选框行：整行可点 + role="checkbox" 键盘可达 */
+export function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        minHeight: 32,
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        padding: 0,
+        color: 'var(--text)',
+        fontSize: fontSize.lg,
+        textAlign: 'left',
+      }}
+    >
+      <span>{label}</span>
+      <Checkbox checked={checked} onChange={onChange} />
+    </button>
+  );
+}
 
 export function TabList({ children }: { children: React.ReactNode }) {
   return <Tabs.List style={tabListStyle}>{children}</Tabs.List>;
@@ -158,10 +223,10 @@ const tooltipStyle: React.CSSProperties = {
   fontSize: fontSize.sm,
   lineHeight: '16px',
   padding: '5px 8px',
-  borderRadius: 3,
+  borderRadius: radius.xs,
   maxWidth: 240,
   zIndex: zIndex.toast,
-  boxShadow: '0 1px 4px rgba(0, 0, 0, 0.3)',
+  boxShadow: shadow.tooltip,
 };
 
 const overlayStyle: React.CSSProperties = {
@@ -181,7 +246,7 @@ const contentStyle: React.CSSProperties = {
   borderRadius: radius.lg,
   padding: space.lg,
   zIndex: zIndex.modal,
-  boxShadow: shadow.menu,
+  boxShadow: shadow.modal,
 };
 
 const headerStyle: React.CSSProperties = {
@@ -226,7 +291,7 @@ const menuContentStyle: React.CSSProperties = {
   minWidth: 200,
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.md,
   padding: '4px 0',
   zIndex: zIndex.dropdown,
   boxShadow: shadow.menu,
