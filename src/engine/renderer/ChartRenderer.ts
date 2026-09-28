@@ -12,7 +12,7 @@ import { IndicatorInstance, type IndicatorOptions } from '@/indicators/core/inst
 import { getIndicatorDef } from '@/indicators/registry';
 import { DrawingLayer } from '../drawing/DrawingLayer';
 import { getToolDef, isConstrainableTool, type Drawing, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
-import { drawDrawings, hitTestDrawing, pixelToPoint, pointToPixel, type DrawContext } from '../drawing/drawDrawings';
+import { drawDrawings, pixelToPoint, pointToPixel, type DrawContext } from '../drawing/drawDrawings';
 import { detectVisibleSwing } from '../drawing/fibMath';
 import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
@@ -26,6 +26,8 @@ import { drawIndicator, indicatorValuesAt } from './drawIndicator';
 import type { ViewportTimeRange } from '@/store/syncBus';
 import { SyncBridge } from './SyncBridge';
 import { autoscaleIndicators, autoscalePrice, ensurePriceScaleReady, type AutoscaleOptions } from './autoscale';
+import { hitDrawings, hitPaneButtons, type DrawingHit, type PaneButtonHit } from './hitTest';
+import { decideCursor } from './cursor';
 
 const AXIS_WIDTH = 64;
 const AXIS_HEIGHT = 24;
@@ -847,29 +849,16 @@ export class ChartRenderer {
     };
   }
 
-  private hitDrawings(x: number, y: number, pane: PaneState): { id: string; part: 'body' | 'handle'; index: number } | null {
+  /** 画线命中（D 批次拆分②：判定逻辑在 hitTest.ts，此处只做锁定态守卫与上下文装配） */
+  private hitDrawingAt(x: number, y: number, pane: PaneState): DrawingHit | null {
     if (this.drawingsLocked) return null;
-    const dctx = this.drawingCtx();
-    const list = this.drawingLayer.list();
-    for (let i = list.length - 1; i >= 0; i--) {
-      const d = list[i];
-      if (!d.visible || d.locked) continue;
-      const hit = hitTestDrawing(d, x, y - pane.y, dctx);
-      if (hit) return { id: d.id, part: hit.part, index: hit.part === 'handle' ? hit.index : -1 };
-    }
-    return null;
+    return hitDrawings(this.drawingLayer.list(), x, y, pane.y, this.drawingCtx());
   }
 
   /** 面板头部按钮命中（设置/移除，仅选中指标面板绘制了按钮） */
-  private hitPaneButtons(x: number, y: number, pane: PaneState): { action: 'settings' | 'remove'; indicatorId: string } | null {
-    if (!pane.headerBtns || pane.indicators.length === 0) return null;
-    const ly = y - pane.y;
-    const inRect = (r: { x: number; y: number; w: number; h: number }) =>
-      x >= r.x - 2 && x <= r.x + r.w + 2 && ly >= r.y - 2 && ly <= r.y + r.h + 2;
-    const indicatorId = pane.indicators[0].def.id;
-    if (inRect(pane.headerBtns.settings)) return { action: 'settings', indicatorId };
-    if (inRect(pane.headerBtns.remove)) return { action: 'remove', indicatorId };
-    return null;
+  private hitPaneButtonAt(x: number, y: number, pane: PaneState): PaneButtonHit | null {
+    if (pane.indicators.length === 0) return null;
+    return hitPaneButtons(x, y, pane.y, pane.headerBtns, pane.indicators[0].def.id);
   }
 
   /** 完成路径类画线（双击/回车） */
@@ -978,14 +967,14 @@ export class ChartRenderer {
         return;
       }
       // 面板头部按钮（设置/移除指标）优先于画线/交易命中
-      const btnHit = this.hitPaneButtons(x, y, pane);
+      const btnHit = this.hitPaneButtonAt(x, y, pane);
       if (btnHit) {
         this.paneActionCb?.(btnHit.action, btnHit.indicatorId);
         return;
       }
       // 点击即选中面板（TV 行为）
       this.selectedPaneId = pane.id;
-      const hit = this.hitDrawings(x, y, pane);
+      const hit = this.hitDrawingAt(x, y, pane);
       if (hit) {
         // B7：Ctrl+按下 = 待克隆（移动超阈值才克隆）；无移动的 Ctrl+点击 = 多选切换
         if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
@@ -1180,15 +1169,19 @@ export class ChartRenderer {
     }
   };
 
-  /** TV 光标语义：面板分隔条与价格轴 ns-resize，时间轴 ew-resize，可交互元素 pointer */
+  /** TV 光标语义：面板分隔条与价格轴 ns-resize，时间轴 ew-resize，可交互元素 pointer。
+   *  决策纯函数在 cursor.ts；此处只装配输入、写 DOM（带 dirty check） */
   private updateHoverCursor(x: number, y: number): void {
-    let cursor = '';
-    if (this.separatorIndexAt(y) !== null) cursor = 'ns-resize';
-    else if (x > this.manager.width - AXIS_WIDTH) cursor = 'ns-resize';
-    else if (y > this.manager.height - AXIS_HEIGHT) cursor = 'ew-resize';
-    else if (this.studyHoverBtn !== null) cursor = 'pointer';
-    else if (this.drawingHoverCursor) cursor = this.drawingHoverCursor;
-    else if (this.tradeHoverCursor) cursor = 'pointer';
+    const cursor = decideCursor({
+      x,
+      y,
+      chartRight: this.manager.width - AXIS_WIDTH,
+      chartBottom: this.manager.height - AXIS_HEIGHT,
+      separatorIndex: this.separatorIndexAt(y),
+      studyHoverBtn: this.studyHoverBtn,
+      drawingHoverCursor: this.drawingHoverCursor,
+      tradeHover: this.tradeHoverCursor,
+    });
     const canvas = this.manager.canvas;
     if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
   }
@@ -1269,7 +1262,7 @@ export class ChartRenderer {
     const pane = this.paneAt(y);
     this.hoveredPaneId = pane.id;
     // 画线悬停光标：顶点手柄 pointer、线体 move
-    const dHit = this.hitDrawings(x, y, pane);
+    const dHit = this.hitDrawingAt(x, y, pane);
     this.drawingHoverCursor = dHit ? (dHit.part === 'handle' ? 'pointer' : 'move') : '';
     const hit = hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height });
     this.setTradeHoverCursor(hit !== null);
@@ -1363,7 +1356,7 @@ export class ChartRenderer {
     if (this.replayIndex !== null && this.chartClickCb) {
       // 命中交易可视化/画线时不弹下单
       if (hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height })) return;
-      if (this.hitDrawings(x, y, pane)) return;
+      if (this.hitDrawingAt(x, y, pane)) return;
       this.ensurePaneScaleReady(pane);
       const price = pane.priceScale.yToPrice(y - pane.y);
       const bar = this.displaySeries.barAt(this.replayIndex);
@@ -1373,7 +1366,7 @@ export class ChartRenderer {
 
     if (!this.contextMenuCb) return;
     // 右键命中画线 → 画线上下文菜单（设置/移除/视觉顺序）
-    const dHit = this.hitDrawings(x, y, pane);
+    const dHit = this.hitDrawingAt(x, y, pane);
     if (dHit) {
       this.drawingMenuCb?.(dHit.id, e.clientX, e.clientY);
       return;
@@ -1411,7 +1404,7 @@ export class ChartRenderer {
     }
     // 双击画线 → 打开画线设置（TV 行为）
     const pane = this.paneAt(y);
-    const dHit = this.hitDrawings(x, y, pane);
+    const dHit = this.hitDrawingAt(x, y, pane);
     if (dHit) {
       this.drawingSettingsCb?.(dHit.id);
       return;
