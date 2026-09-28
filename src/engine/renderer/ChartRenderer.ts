@@ -496,6 +496,36 @@ export class ChartRenderer {
     this.invalidate();
   }
 
+  /** 显示 fromTime 以来的区间（底部时间范围预设条：1D/5D/1M…）。
+   *  二分定位首个 >= fromTime 的 K 线，右侧留少量呼吸；无匹配时回到实时。 */
+  showRange(fromTime: number): void {
+    if (fromTime <= 0) {
+      this.viewport.setFirstPublic(0);
+      this.invalidate();
+      return;
+    }
+    const series = this.displaySeries;
+    const n = series.length;
+    let lo = 0;
+    let hi = n - 1;
+    let ans = n;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (series.barAt(mid)!.time >= fromTime) {
+        ans = mid;
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
+    }
+    if (ans >= n) {
+      this.scrollToRealtime();
+      return;
+    }
+    this.viewport.setFirstPublic(Math.max(0, ans - 4));
+    this.invalidate();
+  }
+
   get atRightEdge(): boolean {
     return this.viewport.isAtRightEdge();
   }
@@ -1578,17 +1608,40 @@ export class ChartRenderer {
   }
 }
 
-/** 绘制剪刀图标（选择K线预览线顶端标记，蓝底白字） */
+/** 绘制剪刀图标（选择K线预览线顶端标记，蓝底白字）。
+ *  与 lucide-react `Scissors` 同源：按 24×24 viewBox 的 path 数据等比缩放到 16px 绘制，
+ *  保持全项目统一描边（1.5）与圆角线帽，不用字符字形（字体依赖重、光学重量不可控）。 */
 function drawScissors(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   ctx.save();
   ctx.beginPath();
   ctx.arc(x, y, 8, 0, Math.PI * 2);
   ctx.fillStyle = '#2962ff';
   ctx.fill();
-  ctx.font = `11px ${TV_FONT}`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#ffffff';
-  ctx.fillText('✀', x, y + 0.5);
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  const s = 16 / 24;
+  const p = (px: number, py: number): [number, number] => [x + (px - 12) * s, y + (py - 12) * s];
+  // 两个指环
+  for (const [cx, cy] of [
+    [6, 6],
+    [6, 18],
+  ] as const) {
+    ctx.beginPath();
+    ctx.arc(...p(cx, cy), 3 * s, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // 三条剪线（M8.12 8.12 L12 12 / M20 4 L8.12 15.88 / M14.8 14.8 L20 20）
+  for (const [x1, y1, x2, y2] of [
+    [8.12, 8.12, 12, 12],
+    [20, 4, 8.12, 15.88],
+    [14.8, 14.8, 20, 20],
+  ] as const) {
+    ctx.beginPath();
+    ctx.moveTo(...p(x1, y1));
+    ctx.lineTo(...p(x2, y2));
+    ctx.stroke();
+  }
   ctx.restore();
 }
