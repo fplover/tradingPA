@@ -54,6 +54,38 @@ test('指标面板收藏与键盘操作', async ({ page }) => {
   await expect(page.getByRole('option').first()).toContainText('RSI 相对强弱');
 });
 
+/** 磁吸档位、清空全部、画线右键菜单 */
+test('磁吸档位与清空全部', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  const canvas = page.locator('canvas').first();
+  await page.getByRole('button', { name: '趋势线', exact: true }).click();
+  await canvas.click({ position: { x: 300, y: 200 } });
+  await canvas.click({ position: { x: 500, y: 300 } });
+
+  // 磁吸默认关闭；开启后 caret 可选强弱档
+  await page.getByRole('button', { name: '磁吸', exact: true }).click();
+  await expect(page.getByRole('button', { name: '磁吸', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('button[aria-label="磁吸模式"]').click();
+  await page.getByRole('menuitem', { name: /强磁铁/ }).click();
+  await expect(page.getByRole('button', { name: '磁吸', exact: true })).toHaveAttribute('title', /强磁铁/);
+
+  // 画线右键菜单：视觉顺序子菜单
+  await canvas.click({ button: 'right', position: { x: 400, y: 250 } });
+  await expect(page.getByRole('menuitem', { name: '移除' })).toBeVisible();
+  await page.getByRole('menuitem', { name: '视觉顺序' }).hover();
+  await expect(page.getByRole('menuitem', { name: '上移一层' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+
+  // 清空全部 → 移除画线
+  await page.locator('button[aria-label="清空选项"]').click();
+  await page.getByRole('menuitem', { name: '移除画线', exact: true }).click();
+  await page.getByRole('button', { name: '对象树' }).click();
+  await expect(page.getByTestId('object-row')).toHaveCount(0);
+});
+
 /** 对象树：视觉顺序（置于顶层）改变行序 */
 test('对象树视觉顺序', async ({ page }) => {
   await page.goto('/');

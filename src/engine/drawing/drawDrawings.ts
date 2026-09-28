@@ -20,12 +20,15 @@ export function pointToPixel(p: DrawingPoint, ctx: DrawContext): { x: number; y:
   };
 }
 
-export function pixelToPoint(x: number, y: number, ctx: DrawContext, magnet: boolean): DrawingPoint {
+/** 磁吸模式：off 不吸附；weak 仅当吸附点在 50px 内生效；strong 始终吸附（TV 实测） */
+export type MagnetMode = 'off' | 'weak' | 'strong';
+
+export function pixelToPoint(x: number, y: number, ctx: DrawContext, magnet: MagnetMode): DrawingPoint {
   const index = ctx.viewport.xToIndex(x);
   const roundIdx = Math.round(index);
   const bar = ctx.series.barAt(Math.max(0, Math.min(ctx.series.length - 1, roundIdx)));
   let time = bar ? bar.time : Date.now();
-  if (bar && !magnet) {
+  if (bar && magnet === 'off') {
     // 未开磁吸也按 bar 对齐（index 制时间轴），但保留小数位置精度
     const exact = ctx.series.barAt(roundIdx);
     if (exact) {
@@ -34,10 +37,12 @@ export function pixelToPoint(x: number, y: number, ctx: DrawContext, magnet: boo
     }
   }
   let price = ctx.priceScale.yToPrice(y);
-  if (magnet && bar) {
+  if (magnet !== 'off' && bar) {
     // 磁吸：就近吸附到 O/H/L/C
     const candidates = [bar.open, bar.high, bar.low, bar.close];
-    price = candidates.reduce((best, c) => (Math.abs(c - price) < Math.abs(best - price) ? c : best), candidates[0]);
+    const best = candidates.reduce((b, c) => (Math.abs(c - price) < Math.abs(b - price) ? c : b), candidates[0]);
+    const snapY = ctx.priceScale.priceToY(best);
+    if (magnet === 'strong' || Math.abs(snapY - y) <= 50) price = best;
   }
   return { time, price };
 }

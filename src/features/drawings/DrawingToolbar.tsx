@@ -106,21 +106,28 @@ export function DrawingToolbar({
   onToggleLock,
   hideDrawings,
   onToggleHide,
+  onRemoveAll,
 }: {
   locked: boolean;
   onToggleLock: () => void;
   hideDrawings: boolean;
   onToggleHide: () => void;
+  /** 清空全部：drawings 仅画线 / studies 仅指标 / all 两者 */
+  onRemoveAll: (scope: 'drawings' | 'studies' | 'all') => void;
 }) {
   const activeTool = useDrawingStore((s) => s.activeTool);
   const setActiveTool = useDrawingStore((s) => s.setActiveTool);
   const magnet = useDrawingStore((s) => s.magnet);
   const setMagnet = useDrawingStore((s) => s.setMagnet);
+  const magnetMode = useDrawingStore((s) => s.magnetMode);
+  const setMagnetMode = useDrawingStore((s) => s.setMagnetMode);
   const stayMode = useDrawingStore((s) => s.stayMode);
   const setStayMode = useDrawingStore((s) => s.setStayMode);
 
   const [flyout, setFlyout] = useState<FlyoutState | null>(null);
-  const [hovered, setHovered] = useState<number | null>(null);
+  /** 底部磁吸/清空两个带 caret 的控件 */
+  const [bottomMenu, setBottomMenu] = useState<{ kind: 'magnet' | 'remove'; x: number; y: number } | null>(null);
+  const [hovered, setHovered] = useState<number | 'magnet' | 'remove' | null>(null);
   const activateTimer = useRef<number | null>(null);
   const openTimer = useRef<number | null>(null);
   const activatedWhileHeld = useRef(false);
@@ -302,17 +309,34 @@ export function DrawingToolbar({
       })}
 
       <div style={sepStyle} />
-      <button
-        className="rail-btn"
-        data-active={magnet}
-        title={TOOL_LABELS.magnet}
-        aria-label={TOOL_LABELS.magnet}
-        aria-pressed={magnet}
-        onClick={() => setMagnet(!magnet)}
-        style={bottomBtnStyle}
-      >
-        <Magnet size={17} strokeWidth={1.5} />
-      </button>
+      {/* 磁吸：主按钮开关，caret 切强弱档（TV 默认弱磁铁） */}
+      <div style={controlStyle} onMouseEnter={() => setHovered('magnet')} onMouseLeave={() => setHovered(null)}>
+        <button
+          style={mainBtnStyle}
+          title={magnet ? `磁吸（${magnetMode === 'strong' ? '强磁铁' : '弱磁铁'}）` : '磁吸（吸附 OHLC）'}
+          aria-label="磁吸"
+          aria-pressed={magnet}
+          onClick={() => setMagnet(!magnet)}
+        >
+          <span style={{ ...cellStyle, background: magnet ? 'var(--accent)' : hovered === 'magnet' ? 'var(--panel-2)' : 'transparent' }}>
+            <Magnet size={17} strokeWidth={1.5} style={{ color: magnet ? 'var(--text-on-accent)' : undefined }} />
+          </span>
+        </button>
+        <button
+          style={{ ...caretStyle, opacity: hovered === 'magnet' || bottomMenu?.kind === 'magnet' ? 1 : 0 }}
+          title="磁吸模式"
+          aria-label="磁吸模式"
+          aria-haspopup="menu"
+          aria-expanded={bottomMenu?.kind === 'magnet'}
+          data-role="menu-handle"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setBottomMenu(bottomMenu?.kind === 'magnet' ? null : { kind: 'magnet', x: r.right + 1, y: r.top - 6 });
+          }}
+        >
+          <ChevronRight size={11} style={{ transform: bottomMenu?.kind === 'magnet' ? 'rotate(180deg)' : undefined }} />
+        </button>
+      </div>
       <button
         className="rail-btn"
         data-active={stayMode}
@@ -346,15 +370,77 @@ export function DrawingToolbar({
       >
         {hideDrawings ? <EyeOff size={17} /> : <Eye size={17} />}
       </button>
-      <button
-        className="rail-btn"
-        title="删除选中画线（Delete）"
-        aria-label="删除选中画线"
-        onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete' }))}
-        style={{ ...bottomBtnStyle, marginTop: 'auto' }}
+      {/* 清空全部：caret 展开 移除画线/移除指标/移除画线和指标（TV removeAllDrawingTools） */}
+      <div style={{ ...controlStyle, marginTop: 'auto' }} onMouseEnter={() => setHovered('remove')} onMouseLeave={() => setHovered(null)}>
+        <button
+          style={mainBtnStyle}
+          title="清空全部"
+          aria-label="清空全部"
+          onClick={() => onRemoveAll('drawings')}
+        >
+          <span style={{ ...cellStyle, background: hovered === 'remove' ? 'var(--panel-2)' : 'transparent' }}>
+            <Trash2 size={17} strokeWidth={1.5} />
+          </span>
+        </button>
+        <button
+          style={{ ...caretStyle, opacity: hovered === 'remove' || bottomMenu?.kind === 'remove' ? 1 : 0 }}
+          title="清空选项"
+          aria-label="清空选项"
+          aria-haspopup="menu"
+          aria-expanded={bottomMenu?.kind === 'remove'}
+          data-role="menu-handle"
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setBottomMenu(bottomMenu?.kind === 'remove' ? null : { kind: 'remove', x: r.right + 1, y: r.top - 6 });
+          }}
+        >
+          <ChevronRight size={11} style={{ transform: bottomMenu?.kind === 'remove' ? 'rotate(180deg)' : undefined }} />
+        </button>
+      </div>
+
+      {/* 底部菜单：磁吸档位 / 清空模式 */}
+      <DropdownMenu.Root
+        open={bottomMenu !== null}
+        modal={false}
+        onOpenChange={(o) => {
+          if (!o) setBottomMenu(null);
+        }}
       >
-        <Trash2 size={17} strokeWidth={1.5} />
-      </button>
+        <DropdownMenu.Trigger asChild>
+          <span aria-hidden style={{ position: 'fixed', left: bottomMenu?.x ?? 0, top: bottomMenu?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }} />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content align="start" side="right" sideOffset={0} className="tv-scroll" style={menuStyle}>
+            {bottomMenu?.kind === 'magnet' && (
+              <>
+                {(['weak', 'strong'] as const).map((m) => (
+                  <DropdownMenu.Item
+                    key={m}
+                    className="tv-menu-item"
+                    style={{ ...itemStyle, background: magnetMode === m ? 'var(--accent)' : undefined, color: magnetMode === m ? 'var(--text-on-accent)' : undefined }}
+                    onSelect={() => setMagnetMode(m)}
+                  >
+                    {m === 'weak' ? '弱磁铁（50px 内吸附）' : '强磁铁（始终吸附）'}
+                  </DropdownMenu.Item>
+                ))}
+              </>
+            )}
+            {bottomMenu?.kind === 'remove' && (
+              <>
+                <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={() => onRemoveAll('drawings')}>
+                  移除画线
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={() => onRemoveAll('studies')}>
+                  移除指标
+                </DropdownMenu.Item>
+                <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={() => onRemoveAll('all')}>
+                  移除画线和指标
+                </DropdownMenu.Item>
+              </>
+            )}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
 
       {/* flyout：锚在按钮右侧偏上 6px；选中行实心强调色 + 白字，行尾快捷键提示 */}
       <DropdownMenu.Root

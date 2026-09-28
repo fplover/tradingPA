@@ -89,6 +89,7 @@ export class ChartRenderer {
   private toolFinishedCb: (() => void) | null = null;
   private drawingSettingsCb: ((id: string) => void) | null = null;
   private legendMenuCb: ((x: number, y: number) => void) | null = null;
+  private drawingMenuCb: ((id: string, x: number, y: number) => void) | null = null;
   private brickOpts: BrickOptions = {};
 
   // 画线状态
@@ -262,6 +263,10 @@ export class ChartRenderer {
 
   setLegendMenuCallback(cb: ((x: number, y: number) => void) | null): void {
     this.legendMenuCb = cb;
+  }
+
+  setDrawingMenuCallback(cb: ((id: string, x: number, y: number) => void) | null): void {
+    this.drawingMenuCb = cb;
   }
 
   /** 隐藏全部指标（TV 底栏 hide-indicators 开关） */
@@ -581,6 +586,35 @@ export class ChartRenderer {
     this.drawingLayer.setMagnet(on);
   }
 
+  /** 磁吸档位：weak（50px 内吸附）/ strong（始终吸附） */
+  setMagnetMode(mode: 'weak' | 'strong'): void {
+    this.drawingLayer.setMagnetMode(mode);
+  }
+
+  get magnetMode(): 'weak' | 'strong' {
+    return this.drawingLayer.mode;
+  }
+
+  /** 清空全部画线 */
+  clearDrawings(): void {
+    this.drawingLayer.clear();
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
+  /** 克隆画线（偏移少量像素，避免与原图完全重合） */
+  duplicateDrawing(id: string): void {
+    const src = this.drawingLayer.list().find((d) => d.id === id);
+    if (!src) return;
+    const iv = this.displaySeries.length > 1 ? this.displaySeries.raw()[1].time - this.displaySeries.raw()[0].time : 60_000;
+    const span = this.panes[0].priceScale.range;
+    const dPrice = (span.max - span.min) * 0.02;
+    const clone = this.drawingLayer.add(src.type, src.points.map((p) => ({ time: p.time + iv * 3, price: p.price + dPrice })), src.style);
+    this.drawingLayer.select(clone.id);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+
   listDrawings(): Drawing[] {
     return [...this.drawingLayer.list()];
   }
@@ -640,12 +674,6 @@ export class ChartRenderer {
 
   redoDrawing(): void {
     this.drawingLayer.redo();
-    this.notifyDrawings();
-    this.invalidate();
-  }
-
-  clearDrawings(): void {
-    this.drawingLayer.clear();
     this.notifyDrawings();
     this.invalidate();
   }
@@ -815,7 +843,7 @@ export class ChartRenderer {
           id: hit.id,
           part: hit.part,
           index: hit.index,
-          start: pixelToPoint(x, y - pane.y, this.drawingCtx(), false),
+          start: pixelToPoint(x, y - pane.y, this.drawingCtx(), 'off'),
           origin: d.points.map((p) => ({ ...p })),
         };
     this.invalidate();
@@ -860,7 +888,7 @@ export class ChartRenderer {
 
   /** 工具模式下的落点 */
   private handleToolPointerDown(x: number, y: number, pane: PaneState): void {
-    const pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetEnabled);
+    const pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
     const def = getToolDef(this.activeTool!);
     if (def.points === 1) {
       this.drawingLayer.add(this.activeTool!, [pt]);
@@ -913,7 +941,7 @@ export class ChartRenderer {
       this.updateTradeDrag(y);
     } else if (this.activeTool && this.placing.length > 0) {
       const pane = this.paneAt(y);
-      this.previewPoint = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetEnabled);
+      this.previewPoint = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
     this.invalidate();
     } else {
       this.updateHoverCursor(x, y);
@@ -939,7 +967,7 @@ export class ChartRenderer {
     const drag = this.dragDrawing;
     if (!drag) return;
     const pane = this.panes[0];
-    const cur = pixelToPoint(x, y - pane.y, this.drawingCtx(), false);
+    const cur = pixelToPoint(x, y - pane.y, this.drawingCtx(), 'off');
     if (drag.part === 'body') {
       const dt = cur.time - drag.start.time;
       const dp = cur.price - drag.start.price;
@@ -1084,7 +1112,12 @@ export class ChartRenderer {
     }
 
     if (!this.contextMenuCb) return;
-    if (this.hitDrawings(x, y, pane)) return;
+    // 右键命中画线 → 画线上下文菜单（设置/移除/视觉顺序）
+    const dHit = this.hitDrawings(x, y, pane);
+    if (dHit) {
+      this.drawingMenuCb?.(dHit.id, e.clientX, e.clientY);
+      return;
+    }
     // 图例区（商品行或研究行）右键 → 图例菜单（TV legend_context_menu）
     const inStudyRow = this.studyRects.some((r) => x >= r.x && x <= r.btnX + 48 && y >= r.y && y <= r.y + r.h);
     if (y <= 24 || inStudyRow) {

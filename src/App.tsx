@@ -20,6 +20,7 @@ import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettings
 import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
 import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
 import { DrawingSettingsDialog } from '@/features/drawings/DrawingSettingsDialog';
+import { DrawingContextMenu } from '@/features/drawings/DrawingContextMenu';
 import { LayoutGrid, LayoutMenu } from '@/features/layout/LayoutGrid';
 import { ReplayBar } from '@/features/replay/ReplayBar';
 import { RightSide } from '@/features/rightbar/RightSide';
@@ -110,6 +111,7 @@ export default function App() {
   const [reportOpen, setReportOpen] = useState(false);
   const [chartMenu, setChartMenu] = useState<ChartMenuState | null>(null);
   const [legendMenu, setLegendMenu] = useState<{ x: number; y: number } | null>(null);
+  const [drawingMenu, setDrawingMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
@@ -337,7 +339,16 @@ export default function App() {
         <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-              <DrawingToolbar locked={drawingsLocked} onToggleLock={() => setDrawingsLocked((v) => !v)} hideDrawings={hideDrawings} onToggleHide={() => setHideDrawings((v) => !v)} />
+              <DrawingToolbar
+                locked={drawingsLocked}
+                onToggleLock={() => setDrawingsLocked((v) => !v)}
+                hideDrawings={hideDrawings}
+                onToggleHide={() => setHideDrawings((v) => !v)}
+                onRemoveAll={(scope) => {
+                  if (scope === 'drawings' || scope === 'all') rendererRef.current?.clearDrawings();
+                  if (scope === 'studies' || scope === 'all') useIndicatorStore.getState().replaceAll([]);
+                }}
+              />
               <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
                 <Chart
                   bars={bars}
@@ -356,6 +367,7 @@ export default function App() {
                   onNeedsMoreHistory={series.loadMore}
                   onChartContextMenu={(price, _time, x, y) => setChartMenu({ price, x, y })}
                   onLegendMenu={(x, y) => setLegendMenu({ x, y })}
+                  onDrawingMenu={(id, x, y) => setDrawingMenu({ id, x, y })}
                 />
                 {panelOpen && <IndicatorPanel />}
                 {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
@@ -439,6 +451,11 @@ export default function App() {
         onLegend={(patch) => setLegendOpts((v) => ({ ...v, ...patch }))}
         onOpenSettings={() => setChartSettingsOpen(true)}
         onClose={() => setLegendMenu(null)}
+      />
+      <DrawingContextMenu
+        state={drawingMenu}
+        renderer={renderer}
+        onClose={() => setDrawingMenu(null)}
       />
     </div>
     </Tooltip.Provider>

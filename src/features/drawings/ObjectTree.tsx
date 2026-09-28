@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Undo2, Redo2, X, Eye, EyeOff, Lock, Unlock, Trash2, ArrowUpToLine, ChevronUp, ChevronDown, ArrowDownToLine, Settings } from 'lucide-react';
+import { Undo2, Redo2, X, Eye, EyeOff, Lock, Unlock, Trash2, ArrowUpToLine, ChevronUp, ChevronDown, ArrowDownToLine, Settings, Copy } from 'lucide-react';
 import type { Drawing } from '@/engine/drawing/types';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useDrawingStore } from '@/store/drawingStore';
@@ -86,6 +86,9 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
           </button>
           <button style={miniBtn} onClick={() => renderer.removeDrawing(d.id)} title="删除">
             <X size={13} />
+          </button>
+          <button style={miniBtn} onClick={() => renderer.duplicateDrawing(d.id)} title="克隆" aria-label="克隆">
+            <Copy size={12} />
           </button>
         </div>
       ))}

@@ -32,6 +32,8 @@ interface ChartProps {
   onChartContextMenu?: (price: number, time: number, clientX: number, clientY: number) => void;
   /** 图例区右键（屏幕坐标） */
   onLegendMenu?: (clientX: number, clientY: number) => void;
+  /** 右键命中画线（画线 id + 屏幕坐标） */
+  onDrawingMenu?: (id: string, clientX: number, clientY: number) => void;
   /** 参与多图表联动（十字光标/视口同步） */
   sync?: boolean;
 }
@@ -51,6 +53,7 @@ export function Chart({
   onNeedsMoreHistory,
   onChartContextMenu,
   onLegendMenu,
+  onDrawingMenu,
   sync = false,
 }: ChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -269,6 +272,8 @@ export function Chart({
     rendererRef.current?.setDrawingSettingsCallback((drawingId) => useDrawingStore.getState().setSettingsFor(drawingId));
     // 图例区右键 → 图例菜单
     rendererRef.current?.setLegendMenuCallback((x, y) => onLegendMenu?.(x, y));
+    // 右键画线 → 画线菜单
+    rendererRef.current?.setDrawingMenuCallback((drawingId, x, y) => onDrawingMenu?.(drawingId, x, y));
     return () => {
       rendererRef.current?.setTradeCallbacks({});
       rendererRef.current?.setChartClickCallback(null);
@@ -277,6 +282,7 @@ export function Chart({
       rendererRef.current?.setToolFinishedCallback(null);
       rendererRef.current?.setDrawingSettingsCallback(null);
       rendererRef.current?.setLegendMenuCallback(null);
+      rendererRef.current?.setDrawingMenuCallback(null);
       rendererRef.current?.setPaneActionCallback(null);
     };
   }, []);

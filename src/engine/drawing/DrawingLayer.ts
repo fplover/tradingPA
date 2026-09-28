@@ -13,6 +13,7 @@ export class DrawingLayer {
   private undoStack: Drawing[][] = [];
   private redoStack: Drawing[][] = [];
   private magnet = false;
+  private magnetMode: 'weak' | 'strong' = 'weak';
 
   /** 是否开启磁吸（锚点吸附到 OHLC） */
   get magnetEnabled(): boolean {
@@ -21,6 +22,20 @@ export class DrawingLayer {
 
   setMagnet(on: boolean): void {
     this.magnet = on;
+  }
+
+  /** 磁吸档位：weak 仅 50px 内吸附，strong 始终吸附（TV 默认 weak） */
+  get mode(): 'weak' | 'strong' {
+    return this.magnetMode;
+  }
+
+  setMagnetMode(mode: 'weak' | 'strong'): void {
+    this.magnetMode = mode;
+  }
+
+  /** 供绘制的磁吸模式（未开启时 off） */
+  get magnetModeForDraw(): 'off' | 'weak' | 'strong' {
+    return this.magnet ? this.magnetMode : 'off';
   }
 
   list(): readonly Drawing[] {
