@@ -79,8 +79,8 @@ describe('斐波那契比率常量', () => {
     expect([...FIB_RETRACEMENT_LEVELS]).toEqual([0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]);
   });
 
-  it('扩展 9 档升序（TV 默认）', () => {
-    expect([...FIB_EXTENSION_LEVELS]).toEqual([0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.618, 2.618]);
+  it('扩展 4 档升序（TV trend-based fib extension 标准档）', () => {
+    expect([...FIB_EXTENSION_LEVELS]).toEqual([0.618, 1, 1.618, 2.618]);
     for (let i = 1; i < FIB_EXTENSION_LEVELS.length; i++) {
       expect(FIB_EXTENSION_LEVELS[i]).toBeGreaterThan(FIB_EXTENSION_LEVELS[i - 1]);
     }
@@ -293,7 +293,7 @@ describe('新类型序列化兼容', () => {
 // ---------- 渲染几何自验（mock ctx 推演） ----------
 
 describe('渲染：斐波那契扩展', () => {
-  it('锚点连线 + 9 档水平线，价格 = 枢轴 + (终点-起点)×比率', () => {
+  it('锚点连线 + 4 档水平线，价格 = 枢轴 + (终点-起点)×比率', () => {
     const { ctx, series, viewport, priceScale, geo } = fixture();
     const d = mk('fib-extension', [
       { time: BARS[0].time, price: 100 },
@@ -309,7 +309,7 @@ describe('渲染：斐波那契扩展', () => {
     expect(hasPair(ctx, 'moveTo', [x0, priceScale.priceToY(100)], 'lineTo', [x3, priceScale.priceToY(110)])).toBe(true);
     expect(hasPair(ctx, 'moveTo', [x3, priceScale.priceToY(110)], 'lineTo', [x5, priceScale.priceToY(105)])).toBe(true);
 
-    // 9 档水平线：从最左锚轴到右缘；抽验 1.618 与 2.618
+    // 4 档水平线：从最左锚轴到右缘；抽验 1.618 与 2.618
     const y1618 = Math.round(priceScale.priceToY(fibExtensionPrice(100, 110, 105, 1.618))) + 0.5;
     const y2618 = Math.round(priceScale.priceToY(fibExtensionPrice(100, 110, 105, 2.618))) + 0.5;
     expect(hasPair(ctx, 'moveTo', [x0, y1618], 'lineTo', [W, y1618])).toBe(true);
@@ -347,39 +347,45 @@ describe('渲染：斐波那契扇形', () => {
 });
 
 describe('渲染：斐波那契弧线', () => {
-  it('以起点为圆心，x 半径 = 时间跨度×比率，y 半径 = 价格跨度×比率', () => {
+  it('以第 2 点为圆心、比率 × 锚距 为半径的半圆（TV 速度阻力弧）', () => {
     const { ctx, series, viewport, priceScale, geo } = fixture();
     const d = mk('fib-arc', [
       { time: BARS[0].time, price: 100 },
-      { time: BARS[3].time, price: 110 }, // 价格上升 → 弧向右上扫掠
+      { time: BARS[3].time, price: 110 },
     ]);
     drawDrawings(asCtx(ctx), [d], null, dc(series, viewport, priceScale, geo), 2);
 
-    const a = pointToPixel(d.points[0], dc(series, viewport, priceScale, geo));
-    const b = pointToPixel(d.points[1], dc(series, viewport, priceScale, geo));
-    const rx = Math.abs(b.x - a.x);
-    const ry = Math.abs(b.y - a.y);
-    // 基线 + 3 段椭圆弧
+    const c = dc(series, viewport, priceScale, geo);
+    const a = pointToPixel(d.points[0], c);
+    const b = pointToPixel(d.points[1], c);
+    const r = Math.hypot(a.x - b.x, a.y - b.y);
+    // 基线 + 3 段半圆弧
     expect(hasPair(ctx, 'moveTo', [a.x, a.y], 'lineTo', [b.x, b.y])).toBe(true);
-    const ellipses = callsOf(ctx, 'ellipse');
-    expect(ellipses).toHaveLength(3);
+    const arcs = callsOf(ctx, 'arc');
+    expect(arcs).toHaveLength(3);
+    const start = Math.atan2(a.y - b.y, a.x - b.x);
     for (let i = 0; i < 3; i++) {
       const lv = FIB_ARC_LEVELS[i];
-      expect(ellipses[i]).toEqual([a.x, a.y, rx * lv, ry * lv, 0, -Math.PI / 2, 0]);
+      // 圆心 = 第 2 点；半径 = 比率 × 锚距；扫掠 = 起点角 → +π（半圆）
+      expect(arcs[i]).toEqual([b.x, b.y, r * lv, start, start + Math.PI]);
     }
   });
 
-  it('下降趋势弧向右下扫掠（起始角 0 → PI/2）', () => {
+  it('下降趋势（第 1 点在右上）：起点角取 atan2 方向，仍扫半圆', () => {
     const { ctx, series, viewport, priceScale, geo } = fixture();
     const d = mk('fib-arc', [
       { time: BARS[0].time, price: 110 },
       { time: BARS[3].time, price: 100 },
     ]);
     drawDrawings(asCtx(ctx), [d], null, dc(series, viewport, priceScale, geo), 2);
-    const ellipses = callsOf(ctx, 'ellipse');
-    expect(ellipses).toHaveLength(3);
-    expect(ellipses[1]?.[5]).toBe(0);
-    expect(ellipses[1]?.[6]).toBe(Math.PI / 2);
+    const c = dc(series, viewport, priceScale, geo);
+    const a = pointToPixel(d.points[0], c);
+    const b = pointToPixel(d.points[1], c);
+    const arcs = callsOf(ctx, 'arc');
+    expect(arcs).toHaveLength(3);
+    const start = Math.atan2(a.y - b.y, a.x - b.x);
+    expect(arcs[1]?.[3]).toBeCloseTo(start, 10);
+    expect(arcs[1]?.[4]).toBeCloseTo(start + Math.PI, 10);
   });
 });
 
@@ -450,7 +456,7 @@ describe('命中测试：斐波那契家族', () => {
     expect(hitTestDrawing(d, 10, 10, c)).toBeNull();
   });
 
-  it('弧线：包围盒近似命中（盒内 body，盒外 null）', () => {
+  it('弧线：弧上 ±6px 命中 body，弧外 null', () => {
     const { series, viewport, priceScale, geo } = fixture();
     const d = mk('fib-arc', [
       { time: BARS[0].time, price: 100 },
@@ -459,8 +465,13 @@ describe('命中测试：斐波那契家族', () => {
     const c = dc(series, viewport, priceScale, geo);
     const a = pointToPixel(d.points[0], c);
     const b = pointToPixel(d.points[1], c);
-    expect(hitTestDrawing(d, (a.x + b.x) / 2, (a.y + b.y) / 2, c)).toEqual({ part: 'body' });
-    expect(hitTestDrawing(d, Math.max(a.x, b.x) + 20, (a.y + b.y) / 2, c)).toBeNull();
+    const r = Math.hypot(a.x - b.x, a.y - b.y);
+    const start = Math.atan2(a.y - b.y, a.x - b.x);
+    // 0.5 弧中点（圆心 + 半径 × 方向）
+    const mid = start + Math.PI / 2;
+    expect(hitTestDrawing(d, b.x + r * 0.5 * Math.cos(mid), b.y + r * 0.5 * Math.sin(mid), c)).toEqual({ part: 'body' });
+    // 圆心附近（距任一弧 > 6px）
+    expect(hitTestDrawing(d, b.x + 20, b.y + 20, c)).toBeNull();
   });
 
   it('时区：竖线 ±5px 命中', () => {
