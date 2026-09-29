@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { BarChart3, Camera, CandlestickChart, ChevronDown, FileCode2, LoaderCircle, Maximize2, Play, Redo2, RefreshCw, Save, Search, Settings2, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Chart } from '@/components/Chart';
@@ -207,10 +207,13 @@ export default function App() {
     renderer?.setLegendOptions(legendOpts);
   }, [renderer, legendOpts]);
 
-  useEffect(() => {
+  // useLayoutEffect：ref 同步先于浏览器绘制提交——周期切换同帧内按 Ctrl+S 时
+  // getChartState 读到的必为新值（passive effect 有 <1 帧窗口会存进上一周期，
+  // QA 终验 advisory #7，2026-09-29；人类不可复现但自动化可触发）
+  useLayoutEffect(() => {
     timeframeRef.current = timeframe;
   }, [timeframe]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     chartTypeRef.current = chartType;
   }, [chartType]);
 

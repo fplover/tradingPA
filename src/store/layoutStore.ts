@@ -1,4 +1,9 @@
 import { create } from 'zustand';
+// 强制求值序：customInterval 的模块体 initCustomIntervals() 必须早于本模块体的
+// readFile() 执行——否则刷新恢复时自定义周期（custom:N，运行时注册）尚未进注册表，
+// isKnownTimeframeId 判 false → 布局快照静默回退 '1m'（QA 终验 P1，2026-09-29）。
+// customInterval 不导入本模块，无循环依赖。
+import '@/features/market/customInterval';
 import type { Instrument } from '@/types/instrument';
 import type { Drawing } from '@/engine/drawing/types';
 import { useIndicatorStore } from '@/store/indicatorStore';
