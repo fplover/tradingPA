@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Bar, Timeframe, TimeframeId } from '@/types/market';
+import type { Bar, TimeframeId } from '@/types/market';
 import { getTimeframe } from '@/types/market';
 import type { Instrument } from '@/types/instrument';
 import type { FeedStatus } from '@/data/feed/types';
@@ -9,7 +9,7 @@ import { AggregateFeedPath } from '@/data/aggregatePath';
 import { klineCache } from '@/data/cache/klineCache';
 import { dataRegistry, NoHistoryError } from '@/data/sources/registry';
 import { applyQuote } from '@/data/liveBar';
-import { generateSeededMockBars } from '@/data/mockData';
+import { createMockFallback } from './mockFallback';
 import { useQuoteStore } from '@/store/quoteStore';
 
 export interface ChartSeries {
@@ -23,11 +23,6 @@ export interface ChartSeries {
 }
 
 const HISTORY_LIMIT = 800;
-
-function mockInterval(tf: Timeframe): number {
-  if (tf.seconds > 0) return tf.seconds * 1000;
-  return tf.calendar === 'week' ? 7 * 86_400_000 : 30 * 86_400_000;
-}
 
 /**
  * 图表数据编排：缓存即时渲染 → 拉历史 → 报价轮询维护最后一根。
@@ -78,13 +73,11 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     pageFailsRef.current = 0;
     retryAtRef.current = 0;
 
-    const degradeToMock = (reason: string) => {
-      readyRef.current = true;
-      setMode('mock');
-      setStatus('error');
-      setStatusDetail(`${reason}，已切换到模拟数据`);
-      setHistory(generateSeededMockBars(inst.id, 600, mockInterval(tf), 100));
-    };
+    const degradeToMock = createMockFallback(
+      { onReady: () => { readyRef.current = true; }, setMode, setStatus, setStatusDetail, setHistory },
+      inst,
+      tf,
+    );
 
     setMode('live');
     setStatus('loading');
@@ -229,6 +222,11 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     loadMore: () => {
       const inst = instRef.current;
       if (!inst) return;
+      const fail = () => {
+        pageFailsRef.current += 1;
+        retryAtRef.current = Date.now() + 3000;
+        if (pageFailsRef.current >= 2) noMoreRef.current = true;
+      };
       if (inst.market === 'crypto') {
         const feed = feedRef.current;
         if (feed) {
@@ -243,11 +241,6 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
         if (!readyRef.current) return;
         const token = loadTokenRef.current;
         pagingRef.current = true;
-        const fail = () => {
-          pageFailsRef.current += 1;
-          retryAtRef.current = Date.now() + 3000;
-          if (pageFailsRef.current >= 2) noMoreRef.current = true;
-        };
         aggPath
           .loadMore()
           .then((n) => {
@@ -271,11 +264,6 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
       if (!readyRef.current) return;
       const token = loadTokenRef.current;
       pagingRef.current = true;
-      const fail = () => {
-        pageFailsRef.current += 1;
-        retryAtRef.current = Date.now() + 3000;
-        if (pageFailsRef.current >= 2) noMoreRef.current = true;
-      };
       dataRegistry
         .barsBefore(inst, tfRef.current.id, current[0].time, HISTORY_LIMIT)
         .then((older) => {
