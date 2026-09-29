@@ -9,6 +9,7 @@ import type { IndicatorInstance } from '@/indicators/core/instance';
 import { DEFAULT_LEGEND_OPTIONS, type LegendOptions, type StudyLegendRect } from './drawCrosshair';
 import type { GridMode, PaneButtonRects } from './drawAxes';
 import { IndicatorManager } from './IndicatorManager';
+import { DEFAULT_VP_PARAMS, VolumeProfileModel, coerceVpParams, type VolumeProfileParams } from '../profile/volumeProfile';
 
 /**
  * 图表级状态（D 批次拆分④；架构映射：ChartRenderer 字段区、createPane、
@@ -50,6 +51,29 @@ export function createPane(id: string, kind: PaneKind, heightRatio: number): Pan
   return { id, kind, heightRatio, priceScale: new PriceScale(), indicators: [], y: 0, height: 0, manual: false, autoBtn: null, headerBtns: null };
 }
 
+/** 砖块类图表类型（无收盘概念，VP 不绘制；applyData 变换分支同用此清单） */
+const TRANSFORM_TYPES: ChartTypeId[] = ['heikin-ashi', 'renko', 'kagi', 'line-break', 'point-figure', 'range'];
+
+export function isTimeBasedChartType(type: ChartTypeId): boolean {
+  return !TRANSFORM_TYPES.includes(type);
+}
+
+/** Volume Profile 运行态（P1-F）：状态挂 ChartState 实例，多图表布局互不干扰 */
+export interface VolumeProfileRuntime {
+  on: boolean;
+  params: VolumeProfileParams;
+  /** 数据纪元：applyData/updateBar 路径自增，进入 VP 缓存签名（蓝图 §2） */
+  dataEpoch: number;
+  model: VolumeProfileModel;
+}
+
+/** 渲染层取数：PaneRenderer 仅持 viewport getter，按 viewport 键取同图表的 VP 运行态 */
+const vpRuntimeByViewport = new WeakMap<Viewport, VolumeProfileRuntime>();
+
+export function vpRuntimeOf(viewport: Viewport): VolumeProfileRuntime | undefined {
+  return vpRuntimeByViewport.get(viewport);
+}
+
 export class ChartState {
   // 面板与序列
   panes: PaneState[] = [];
@@ -86,6 +110,8 @@ export class ChartState {
 
   /** 指标生命周期（拆分④：pane 数组操作独立成模块） */
   readonly indicators: IndicatorManager;
+  /** Volume Profile 运行态（P1-F）：经 vpRuntimeOf 暴露给渲染层，IndicatorManager 专用分支读写 */
+  readonly vp: VolumeProfileRuntime = { on: false, params: { ...DEFAULT_VP_PARAMS }, dataEpoch: 0, model: new VolumeProfileModel() };
 
   constructor(
     private viewport: Viewport,
@@ -95,10 +121,15 @@ export class ChartState {
     private chartW: () => number,
     private invalidate: () => void,
   ) {
+    vpRuntimeByViewport.set(viewport, this.vp);
     this.indicators = new IndicatorManager({
       panes: { get: () => this.panes, set: (p) => (this.panes = p) },
       selectedPaneId: { get: () => this.selectedPaneId, set: (id) => (this.selectedPaneId = id) },
       invalidate: () => this.invalidate(),
+      vp: {
+        getState: () => ({ on: this.vp.on, params: { ...this.vp.params } }),
+        setVolumeProfile: (on, params) => this.setVolumeProfile(on, params),
+      },
     });
   }
 
@@ -177,8 +208,8 @@ export class ChartState {
 
   /** 数据/图表类型变化后：重建 displaySeries 并重置视口 */
   applyData(resetView: boolean): void {
-    const transformTypes: ChartTypeId[] = ['heikin-ashi', 'renko', 'kagi', 'line-break', 'point-figure', 'range'];
-    if (transformTypes.includes(this.chartType)) {
+    this.vp.dataEpoch++; // VP 缓存签名：数据替换/实时跳动/图表类型切换全失效
+    if (TRANSFORM_TYPES.includes(this.chartType)) {
       const bars = this.materialize();
       const opts = this.brickOpts;
       const transformed =
@@ -255,6 +286,18 @@ export class ChartState {
   setHideStudies(hidden: boolean): void {
     this.hideStudies = hidden;
     this.invalidate();
+  }
+
+  /** Volume Profile 开关 + 参数（IndicatorManager profile 分支落点，蓝图 §7） */
+  setVolumeProfile(on: boolean, params?: Record<string, string | number | boolean>): void {
+    this.vp.on = on;
+    if (params) this.vp.params = coerceVpParams(params);
+    this.invalidate();
+  }
+
+  /** VP 状态只读快照（IndicatorManager.list/模板持久化用） */
+  getVpState(): { on: boolean; params: Record<string, string | number | boolean> } {
+    return { on: this.vp.on, params: { ...this.vp.params } };
   }
 
   /** 网格四态（TV 画布页）：none / horizontal / vertical / both */

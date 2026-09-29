@@ -13,6 +13,8 @@ import { autoscalePrice, autoscaleIndicators, type AutoscaleOptions } from './au
 import { drawOhlc, drawLine, drawArea, drawBaseline, drawColumns, drawHighLow, drawStepLine, drawLineMarkers, drawHlcArea, drawVolumeCandles } from './seriesRenderers';
 import { formatCompact } from '@/data/format';
 import { theme, TV_FONT } from '../theme';
+import { isTimeBasedChartType, vpRuntimeOf } from './ChartState';
+import { drawVolumeProfile } from './drawVolumeProfile';
 
 /**
  * 单面板渲染（D 批次拆分④；架构映射：ChartRenderer draw() 的面板循环体与
@@ -59,6 +61,12 @@ export class PaneRenderer {
       autoscalePrice(pane, this.host.series(), from, to, opts);
       drawGrid(ctx, this.host.viewport, pane.priceScale, geo, this.host.gridMode());
       this.drawPriceSeries(ctx, pane, geo, from, to);
+      // Volume Profile（P1-F）：右缘横置直方图，先于画线/交易层（RenderPipeline 后绘，TV 同序）；
+      // 仅时间轴类图表绘制（变换类无价格连续性），隐藏指标开关一并生效
+      const vp = vpRuntimeOf(this.host.viewport);
+      if (vp?.on && !this.host.hideStudies() && isTimeBasedChartType(this.host.chartType())) {
+        drawVolumeProfile(ctx, this.host.series().raw(), from, to, pane.priceScale, geo, vp.model, vp.params, vp.dataEpoch, this.host.decimals());
+      }
       // 主图叠加指标
       for (const inst of pane.indicators) {
         if (this.host.hideStudies() || !inst.isVisibleOn(this.host.timeframeId())) continue;

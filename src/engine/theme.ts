@@ -33,6 +33,13 @@ export interface ChartTheme {
   accentMask: string;
   /** 信息线标签底色（存量同值，浅色主题待分化） */
   infoLabelBg: string;
+  /** Volume Profile 直方图涨/跌段（对齐 up/down 色系半透明，P1-F） */
+  profileUp: string;
+  profileDown: string;
+  /** POC 横线与价签 */
+  profilePoc: string;
+  /** VAH/VAL 虚线 */
+  profileVa: string;
 }
 
 const darkTheme: ChartTheme = {
@@ -57,6 +64,10 @@ const darkTheme: ChartTheme = {
   warn: '#ff9800',
   accentMask: 'rgba(41, 98, 255, 0.06)',
   infoLabelBg: '#2a2e39', // 存量同值，浅色主题待分化
+  profileUp: 'rgba(38, 166, 154, 0.5)',
+  profileDown: 'rgba(239, 83, 80, 0.5)',
+  profilePoc: '#ff9800',
+  profileVa: 'rgba(255, 152, 0, 0.5)',
 };
 
 const lightTheme: ChartTheme = {
@@ -81,6 +92,10 @@ const lightTheme: ChartTheme = {
   warn: '#ff9800',
   accentMask: 'rgba(41, 98, 255, 0.06)',
   infoLabelBg: '#2a2e39', // 存量同值，浅色主题待分化
+  profileUp: 'rgba(38, 166, 154, 0.45)',
+  profileDown: 'rgba(239, 83, 80, 0.45)',
+  profilePoc: '#ff9800',
+  profileVa: 'rgba(255, 152, 0, 0.6)',
 };
 
 export const theme: ChartTheme = { ...darkTheme };

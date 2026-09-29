@@ -42,6 +42,9 @@ export interface IndicatorDef {
   category: string;
   /** true = 叠加到主图；false = 独立副图 */
   overlay: boolean;
+  /** true = 区间几何型指标（Volume Profile）：不产逐 bar 序列、不建实例/面板，
+   *  由 IndicatorManager 走专用分支挂图表级状态（P1-F 蓝图 §4） */
+  profile?: boolean;
   /** 计算所需的最大回看 bar 数 */
   lookback: number;
   params: IndicatorParam[];

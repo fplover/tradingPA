@@ -24,7 +24,15 @@ export interface IndicatorHost {
   /** 选中面板 id 访问器（面板被移除时回落主面板） */
   selectedPaneId: { get(): string; set(id: string): void };
   invalidate(): void;
+  /** Volume Profile（profile 标记 def）专用通路：状态挂图表级，不建实例/面板 */
+  vp: {
+    getState(): { on: boolean; params: Record<string, string | number | boolean> };
+    setVolumeProfile(on: boolean, params?: Record<string, string | number | boolean>): void;
+  };
 }
+
+/** Volume Profile 固定 uid（单图表实例至多一份，add/remove/update/list 由此路由） */
+const VP_UID = 'vp';
 
 export class IndicatorManager {
   constructor(private host: IndicatorHost) {}
@@ -33,6 +41,12 @@ export class IndicatorManager {
   add(id: string, options?: IndicatorOptions): string | null {
     const def = getIndicatorDef(id);
     if (!def) return null;
+    // profile 标记（Volume Profile）：不建实例不建面板，切图表级状态 + 挂参数（P1-F §4）
+    if (def.profile) {
+      this.host.vp.setVolumeProfile(true, options?.params);
+      this.host.invalidate();
+      return VP_UID;
+    }
     const instance = new IndicatorInstance(def, options);
     const panes = this.host.panes.get();
     if (def.overlay) {
@@ -46,6 +60,11 @@ export class IndicatorManager {
   }
 
   remove(uid: string): void {
+    if (uid === VP_UID) {
+      if (this.host.vp.getState().on) this.host.vp.setVolumeProfile(false);
+      this.host.invalidate();
+      return;
+    }
     const panes = this.host.panes.get();
     for (const pane of panes) {
       const idx = pane.indicators.findIndex((i) => i.uid === uid);
@@ -61,6 +80,11 @@ export class IndicatorManager {
   }
 
   update(uid: string, options: IndicatorOptions): void {
+    if (uid === VP_UID) {
+      this.host.vp.setVolumeProfile(true, options.params);
+      this.host.invalidate();
+      return;
+    }
     for (const pane of this.host.panes.get()) {
       const inst = pane.indicators.find((i) => i.uid === uid);
       if (inst) {
@@ -71,13 +95,18 @@ export class IndicatorManager {
     }
   }
 
-  /** 全部激活指标（供 UI 列表） */
+  /** 全部激活指标（供 UI 列表；VP 开启时以固定 uid 追加，模板持久化同通路） */
   list(): IndicatorInfo[] {
     const out: IndicatorInfo[] = [];
     for (const pane of this.host.panes.get()) {
       for (const inst of pane.indicators) {
         out.push({ uid: inst.uid, id: inst.id, name: inst.name, overlay: inst.overlay, params: inst.params });
       }
+    }
+    const vp = this.host.vp.getState();
+    if (vp.on) {
+      const def = getIndicatorDef('volume-profile');
+      out.push({ uid: VP_UID, id: 'volume-profile', name: def?.name ?? 'Volume Profile', overlay: true, params: vp.params });
     }
     return out;
   }
@@ -88,6 +117,7 @@ export class IndicatorManager {
   }
 
   importTemplate(list: Array<{ id: string; params?: Record<string, string | number | boolean> }>): void {
+    this.host.vp.setVolumeProfile(false); // 模板不含 VP 时清位，含 VP 时由 add 分支重挂
     for (const pane of this.host.panes.get()) pane.indicators = [];
     this.host.panes.set(this.host.panes.get().filter((p) => p.kind !== 'indicator'));
     for (const item of list) this.add(item.id, { params: item.params });

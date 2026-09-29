@@ -9,6 +9,7 @@ import { momentumBasicIndicators } from './builtin/momentum-extended';
 import { momentumOscIndicators } from './builtin/momentum-osc';
 import { volatilityIndicators } from './builtin/volatility';
 import { volumeExtendedIndicators } from './builtin/volume-extended';
+import { profileIndicators } from './builtin/profile';
 
 export const ALL_INDICATORS: IndicatorDef[] = [
   ...trendIndicators,
@@ -21,6 +22,7 @@ export const ALL_INDICATORS: IndicatorDef[] = [
   ...momentumOscIndicators,
   ...volatilityIndicators,
   ...volumeExtendedIndicators,
+  ...profileIndicators,
 ];
 
 /** 自定义指标（Pine 子集编译产物）：运行时注册，与内置指标同管线 */
