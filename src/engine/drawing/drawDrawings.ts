@@ -191,7 +191,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
       const midX = (pts[0].x + pts[1].x) / 2;
       const midY = (pts[0].y + pts[1].y) / 2;
       const text = `${diff >= 0 ? '+' : ''}${diff.toFixed(decimals)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
-      ctx.fillStyle = '#2a2e39';
+      ctx.fillStyle = theme.infoLabelBg;
       const w = ctx.measureText(text).width + 10;
       ctx.fillRect(midX - w / 2, midY - 9, w, 18);
       ctx.fillStyle = diff >= 0 ? theme.up : theme.down;

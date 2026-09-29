@@ -185,10 +185,10 @@ export class RenderPipeline {
       const px = st.selectPreviewX;
       if (px >= 0 && px <= mainGeo.chartW) {
         // 线右侧淡蒙层（“未来”区域提示）
-        ctx.fillStyle = 'rgba(41, 98, 255, 0.06)';
+        ctx.fillStyle = theme.accentMask;
         ctx.fillRect(px, 0, mainGeo.chartW - px, mainGeo.chartH);
         // 实线
-        ctx.strokeStyle = '#2962ff';
+        ctx.strokeStyle = theme.accent;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([]);
         ctx.beginPath();
@@ -212,9 +212,9 @@ function drawScissors(ctx: CanvasRenderingContext2D, x: number, y: number): void
   ctx.save();
   ctx.beginPath();
   ctx.arc(x, y, 8, 0, Math.PI * 2);
-  ctx.fillStyle = '#2962ff';
+  ctx.fillStyle = theme.accent;
   ctx.fill();
-  ctx.strokeStyle = '#ffffff';
+  ctx.strokeStyle = theme.onAccent;
   ctx.lineWidth = 1.5;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';

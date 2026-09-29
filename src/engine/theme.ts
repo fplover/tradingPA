@@ -23,6 +23,16 @@ export interface ChartTheme {
   axisLabelText: string;
   /** 选中面板的淡色高亮背景 */
   paneActive: string;
+  /** 品牌强调色（与全局 CSS --accent 同源：选K预览线/剪刀徽章/限价单/线族默认色） */
+  accent: string;
+  /** accent 底上的文字/图标描边（与全局 CSS --text-on-accent 同源） */
+  onAccent: string;
+  /** 语义警示色（止损单橙） */
+  warn: string;
+  /** 选K预览线右侧淡蒙层（"未来"区域提示） */
+  accentMask: string;
+  /** 信息线标签底色（存量同值，浅色主题待分化） */
+  infoLabelBg: string;
 }
 
 const darkTheme: ChartTheme = {
@@ -42,6 +52,11 @@ const darkTheme: ChartTheme = {
   axisLabelText: '#b2b5be',
   /** 选中面板高亮：必须极淡且中性，否则整块画布会被染上底色 */
   paneActive: 'rgba(255, 255, 255, 0.02)',
+  accent: '#2962ff',
+  onAccent: '#ffffff',
+  warn: '#ff9800',
+  accentMask: 'rgba(41, 98, 255, 0.06)',
+  infoLabelBg: '#2a2e39', // 存量同值，浅色主题待分化
 };
 
 const lightTheme: ChartTheme = {
@@ -61,6 +76,11 @@ const lightTheme: ChartTheme = {
   /** 浅色主题的光标轴标签用深色底白字，白底上才看得清 */
   axisLabelText: '#ffffff',
   paneActive: 'rgba(19, 23, 34, 0.02)',
+  accent: '#2962ff',
+  onAccent: '#ffffff',
+  warn: '#ff9800',
+  accentMask: 'rgba(41, 98, 255, 0.06)',
+  infoLabelBg: '#2a2e39', // 存量同值，浅色主题待分化
 };
 
 export const theme: ChartTheme = { ...darkTheme };

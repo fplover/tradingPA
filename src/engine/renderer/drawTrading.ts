@@ -1,7 +1,7 @@
 import type { PriceScale } from '../scale/PriceScale';
 import type { Viewport } from '../viewport/Viewport';
 import type { BarSeries } from '@/data/BarSeries';
-import { TV_FONT } from '../theme';
+import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
 
 export interface OrderVisual {
@@ -90,7 +90,7 @@ function drawOrderLine(
 ): void {
   const y = Math.round(priceScale.priceToY(o.price!)) + 0.5;
   if (y < 0 || y > geo.chartH) return;
-  const color = o.type === 'stop' || o.type === 'stop-limit' ? '#ff9800' : '#2962ff';
+  const color = o.type === 'stop' || o.type === 'stop-limit' ? theme.warn : theme.accent;
   ctx.strokeStyle = color;
   ctx.lineWidth = 0.5;
   ctx.setLineDash([2, 3]);
@@ -113,7 +113,7 @@ function drawPositionLine(
 ): void {
   const y = Math.round(priceScale.priceToY(p.avgPrice)) + 0.5;
   if (y < 0 || y > geo.chartH) return;
-  const color = p.side === 'long' ? '#26a69a' : '#ef5350';
+  const color = p.side === 'long' ? theme.up : theme.down;
   // 持仓入场线（细实线）
   ctx.strokeStyle = color;
   ctx.lineWidth = 1;
@@ -136,8 +136,8 @@ function drawPositionLine(
     ctx.setLineDash([]);
     drawTag(ctx, geo.chartW - TAG_PAD, ly, `${label} ${price.toFixed(decimals)}`, lineColor, true);
   };
-  drawTpSlLine(p.takeProfit, '#26a69a', '止盈');
-  drawTpSlLine(p.stopLoss, '#ef5350', '止损');
+  drawTpSlLine(p.takeProfit, theme.up, '止盈');
+  drawTpSlLine(p.stopLoss, theme.down, '止损');
   const pnl = p.pnl >= 0 ? `+${p.pnl.toFixed(2)}` : p.pnl.toFixed(2);
   const label = `${p.side === 'long' ? '多' : '空'} ${p.qty} @${p.avgPrice.toFixed(decimals)} · ${pnl}`;
   // 持仓详情块右端带关闭按钮（点击市价平仓）
@@ -161,7 +161,7 @@ function drawTradeMarkers(
     const y = priceScale.priceToY(m.price);
     if (y < -12 || y > geo.chartH + 12) continue;
     const buy = m.side === 'buy';
-    const color = buy ? '#26a69a' : '#ef5350';
+    const color = buy ? theme.up : theme.down;
     ctx.fillStyle = color;
     // 方向箭头：买入在点下方尖端朝上，卖出在点上方尖端朝下
     const ay = buy ? y + 7 : y - 7;
