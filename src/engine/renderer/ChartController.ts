@@ -206,6 +206,9 @@ export class ChartController {
   setDrawingMenuCallback(cb: ((id: string, x: number, y: number) => void) | null): void { this.drawingMenuCb = cb; }
   setHideStudies(hidden: boolean): void { this.state.setHideStudies(hidden); }
   get studiesHidden(): boolean { return this.state.hideStudies; }
+  /** 回放位置公开读 API（拆分前为实例私有字段、运行时经 window.__chartRenderer 可读；
+   *  D 批次迁入 ChartState 后补此 getter 保持对外读取面不变——E2E 回放用例依赖） */
+  get replayIndex(): number | null { return this.state.replayIndex; }
   setGridMode(mode: GridMode): void { this.state.setGridMode(mode); }
   setBordersVisible(visible: boolean): void { this.state.setBordersVisible(visible); }
   setWatermarkVisible(visible: boolean): void { this.state.setWatermarkVisible(visible); }
