@@ -10,11 +10,9 @@ import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, typ
 import { isMarketOpen } from '@/data/marketHours';
 import { IndicatorInstance, type IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
-import { DrawingLayer } from '../drawing/DrawingLayer';
-import { getToolDef, isConstrainableTool, type Drawing, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
-import { drawDrawings, pixelToPoint, pointToPixel, type DrawContext } from '../drawing/drawDrawings';
-import { detectVisibleSwing } from '../drawing/fibMath';
-import { drawTrading, hitTestTrading, type TradeVisual, type TradeHit } from './drawTrading';
+import { getToolDef, type Drawing, type DrawingTypeId } from '../drawing/types';
+import { drawDrawings, pixelToPoint, type DrawContext } from '../drawing/drawDrawings';
+import { drawTrading, type TradeVisual } from './drawTrading';
 import { serializeDrawings, deserializeDrawings } from '../drawing/types';
 import { drawCandles, type DrawGeometry } from './drawSeries';
 import { drawGrid, drawPriceAxis, drawTimeAxis, drawBorders, drawPaneLegend, drawPaneButtons, drawLastPrice, type GridMode, type PaneButtonRects } from './drawAxes';
@@ -25,9 +23,12 @@ import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendOptions, ty
 import { drawIndicator, indicatorValuesAt } from './drawIndicator';
 import type { ViewportTimeRange } from '@/store/syncBus';
 import { SyncBridge } from './SyncBridge';
-import { autoscaleIndicators, autoscalePrice, ensurePriceScaleReady, type AutoscaleOptions } from './autoscale';
-import { hitDrawings, hitPaneButtons, type DrawingHit, type PaneButtonHit } from './hitTest';
-import { decideCursor } from './cursor';
+import { autoscaleIndicators, autoscalePrice, ensurePriceScaleReady, type AutoscaleOptions, type ScalablePane } from './autoscale';
+import { InputController, type InputHost } from './InputController';
+import { PanZoomGesture } from './PanZoomGesture';
+import { DrawingGesture } from './DrawingGesture';
+import { TradeGesture, type TradeCallbacks } from './TradeGesture';
+import { HoverController } from './HoverController';
 
 const AXIS_WIDTH = 64;
 const AXIS_HEIGHT = 24;
@@ -81,9 +82,6 @@ export class ChartRenderer {
   private logScale = false;
   private autoScaleOn = true;
   private drawingsHidden = false;
-  private paneResizeIndex: number | null = null;
-  private paneResizeStartY = 0;
-  private paneResizeStartHeight = 0;
   private percentOn = false;
   private drawingsLocked = false;
   private gridMode: GridMode = 'both';
@@ -92,15 +90,9 @@ export class ChartRenderer {
   private watermarkVisible = false;
   private hideStudies = false;
   private legendOptions: LegendOptions = { ...DEFAULT_LEGEND_OPTIONS };
-  /** 研究图例行命中区与悬停态（图例右侧 眼睛/设置/移除 按钮） */
+  /** 研究图例行命中区（图例右侧 眼睛/设置/移除 按钮；drawLegendBlock 回写，悬停层读取） */
   private studyRects: StudyLegendRect[] = [];
-  private hoverStudyUid: string | null = null;
-  private studyHoverBtn: number | null = null;
-  private movedFar = false;
   private studyActionCb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null = null;
-  /** 画线悬停光标：body=move、handle=pointer */
-  private drawingHoverCursor = '';
-  private toolFinishedCb: (() => void) | null = null;
   private drawingSettingsCb: ((id: string) => void) | null = null;
   /** 双击最新价线 → 打开图表设置（TV 行为） */
   private priceLineDblClickCb: (() => void) | null = null;
@@ -112,28 +104,9 @@ export class ChartRenderer {
   /** 当前图表类型是否时间-based（砖块类无收盘概念，不显示倒计时） */
   private timeBasedChart = true;
 
-  // 画线状态
-  private drawingLayer = new DrawingLayer();
-  private activeTool: DrawingTypeId | null = null;
-  private placing: DrawingPoint[] = [];
-  private previewPoint: DrawingPoint | null = null;
-  /** 拖拽画线：ids 为本次受动的对象集合（单选=1 个；多选整体拖拽=全部选中；手柄拖拽=1 个） */
-  private dragDrawing: { ids: string[]; part: 'body' | 'handle'; index: number; start: DrawingPoint; origins: Map<string, DrawingPoint[]> } | null = null;
-  /** B7 Ctrl+按下待克隆：首次移动超过阈值才懒克隆（无移动的 Ctrl+点击 = 多选切换） */
-  private pendingClone: { id: string; part: 'body' | 'handle'; index: number; start: DrawingPoint } | null = null;
+  // 画线（D 批次拆分③：图层与放置/拖拽态迁入 DrawingGesture，订阅监听器留门面）
   private drawingsListeners = new Set<() => void>();
 
-  // 交易可视化（挂单线/持仓线/TP-SL）
-  private tradeVisual: TradeVisual = { orders: [], position: null, entries: [], exits: [] };
-  private tradeDrag: TradeHit = null;
-  /** 悬停交易可视化元素时的 pointer 光标状态（避免每帧写样式） */
-  private tradeHoverCursor = false;
-  private tradeCbs: {
-    onOrderMove?: (id: string, price: number) => void;
-    onOrderCancel?: (id: string) => void;
-    onPositionTpSl?: (tp: number | null, sl: number | null) => void;
-    onPositionClose?: () => void;
-  } = {};
   private chartClickCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
   private contextMenuCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
   /** 当前选中面板 id（TV：点击面板即选中；面板被移除后回落主面板） */
@@ -161,12 +134,12 @@ export class ChartRenderer {
   /** 最近一帧绘制耗时（ms），供性能监控与测试 */
   lastFrameMs = 0;
 
-  // 拖拽状态
-  private dragging = false;
-  private lastPointerX = 0;
-  private lastPointerY = 0;
-  private priceDragging = false;
-  private priceYAtDragStart = 0;
+  // 输入层（D 批次拆分③：手势状态机 + 悬停控制 + 事件路由；host 为结构子集，避免反向依赖）
+  private panzoom: PanZoomGesture;
+  private drawing: DrawingGesture;
+  private trade: TradeGesture;
+  private hover: HoverController;
+  private input: InputController;
 
   constructor(canvas: HTMLCanvasElement, bars: Bar[] = [], legend?: Partial<LegendInfo>) {
     this.manager = new CanvasManager(canvas);
@@ -183,7 +156,62 @@ export class ChartRenderer {
       this.viewport.setSize(this.manager.width - AXIS_WIDTH);
       this.invalidate();
     });
-    this.bindInput(canvas);
+    // 输入层装配（D 批次拆分③）：host 提供几何/序列/状态/回调的结构子集，
+    // 三个手势与 InputController 各持窄接口，依赖只向下
+    const inputHost: InputHost = {
+      manager: this.manager,
+      canvas: this.manager.canvas,
+      viewport: this.viewport,
+      crosshair: this.crosshair,
+      panes: () => this.panes,
+      paneAt: (y) => this.paneAt(y),
+      separatorIndexAt: (y) => this.separatorIndexAt(y),
+      displaySeries: () => this.displaySeries,
+      invalidate: () => this.invalidate(),
+      notifyDrawings: () => this.notifyDrawings(),
+      layout: () => this.layout(),
+      chartW: () => this.manager.width - AXIS_WIDTH,
+      chartH: () => this.manager.height - AXIS_HEIGHT,
+      drawingCtx: () => this.drawingCtx(),
+      mainPaneY: () => this.panes[0].y,
+      mainPane: () => this.panes[0],
+      drawingsLocked: () => this.drawingsLocked,
+      publishViewport: () => this.sync.publishViewport(),
+      publishCrosshairTime: (t) => this.sync.publishCrosshairTime(t),
+      selectPane: (id) => {
+        this.selectedPaneId = id;
+      },
+      setHoveredPane: (id) => {
+        this.hoveredPaneId = id;
+      },
+      setSelectPreviewX: (x) => {
+        this.selectPreviewX = x;
+      },
+      studyRects: () => this.studyRects,
+      barSelectMode: () => this.barSelectMode,
+      replayIndex: () => this.replayIndex,
+      barSelected: (rawIndex) => {
+        const idx = Math.min(Math.max(rawIndex, 0), Math.max(0, this.displaySeries.length - 1));
+        this.barSelectCb?.(idx);
+        this.setBarSelectMode(false, null);
+      },
+      ensurePaneScaleReady: (pane) => this.ensurePaneScaleReady(pane),
+      finishPlacing: () => this.finishPlacing(),
+      studyActionCb: () => this.studyActionCb,
+      paneActionCb: () => this.paneActionCb,
+      chartClickCb: () => this.chartClickCb,
+      contextMenuCb: () => this.contextMenuCb,
+      legendMenuCb: () => this.legendMenuCb,
+      drawingMenuCb: () => this.drawingMenuCb,
+      drawingSettingsCb: () => this.drawingSettingsCb,
+      priceLineDblClickCb: () => this.priceLineDblClickCb,
+    };
+    this.panzoom = new PanZoomGesture(inputHost);
+    this.drawing = new DrawingGesture(inputHost);
+    this.trade = new TradeGesture(inputHost);
+    this.hover = new HoverController(inputHost, this.drawing, this.trade);
+    this.input = new InputController(inputHost, this.panzoom, this.drawing, this.trade, this.hover);
+    this.input.bind(canvas);
     this.applyData(true);
   }
 
@@ -278,7 +306,7 @@ export class ChartRenderer {
   }
 
   setToolFinishedCallback(cb: (() => void) | null): void {
-    this.toolFinishedCb = cb;
+    this.drawing.setToolFinishedCallback(cb);
   }
 
   setDrawingSettingsCallback(cb: ((id: string) => void) | null): void {
@@ -475,7 +503,7 @@ export class ChartRenderer {
     this.disposed = true;
     this.stop();
     this.countdown.reset();
-    this.unbindInput(this.manager.canvas);
+    this.input.unbind(this.manager.canvas);
     this.manager.dispose();
   }
 
@@ -609,13 +637,12 @@ export class ChartRenderer {
 
   /** 同步交易可视化数据（挂单/持仓） */
   setTradeVisual(visual: TradeVisual): void {
-    this.tradeVisual = visual;
-    this.invalidate();
+    this.trade.setVisual(visual);
   }
 
   /** 注册交易交互回调（拖拽改价/撤单/TP-SL） */
-  setTradeCallbacks(cbs: typeof this.tradeCbs): void {
-    this.tradeCbs = cbs;
+  setTradeCallbacks(cbs: TradeCallbacks): void {
+    this.trade.setCallbacks(cbs);
   }
 
   /** 联动：外部图表十字光标时间（绘制垂直参考线） */
@@ -690,107 +717,103 @@ export class ChartRenderer {
 
   /** 设置当前工具（null = 光标模式） */
   setActiveTool(tool: DrawingTypeId | null): void {
-    this.activeTool = tool;
-    this.placing = [];
-    this.previewPoint = null;
-    this.notifyDrawings();
-    this.invalidate();
+    this.drawing.setTool(tool);
   }
 
   setMagnet(on: boolean): void {
-    this.drawingLayer.setMagnet(on);
+    this.drawing.layer.setMagnet(on);
   }
 
   /** 磁吸档位：weak（50px 内吸附）/ strong（始终吸附） */
   setMagnetMode(mode: 'weak' | 'strong'): void {
-    this.drawingLayer.setMagnetMode(mode);
+    this.drawing.layer.setMagnetMode(mode);
   }
 
   get magnetMode(): 'weak' | 'strong' {
-    return this.drawingLayer.mode;
+    return this.drawing.layer.mode;
   }
 
   /** 清空全部画线 */
   clearDrawings(): void {
-    this.drawingLayer.clear();
+    this.drawing.layer.clear();
     this.notifyDrawings();
     this.invalidate();
   }
 
   /** 克隆画线（偏移少量像素，避免与原图完全重合） */
   duplicateDrawing(id: string): void {
-    const src = this.drawingLayer.list().find((d) => d.id === id);
+    const src = this.drawing.layer.list().find((d) => d.id === id);
     if (!src) return;
     const iv = this.displaySeries.length > 1 ? this.displaySeries.raw()[1].time - this.displaySeries.raw()[0].time : 60_000;
     const span = this.panes[0].priceScale.range;
     const dPrice = (span.max - span.min) * 0.02;
-    const clone = this.drawingLayer.add(src.type, src.points.map((p) => ({ time: p.time + iv * 3, price: p.price + dPrice })), src.style);
-    this.drawingLayer.select(clone.id);
+    const clone = this.drawing.layer.add(src.type, src.points.map((p) => ({ time: p.time + iv * 3, price: p.price + dPrice })), src.style);
+    this.drawing.layer.select(clone.id);
     this.notifyDrawings();
     this.invalidate();
   }
 
   listDrawings(): Drawing[] {
-    return [...this.drawingLayer.list()];
+    return [...this.drawing.layer.list()];
   }
 
   get selectedDrawingId(): string | null {
-    return this.drawingLayer.selected?.id ?? null;
+    return this.drawing.layer.selected?.id ?? null;
   }
 
   updateDrawingStyle(id: string, style: Partial<Drawing['style']>): void {
-    this.drawingLayer.updateStyle(id, style);
+    this.drawing.layer.updateStyle(id, style);
     this.notifyDrawings();
     this.invalidate();
   }
 
   setDrawingVisible(id: string, visible: boolean): void {
-    this.drawingLayer.setVisible(id, visible);
+    this.drawing.layer.setVisible(id, visible);
     this.notifyDrawings();
     this.invalidate();
   }
 
   setDrawingLocked(id: string, locked: boolean): void {
-    this.drawingLayer.setLocked(id, locked);
+    this.drawing.layer.setLocked(id, locked);
     this.notifyDrawings();
     this.invalidate();
   }
 
   /** 选中画线（对象树点击行） */
   selectDrawing(id: string | null): void {
-    this.drawingLayer.select(id);
+    this.drawing.layer.select(id);
     this.invalidate();
   }
 
   /** Ctrl+点击切换多选集合成员（对象树/画布同语义） */
   toggleDrawingSelection(id: string): void {
-    this.drawingLayer.toggleSelect(id);
+    this.drawing.layer.toggleSelect(id);
     this.notifyDrawings();
     this.invalidate();
   }
 
   /** 多选集合（B7：Ctrl+点击累积；对象树高亮/ Delete 删除用） */
   get selectedDrawingIds(): string[] {
-    return this.drawingLayer.selectedIdList;
+    return this.drawing.layer.selectedIdList;
   }
 
   /** 是否存在选中画线（方向键微调 vs 视口平移的路由判据） */
   hasSelectedDrawing(): boolean {
-    return this.drawingLayer.selectedIdList.length > 0;
+    return this.drawing.layer.selectedIdList.length > 0;
   }
 
   /** 方向键微调（B7）：以像素步长平移全部选中对象，Shift = 大步长。
    *  每次调用为单步历史（入撤销栈）；无选中返回 false 不改动。 */
   nudgeSelectedDrawing(dxPx: number, dyPx: number): boolean {
-    if (this.drawingLayer.selectedIdList.length === 0) return false;
+    if (this.drawing.layer.selectedIdList.length === 0) return false;
     const dctx = this.drawingCtx();
     const p0 = pixelToPoint(0, 0, dctx, 'off');
     const p1 = pixelToPoint(dxPx, dyPx, dctx, 'off');
     const dt = p1.time - p0.time;
     const dp = p1.price - p0.price;
     if (dt === 0 && dp === 0) return false;
-    this.drawingLayer.beginHistory();
-    const moved = this.drawingLayer.translateSelected(dt, dp);
+    this.drawing.layer.beginHistory();
+    const moved = this.drawing.layer.translateSelected(dt, dp);
     if (!moved) return false;
     this.notifyDrawings();
     this.invalidate();
@@ -799,41 +822,41 @@ export class ChartRenderer {
 
   /** 视觉顺序：置于顶层/上移一层/下移一层/置于底层 */
   setDrawingOrder(id: string, action: 'front' | 'forward' | 'backward' | 'back'): void {
-    this.drawingLayer.setOrder(id, action);
+    this.drawing.layer.setOrder(id, action);
     this.notifyDrawings();
     this.invalidate();
   }
 
   removeDrawing(id: string): void {
-    this.drawingLayer.remove(id);
+    this.drawing.layer.remove(id);
     this.notifyDrawings();
     this.invalidate();
   }
 
   removeSelectedDrawing(): void {
-    this.drawingLayer.removeSelected();
+    this.drawing.layer.removeSelected();
     this.notifyDrawings();
     this.invalidate();
   }
 
   undoDrawing(): void {
-    this.drawingLayer.undo();
+    this.drawing.layer.undo();
     this.notifyDrawings();
     this.invalidate();
   }
 
   redoDrawing(): void {
-    this.drawingLayer.redo();
+    this.drawing.layer.redo();
     this.notifyDrawings();
     this.invalidate();
   }
 
   exportDrawings(): string {
-    return serializeDrawings(this.drawingLayer.list());
+    return serializeDrawings(this.drawing.layer.list());
   }
 
   importDrawings(raw: string): void {
-    this.drawingLayer.replaceAll(deserializeDrawings(raw));
+    this.drawing.layer.replaceAll(deserializeDrawings(raw));
     this.notifyDrawings();
     this.invalidate();
   }
@@ -849,45 +872,16 @@ export class ChartRenderer {
     };
   }
 
-  /** 画线命中（D 批次拆分②：判定逻辑在 hitTest.ts，此处只做锁定态守卫与上下文装配） */
-  private hitDrawingAt(x: number, y: number, pane: PaneState): DrawingHit | null {
-    if (this.drawingsLocked) return null;
-    return hitDrawings(this.drawingLayer.list(), x, y, pane.y, this.drawingCtx());
-  }
-
-  /** 面板头部按钮命中（设置/移除，仅选中指标面板绘制了按钮） */
-  private hitPaneButtonAt(x: number, y: number, pane: PaneState): PaneButtonHit | null {
-    if (pane.indicators.length === 0) return null;
-    return hitPaneButtons(x, y, pane.y, pane.headerBtns, pane.indicators[0].def.id);
-  }
-
   /** 完成路径类画线（双击/回车） */
   finishPlacing(): void {
-    if (this.activeTool === 'path' && this.placing.length >= 2) {
-      this.drawingLayer.add('path', this.placing);
-    }
-    this.placing = [];
-    this.previewPoint = null;
-    this.notifyDrawings();
-    this.invalidate();
+    this.drawing.finishPlacing();
   }
 
   cancelPlacing(): void {
-    this.placing = [];
-    this.previewPoint = null;
-    this.pendingClone = null;
-    // Esc 同时退出多选态（TV：Esc 取消当前操作并取消选择）
-    this.drawingLayer.select(null);
-    this.notifyDrawings();
-    this.invalidate();
+    this.drawing.cancelPlacing();
   }
 
-  // ---------- 输入 ----------
-
-  private toLocal(e: { clientX: number; clientY: number }): { x: number; y: number } {
-    const rect = this.manager.canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-  }
+  // ---------- 输入（D 批次拆分③：事件处理迁入 InputController + 三手势） ----------
 
   private paneAt(y: number): PaneState {
     for (const pane of this.panes) {
@@ -903,563 +897,6 @@ export class ChartRenderer {
       if (Math.abs(y - edge) <= 4) return i;
     }
     return null;
-  }
-
-  /** 拖分隔条改面板高度：从下一面板借比例，二者都设下限 */
-  private resizePane(index: number, y: number): void {
-    const pane = this.panes[index];
-    const next = this.panes[index + 1];
-    if (!pane || !next) return;
-    const chartH = this.manager.height - AXIS_HEIGHT;
-    const total = this.panes.reduce((s, p) => s + p.heightRatio, 0);
-    const delta = y - this.paneResizeStartY;
-    const minH = 48;
-    const newHeight = Math.min(Math.max(this.paneResizeStartHeight + delta, minH), chartH - minH * this.panes.length);
-    const newRatio = (newHeight * total) / chartH;
-    const taken = newRatio - pane.heightRatio;
-    if (next.heightRatio - taken < 0.08 || pane.heightRatio + taken < 0.08) return;
-    pane.heightRatio += taken;
-    next.heightRatio -= taken;
-    this.layout();
-    this.invalidate();
-  }
-
-  private onPointerDown = (e: PointerEvent) => {
-    const { x, y } = this.toLocal(e);
-    const inPriceAxis = x > this.manager.width - AXIS_WIDTH;
-    const inTimeAxis = y > this.manager.height - AXIS_HEIGHT;
-    this.movedFar = false;
-    this.manager.canvas.setPointerCapture(e.pointerId);
-    const sep = !inPriceAxis && !inTimeAxis && e.button === 0 ? this.separatorIndexAt(y) : null;
-    if (sep !== null) {
-      this.paneResizeIndex = sep;
-      this.paneResizeStartY = y;
-      this.paneResizeStartHeight = this.panes[sep].height;
-      return;
-    }
-    if (inPriceAxis) {
-      const pane = this.paneAt(y);
-      // 点击“自动”按钮 → 恢复自动适配
-      if (pane.autoBtn) {
-        const b = pane.autoBtn;
-        const ly = y - pane.y;
-        if (x >= b.x && x <= b.x + b.w && ly >= b.y && ly <= b.y + b.h) {
-          pane.manual = false;
-          this.invalidate();
-          return;
-        }
-      }
-      this.priceDragging = true;
-      this.priceYAtDragStart = y;
-    } else if (!inTimeAxis) {
-      const pane = this.paneAt(y);
-      // 选择K线模式：点击任意位置完成选择，预览线与蒙层即消失；
-      // 越界点击（右侧空白/蒙层区）clamp 到最近的有效 bar
-      if (this.barSelectMode) {
-        const raw = Math.round(this.viewport.xToIndex(x));
-        const idx = Math.min(Math.max(raw, 0), Math.max(0, this.displaySeries.length - 1));
-        this.barSelectCb?.(idx);
-        this.setBarSelectMode(false, null);
-        return;
-      }
-      if (this.activeTool) {
-        this.handleToolPointerDown(x, y, pane, e.shiftKey);
-        return;
-      }
-      // 面板头部按钮（设置/移除指标）优先于画线/交易命中
-      const btnHit = this.hitPaneButtonAt(x, y, pane);
-      if (btnHit) {
-        this.paneActionCb?.(btnHit.action, btnHit.indicatorId);
-        return;
-      }
-      // 点击即选中面板（TV 行为）
-      this.selectedPaneId = pane.id;
-      const hit = this.hitDrawingAt(x, y, pane);
-      if (hit) {
-        // B7：Ctrl+按下 = 待克隆（移动超阈值才克隆）；无移动的 Ctrl+点击 = 多选切换
-        if (e.button === 0 && (e.ctrlKey || e.metaKey)) {
-          this.pendingClone = {
-            id: hit.id,
-            part: hit.part,
-            index: hit.index,
-            start: pixelToPoint(x, y - pane.y, this.drawingCtx(), 'off'),
-          };
-          this.invalidate();
-          return;
-        }
-        // 多选态下点击已选中对象 = 整组拖拽；否则单选该对象
-        const groupDrag =
-          hit.part === 'body' && this.drawingLayer.isSelected(hit.id) && this.drawingLayer.selectedIdList.length > 1;
-        if (!groupDrag) this.drawingLayer.select(hit.id);
-        const ids = groupDrag ? this.drawingLayer.selectedIdList : [hit.id];
-        const origins = new Map<string, DrawingPoint[]>();
-        for (const id of ids) {
-          const dd = this.drawingLayer.list().find((z) => z.id === id);
-          if (dd && !dd.locked) origins.set(id, dd.points.map((p) => ({ ...p })));
-        }
-        this.drawingLayer.beginHistory();
-        this.dragDrawing = {
-          ids: [...origins.keys()],
-          part: hit.part,
-          index: hit.index,
-          start: pixelToPoint(x, y - pane.y, this.drawingCtx(), 'off'),
-          origins,
-        };
-        this.invalidate();
-        return;
-      }
-      // 交易可视化命中：挂单线拖动改价 / 撤单 / 持仓详情块拖动设 TP-SL
-      const tradeHit = hitTestTrading(
-        this.tradeVisual,
-        x,
-        y - pane.y,
-        pane.priceScale,
-        { chartW: this.manager.width - AXIS_WIDTH, chartH: pane.height },
-      );
-      if (tradeHit) {
-        if (tradeHit.kind === 'order-cancel') {
-          this.tradeCbs.onOrderCancel?.(tradeHit.id);
-          return;
-        }
-        if (tradeHit.kind === 'position-close') {
-          this.tradeCbs.onPositionClose?.();
-          return;
-        }
-        if (tradeHit.kind === 'tp-close') {
-          this.tradeCbs.onPositionTpSl?.(null, this.tradeVisual.position?.stopLoss ?? null);
-          return;
-        }
-        if (tradeHit.kind === 'sl-close') {
-          this.tradeCbs.onPositionTpSl?.(this.tradeVisual.position?.takeProfit ?? null, null);
-          return;
-        }
-        this.tradeDrag = tradeHit;
-        return;
-      }
-      this.drawingLayer.select(null);
-      this.dragging = true;
-      this.lastPointerX = e.clientX;
-      this.lastPointerY = e.clientY;
-      this.crosshair.clear();
-    this.invalidate();
-    }
-  };
-
-  /** 工具模式下的落点 */
-  private handleToolPointerDown(x: number, y: number, pane: PaneState, shift: boolean): void {
-    let pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
-    // Auto Fib：无锚点点击——一次点击即按可见区间 swing 生成标准回撤对象
-    if (this.activeTool === 'fib-auto') {
-      const swing = this.detectSwingForAutoFib();
-      if (swing) {
-        this.drawingLayer.add('fib-auto', [swing.start, swing.end]);
-        this.toolFinishedCb?.();
-      }
-      this.invalidate();
-      return;
-    }
-    // B7：Shift 约束——新落点相对上一个锚点按主导轴锁轴（TV 肌肉记忆）
-    if (shift && this.placing.length > 0 && isConstrainableTool(this.activeTool!)) {
-      pt = this.constrainPoint(this.placing[this.placing.length - 1], x, y - pane.y);
-    }
-    const def = getToolDef(this.activeTool!);
-    if (def.points === 1) {
-      this.drawingLayer.add(this.activeTool!, [pt]);
-      this.invalidate();
-      this.toolFinishedCb?.();
-      return;
-    }
-    this.placing.push(pt);
-    if (def.points > 0 && this.placing.length >= def.points) {
-      this.drawingLayer.add(this.activeTool!, this.placing);
-      this.placing = [];
-      this.previewPoint = null;
-      this.toolFinishedCb?.();
-    }
-    this.invalidate();
-  }
-
-  /** Shift 约束：像素域按主导轴锁轴——|Δx| ≥ |Δy| 锁水平（价格固定），否则锁垂直（时间固定） */
-  private constrainPoint(anchor: DrawingPoint, px: number, py: number): DrawingPoint {
-    const dctx = this.drawingCtx();
-    const a = pointToPixel(anchor, dctx);
-    const magnet = this.drawingLayer.magnetModeForDraw;
-    if (Math.abs(px - a.x) >= Math.abs(py - a.y)) return pixelToPoint(px, a.y, dctx, magnet);
-    return pixelToPoint(a.x, py, dctx, magnet);
-  }
-
-  /** Auto Fib 摆动检测：可见 bar 区间的最高/最低点对（不足则 null，本次点击不放置） */
-  private detectSwingForAutoFib(): { start: DrawingPoint; end: DrawingPoint } | null {
-    const chartW = this.manager.width - AXIS_WIDTH;
-    const from = Math.max(0, Math.floor(this.viewport.first));
-    const to = Math.min(this.displaySeries.length - 1, Math.ceil(this.viewport.xToIndex(chartW)));
-    return detectVisibleSwing(this.displaySeries.raw(), from, to);
-  }
-
-  private onPointerMove = (e: PointerEvent) => {
-    const { x, y } = this.toLocal(e);
-    if (this.paneResizeIndex !== null) {
-      this.resizePane(this.paneResizeIndex, y);
-      return;
-    }
-    if (this.dragging) {
-      const dx = e.clientX - this.lastPointerX;
-      const dy = e.clientY - this.lastPointerY;
-      if (Math.abs(dx) + Math.abs(dy) > 3) this.movedFar = true;
-      this.lastPointerX = e.clientX;
-      this.lastPointerY = e.clientY;
-      this.viewport.panByBars(-dx / this.viewport.spacing);
-      const pane = this.paneAt(y);
-      const { min, max } = pane.priceScale.range;
-      const span = max - min;
-      const shift = (dy / Math.max(1, pane.height)) * span;
-      pane.manual = true; // 上下拖动 → 锁定价格域
-      pane.priceScale.shift(shift);
-      this.invalidate();
-    } else if (this.priceDragging) {
-      const dy = y - this.priceYAtDragStart;
-      const pane = this.paneAt(y);
-      const { min, max } = pane.priceScale.range;
-      const span = max - min;
-      const shift = -(dy / Math.max(1, pane.height)) * span;
-      pane.manual = true;
-      pane.priceScale.shift(shift);
-      this.invalidate();
-    } else if (this.pendingClone) {
-      // B7：Ctrl+拖动——首次移动超过 2px 阈值即懒克隆并进入克隆体拖拽（原对象不动）
-      const pane = this.paneAt(y);
-      const dctx = this.drawingCtx();
-      const sp = pointToPixel(this.pendingClone.start, dctx);
-      if (Math.hypot(x - sp.x, y - pane.y - sp.y) > 2) {
-        const pc = this.pendingClone;
-        this.pendingClone = null;
-        const src = this.drawingLayer.list().find((d) => d.id === pc.id);
-        if (src && !src.locked) {
-          // 先快照再克隆：克隆 + 拖拽 = 单步撤销
-          this.drawingLayer.beginHistory();
-          const clone = this.drawingLayer.cloneDrawing(src.id)!;
-          this.dragDrawing = {
-            ids: [clone.id],
-            part: pc.part,
-            index: pc.index,
-            start: pc.start,
-            origins: new Map([[clone.id, clone.points.map((p) => ({ ...p }))]]),
-          };
-          this.updateDrawingDrag(x, y, e.shiftKey);
-        } else {
-          this.invalidate();
-        }
-      }
-    } else if (this.dragDrawing) {
-      this.updateDrawingDrag(x, y, e.shiftKey);
-    } else if (this.tradeDrag) {
-      this.updateTradeDrag(y);
-    } else if (this.activeTool && this.placing.length > 0) {
-      const pane = this.paneAt(y);
-      let pt = pixelToPoint(x, y - pane.y, this.drawingCtx(), this.drawingLayer.magnetModeForDraw);
-      // B7：Shift 约束预览——与落点约束同规则（相对上一个锚点按主导轴锁轴）
-      if (e.shiftKey && isConstrainableTool(this.activeTool)) {
-        pt = this.constrainPoint(this.placing[this.placing.length - 1], x, y - pane.y);
-      }
-      this.previewPoint = pt;
-      this.invalidate();
-    } else {
-      this.updateHoverCursor(x, y);
-      this.updateCrosshair(x, y);
-    }
-  };
-
-  /** TV 光标语义：面板分隔条与价格轴 ns-resize，时间轴 ew-resize，可交互元素 pointer。
-   *  决策纯函数在 cursor.ts；此处只装配输入、写 DOM（带 dirty check） */
-  private updateHoverCursor(x: number, y: number): void {
-    const cursor = decideCursor({
-      x,
-      y,
-      chartRight: this.manager.width - AXIS_WIDTH,
-      chartBottom: this.manager.height - AXIS_HEIGHT,
-      separatorIndex: this.separatorIndexAt(y),
-      studyHoverBtn: this.studyHoverBtn,
-      drawingHoverCursor: this.drawingHoverCursor,
-      tradeHover: this.tradeHoverCursor,
-    });
-    const canvas = this.manager.canvas;
-    if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
-  }
-
-  /** 拖拽画线：整体平移（单选/多选整组）或单手柄移动；Shift = 水平/垂直约束（按主导轴） */
-  private updateDrawingDrag(x: number, y: number, shift: boolean): void {
-    const drag = this.dragDrawing;
-    if (!drag) return;
-    const pane = this.panes[0];
-    const dctx = this.drawingCtx();
-    const cur = pixelToPoint(x, y - pane.y, dctx, 'off');
-    // Shift 约束仅对线类工具生效（趋势线/射线/箭头/信息线/斐波那契家族）
-    const constrain =
-      shift &&
-      drag.ids.some((id) => isConstrainableTool(this.drawingLayer.list().find((d) => d.id === id)?.type ?? 'rect'));
-    if (drag.part === 'body') {
-      let dt = cur.time - drag.start.time;
-      let dp = cur.price - drag.start.price;
-      if (constrain) {
-        const sp = pointToPixel(drag.start, dctx);
-        if (Math.abs(x - sp.x) >= Math.abs(y - pane.y - sp.y)) dp = 0;
-        else dt = 0;
-      }
-      for (const [id, origin] of drag.origins) {
-        this.drawingLayer.updatePoints(
-          id,
-          origin.map((p) => ({ time: p.time + dt, price: p.price + dp })),
-        );
-      }
-    } else {
-      let target = cur;
-      if (constrain) {
-        const h = drag.origins.get(drag.ids[0])?.[drag.index];
-        if (h) {
-          const hp = pointToPixel(h, dctx);
-          target =
-            Math.abs(x - hp.x) >= Math.abs(y - pane.y - hp.y)
-              ? pixelToPoint(x, hp.y, dctx, 'off')
-              : pixelToPoint(hp.x, y - pane.y, dctx, 'off');
-        }
-      }
-      const pts = (drag.origins.get(drag.ids[0]) ?? []).map((p) => ({ ...p }));
-      if (pts[drag.index]) pts[drag.index] = target;
-      this.drawingLayer.updatePoints(drag.ids[0], pts);
-    }
-    this.invalidate();
-  }
-
-  private updateCrosshair(x: number, y: number): void {
-    const chartW = this.manager.width - AXIS_WIDTH;
-    const chartH = this.manager.height - AXIS_HEIGHT;
-    if (x < 0 || x > chartW || y < 0 || y > chartH) {
-      this.crosshair.clear();
-      this.selectPreviewX = null;
-      this.sync.publishCrosshairTime(null);
-      this.setTradeHoverCursor(false);
-      this.updateHoverCursor(x, y);
-      this.invalidate();
-      return;
-    }
-    // 选择K线模式：预览线跟随光标（不显示十字光标）
-    if (this.barSelectMode) {
-      this.crosshair.clear();
-      this.selectPreviewX = x;
-      this.invalidate();
-      return;
-    }
-    // 研究图例行悬停：记录命中行与按钮区（眼睛/设置/移除）
-    this.studyHoverBtn = null;
-    this.hoverStudyUid = null;
-    for (const r of this.studyRects) {
-      if (x >= r.x && x <= r.btnX + 48 && y >= r.y && y <= r.y + r.h) {
-        this.hoverStudyUid = r.uid;
-        if (x >= r.btnX) this.studyHoverBtn = Math.min(2, Math.floor((x - r.btnX) / 16));
-        break;
-      }
-    }
-    const pane = this.paneAt(y);
-    this.hoveredPaneId = pane.id;
-    // 画线悬停光标：顶点手柄 pointer、线体 move
-    const dHit = this.hitDrawingAt(x, y, pane);
-    this.drawingHoverCursor = dHit ? (dHit.part === 'handle' ? 'pointer' : 'move') : '';
-    const hit = hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height });
-    this.setTradeHoverCursor(hit !== null);
-    const idx = Math.round(this.viewport.xToIndex(x));
-    const bar = this.displaySeries.barAt(idx);
-    if (bar) {
-      const price = pane.priceScale.yToPrice(y - pane.y);
-      this.crosshair.set(x, y, idx, bar.time, price);
-      this.sync.publishCrosshairTime(bar.time);
-    } else {
-      this.crosshair.clear();
-      this.sync.publishCrosshairTime(null);
-    }
-    this.invalidate();
-  }
-
-  /** 悬停交易可视化元素时记录 pointer 意图（光标由 updateHoverCursor 统一写） */
-  private setTradeHoverCursor(on: boolean): void {
-    this.tradeHoverCursor = on;
-  }
-
-  /** 拖拽交易可视化：挂单改价 / TP-SL 设置或改价 */
-  private updateTradeDrag(y: number): void {
-    const drag = this.tradeDrag;
-    if (!drag) return;
-    const pane = this.panes[0];
-    const price = pane.priceScale.yToPrice(y - pane.y);
-    const pos = this.tradeVisual.position;
-    if (drag.kind === 'order') {
-      this.tradeCbs.onOrderMove?.(drag.id, price);
-    } else if (drag.kind === 'position') {
-      // 拖动持仓详情块：按拖动方向与订单类型设置止盈/止损
-      if (pos) {
-        const above = price > pos.avgPrice;
-        const isTp = pos.side === 'long' ? above : !above;
-        if (isTp) this.tradeCbs.onPositionTpSl?.(price, pos.stopLoss ?? null);
-        else this.tradeCbs.onPositionTpSl?.(pos.takeProfit ?? null, price);
-      }
-    } else if (drag.kind === 'tp') {
-      // 直接拖动止盈线改价
-      this.tradeCbs.onPositionTpSl?.(price, pos?.stopLoss ?? null);
-    } else if (drag.kind === 'sl') {
-      // 直接拖动止损线改价
-      this.tradeCbs.onPositionTpSl?.(pos?.takeProfit ?? null, price);
-    }
-    this.invalidate();
-  }
-
-  private onPointerUp = (e: PointerEvent) => {
-    // TV：中键点击研究图例行 = 移除该研究
-    if (e.button === 1 && this.hoverStudyUid) {
-      const uid = this.hoverStudyUid;
-      this.hoverStudyUid = null;
-      this.studyActionCb?.('remove', uid);
-      return;
-    }
-    const studyBtn = this.studyHoverBtn;
-    const studyUid = this.hoverStudyUid;
-    this.studyHoverBtn = null;
-    if (studyBtn !== null && studyUid && !this.movedFar) {
-      this.studyActionCb?.(studyBtn === 0 ? 'hide' : studyBtn === 1 ? 'settings' : 'remove', studyUid);
-    }
-    this.movedFar = false;
-    // B7：无移动的 Ctrl+点击 = 多选切换（TV）；移动过的已在 onPointerMove 懒克隆并清空
-    if (this.pendingClone) {
-      this.drawingLayer.toggleSelect(this.pendingClone.id);
-      this.notifyDrawings();
-    }
-    this.pendingClone = null;
-    this.dragging = false;
-    this.priceDragging = false;
-    this.paneResizeIndex = null;
-    this.dragDrawing = null;
-    this.tradeDrag = null;
-    this.sync.publishViewport();
-    if (this.manager.canvas.hasPointerCapture(e.pointerId)) {
-      this.manager.canvas.releasePointerCapture(e.pointerId);
-    }
-  };
-
-  /** 右键：禁默认菜单；回放中在空白处右键 → 弹出下单浮窗（左键保留拖动），
-   *  非回放时 → 交给上层弹图表上下文菜单 */
-  private onContextMenu = (e: MouseEvent) => {
-    e.preventDefault();
-    const { x, y } = this.toLocal(e);
-    const chartW = this.manager.width - AXIS_WIDTH;
-    const chartH = this.manager.height - AXIS_HEIGHT;
-    if (x < 0 || x > chartW || y < 0 || y > chartH) return;
-    const pane = this.paneAt(y);
-
-    if (this.replayIndex !== null && this.chartClickCb) {
-      // 命中交易可视化/画线时不弹下单
-      if (hitTestTrading(this.tradeVisual, x, y - pane.y, pane.priceScale, { chartW, chartH: pane.height })) return;
-      if (this.hitDrawingAt(x, y, pane)) return;
-      this.ensurePaneScaleReady(pane);
-      const price = pane.priceScale.yToPrice(y - pane.y);
-      const bar = this.displaySeries.barAt(this.replayIndex);
-      this.chartClickCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
-      return;
-    }
-
-    if (!this.contextMenuCb) return;
-    // 右键命中画线 → 画线上下文菜单（设置/移除/视觉顺序）
-    const dHit = this.hitDrawingAt(x, y, pane);
-    if (dHit) {
-      this.drawingMenuCb?.(dHit.id, e.clientX, e.clientY);
-      return;
-    }
-    // 图例区（商品行或研究行）右键 → 图例菜单（TV legend_context_menu）
-    const inStudyRow = this.studyRects.some((r) => x >= r.x && x <= r.btnX + 48 && y >= r.y && y <= r.y + r.h);
-    if (y <= 24 || inStudyRow) {
-      this.legendMenuCb?.(e.clientX, e.clientY);
-      return;
-    }
-    this.ensurePaneScaleReady(pane);
-    const price = pane.priceScale.yToPrice(y - pane.y);
-    const idx = Math.round(this.viewport.xToIndex(x));
-    const bar = this.displaySeries.barAt(idx);
-    this.contextMenuCb(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
-  };
-
-  private onDoubleClick = (e: MouseEvent) => {
-    const { x, y } = this.toLocal(e);
-    // 双击价格轴 → 恢复该面板自动适配
-    if (x > this.manager.width - AXIS_WIDTH) {
-      this.paneAt(y).manual = false;
-      this.invalidate();
-      return;
-    }
-    // 双击最新价线（±4px 命中区）→ 打开图表设置（TV 行为）
-    const main = this.panes[0];
-    const lastBar = this.displaySeries.last;
-    if (lastBar && y >= main.y && y < main.y + main.height) {
-      const lineY = main.priceScale.priceToY(lastBar.close);
-      if (Math.abs(y - main.y - lineY) <= 4) {
-        this.priceLineDblClickCb?.();
-        return;
-      }
-    }
-    // 双击画线 → 打开画线设置（TV 行为）
-    const pane = this.paneAt(y);
-    const dHit = this.hitDrawingAt(x, y, pane);
-    if (dHit) {
-      this.drawingSettingsCb?.(dHit.id);
-      return;
-    }
-    this.finishPlacing();
-  };
-
-  private onPointerLeave = () => {
-    this.crosshair.clear();
-    this.hoverStudyUid = null;
-    this.studyHoverBtn = null;
-    this.setTradeHoverCursor(false);
-    this.invalidate();
-  };
-
-  private onWheel = (e: WheelEvent) => {
-    e.preventDefault();
-    const { x } = this.toLocal(e);
-    if (e.ctrlKey || e.metaKey) {
-      const factor = e.deltaY > 0 ? 1.1 : 0.9;
-      const { y } = this.toLocal(e);
-      const pane = this.paneAt(y);
-      const { min, max } = pane.priceScale.range;
-      const mid = (min + max) / 2;
-      const half = ((max - min) / 2) * factor;
-      pane.manual = true; // 价格轴缩放同样锁定
-      pane.priceScale.setRange(mid - half, mid + half);
-    } else {
-      const factor = e.deltaY > 0 ? 1.1 : 0.9;
-      this.viewport.zoomAt(x, factor);
-    }
-    this.sync.publishViewport();
-    this.invalidate();
-  };
-
-  private bindInput(canvas: HTMLCanvasElement) {
-    canvas.addEventListener('pointerdown', this.onPointerDown);
-    canvas.addEventListener('pointermove', this.onPointerMove);
-    canvas.addEventListener('pointerup', this.onPointerUp);
-    canvas.addEventListener('pointercancel', this.onPointerUp);
-    canvas.addEventListener('pointerleave', this.onPointerLeave);
-    canvas.addEventListener('dblclick', this.onDoubleClick);
-    canvas.addEventListener('contextmenu', this.onContextMenu);
-    canvas.addEventListener('wheel', this.onWheel, { passive: false });
-  }
-
-  private unbindInput(canvas: HTMLCanvasElement) {
-    canvas.removeEventListener('pointerdown', this.onPointerDown);
-    canvas.removeEventListener('pointermove', this.onPointerMove);
-    canvas.removeEventListener('pointerup', this.onPointerUp);
-    canvas.removeEventListener('pointercancel', this.onPointerUp);
-    canvas.removeEventListener('pointerleave', this.onPointerLeave);
-    canvas.removeEventListener('dblclick', this.onDoubleClick);
-    canvas.removeEventListener('contextmenu', this.onContextMenu);
-    canvas.removeEventListener('wheel', this.onWheel);
   }
 
   // ---------- 绘制 ----------
@@ -1478,7 +915,7 @@ export class ChartRenderer {
 
   /** 确保面板价格轴尺寸与自适应范围最新（rAF 暂停时拖拽换算也正确）：
    *  layout + 可视区间换算是渲染器关注点，价格域适配本身在 autoscale.ts */
-  private ensurePaneScaleReady(pane: PaneState): void {
+  private ensurePaneScaleReady(pane: ScalablePane): void {
     this.layout();
     const { from, to } = this.visibleRange();
     ensurePriceScaleReady(pane, this.displaySeries, from, to, this.logScale);
@@ -1636,26 +1073,28 @@ export class ChartRenderer {
     ctx.save();
     ctx.translate(0, main.y);
     if (!this.drawingsHidden) {
-      const sel = this.drawingLayer.selectedIdList;
+      const sel = this.drawing.layer.selectedIdList;
       const primary = sel.length > 0 ? sel[sel.length - 1] : null;
-      drawDrawings(ctx, this.drawingLayer.list(), primary, this.drawingCtx(), this.legend.decimals, sel.slice(0, -1));
+      drawDrawings(ctx, this.drawing.layer.list(), primary, this.drawingCtx(), this.legend.decimals, sel.slice(0, -1));
     }
-    // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记
+    // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记（数据迁入 TradeGesture）
     drawTrading(
       ctx,
-      this.tradeVisual,
+      this.trade.tradeVisual,
       main.priceScale,
       { chartW: this.manager.width - AXIS_WIDTH, chartH: main.height },
       this.legend.decimals,
       this.displaySeries,
       this.viewport,
     );
-    if (this.activeTool && this.placing.length > 0) {
-      const pts = this.previewPoint ? [...this.placing, this.previewPoint] : this.placing;
-      const def = getToolDef(this.activeTool);
+    const previewTool = this.drawing.tool;
+    if (previewTool && this.drawing.placingPoints.length > 0) {
+      const placing = this.drawing.placingPoints;
+      const pts = this.drawing.preview ? [...placing, this.drawing.preview] : placing;
+      const def = getToolDef(previewTool);
       drawDrawings(
         ctx,
-        [{ id: '__preview', type: this.activeTool, points: pts, style: { ...def.defaultStyle, color: theme.crosshair }, locked: false, visible: true }],
+        [{ id: '__preview', type: previewTool, points: pts, style: { ...def.defaultStyle, color: theme.crosshair }, locked: false, visible: true }],
         null,
         this.drawingCtx(),
         this.legend.decimals,
@@ -1700,7 +1139,7 @@ export class ChartRenderer {
       { ...this.legend, marketOpen: this.legend.market ? isMarketOpen(this.legend.market) : undefined },
       legendIndicators,
       this.legendOptions,
-      this.hoverStudyUid,
+      this.hover.hoveredStudyUid,
       this.studyRects,
       legendInfo,
       mainGeo,

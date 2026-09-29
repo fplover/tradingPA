@@ -5,6 +5,8 @@
  * 无依赖，可独立单测。
  */
 
+import type { StudyLegendRect } from './drawCrosshair';
+
 /** 光标决策输入（ChartRenderer 悬停态与画布几何的结构子集） */
 export interface CursorInput {
   /** 指针画布坐标 */
@@ -34,4 +36,15 @@ export function decideCursor(input: CursorInput): string {
   if (input.drawingHoverCursor) return input.drawingHoverCursor;
   if (input.tradeHover) return 'pointer';
   return '';
+}
+
+/** 研究图例行悬停判定（图例右侧 眼睛/设置/移除 按钮）：命中行返回 uid 与按钮 index。
+ *  按钮区宽 16px、最多 3 个；未命中任何行返回 null。 */
+export function hoverStudyRow(rects: readonly StudyLegendRect[], x: number, y: number): { uid: string; btn: number | null } | null {
+  for (const r of rects) {
+    if (x >= r.x && x <= r.btnX + 48 && y >= r.y && y <= r.y + r.h) {
+      return { uid: r.uid, btn: x >= r.btnX ? Math.min(2, Math.floor((x - r.btnX) / 16)) : null };
+    }
+  }
+  return null;
 }
