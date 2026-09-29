@@ -168,3 +168,7 @@ npm run build
 | 2026-09-28 | B6 交付确认 6 项 TV 简化（已知差异，均已注释）：timezone 单锚固定数列（TV 双点基准）/ Auto Fib 可见极值对（TV pivot 检测）/ 弧线半圆（TV 有整圆开关）/ fib 档位固定默认值（TV 可显隐自定义）/ 多选仅 Ctrl+点击（TV 有框选 marquee）/ 新工具默认色沿用既有 fib 灰 | TV 1:1 细节无限性，§10 允许非关键体验差异化 | engine/drawing/* |
 | 2026-09-28 | 产物体积基线 49KB→175KB gzip（M7 时 49KB，差距为功能累积） | 实测修正防门禁误判 | §11 |
 | 2026-09-28 | 黄金截图扩容：10 面 → 19 面（+B4 六类型/+timeframe-2m/45m/+倒计时行为断言表面） | B3/B4/B5 新表面基线补齐，D 批次拆分安全网前置 | tests/e2e/* |
+| 2026-09-28 | Wave5 渲染变更重基线（17 张）+ timeframe-1H 新表面（zh 日期覆盖）→ 20 面；图例圆点分歧修复 b0a2579（单一数据源） | 时间轴 zh 化/图例市场圆点为有意渲染变更 | tests/e2e/* |
+| 2026-09-29 | **D 批次拆分完成**（W6-1+W6-2 五提交）：syncBus 时间空间联动 + ChartRenderer 1840 行 → 5 行兼容 shim（ChartController 门面 + 13 模块）。调用点零 diff（git 实证）、黄金截图零 diff（E2E 47/47 实证）、单测 361→400 | 架构师蓝图执行，300 行红线与公开 API 契约双达标 | src/engine/renderer/* |
+| 2026-09-29 | **ChartController 门面 532 行裁决：接受并记录**。构成=公开 API 面 ~65 成员 + host 装配字面量 + 视口编排；纯扁平委托无逻辑，单一职责与可导航性满足红线意图。再拆需先瘦身 ChartState 或碎片化公开 API 单类契约，收益不成比例；留作门面长回逻辑时再拆 | 任务书升级条款裁决（工人按条款上报） | src/engine/renderer/ChartController.ts |
+| 2026-09-29 | 已知遗留：drawScissors 徽章与选线预览蒙层 #2962ff 为存量 canvas 硬编码（theme 无对应 token，改色破坏像素中性故原样搬迁）——待 theme 增 select 色 token 后替换 | P0 hex 例外的存量债务，非本批次引入 | src/engine/renderer/RenderPipeline.ts |
