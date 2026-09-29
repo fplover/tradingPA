@@ -228,9 +228,9 @@ describe('Pine 错误用例', () => {
   });
 
   it('不支持的函数 → 指名报错', () => {
-    const r = compilePine('plot(ta.wma(close, 3))', 'test');
+    const r = compilePine('plot(ta.stoch(close, high, low, 3))', 'test');
     expect(r.def).toBeNull();
-    expect(r.errors[0].message).toBe('不支持的函数「ta.wma」');
+    expect(r.errors[0].message).toBe('不支持的函数「ta.stoch」');
   });
 
   it('缺少 plot() → 报错', () => {
@@ -240,7 +240,7 @@ describe('Pine 错误用例', () => {
   });
 
   it('不支持的语句 → 指名报错（带行号）', () => {
-    const r = compilePine('// 注释\nif close > open\nplot(close)', 'test');
+    const r = compilePine('// 注释\nwhile close > open\nplot(close)', 'test');
     expect(r.def).toBeNull();
     expect(r.errors[0]).toMatchObject({ line: 2 });
     expect(r.errors[0].message).toContain('不支持的语句');
