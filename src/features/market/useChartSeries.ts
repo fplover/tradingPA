@@ -4,8 +4,8 @@ import { getTimeframe } from '@/types/market';
 import type { Instrument } from '@/types/instrument';
 import type { FeedStatus } from '@/data/feed/types';
 import { LiveDataFeed, toBinanceInterval } from '@/data/feed/LiveDataFeed';
-import { BINANCE_LIMIT_MAX, binanceIntervalString, fetchKlines, nativeBaseInterval } from '@/data/feed/binance';
-import { aggregateBars } from '@/data/aggregate';
+import { binanceIntervalString, fetchKlines, nativeBaseInterval } from '@/data/feed/binance';
+import { AggregateFeedPath } from '@/data/aggregatePath';
 import { klineCache } from '@/data/cache/klineCache';
 import { dataRegistry, NoHistoryError } from '@/data/sources/registry';
 import { applyQuote } from '@/data/liveBar';
@@ -45,6 +45,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
   const barsRef = useRef<Bar[]>(history);
   barsRef.current = history;
   const feedRef = useRef<LiveDataFeed | null>(null);
+  const aggPathRef = useRef<AggregateFeedPath | null>(null);
   const pagingRef = useRef(false);
   /** 源确实没有更早数据（连续两次空/失败）后停止请求；单次抖动要重试 */
   const noMoreRef = useRef(false);
@@ -97,28 +98,37 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     if (inst.market === 'crypto') {
       // B5：非原生周期（2m/45m/3H/自定义）没有 Binance interval——拉最大可整除原生基期，
       // 经既有聚合器聚合后走 onHistory 同款通路，缓存以目标周期 id 为键。
-      // 已知边界：该路径不起 WS（桶状态机不覆盖聚合），实时尾柱由报价轮询 applyQuote 维持；
-      // 向左翻页（loadMore）在该路径下为空操作，历史深度 = 单页基期数据的聚合结果。
+      // 已由 AggregateFeedPath 补实：轮询封闭新桶（tailChanged 门控同数据零渲染），
+      // loadMore 前插基期后全量重聚合（接缝愈合），历史深度不再止于单页。
       const baseSeconds = tf.seconds > 0 ? nativeBaseInterval(tf.seconds) : null;
       if (baseSeconds !== null) {
         const base = binanceIntervalString(baseSeconds);
         const ratio = Math.ceil(tf.seconds / baseSeconds);
         setStatusDetail(`拉取 ${base} 基期 K 线并聚合`);
-        void fetchKlines(inst.code, base, { limit: Math.min(BINANCE_LIMIT_MAX, HISTORY_LIMIT * ratio) })
-          .then((baseBars) => {
-            if (disposed) return;
-            const bars = ratio > 1 ? aggregateBars(baseBars, tf) : baseBars;
+        const aggPath = new AggregateFeedPath({
+          symbol: inst.code,
+          baseInterval: base,
+          tf,
+          ratio,
+          historyLimit: HISTORY_LIMIT,
+          fetch: fetchKlines,
+          onBars: (bars) => {
             readyRef.current = true;
             setHistory(bars);
             setStatus('live');
             setStatusDetail(`聚合自 ${base} 基期`);
             void klineCache.put(inst.id, timeframe, bars);
-          })
-          .catch((err: unknown) => {
-            if (!disposed) degradeToMock(err instanceof Error ? err.message : '历史数据获取失败');
-          });
+          },
+          onError: (message) => {
+            if (!disposed) degradeToMock(message);
+          },
+        });
+        aggPathRef.current = aggPath;
+        void aggPath.start();
         return () => {
           disposed = true;
+          aggPathRef.current = null;
+          aggPath.dispose();
         };
       }
       const feed = new LiveDataFeed({
@@ -220,7 +230,38 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
       const inst = instRef.current;
       if (!inst) return;
       if (inst.market === 'crypto') {
-        void feedRef.current?.loadMore();
+        const feed = feedRef.current;
+        if (feed) {
+          void feed.loadMore();
+          return;
+        }
+        // 聚合路径兜底：复用非 crypto 路径同一组状态 refs（互斥路径，fail 语义逐字一致）
+        const aggPath = aggPathRef.current;
+        if (!aggPath || pagingRef.current || noMoreRef.current) return;
+        if (Date.now() < retryAtRef.current) return;
+        // 历史还在在途加载时不翻页：否则会把旧周期的数据混进新周期
+        if (!readyRef.current) return;
+        const token = loadTokenRef.current;
+        pagingRef.current = true;
+        const fail = () => {
+          pageFailsRef.current += 1;
+          retryAtRef.current = Date.now() + 3000;
+          if (pageFailsRef.current >= 2) noMoreRef.current = true;
+        };
+        aggPath
+          .loadMore()
+          .then((n) => {
+            if (token !== loadTokenRef.current) return;
+            if (n === 0) {
+              fail();
+              return;
+            }
+            pageFailsRef.current = 0;
+          })
+          .catch(fail)
+          .finally(() => {
+            pagingRef.current = false;
+          });
         return;
       }
       const current = barsRef.current;
