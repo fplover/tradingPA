@@ -121,6 +121,58 @@ export function typical(bars: readonly { high: number; low: number; close: numbe
   return bars.map((b) => (b.high + b.low + b.close) / 3);
 }
 
+/** 真实波幅 TR 序列（首 bar 以 open 兜底前收） */
+export function trueRange(bars: readonly { high: number; low: number; close: number; open: number }[]): number[] {
+  return bars.map((b, i) => {
+    const prevClose = i > 0 ? bars[i - 1].close : b.open;
+    return Math.max(b.high - b.low, Math.abs(b.high - prevClose), Math.abs(b.low - prevClose));
+  });
+}
+
+/** 滚动窗口求和（输出与输入等长，前 period-1 项 undefined） */
+export function rollingSum(values: number[], period: number): Array<number | undefined> {
+  const out: Array<number | undefined> = [];
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    out.push(i >= period - 1 ? sum : undefined);
+  }
+  return out;
+}
+
+/** 线性回归拟合线：每点取该窗口最小二乘拟合在窗口末端（x=period-1）的值 */
+export function linreg(values: number[], period: number): Array<number | undefined> {
+  const out: Array<number | undefined> = [];
+  for (let i = 0; i < values.length; i++) {
+    if (i < period - 1) {
+      out.push(undefined);
+      continue;
+    }
+    let sx = 0;
+    let sy = 0;
+    let sxy = 0;
+    let sxx = 0;
+    for (let k = 0; k < period; k++) {
+      const y = values[i - period + 1 + k];
+      sx += k;
+      sy += y;
+      sxy += k * y;
+      sxx += k * k;
+    }
+    const denom = period * sxx - sx * sx;
+    const slope = denom === 0 ? 0 : (period * sxy - sx * sy) / denom;
+    const intercept = (sy - slope * sx) / period;
+    out.push(intercept + slope * (period - 1));
+  }
+  return out;
+}
+
+/** 对数收益率（首项 undefined） */
+export function logReturns(values: number[]): Array<number | undefined> {
+  return values.map((v, i) => (i === 0 || values[i - 1] <= 0 || v <= 0 ? undefined : Math.log(v / values[i - 1])));
+}
+
 /** 数值数组逐点运算 */
 export function mapValues(
   a: Array<number | undefined>,

@@ -4,6 +4,11 @@ import { oscillatorIndicators } from './builtin/oscillators';
 import { macdAdxIndicators } from './builtin/momentum';
 import { channelIndicators } from './builtin/channels';
 import { volumeIndicators } from './builtin/volume';
+import { trendExtendedIndicators } from './builtin/trend-extended';
+import { momentumBasicIndicators } from './builtin/momentum-extended';
+import { momentumOscIndicators } from './builtin/momentum-osc';
+import { volatilityIndicators } from './builtin/volatility';
+import { volumeExtendedIndicators } from './builtin/volume-extended';
 
 export const ALL_INDICATORS: IndicatorDef[] = [
   ...trendIndicators,
@@ -11,6 +16,11 @@ export const ALL_INDICATORS: IndicatorDef[] = [
   ...macdAdxIndicators,
   ...channelIndicators,
   ...volumeIndicators,
+  ...trendExtendedIndicators,
+  ...momentumBasicIndicators,
+  ...momentumOscIndicators,
+  ...volatilityIndicators,
+  ...volumeExtendedIndicators,
 ];
 
 /** 自定义指标（Pine 子集编译产物）：运行时注册，与内置指标同管线 */
