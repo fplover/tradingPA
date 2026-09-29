@@ -35,13 +35,13 @@ export function ChartOrderMenu({ decimals }: { decimals: number }) {
         <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
           <button
             onClick={() => setSide('buy')}
-            style={{ ...segStyle, flex: 1, background: side === 'buy' ? '#26a69a' : 'var(--panel-2)', color: side === 'buy' ? '#fff' : 'var(--text-dim)' }}
+            style={{ ...segStyle, flex: 1, background: side === 'buy' ? 'var(--buy)' : 'var(--panel-2)', color: side === 'buy' ? '#fff' : 'var(--text-dim)' }}
           >
             买入
           </button>
           <button
             onClick={() => setSide('sell')}
-            style={{ ...segStyle, flex: 1, background: side === 'sell' ? '#ef5350' : 'var(--panel-2)', color: side === 'sell' ? '#fff' : 'var(--text-dim)' }}
+            style={{ ...segStyle, flex: 1, background: side === 'sell' ? 'var(--sell)' : 'var(--panel-2)', color: side === 'sell' ? '#fff' : 'var(--text-dim)' }}
           >
             卖出
           </button>
@@ -78,7 +78,7 @@ export function ChartOrderMenu({ decimals }: { decimals: number }) {
           <button style={{ ...segStyle, background: 'var(--panel-2)', color: 'var(--text-dim)' }} onClick={close}>
             取消
           </button>
-          <button style={{ ...segStyle, background: side === 'buy' ? '#26a69a' : '#ef5350', color: '#fff' }} onClick={submit}>
+          <button style={{ ...segStyle, background: side === 'buy' ? 'var(--buy)' : 'var(--sell)', color: '#fff' }} onClick={submit}>
             下单
           </button>
         </div>

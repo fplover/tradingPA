@@ -9,7 +9,7 @@ interface TradeStore {
   place: (spec: OrderSpec, refPrice: number, time: number) => void;
   cancel: (id: string) => void;
   closePosition: (refPrice: number, time: number) => void;
-  onBar: (bar: { time: number; high: number; low: number; close: number }) => void;
+  onBar: (bar: { time: number; open: number; high: number; low: number; close: number }) => void;
   reset: (balance?: number) => void;
   updateOrderPrice: (id: string, price: number) => void;
   setPositionTPSL: (tp: number | null, sl: number | null) => void;

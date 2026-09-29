@@ -1,5 +1,7 @@
 /** 回放模拟交易引擎（纯逻辑，无框架依赖）：订单 / 挂单 / 持仓 / 盈亏 / 报告 */
 
+import { checkOrderTrigger, validateOrderSpec } from './orderTrigger';
+
 export type OrderType = 'market' | 'limit' | 'stop' | 'stop-limit';
 export type OrderSide = 'buy' | 'sell';
 export type OrderStatus = 'pending' | 'filled' | 'cancelled';
@@ -15,15 +17,16 @@ export interface Order {
   filledPrice?: number;
   filledTime?: number;
   createdAt: number;
+  /** stop-limit 触发段已完成（此后按限价单等待） */
+  triggered?: boolean;
 }
 
 export interface Position {
   side: 'long' | 'short';
   qty: number;
   avgPrice: number;
-  /** 止盈价（图表拖拽手柄设置） */
+  /** 止盈/止损价（图表拖拽手柄设置） */
   takeProfit?: number;
-  /** 止损价（图表拖拽手柄设置） */
   stopLoss?: number;
 }
 
@@ -71,12 +74,7 @@ export interface TradeSummary {
 
 let seq = 0;
 
-/**
- * 模拟交易引擎：
- * - market 立即成交；limit/stop/stop-limit 挂单，由 onBar 按 high/low 触发
- * - buy/sell 可开仓、加仓、反向减仓；平仓市价成交
- * - 每根 bar 标记持仓浮动盈亏并记录权益曲线
- */
+/** 模拟交易引擎：market 立即成交；limit/stop/stop-limit 挂单由 onBar 触发；可开/加/减仓并记录权益曲线 */
 export class PaperTradingEngine {
   balance: number;
   realizedPnL = 0;
@@ -111,8 +109,10 @@ export class PaperTradingEngine {
     this.entryTime = 0;
   }
 
-  /** 下订单：market 立即按 refPrice 成交，其余挂单 */
-  place(spec: OrderSpec, refPrice: number, time: number): Order {
+  /** 下订单：market 立即按 refPrice 成交，其余挂单；无效单拒绝并返回 null */
+  place(spec: OrderSpec, refPrice: number, time: number): Order | null {
+    const invalid = validateOrderSpec(spec);
+    if (invalid) return null;
     const order: Order = {
       id: `ord_${++seq}`,
       type: spec.type,
@@ -165,9 +165,7 @@ export class PaperTradingEngine {
     }
     if (p.stopLoss !== undefined) {
       const hit = long ? bar.low <= p.stopLoss : bar.high >= p.stopLoss;
-      if (hit) {
-        this.closePosition(p.stopLoss, bar.time);
-      }
+      if (hit) this.closePosition(p.stopLoss, bar.time);
     }
   }
 
@@ -193,45 +191,17 @@ export class PaperTradingEngine {
     return trade;
   }
 
-  /** 每根 K 线调用：标记盈亏 + 检查挂单触发 */
-  onBar(bar: { time: number; high: number; low: number; close: number }): void {
+  /** 每根 K 线调用：标记盈亏 + 检查挂单触发（bar 需含开盘价，gap 语义判定用） */
+  onBar(bar: { time: number; open: number; high: number; low: number; close: number }): void {
     this.markToMarket(bar.close);
     this.checkTpSl(bar);
     for (const order of this.pendingOrders) {
-      const fill = this.checkTrigger(order, bar);
-      if (fill !== null) this.fill(order, fill, bar.time);
+      const result = checkOrderTrigger(order, bar);
+      if (result.activated) order.triggered = true;
+      if (result.fillPrice !== null) this.fill(order, result.fillPrice, bar.time);
     }
     this.equityCurve.push({ time: bar.time, equity: this.equity });
     if (this.equityCurve.length > 5000) this.equityCurve.shift();
-  }
-
-  /** 返回成交价；未触发返回 null */
-  private checkTrigger(order: Order, bar: { high: number; low: number }): number | null {
-    const limit = order.limitPrice;
-    const stop = order.stopPrice;
-    switch (order.type) {
-      case 'limit':
-        if (order.side === 'buy' && limit !== undefined && bar.low <= limit) return limit;
-        if (order.side === 'sell' && limit !== undefined && bar.high >= limit) return limit;
-        return null;
-      case 'stop':
-        if (order.side === 'buy' && stop !== undefined && bar.high >= stop) return stop;
-        if (order.side === 'sell' && stop !== undefined && bar.low <= stop) return stop;
-        return null;
-      case 'stop-limit': {
-        // 先触价，再检查限价是否可达（均未满足则继续挂单）
-        const triggered =
-          order.side === 'buy'
-            ? stop !== undefined && bar.high >= stop
-            : stop !== undefined && bar.low <= stop;
-        if (!triggered) return null;
-        if (order.side === 'buy' && limit !== undefined && bar.low <= limit) return limit;
-        if (order.side === 'sell' && limit !== undefined && bar.high >= limit) return limit;
-        return null;
-      }
-      default:
-        return null;
-    }
   }
 
   private fill(order: Order, price: number, time: number): void {

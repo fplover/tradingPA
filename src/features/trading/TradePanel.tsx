@@ -4,15 +4,17 @@ import { useTradeStore } from './tradeStore';
 import { useTradePanelStore } from '@/store/tradePanelStore';
 import { Modal, Tab, TabList } from '@/ui/primitives';
 import * as Tabs from '@radix-ui/react-tabs';
-import type { OrderType, OrderSide } from './paperEngine';
+import { OrderDialog, ORDER_TYPE_LABELS } from './OrderDialog';
 
 const fmtQty = (q: number) => String(Number(q.toFixed(8)));
 
-const ORDER_TYPE_LABELS: Record<OrderType, string> = {
-  market: '市价',
-  limit: '限价',
-  stop: '止损',
-  'stop-limit': '止损限价',
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
+/** 挂单时间列：M/D HH:mm */
+const fmtOrderTime = (t: number) => {
+  if (!t) return '--';
+  const d = new Date(t);
+  return `${d.getMonth() + 1}/${d.getDate()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 };
 
 interface TradePanelProps {
@@ -110,12 +112,13 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
             ) : (
               pending.map((o) => (
                 <Row key={o.id}>
-                  <span style={{ color: o.side === 'buy' ? 'var(--up)' : 'var(--down)' }}>{o.side === 'buy' ? '买' : '卖'}</span>
+                  <span style={{ color: o.side === 'buy' ? 'var(--buy)' : 'var(--sell)' }}>{o.side === 'buy' ? '买' : '卖'}</span>
                   <span style={{ color: 'var(--text-dim)' }}>{ORDER_TYPE_LABELS[o.type]}</span>
                   <span style={{ color: 'var(--text)' }}>{fmtQty(o.qty)}</span>
                   <span style={{ color: 'var(--text-faint)' }}>
                     {o.limitPrice ? `限 ${o.limitPrice}` : ''} {o.stopPrice ? `止 ${o.stopPrice}` : ''}
                   </span>
+                  <span style={{ color: 'var(--text-faint)' }}>{fmtOrderTime(o.createdAt)}</span>
                   <div style={{ flex: 1 }} />
                   <button style={iconBtn} title="撤单" onClick={() => cancel(o.id)}>
                     <X size={12} />
@@ -178,98 +181,6 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
   );
 }
 
-/** 挂单对话框：限价 / 止损 / 止损限价 */
-function OrderDialog({
-  price,
-  qtyNum,
-  onSubmit,
-}: {
-  price: number;
-  qtyNum: number;
-  onSubmit: (spec: { type: OrderType; side: OrderSide; qty: number; limitPrice?: number; stopPrice?: number }) => void;
-}) {
-  const [type, setType] = useState<OrderType>('limit');
-  const [side, setSide] = useState<OrderSide>('buy');
-  const [qty, setQty] = useState(String(qtyNum || 0.01));
-  const [limitPrice, setLimitPrice] = useState(price > 0 ? price.toFixed(2) : '');
-  const [stopPrice, setStopPrice] = useState(price > 0 ? (price * 1.01).toFixed(2) : '');
-
-  const submit = () => {
-    const q = Number(qty);
-    if (q <= 0) return;
-    onSubmit({
-      type,
-      side,
-      qty: q,
-      limitPrice: type === 'stop' ? undefined : Number(limitPrice) || undefined,
-      stopPrice: type === 'limit' ? undefined : Number(stopPrice) || undefined,
-    });
-  };
-
-  return (
-    <div>
-      {/* 类型 */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-        {(['limit', 'stop', 'stop-limit'] as OrderType[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setType(t)}
-            style={{
-              ...chipStyle,
-              background: type === t ? 'var(--accent)' : 'var(--panel-2)',
-              color: type === t ? 'var(--text-on-accent)' : 'var(--text-dim)',
-            }}
-          >
-            {ORDER_TYPE_LABELS[t]}
-          </button>
-        ))}
-      </div>
-
-      {/* 方向 */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-        <button
-          onClick={() => setSide('buy')}
-          style={{ ...chipStyle, flex: 1, background: side === 'buy' ? 'var(--up)' : 'var(--panel-2)', color: side === 'buy' ? '#fff' : 'var(--text-dim)' }}
-        >
-          买入
-        </button>
-        <button
-          onClick={() => setSide('sell')}
-          style={{ ...chipStyle, flex: 1, background: side === 'sell' ? 'var(--down)' : 'var(--panel-2)', color: side === 'sell' ? '#fff' : 'var(--text-dim)' }}
-        >
-          卖出
-        </button>
-      </div>
-
-      <label style={fieldLabel}>
-        数量
-        <input value={qty} onChange={(e) => setQty(e.target.value)} style={fieldInput} />
-      </label>
-      {type !== 'stop' && (
-        <label style={fieldLabel}>
-          限价
-          <input value={limitPrice} onChange={(e) => setLimitPrice(e.target.value)} style={fieldInput} />
-        </label>
-      )}
-      {type !== 'limit' && (
-        <label style={fieldLabel}>
-          止损价
-          <input value={stopPrice} onChange={(e) => setStopPrice(e.target.value)} style={fieldInput} />
-        </label>
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, marginTop: 10 }}>
-        <button style={{ ...chipStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={submit}>
-          下单
-        </button>
-      </div>
-      <div style={{ color: 'var(--text-faint)', fontSize: 10, marginTop: 6 }}>
-        当前价 {price > 0 ? price.toFixed(2) : '--'} · 挂单在回放触及价格时成交
-      </div>
-    </div>
-  );
-}
-
 function Row({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 2px', fontSize: 11, borderBottom: '1px solid var(--border)' }}>
@@ -326,33 +237,4 @@ const listStyle: React.CSSProperties = {
   flex: 1,
   minHeight: 0,
   overflowY: 'auto',
-};
-
-const chipStyle: React.CSSProperties = {
-  height: 24,
-  padding: '0 10px',
-  border: 'none',
-  borderRadius: 4,
-  fontSize: 11,
-  cursor: 'pointer',
-};
-
-const fieldLabel: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  fontSize: 11,
-  color: 'var(--text-dim)',
-  marginBottom: 6,
-};
-
-const fieldInput: React.CSSProperties = {
-  flex: 1,
-  height: 24,
-  background: 'var(--bg)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
-  color: 'var(--text)',
-  fontSize: 12,
-  padding: '0 6px',
 };

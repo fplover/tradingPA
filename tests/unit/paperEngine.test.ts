@@ -80,9 +80,21 @@ describe('PaperTradingEngine 挂单触发', () => {
   it('撤单', () => {
     const e = new PaperTradingEngine(10_000);
     const o = e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: 90 }, 100, 1);
-    e.cancel(o.id);
+    e.cancel(o!.id);
     expect(e.pendingOrders.length).toBe(0);
-    expect(o.status).toBe('cancelled');
+    expect(o!.status).toBe('cancelled');
+  });
+
+  it('stop-limit 触发后激活限价段：后续 bar 无需再触止损价', () => {
+    const e = new PaperTradingEngine(10_000);
+    // gap 开盘越过 105 且未到限价 106（low 未下探）→ 激活不成交
+    e.place({ type: 'stop-limit', side: 'buy', qty: 1, stopPrice: 105, limitPrice: 106 }, 100, 1);
+    e.onBar(bar(2, 107, 108, 106.5, 107));
+    expect(e.pendingOrders.length).toBe(1);
+    // 下一 bar 价格回落：high 未再触 105，开盘 104 <= 106 → 限价段已激活，按更优开盘价成交
+    e.onBar(bar(3, 104, 104.5, 100, 101));
+    expect(e.pendingOrders.length).toBe(0);
+    expect(e.position!.avgPrice).toBe(104);
   });
 
   it('挂单成交后记录权益曲线', () => {
@@ -133,13 +145,95 @@ describe('PaperTradingEngine 止盈止损', () => {
 
   it('挂单改价：限价单拖动后按新价成交', () => {
     const e = new PaperTradingEngine(10_000);
-    const o = e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: 95 }, 100, 1);
+    const o = e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: 95 }, 100, 1)!;
     e.updateOrderPrice(o.id, 90);
     e.onBar(bar(2, 100, 100, 94, 95)); // 94 > 90 不成交
     expect(e.pendingOrders.length).toBe(1);
     e.onBar(bar(3, 95, 95, 89, 90)); // 触及新价 90
     expect(e.pendingOrders.length).toBe(0);
     expect(e.position!.avgPrice).toBe(90);
+  });
+});
+
+describe('PaperTradingEngine gap 开盘跳价（TV 语义）', () => {
+  it('buy limit：开盘跳低于限价按更优开盘价成交', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: 95 }, 100, 1);
+    e.onBar(bar(2, 90, 91, 88, 89)); // 开盘 90 < 95 → 按开盘 90 成交
+    expect(e.pendingOrders.length).toBe(0);
+    expect(e.position!.avgPrice).toBe(90);
+  });
+
+  it('sell limit：开盘跳高于限价按更优开盘价成交', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.place({ type: 'limit', side: 'sell', qty: 1, limitPrice: 110 }, 100, 2);
+    e.onBar(bar(3, 115, 116, 112, 113)); // 开盘 115 > 110 → 按开盘 115 成交
+    expect(e.trades[0].exitPrice).toBe(115);
+    expect(e.realizedPnL).toBe(15);
+  });
+
+  it('sell stop：开盘跳穿触发价按开盘价成交（转市价）', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.place({ type: 'stop', side: 'sell', qty: 1, stopPrice: 90 }, 100, 2);
+    e.onBar(bar(3, 85, 86, 84, 85.5)); // 开盘 85 直接低于 90 → 按开盘 85 成交
+    expect(e.position).toBeNull();
+    expect(e.trades[0].exitPrice).toBe(85);
+    expect(e.trades[0].pnl).toBeCloseTo(-15, 10);
+  });
+
+  it('buy stop：开盘跳穿触发价按开盘价成交', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'stop', side: 'buy', qty: 1, stopPrice: 105 }, 100, 1);
+    e.onBar(bar(2, 107, 108, 106, 107.5)); // 开盘 107 > 105 → 按开盘 107 成交
+    expect(e.position!.avgPrice).toBe(107);
+  });
+
+  it('stop-limit：gap 开盘越过触发价但未到限价 → 激活后等待，后续按限价成交', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'stop-limit', side: 'buy', qty: 1, stopPrice: 105, limitPrice: 106 }, 100, 1);
+    e.onBar(bar(2, 108, 109, 107, 108)); // 开盘越过 105 但 > 限价 106 → 激活不成交
+    expect(e.pendingOrders.length).toBe(1);
+    expect(e.pendingOrders[0].triggered).toBe(true);
+    e.onBar(bar(3, 107, 107, 105, 105.5)); // low <= 106 → 按限价 106 成交
+    expect(e.pendingOrders.length).toBe(0);
+    expect(e.position!.avgPrice).toBe(106);
+  });
+
+  it('stop-limit：gap 开盘落在触发价与限价之间 → 立即按更优开盘价成交', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'stop-limit', side: 'buy', qty: 1, stopPrice: 105, limitPrice: 106 }, 100, 1);
+    e.onBar(bar(2, 105.5, 106.2, 105.2, 106)); // 开盘 105.5 ∈ [105, 106] → 按开盘 105.5 成交
+    expect(e.pendingOrders.length).toBe(0);
+    expect(e.position!.avgPrice).toBe(105.5);
+  });
+});
+
+describe('PaperTradingEngine 无效单拒绝', () => {
+  it('数量非正拒绝', () => {
+    const e = new PaperTradingEngine(10_000);
+    expect(e.place({ type: 'market', side: 'buy', qty: 0 }, 100, 1)).toBeNull();
+    expect(e.place({ type: 'market', side: 'buy', qty: -1 }, 100, 1)).toBeNull();
+    expect(e.place({ type: 'market', side: 'buy', qty: NaN }, 100, 1)).toBeNull();
+    expect(e.orders.length).toBe(0);
+  });
+
+  it('缺限价/触发价/非有限价格拒绝', () => {
+    const e = new PaperTradingEngine(10_000);
+    expect(e.place({ type: 'limit', side: 'buy', qty: 1 }, 100, 1)).toBeNull();
+    expect(e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: -5 }, 100, 1)).toBeNull();
+    expect(e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: NaN }, 100, 1)).toBeNull();
+    expect(e.place({ type: 'stop', side: 'buy', qty: 1 }, 100, 1)).toBeNull();
+    expect(e.place({ type: 'stop-limit', side: 'buy', qty: 1, stopPrice: 105 }, 100, 1)).toBeNull();
+    expect(e.place({ type: 'stop-limit', side: 'buy', qty: 1, limitPrice: 106 }, 100, 1)).toBeNull();
+    expect(e.orders.length).toBe(0);
+  });
+
+  it('合法单不受影响（market 立即成交）', () => {
+    const e = new PaperTradingEngine(10_000);
+    expect(e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1)).not.toBeNull();
+    expect(e.position!.avgPrice).toBe(100);
   });
 });
 
