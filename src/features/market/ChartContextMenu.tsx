@@ -224,7 +224,7 @@ function ChartAlertDialog({
   const add = useAlertStore((s) => s.add);
   const decimals = decimalsFor(price, instrument?.decimals ?? 2);
   const [text, setText] = useState(() => price.toFixed(decimals));
-  const [direction, setDirection] = useState<'above' | 'below'>('above');
+  const [direction, setDirection] = useState<'crossUp' | 'crossDown'>('crossUp');
   const toast = useToast();
 
   // 每次打开用最新右键价格重置（价格随 state 变化时才需要）
@@ -237,9 +237,9 @@ function ChartAlertDialog({
   const submit = () => {
     const p = Number(text);
     if (!instrument || !Number.isFinite(p) || p <= 0) return;
-    add({ symbol: instrument.symbol, price: p, direction });
+    add({ symbol: instrument.symbol, source: { type: 'price' }, threshold: p, condition: direction, frequency: 'once' });
     useRightDockStore.getState().open('alerts');
-    toast(`已创建 ${instrument.symbol} ${direction === 'above' ? '上穿' : '下穿'} ${p} 警报`);
+    toast(`已创建 ${instrument.symbol} ${direction === 'crossUp' ? '上穿' : '下穿'} ${p} 警报`);
     onClose();
   };
 
@@ -260,12 +260,12 @@ function ChartAlertDialog({
         <span style={fieldLabelStyle}>条件</span>
         <select
           value={direction}
-          onChange={(e) => setDirection(e.target.value as 'above' | 'below')}
+          onChange={(e) => setDirection(e.target.value as 'crossUp' | 'crossDown')}
           style={inputStyle}
           aria-label="警报条件"
         >
-          <option value="above">价格上穿</option>
-          <option value="below">价格下穿</option>
+          <option value="crossUp">价格上穿</option>
+          <option value="crossDown">价格下穿</option>
         </select>
       </label>
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: space.sm, marginTop: space.md }}>

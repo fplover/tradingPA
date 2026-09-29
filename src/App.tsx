@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { BarChart3, Camera, CandlestickChart, ChevronDown, FileCode2, LoaderCircle, Maximize2, Play, Redo2, RefreshCw, Save, Search, Settings2, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
+import { BarChart3, Camera, CandlestickChart, ChevronDown, Command, FileCode2, LoaderCircle, Maximize2, Play, Redo2, RefreshCw, Save, Search, Settings2, FolderOpen, Moon, Sun, Undo2 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
@@ -13,7 +13,9 @@ import { useThemeStore } from '@/store/themeStore';
 import { selectActiveInstrument, useWatchlistStore } from '@/store/watchlistStore';
 import { useQuotePolling, useQuoteStore } from '@/store/quoteStore';
 import { useReplayStore } from '@/store/replayStore';
-import { useAlertStore } from '@/store/alertStore';
+import { useAlertWatcher } from '@/features/alerts/useAlertWatcher';
+import { buildCommands } from '@/features/command/commandRegistry';
+import { CommandPalette } from '@/features/command/CommandPalette';
 import { decimalsFor } from '@/data/format';
 import { useChartSeries } from '@/features/market/useChartSeries';
 import { ToastProvider } from '@/features/ui/Toast';
@@ -138,6 +140,7 @@ export default function App() {
   const [chartSettingsOpen, setChartSettingsOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [goToDateOpen, setGoToDateOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
   const [hideStudies, setHideStudies] = useState(false);
@@ -158,8 +161,7 @@ export default function App() {
   const activeInstrument = useWatchlistStore(selectActiveInstrument);
   const replayActive = useReplayStore((s) => s.index !== null || s.selectMode);
   const replayIndex = useReplayStore((s) => s.index);
-
-  const checkAlerts = useAlertStore((s) => s.check);
+  const volumeActive = useIndicatorStore((s) => s.active.some((a) => a.id === 'vol'));
 
   const series = useChartSeries(activeInstrument, timeframe);
   const bars = series.bars;
@@ -181,11 +183,9 @@ export default function App() {
   const lastPrice = activeQuote?.price ?? (bars.length > 0 ? bars[bars.length - 1].close : 0);
   const decimals = decimalsFor(lastPrice, activeInstrument?.decimals ?? 2);
 
-  // 价格警报：报价更新即检查，覆盖所有市场（不再依赖逐根 K 线推送）
-  useEffect(() => {
-    if (!activeInstrument || !activeQuote) return;
-    checkAlerts(activeInstrument.symbol, activeQuote.price);
-  }, [activeInstrument, activeQuote, checkAlerts]);
+  // 价格警报（P1-C）：报价/K 线更新即采样检查——价格源 + 已挂指标 plot 值源，
+  // 条件 greater/less/crossUp/crossDown、once/every 频率、过期、暂停均在 store 纯逻辑处理
+  useAlertWatcher(activeInstrument?.symbol, bars, lastPrice);
 
   // 底部状态栏 / 左工具栏开关 → 渲染器
   useEffect(() => {
@@ -256,6 +256,35 @@ export default function App() {
     else void document.documentElement.requestFullscreen();
   };
 
+  // P1-E：命令注册表——周期/类型/布局档位从常量表派生，store 类动作直接调 store
+  const commands = buildCommands({
+    timeframe,
+    chartType,
+    volumeActive,
+    setTimeframe,
+    setChartType,
+    toggleVolume: () => {
+      const st = useIndicatorStore.getState();
+      if (st.active.some((a) => a.id === 'vol')) st.remove('vol');
+      else st.add('vol');
+    },
+    openIndicators: () => setPanelOpen(true),
+    toggleLog: () => setLogScale((v) => !v),
+    togglePercent: () => setPercent((v) => !v),
+    toggleTheme: () => useThemeStore.getState().toggle(),
+    toggleFullscreen,
+    screenshot: handleScreenshot,
+    openGoToDate: () => setGoToDateOpen(true),
+    openShortcuts: () => setShortcutsOpen(true),
+    openChartSettings: () => setChartSettingsOpen(true),
+    openReport: () => setReportOpen(true),
+    startReplay: () => {
+      if (bars.length >= 10) useReplayStore.getState().enterSelect();
+    },
+    reload: series.reload,
+    setLayout: (l) => useLayoutStore.getState().setLayout(l),
+  });
+
   // B1：TV 默认快捷键统一注册（原 App.tsx 与 Chart.tsx 的图表级按键收敛于此）
   const { intervalOpen, intervalInitial, setIntervalOpen, applyInterval } = useTvShortcuts({
     rendererRef,
@@ -271,6 +300,7 @@ export default function App() {
     onOpenGoToDate: () => setGoToDateOpen(true),
     onApplyInterval: (tf) => setTimeframe(tf),
     onToggleFullscreen: toggleFullscreen,
+    onOpenCommandPalette: () => setCommandOpen(true),
   });
 
   // 回放联动：新会话重置引擎；每根回放 K 线驱动挂单触发与盈亏
@@ -399,6 +429,9 @@ export default function App() {
         <IconButton onClick={() => useSymbolSearchStore.getState().openSearch('switch')} title="快速搜索">
           <Search size={16} />
         </IconButton>
+        <IconButton active={commandOpen} onClick={() => setCommandOpen(true)} title="命令面板（Ctrl+P）">
+          <Command size={16} />
+        </IconButton>
         <IconButton onClick={toggleFullscreen} title="全屏模式">
           <Maximize2 size={16} />
         </IconButton>
@@ -523,6 +556,7 @@ export default function App() {
       )}
 
       <SymbolSearchDialog />
+      <CommandPalette open={commandOpen} onOpenChange={setCommandOpen} commands={commands} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <IntervalInputDialog
         open={intervalOpen}

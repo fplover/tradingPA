@@ -1,95 +1,150 @@
 import { create } from 'zustand';
+import {
+  DEFAULT_COOLDOWN_MS,
+  clampCooldown,
+  describeAlert,
+  parseAlertsPayload,
+  runAlertCheck,
+  type AlertCondition,
+  type AlertFrequency,
+  type AlertSample,
+  type AlertSource,
+  type PriceAlert,
+} from '@/features/alerts/alertLogic';
+import { playAlertBeep } from '@/features/alerts/sound';
 
-export interface PriceAlert {
-  id: string;
-  symbol: string;
-  price: number;
-  /** 'above' = 上穿触发；'below' = 下穿触发 */
-  direction: 'above' | 'below';
-  active: boolean;
-  triggered: boolean;
-  createdAt: number;
-}
+export type { PriceAlert, AlertSource, AlertCondition, AlertFrequency, AlertSample } from '@/features/alerts/alertLogic';
 
 const STORAGE_KEY = 'tradingpa.alerts';
 let seq = 0;
 
+export interface NewAlertInput {
+  symbol: string;
+  source: AlertSource;
+  threshold: number;
+  condition: AlertCondition;
+  frequency: AlertFrequency;
+  cooldownMs?: number;
+  expiresAt?: number;
+}
+
 interface AlertStore {
   alerts: PriceAlert[];
-  add: (alert: Omit<PriceAlert, 'id' | 'active' | 'triggered' | 'createdAt'>) => void;
+  soundEnabled: boolean;
+  add: (input: NewAlertInput) => void;
+  update: (id: string, patch: Partial<Omit<PriceAlert, 'id' | 'symbol' | 'createdAt'>>) => void;
+  togglePause: (id: string) => void;
   remove: (id: string) => void;
   clearTriggered: () => void;
-  /** 用最新价检查全部警报，返回新触发列表 */
-  check: (symbol: string, price: number) => PriceAlert[];
+  setSoundEnabled: (v: boolean) => void;
+  /** 用最新采样检查全部警报，返回本轮触发列表（含条件/频率/过期处理） */
+  check: (symbol: string, samples: AlertSample[]) => PriceAlert[];
 }
 
-function load(): PriceAlert[] {
+function load(): AlertsLoaded {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const list = JSON.parse(raw);
-      if (Array.isArray(list)) return list;
-    }
+    return parseAlertsPayload(localStorage.getItem(STORAGE_KEY));
+  } catch {
+    return { alerts: [], soundEnabled: true };
+  }
+}
+interface AlertsLoaded {
+  alerts: PriceAlert[];
+  soundEnabled: boolean;
+}
+
+function persist(alerts: PriceAlert[], soundEnabled: boolean): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 2, soundEnabled, alerts }));
   } catch {
     /* 忽略 */
   }
-  return [];
 }
 
-function persist(alerts: PriceAlert[]): void {
+/** 运行时穿越检测缓存（跨品种采样键隔离；不持久化——刷新后首轮不触发穿越属预期） */
+let lastSeen: Record<string, number> = {};
+
+function notify(alert: PriceAlert, value: number): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(alerts));
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(`价格警报 ${alert.symbol}`, {
+        body: `${describeAlert(alert)}（当前 ${value}）`,
+      });
+    }
   } catch {
-    /* 忽略 */
+    /* 通知不可用时静默 */
   }
 }
 
-export const useAlertStore = create<AlertStore>((set, get) => ({
-  alerts: load(),
-  add: (alert) =>
-    set((s) => {
-      const alerts = [
-        ...s.alerts,
-        { ...alert, id: `alert_${++seq}_${Date.now()}`, active: true, triggered: false, createdAt: Date.now() },
-      ];
-      persist(alerts);
-      return { alerts };
-    }),
-  remove: (id) =>
-    set((s) => {
-      const alerts = s.alerts.filter((a) => a.id !== id);
-      persist(alerts);
-      return { alerts };
-    }),
-  clearTriggered: () =>
-    set((s) => {
-      const alerts = s.alerts.filter((a) => !a.triggered);
-      persist(alerts);
-      return { alerts };
-    }),
-  check: (symbol, price) => {
-    const { alerts } = get();
-    const fired: PriceAlert[] = [];
-    for (const a of alerts) {
-      if (!a.active || a.triggered || a.symbol !== symbol) continue;
-      // 简化模型：当前价已在阈值正确一侧即触发（真实实现需跨越检测）
-      if ((a.direction === 'above' && price >= a.price) || (a.direction === 'below' && price <= a.price)) {
-        fired.push(a);
+export const useAlertStore = create<AlertStore>((set, get) => {
+  const initial = load();
+  return {
+    alerts: initial.alerts,
+    soundEnabled: initial.soundEnabled,
+    add: (input) =>
+      set((s) => {
+        const alerts: PriceAlert[] = [
+          ...s.alerts,
+          {
+            id: `alert_${++seq}_${Date.now()}`,
+            symbol: input.symbol,
+            source: input.source,
+            threshold: input.threshold,
+            condition: input.condition,
+            active: true,
+            triggered: false,
+            createdAt: Date.now(),
+            frequency: input.frequency,
+            cooldownMs: clampCooldown(input.cooldownMs ?? DEFAULT_COOLDOWN_MS),
+            expiresAt: input.expiresAt,
+          },
+        ];
+        persist(alerts, s.soundEnabled);
+        return { alerts };
+      }),
+    update: (id, patch) =>
+      set((s) => {
+        const alerts = s.alerts.map((a) =>
+          a.id === id ? { ...a, ...patch, cooldownMs: patch.cooldownMs !== undefined ? clampCooldown(patch.cooldownMs) : a.cooldownMs } : a,
+        );
+        persist(alerts, s.soundEnabled);
+        return { alerts };
+      }),
+    togglePause: (id) =>
+      set((s) => {
+        const alerts = s.alerts.map((a) => (a.id === id ? { ...a, active: !a.active } : a));
+        persist(alerts, s.soundEnabled);
+        return { alerts };
+      }),
+    remove: (id) =>
+      set((s) => {
+        const alerts = s.alerts.filter((a) => a.id !== id);
+        persist(alerts, s.soundEnabled);
+        return { alerts };
+      }),
+    clearTriggered: () =>
+      set((s) => {
+        // once 触发后已停用（active=false, triggered=true）——与旧语义一致按已触发清除
+        const alerts = s.alerts.filter((a) => !a.triggered);
+        persist(alerts, s.soundEnabled);
+        return { alerts };
+      }),
+    setSoundEnabled: (v) =>
+      set((s) => {
+        persist(s.alerts, v);
+        return { soundEnabled: v };
+      }),
+    check: (symbol, samples) => {
+      const { alerts, soundEnabled } = get();
+      const res = runAlertCheck(alerts, symbol, samples, lastSeen, Date.now());
+      lastSeen = res.lastSeen;
+      if (res.alerts !== alerts) {
+        persist(res.alerts, soundEnabled);
+        set({ alerts: res.alerts });
       }
-    }
-    if (fired.length > 0) {
-      const firedIds = new Set(fired.map((f) => f.id));
-      const next = alerts.map((a) => (firedIds.has(a.id) ? { ...a, triggered: true } : a));
-      persist(next);
-      set({ alerts: next });
-      for (const f of fired) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(`价格警报 ${f.symbol}`, {
-            body: `${f.symbol} ${f.direction === 'above' ? '上穿' : '下穿'} ${f.price}（当前 ${price}）`,
-          });
-        }
-      }
-    }
-    return fired;
-  },
-}));
+      for (const f of res.fired) notify(f.alert, f.value);
+      if (res.fired.length > 0 && soundEnabled) playAlertBeep();
+      return res.fired.map((f) => f.alert);
+    },
+  };
+});

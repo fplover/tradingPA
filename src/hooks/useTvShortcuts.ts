@@ -40,6 +40,7 @@ export interface TvShortcutsOptions {
   /** 单图布局下应用周期（多图表下作用于聚焦单元格，由 hook 内部路由） */
   onApplyInterval: (tf: TimeframeId) => void;
   onToggleFullscreen: () => void;
+  onOpenCommandPalette: () => void;
 }
 
 /** TV 默认快捷键统一注册（图表级）。输入框 / 菜单 / 对话框内不劫持。
@@ -80,6 +81,10 @@ export function useTvShortcuts(options: TvShortcutsOptions) {
         if (lower === 'k') {
           e.preventDefault();
           useSymbolSearchStore.getState().openSearch('switch');
+        } else if (lower === 'p' && !e.shiftKey) {
+          // P1-E：命令面板（TV Ctrl+P 命令搜索；浏览器默认打印被 preventDefault 抑制）
+          e.preventDefault();
+          o.onOpenCommandPalette();
         } else if (lower === 's' && !e.shiftKey) {
           e.preventDefault();
           useLayoutStore.getState().saveCurrentLayout();
