@@ -7,6 +7,12 @@ import type { DrawGeometry } from './drawSeries';
 /**
  * 指标绘制：line / histogram / band / level 四种 plot 类型。
  * 坐标系为面板局部坐标（调用方已 translate）。
+ *
+ * 同帧复用（架构评估 #4）：computeWindow 带实例级脏缓存，autoscale
+ * （indicatorRange）/ 本函数 / 图例（indicatorValuesAt）在一帧内对同一
+ * (instance, 窗口) 的调用只触发一次 compute——消费方无需传结果，直接调
+ * computeWindow 即自动合并。图例用 50 根回看窗口，与绘制窗口是两个键，
+ * 各自缓存、跨帧复用（十字光标移动时绘制窗口命中、仅图例窗口重算）。
  */
 export function drawIndicator(
   ctx: CanvasRenderingContext2D,
@@ -124,7 +130,8 @@ export function drawIndicator(
   ctx.restore();
 }
 
-/** 指标在可见范围内的值域（用于副图自动缩放） */
+/** 指标在可见范围内的值域（用于副图自动缩放）。
+ *  与 drawIndicator 同窗口：脏缓存保证一帧内两者只算一次。 */
 export function indicatorRange(
   instance: IndicatorInstance,
   bars: readonly Bar[],
@@ -147,7 +154,8 @@ export function indicatorRange(
   return { low, high };
 }
 
-/** 取某个 index 上全部 plot 的值（图例用） */
+/** 取某个 index 上全部 plot 的值（图例用）。
+ *  窗口为 (index-50, index) 的 50 根回看：与绘制窗口分离，跨帧复用。 */
 export function indicatorValuesAt(
   instance: IndicatorInstance,
   bars: readonly Bar[],
