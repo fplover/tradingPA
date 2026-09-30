@@ -10,6 +10,7 @@ import { drawGrid, drawPriceAxis, drawLastPrice, drawPaneLegend, drawPaneButtons
 import { drawCandles } from './drawSeries';
 import { drawIndicator, indicatorValuesAt } from './drawIndicator';
 import { drawPinePaint, isCandleLike } from './drawPinePaint';
+import { drawPineShapes } from './drawPineShapes';
 import { autoscalePrice, autoscaleIndicators, type AutoscaleOptions } from './autoscale';
 import { drawOhlc, drawLine, drawArea, drawBaseline, drawColumns, drawHighLow, drawStepLine, drawLineMarkers, drawHlcArea, drawVolumeCandles } from './seriesRenderers';
 import { formatCompact } from '@/data/format';
@@ -66,6 +67,8 @@ export class PaneRenderer {
       this.drawPriceSeries(ctx, pane, geo, from, to);
       // Pine barcolor（P2-A①）：条件蜡烛体色覆绘（仅蜡烛族图表类型）
       if (isCandleLike(this.host.chartType())) this.drawPinePaints(ctx, pane, geo, from, to, 'bar');
+      // Pine plotshape/plotchar（P2-A②）：条件标记图形，画在 K 线（含 barcolor 覆绘）之上
+      this.drawPineMarkers(ctx, pane, geo, from, to);
       // Volume Profile（P1-F）：右缘横置直方图，先于画线/交易层（RenderPipeline 后绘，TV 同序）；
       // 仅时间轴类图表绘制（变换类无价格连续性），隐藏指标开关一并生效
       const vp = vpRuntimeOf(this.host.viewport);
@@ -149,6 +152,16 @@ export class PaneRenderer {
     for (const inst of pane.indicators) {
       if (this.host.hideStudies() || !inst.isVisibleOn(this.host.timeframeId())) continue;
       drawPinePaint(ctx, inst, bars, from, to, this.host.viewport, pane.priceScale, geo, mode);
+    }
+  }
+
+  /** Pine plotshape/plotchar 标记绘制（P2-A②）：与 drawPinePaints 同遍历口径，
+   *  无 shape 旁路（kind 不匹配）的实例在 drawPineShapes 内直接返回。 */
+  private drawPineMarkers(ctx: CanvasRenderingContext2D, pane: PaneState, geo: DrawGeometry, from: number, to: number): void {
+    const bars = this.host.series().raw();
+    for (const inst of pane.indicators) {
+      if (this.host.hideStudies() || !inst.isVisibleOn(this.host.timeframeId())) continue;
+      drawPineShapes(ctx, inst, bars, from, to, this.host.viewport, pane.priceScale, geo);
     }
   }
 

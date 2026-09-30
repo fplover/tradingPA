@@ -100,6 +100,11 @@ export function validateProgram(prog: PineProgram, errors: PineError[]): void {
   for (const p of prog.plots) validateExpr(p.expr, known, prog.funcs, errors, p.line);
   for (const h of prog.hlines) validateExpr(h.price, known, prog.funcs, errors, h.line);
   for (const p of prog.paints) if (p.cond) validateExpr(p.cond, known, prog.funcs, errors, p.line);
+  for (const s of prog.shapes) {
+    validateExpr(s.cond, known, prog.funcs, errors, s.line);
+    if (s.price) validateExpr(s.price, known, prog.funcs, errors, s.line);
+  }
+  for (const a of prog.alerts) validateExpr(a.cond, known, prog.funcs, errors, a.line);
 }
 
 export function collectLookbackExpr(e: Expr, acc: { max: number }): void {

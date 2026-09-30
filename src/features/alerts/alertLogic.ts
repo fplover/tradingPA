@@ -1,11 +1,13 @@
 import { getIndicatorDef } from '@/indicators/registry';
+import { pineAlertsOf } from '@/indicators/pine/alerts';
 
 // ---------- 类型 ----------
 
-/** 警报作用对象：价格 或 指标某条 plot 的值 */
+/** 警报作用对象：价格 / 指标某条 plot 的值 / Pine alertcondition 条件（P2-A③） */
 export type AlertSource =
   | { type: 'price' }
-  | { type: 'indicator'; indicatorId: string; plotKey: string };
+  | { type: 'indicator'; indicatorId: string; plotKey: string }
+  | { type: 'pine'; indicatorId: string; key: string };
 
 export type AlertCondition = 'greater' | 'less' | 'crossUp' | 'crossDown';
 export type AlertFrequency = 'once' | 'every';
@@ -93,16 +95,23 @@ export function clampCooldown(ms: number): number {
 // ---------- 描述 / 键 ----------
 
 export function sourceKeyOf(src: AlertSource): string {
-  return src.type === 'price' ? 'price' : `ind:${src.indicatorId}:${src.plotKey}`;
+  if (src.type === 'price') return 'price';
+  if (src.type === 'pine') return `pine:${src.indicatorId}:${src.key}`;
+  return `ind:${src.indicatorId}:${src.plotKey}`;
 }
 
 export function sampleKey(symbol: string, src: AlertSource): string {
   return `${symbol}:${sourceKeyOf(src)}`;
 }
 
-/** 作用对象可读名：`价格` 或 `RSI·RSI`（指标名·plot 名） */
+/** 作用对象可读名：`价格` / `RSI·RSI`（指标名·plot 名）/ `指标名·条件标题`（Pine 条件） */
 export function describeSource(src: AlertSource): string {
   if (src.type === 'price') return '价格';
+  if (src.type === 'pine') {
+    const entry = pineAlertsOf(src.indicatorId).find((e) => e.key === src.key);
+    const def = getIndicatorDef(src.indicatorId);
+    return `${def?.name ?? src.indicatorId}·${entry?.title || src.key}`;
+  }
   const def = getIndicatorDef(src.indicatorId);
   const plot = def?.plots.find((p) => p.key === src.plotKey);
   return `${def?.name ?? src.indicatorId}·${plot?.label ?? src.plotKey}`;
@@ -122,7 +131,12 @@ export function describeCondition(condition: AlertCondition, threshold: number):
 }
 
 export function describeAlert(a: PriceAlert): string {
-  return `${a.symbol} ${describeSource(a.source)} ${describeCondition(a.condition, a.threshold)}`;
+  // Pine 条件为布尔触发（阈值固定 1），描述走「条件为真」而非数值阈值
+  const trig =
+    a.source.type === 'pine'
+      ? `${describeSource(a.source)} 条件为真`
+      : `${describeSource(a.source)} ${describeCondition(a.condition, a.threshold)}`;
+  return `${a.symbol} ${trig}`;
 }
 
 // ---------- 判定 ----------
@@ -200,88 +214,7 @@ export function runAlertCheck(
 
 // ---------- 持久化迁移 ----------
 
-const LEGACY_DIRECTION: Record<string, AlertCondition> = { above: 'greater', below: 'less' };
-
-/** v1 条目 {price, direction} → v2；行为与旧实现一致（阈值一侧即触发 + 仅一次） */
-function migrateLegacyAlert(raw: Record<string, unknown>): PriceAlert | null {
-  const price = raw.price;
-  const direction = raw.direction;
-  if (typeof price !== 'number' || !Number.isFinite(price) || typeof direction !== 'string') return null;
-  const condition = LEGACY_DIRECTION[direction];
-  if (!condition) return null;
-  return {
-    id: typeof raw.id === 'string' ? raw.id : `alert_migrated_${price}`,
-    symbol: typeof raw.symbol === 'string' ? raw.symbol : '',
-    source: { type: 'price' },
-    threshold: price,
-    condition,
-    active: raw.active !== false,
-    triggered: raw.triggered === true,
-    createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : 0,
-    frequency: 'once',
-    cooldownMs: DEFAULT_COOLDOWN_MS,
-  };
-}
-
-function normalizeAlert(raw: Record<string, unknown>): PriceAlert | null {
-  if (typeof raw.id !== 'string' || typeof raw.symbol !== 'string') return null;
-  if (typeof raw.threshold !== 'number' || !Number.isFinite(raw.threshold)) return null;
-  const src = raw.source as AlertSource | undefined;
-  if (!src || (src.type !== 'price' && src.type !== 'indicator')) return null;
-  if (src.type === 'indicator' && (typeof src.indicatorId !== 'string' || typeof src.plotKey !== 'string')) return null;
-  const condition = raw.condition;
-  if (condition !== 'greater' && condition !== 'less' && condition !== 'crossUp' && condition !== 'crossDown') return null;
-  return {
-    id: raw.id,
-    symbol: raw.symbol,
-    source: src,
-    threshold: raw.threshold,
-    condition,
-    active: raw.active !== false,
-    triggered: raw.triggered === true,
-    createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : 0,
-    frequency: raw.frequency === 'every' ? 'every' : 'once',
-    cooldownMs: clampCooldown(typeof raw.cooldownMs === 'number' ? raw.cooldownMs : DEFAULT_COOLDOWN_MS),
-    expiresAt: typeof raw.expiresAt === 'number' ? raw.expiresAt : undefined,
-    lastFiredAt: typeof raw.lastFiredAt === 'number' ? raw.lastFiredAt : undefined,
-  };
-}
-
-export interface AlertsPayload {
-  alerts: PriceAlert[];
-  soundEnabled: boolean;
-}
-
-/**
- * 解析持久化数据：v2 `{version:2, soundEnabled, alerts}`；v1 顶层数组（旧行为
- * 阈值一侧即触发 → 迁移为 greater/less + once）；损坏条目跳过，整体损坏给空表。
- */
-export function parseAlertsPayload(raw: string | null): AlertsPayload {
-  if (!raw) return { alerts: [], soundEnabled: true };
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    const list = Array.isArray(parsed)
-      ? parsed
-      : parsed !== null && typeof parsed === 'object' && Array.isArray((parsed as { alerts?: unknown }).alerts)
-        ? (parsed as { alerts: unknown[] }).alerts
-        : null;
-    if (!list) return { alerts: [], soundEnabled: true };
-    const alerts: PriceAlert[] = [];
-    for (const item of list) {
-      if (item === null || typeof item !== 'object') continue;
-      const rec = item as Record<string, unknown>;
-      const migrated = 'source' in rec ? normalizeAlert(rec) : migrateLegacyAlert(rec);
-      if (migrated) alerts.push(migrated);
-    }
-    const sound =
-      !Array.isArray(parsed) &&
-      parsed !== null &&
-      typeof parsed === 'object' &&
-      (parsed as { soundEnabled?: unknown }).soundEnabled === false
-        ? false
-        : true;
-    return { alerts, soundEnabled: sound };
-  } catch {
-    return { alerts: [], soundEnabled: true };
-  }
-}
+// 解析与 schema 迁移拆至 alertPersist.ts（P2-A③ 拆段控行数）；经此再导出保持
+// 既有 import 兼容（alertStore / 测试均从 alertLogic 引入 parseAlertsPayload）
+export { parseAlertsPayload } from './alertPersist';
+export type { AlertsPayload } from './alertPersist';

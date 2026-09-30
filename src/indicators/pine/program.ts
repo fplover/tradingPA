@@ -1,10 +1,11 @@
 import type { Bar } from '@/types/market';
 import type { IndicatorDef, IndicatorPlot, ParamValue } from '../core/types';
-import type { CompileResult, PaintDirective, PineProgram } from './ast';
+import type { AlertDirective, CompileResult, PaintDirective, PineProgram, ShapeDirective } from './ast';
 import { COLORS } from './series';
 import { parseProgram } from './parser';
 import { runProgram } from './interpreter';
 import { collectLookbackExpr, collectLookbackStmts, validateProgram } from './validator';
+import { clearPineAlerts, registerPineAlerts } from './alerts';
 import type { S } from './series';
 
 /**
@@ -15,15 +16,22 @@ import type { S } from './series';
 
 interface RuntimeMeta {
   paint: PaintDirective[];
+  shapes: ShapeDirective[];
   lastError?: string;
 }
 
-/** def → 运行期元数据（paint 条件序列 / 最近一次运行期错误） */
+/** def → 运行期元数据（paint/shapes 条件序列 / 最近一次运行期错误） */
 const metaMap = new WeakMap<IndicatorDef, RuntimeMeta>();
 
-/** 最近一次 compute 的（入窗 bars 引用 → paint）：computeExtra 按窗精确取数，
- *  避免图例窗口/绘制窗口交替调用时 WeakMap 元数据串窗（computeWindow 缓存旁路）。 */
-let lastPaintRun: { bars: readonly Bar[]; paint: PaintDirective[] } | null = null;
+/** 最近一次 compute 的（入窗 bars 引用 → paint/shapes/alerts）：computeExtra 按窗
+ *  精确取数，避免图例窗口/绘制窗口交替调用时 WeakMap 元数据串窗（computeWindow
+ *  缓存旁路）。alerts 亦走此槽位：watcher 采样与 paint/shapes 同窗对齐。 */
+let lastRun: {
+  bars: readonly Bar[];
+  paint: PaintDirective[];
+  shapes: ShapeDirective[];
+  alerts: AlertDirective[];
+} | null = null;
 
 /** 读取脚本 bgcolor/barcolor 指令的最近一次计算结果（编译期 dry-run 预演用） */
 export function pinePaint(def: IndicatorDef): PaintDirective[] | undefined {
@@ -75,7 +83,8 @@ export function compilePine(source: string, id: string): CompileResult {
 
   const errors: import('./ast').PineError[] = [];
   validateProgram(prog, errors);
-  if (prog.plots.length === 0 && prog.hlines.length === 0 && errors.length === 0) {
+  // 纯警报/标记脚本（TV 合法）：alertcondition/plotshape 亦可替代 plot 作为输出
+  if (prog.plots.length === 0 && prog.hlines.length === 0 && prog.shapes.length === 0 && prog.alerts.length === 0 && errors.length === 0) {
     errors.push({ line: source.split(/\r?\n/).length, message: '脚本缺少 plot() 调用' });
   }
   if (errors.length > 0) return { def: null, errors, paint: [] };
@@ -85,6 +94,11 @@ export function compilePine(source: string, id: string): CompileResult {
   for (const p of prog.plots) collectLookbackExpr(p.expr, acc);
   for (const h of prog.hlines) collectLookbackExpr(h.price, acc);
   for (const p of prog.paints) if (p.cond) collectLookbackExpr(p.cond, acc);
+  for (const s of prog.shapes) {
+    collectLookbackExpr(s.cond, acc);
+    if (s.price) collectLookbackExpr(s.price, acc);
+  }
+  for (const a of prog.alerts) collectLookbackExpr(a.cond, acc);
 
   const defaults: Record<string, ParamValue> = {};
   for (const p of prog.params) defaults[p.key] = p.default;
@@ -93,7 +107,13 @@ export function compilePine(source: string, id: string): CompileResult {
   const hlineKeys = prog.hlines.map((_, i) => `h${i}`);
   const allKeys = [...plotKeys, ...hlineKeys];
 
-  const meta: RuntimeMeta = { paint: [] };
+  // alertcondition 编译期注册（dry-run 前登记，失败即清除；重编译同 id 覆盖旧登记）
+  registerPineAlerts(
+    id,
+    prog.alerts.map((a, i) => ({ key: `a${i}`, title: a.title, message: a.message, line: a.line })),
+  );
+
+  const meta: RuntimeMeta = { paint: [], shapes: [] };
   const def: IndicatorDef = {
     id,
     name: prog.name,
@@ -114,19 +134,39 @@ export function compilePine(source: string, id: string): CompileResult {
           cond: r.paintConds[i],
           line: p.line,
         }));
-        lastPaintRun = { bars, paint: meta.paint };
+        meta.shapes = prog.shapes.map((s, i) => ({
+          kind: s.t === 'plotchar' ? 'char' : 'shape',
+          style: s.t === 'plotchar' ? (s.char ?? s.style) : s.style,
+          color: s.color,
+          location: s.location,
+          size: s.size,
+          cond: r.shapeRuns[i].cond,
+          price: r.shapeRuns[i].price,
+          text: s.text,
+          line: s.line,
+        }));
+        const alerts: AlertDirective[] = prog.alerts.map((a, i) => ({
+          kind: 'alertcondition',
+          key: `a${i}`,
+          title: a.title,
+          message: a.message,
+          cond: r.alertConds[i],
+          line: a.line,
+        }));
+        lastRun = { bars, paint: meta.paint, shapes: meta.shapes, alerts };
         meta.lastError = undefined;
         return out;
       } catch (e) {
         // 运行期兜底：返回全 undefined 输出，不向渲染循环（rAF）抛错
         meta.lastError = e instanceof Error ? e.message : String(e);
-        lastPaintRun = null;
+        lastRun = null;
         return emptyOutputs(bars.length, allKeys);
       }
     },
     computeExtra(bars: readonly Bar[]) {
       // 与 compute 同窗调用（computeWindow 保证）：按入窗引用精确取数，防串窗
-      return lastPaintRun?.bars === bars ? lastPaintRun.paint : undefined;
+      if (lastRun?.bars !== bars) return undefined;
+      return [...lastRun.paint, ...lastRun.shapes, ...lastRun.alerts];
     },
   };
   metaMap.set(def, meta);
@@ -140,6 +180,7 @@ export function compilePine(source: string, id: string): CompileResult {
   const rt = meta.lastError;
   if (rt) {
     metaMap.delete(def);
+    clearPineAlerts(id);
     return { def: null, errors: [{ line: 1, message: `运行期校验失败：${rt}` }], paint: [] };
   }
 

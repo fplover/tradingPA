@@ -10,14 +10,17 @@
  * - taCore.ts      依赖 K 线的 ta 实现（tr/atr/adx/cci/mfi/wpr/psar/supertrend/fisher）
  * - interpreter.ts 向量化解释执行（if/for/掩码/用户函数）+ 静态校验
  * - program.ts     编译装配、dry-run 前置校验、绘图指令旁路
+ * - alerts.ts      alertcondition 编译期注册表（警报面板列源）
  *
  * 能力：indicator()/study()、input.int/bool/source、赋值/var、元组解构赋值、
  * if/else/else if、for..to..by、用户函数、plot/hline/bgcolor/barcolor、
+ * plotshape/plotchar（条件标记图形）、alertcondition（编译期注册条件）、
  * ta.* 32 个、math.* 10 个。运行期错误编译期 dry-run 前置拦截（AC-B2）。
  */
 
 export { compilePine, pinePaint, pineRuntimeError } from './program';
-export type { PineError, CompileResult, PaintDirective } from './ast';
+export { pineAlertsOf, type PineAlertMeta } from './alerts';
+export type { PineError, CompileResult, PaintDirective, ShapeDirective, AlertDirective } from './ast';
 export const DEFAULT_PINE_SCRIPT = `//@version=5
 indicator("双均线交叉", overlay=true)
 fast = input.int(9, "快线周期", minval=1, maxval=200)

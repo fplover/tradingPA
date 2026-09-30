@@ -15,6 +15,7 @@ import {
   type AlertSource,
 } from './alertLogic';
 import { AlertEditDialog } from './AlertEditDialog';
+import { PineConditionSection } from './PineConditionSection';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { btnStyle, inputStyle, miniBtn, panelStyle, rowStyle } from './ui';
 
@@ -161,6 +162,9 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
         />
       </div>
 
+      {/* Pine 条件分区（P2-A③）：激活的自定义 Pine 指标注册的 alertcondition 条件 */}
+      <PineConditionSection symbol={symbol} frequency={frequency} cooldownIdx={cooldownIdx} expiryIdx={expiryIdx} />
+
       {alerts.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无警报</div>}
       {alerts.map((a) => (
         <AlertRow
@@ -200,7 +204,9 @@ function AlertRow({
     <div style={rowStyle}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {describeSource(alert.source)} {describeCondition(alert.condition, alert.threshold)}
+        {alert.source.type === 'pine'
+          ? `${describeSource(alert.source)} 条件为真`
+          : `${describeSource(alert.source)} ${describeCondition(alert.condition, alert.threshold)}`}
         {alert.frequency === 'every' && (
           <span style={{ color: 'var(--text-faint)' }} aria-label="重复触发">
             ·循环

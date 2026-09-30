@@ -12,8 +12,42 @@ import type { Bar } from '@/types/market';
  * - 指标源：按指标 id 缓存 IndicatorInstance 直接对 bars 计算末两根窗口，
  *   参数跟随指标面板当前设置（applyOptions 同值不失效脏缓存）。
  *   不依赖图表渲染器——指标未显示在图上也能触发警报。
+ * - Pine 条件源（P2-A③）：条件序列走同一 watcher 的 computeExtra 旁路取数
+ *   （与 paint/shapes 同窗缓存），每报价/每帧随指标计算采样，不另起定时器。
  * - 穿越（crossUp/crossDown）依赖 store 内 lastSeen 逐采样推进，首轮无上一采样不触发。
  */
+
+/** computeExtra 中的 alertcondition 条目结构（本地结构化类型，避免渲染层反向依赖 pine 包） */
+interface ExtraAlertEntry {
+  kind: string;
+  key: string;
+  cond: Array<number | undefined> | null;
+}
+
+/**
+ * 从 computeExtra 旁路提取 Pine 条件采样（纯函数，窗口对齐由 ctxFrom 保证）。
+ * 条件为布尔语义：非零有限数 → 1，0/undefined/NaN → 0（Pine na 视为不成立）。
+ */
+export function pineAlertSamples(
+  extra: unknown,
+  ctxFrom: number,
+  to: number,
+  symbol: string,
+  indicatorId: string,
+  keys: ReadonlySet<string>,
+): AlertSample[] {
+  if (extra === undefined || extra === null) return [];
+  const entries = extra as ExtraAlertEntry[];
+  const out: AlertSample[] = [];
+  for (const e of entries) {
+    if (e.kind !== 'alertcondition' || !e.key || !keys.has(e.key)) continue;
+    const v = e.cond?.[to - ctxFrom];
+    if (typeof v !== 'number' || !Number.isFinite(v)) continue;
+    out.push({ key: sampleKey(symbol, { type: 'pine', indicatorId, key: e.key }), value: v !== 0 ? 1 : 0 });
+  }
+  return out;
+}
+
 export function useAlertWatcher(symbol: string | undefined, bars: Bar[], price: number): void {
   const alerts = useAlertStore((s) => s.alerts);
   const activeIndicators = useIndicatorStore((s) => s.active);
@@ -33,18 +67,23 @@ export function useAlertWatcher(symbol: string | undefined, bars: Bar[], price: 
       }
     }
 
-    // 指标源：按指标 id 聚合所需 plot，一次窗口计算取多个 plot
-    const need = new Map<string, Set<string>>();
+    // 指标/Pine 条件源：按指标 id 聚合所需 plot 与条件键，一次窗口计算取多个输出
+    const need = new Map<string, { plots: Set<string>; pines: Set<string> }>();
     for (const a of relevant) {
-      if (a.source.type !== 'indicator') continue;
-      const set = need.get(a.source.indicatorId) ?? new Set<string>();
-      set.add(a.source.plotKey);
-      need.set(a.source.indicatorId, set);
+      if (a.source.type === 'indicator') {
+        const set = need.get(a.source.indicatorId) ?? { plots: new Set<string>(), pines: new Set<string>() };
+        set.plots.add(a.source.plotKey);
+        need.set(a.source.indicatorId, set);
+      } else if (a.source.type === 'pine') {
+        const set = need.get(a.source.indicatorId) ?? { plots: new Set<string>(), pines: new Set<string>() };
+        set.pines.add(a.source.key);
+        need.set(a.source.indicatorId, set);
+      }
     }
     if (need.size > 0 && bars.length >= 1) {
       const to = bars.length - 1;
       const from = Math.max(0, to - 1);
-      for (const [indicatorId, plotKeys] of need) {
+      for (const [indicatorId, want] of need) {
         const def = getIndicatorDef(indicatorId);
         if (!def) continue;
         let inst = instancesRef.current.get(indicatorId);
@@ -55,12 +94,15 @@ export function useAlertWatcher(symbol: string | undefined, bars: Bar[], price: 
         }
         const entry = activeIndicators.find((x) => x.id === indicatorId);
         inst.applyOptions({ params: entry?.params ?? {} });
-        const { outputs, ctxFrom } = inst.computeWindow(bars, from, to);
-        for (const plotKey of plotKeys) {
+        const { outputs, ctxFrom, extra } = inst.computeWindow(bars, from, to);
+        for (const plotKey of want.plots) {
           const v = outputs[plotKey]?.[to - ctxFrom];
           if (typeof v === 'number' && Number.isFinite(v)) {
             samples.push({ key: sampleKey(symbol, { type: 'indicator', indicatorId, plotKey }), value: v });
           }
+        }
+        if (want.pines.size > 0) {
+          samples.push(...pineAlertSamples(extra, ctxFrom, to, symbol, indicatorId, want.pines));
         }
       }
     }

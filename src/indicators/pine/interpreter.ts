@@ -162,6 +162,9 @@ function execStmts(stmts: Stmt[], scope: Scope, mask: S | null, ctx: InterpCtx):
       case 'hline':
       case 'bgcolor':
       case 'barcolor':
+      case 'plotshape':
+      case 'plotchar':
+      case 'alertcondition':
         throw new Error('绘图指令与函数定义只能在顶层');
     }
   }
@@ -180,6 +183,10 @@ export interface RunResult {
   plots: S[];
   hlines: S[];
   paintConds: Array<S | null>;
+  /** plotshape/plotchar：条件序列 + absolute 定位价格序列（逐指令与 prog.shapes 对齐） */
+  shapeRuns: Array<{ cond: S | null; price: S | null }>;
+  /** alertcondition：条件序列（逐指令与 prog.alerts 对齐） */
+  alertConds: Array<S | null>;
 }
 
 /** 运行已编译程序：params 注入 → 执行语句 → 求 plot/hline/绘图指令条件序列 */
@@ -200,5 +207,10 @@ export function runProgram(prog: PineProgram, bars: readonly Bar[], params: Reco
     plots: prog.plots.map((p) => evalExpr(p.expr, scope, ctx)),
     hlines: prog.hlines.map((h) => evalExpr(h.price, scope, ctx)),
     paintConds: prog.paints.map((p) => (p.cond ? evalExpr(p.cond, scope, ctx) : null)),
+    shapeRuns: prog.shapes.map((s) => ({
+      cond: evalExpr(s.cond, scope, ctx),
+      price: s.price ? evalExpr(s.price, scope, ctx) : null,
+    })),
+    alertConds: prog.alerts.map((a) => evalExpr(a.cond, scope, ctx)),
   };
 }

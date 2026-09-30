@@ -1,11 +1,11 @@
 import type { PineProgram, Stmt } from './ast';
 import { parseExprSrc } from './expr';
-import { parseHlineDirective, parsePaintDirective, parsePlotDirective } from './directives';
+import { parseAlertDirective, parseHlineDirective, parsePaintDirective, parsePlotDirective, parseShapeDirective } from './directives';
 
 /**
  * Pine v5 子集语句解析器（行制 + 缩进块）。
  * 顶层：indicator/study 头、input.* 赋值、普通/var 赋值、元组解构赋值、
- * 用户函数 f(x) => 块、plot/hline/bgcolor/barcolor 指令。
+ * 用户函数 f(x) => 块、plot/hline/bgcolor/barcolor/plotshape/plotchar/alertcondition 指令。
  * 块内：赋值、if/else/else if、for..to..by、裸表达式（函数体返回值）。
  * 注释（//）与空行跳过，行号按源行计。
  */
@@ -43,6 +43,8 @@ class StmtParser {
     plots: [],
     hlines: [],
     paints: [],
+    shapes: [],
+    alerts: [],
     funcs: new Map(),
   };
 
@@ -115,6 +117,24 @@ class StmtParser {
     if (/^(bgcolor|barcolor)\s*\(/.test(text)) {
       if (nested) throw new Error('bgcolor/barcolor 必须在顶层');
       this.prog.paints.push(parsePaintDirective(text, line));
+      this.i++;
+      return { kind: 'none' };
+    }
+    if (/^plotshape\s*\(/.test(text)) {
+      if (nested) throw new Error('plotshape 必须在顶层');
+      this.prog.shapes.push(parseShapeDirective(text, line));
+      this.i++;
+      return { kind: 'none' };
+    }
+    if (/^plotchar\s*\(/.test(text)) {
+      if (nested) throw new Error('plotchar 必须在顶层');
+      this.prog.shapes.push(parseShapeDirective(text, line, true));
+      this.i++;
+      return { kind: 'none' };
+    }
+    if (/^alertcondition\s*\(/.test(text)) {
+      if (nested) throw new Error('alertcondition 必须在顶层');
+      this.prog.alerts.push(parseAlertDirective(text, line));
       this.i++;
       return { kind: 'none' };
     }

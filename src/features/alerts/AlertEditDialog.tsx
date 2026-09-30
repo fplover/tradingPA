@@ -53,16 +53,20 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
 
   if (!alert) return null;
   const open = Boolean(alert);
+  const isPine = alert.source.type === 'pine';
 
   const save = () => {
-    const t = Number(threshold);
-    if (!Number.isFinite(t) || threshold.trim() === '') return;
+    if (!isPine) {
+      const t = Number(threshold);
+      if (!Number.isFinite(t) || threshold.trim() === '') return;
+    }
     const expiryMs = Number(EXPIRY_OPTIONS[expiryIdx]?.value ?? 0);
+    const cooldownMs = frequency === 'every' ? Number(COOLDOWN_OPTIONS[cooldownIdx]?.value ?? 0) || DEFAULT_COOLDOWN_MS : alert.cooldownMs;
     update(alert.id, {
-      threshold: t,
-      condition,
+      // Pine 条件源：触发方式固定「条件为真」（阈值 1 + greater），仅可改频率/冷却/过期
+      ...(isPine ? {} : { threshold: Number(threshold), condition }),
       frequency,
-      cooldownMs: frequency === 'every' ? Number(COOLDOWN_OPTIONS[cooldownIdx]?.value ?? 0) || DEFAULT_COOLDOWN_MS : alert.cooldownMs,
+      cooldownMs,
       expiresAt: expiryMs > 0 ? Date.now() + expiryMs : undefined,
       // 重新编辑保存即重新武装（once 已停用 → 恢复待触发）
       active: true,
@@ -77,23 +81,30 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
       <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 10 }}>
         {alert.symbol} · {describeSource(alert.source)}
       </div>
-      <div style={fieldStyle}>
-        <span style={labelStyle}>条件</span>
-        <ToolbarSelect
-          ariaLabel="编辑触发条件"
-          value={condition}
-          options={CONDITION_OPTIONS}
-          minWidth={64}
-          onChange={(v) => setCondition(v as AlertCondition)}
-        />
-        <input
-          type="number"
-          aria-label="编辑阈值"
-          value={threshold}
-          onChange={(e) => setThreshold(e.target.value)}
-          style={inputStyle}
-        />
-      </div>
+      {isPine ? (
+        <div style={fieldStyle}>
+          <span style={labelStyle}>触发</span>
+          <span style={{ fontSize: 11, color: 'var(--text)' }}>Pine 条件为真时触发</span>
+        </div>
+      ) : (
+        <div style={fieldStyle}>
+          <span style={labelStyle}>条件</span>
+          <ToolbarSelect
+            ariaLabel="编辑触发条件"
+            value={condition}
+            options={CONDITION_OPTIONS}
+            minWidth={64}
+            onChange={(v) => setCondition(v as AlertCondition)}
+          />
+          <input
+            type="number"
+            aria-label="编辑阈值"
+            value={threshold}
+            onChange={(e) => setThreshold(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
+      )}
       <div style={fieldStyle}>
         <span style={labelStyle}>频率</span>
         <ToolbarSelect

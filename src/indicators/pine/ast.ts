@@ -21,6 +21,35 @@ export interface PaintDirective {
   line: number;
 }
 
+/** 运行期 shape 指令元数据（plotshape/plotchar，computeExtra 旁路）：
+ *  条件序列 + 每标记属性（barIndex 由渲染层按窗推导；absolute 定位取 price 序列） */
+export interface ShapeDirective {
+  kind: 'shape' | 'char';
+  /** kind='shape' 时为 shape.* 名；kind='char' 时为 plotchar 字符 */
+  style: string;
+  color: string;
+  location: 'belowbar' | 'abovebar' | 'absolute';
+  /** 标记尺寸（像素；三角形高/半径、字符字号） */
+  size: number;
+  cond: Array<number | undefined> | null;
+  /** location.absolute 时的价格序列（与 cond 同窗对齐） */
+  price: Array<number | undefined> | null;
+  /** plotshape text= 附加文本 */
+  text: string | null;
+  line: number;
+}
+
+/** 运行期 alertcondition 指令元数据（computeExtra 旁路）：条件序列供警报 watcher 采样 */
+export interface AlertDirective {
+  kind: 'alertcondition';
+  /** def 内条件键（a0/a1/...），警报源引用用 */
+  key: string;
+  title: string;
+  message: string;
+  cond: Array<number | undefined> | null;
+  line: number;
+}
+
 // ---------- 表达式 AST ----------
 
 export type Expr =
@@ -48,11 +77,31 @@ export type Stmt =
   | { t: 'plot'; expr: Expr; title: string; style: PlotStyle; line: number }
   | { t: 'hline'; price: Expr; title: string; color: string | null; line: number }
   | { t: 'bgcolor'; color: string | null; cond: Expr | null; line: number }
-  | { t: 'barcolor'; color: string | null; cond: Expr | null; line: number };
+  | { t: 'barcolor'; color: string | null; cond: Expr | null; line: number }
+  /** plotshape/plotchar：条件标记图形（不产数值 plot，不参与 indicatorRange/图例） */
+  | {
+      t: 'plotshape' | 'plotchar';
+      cond: Expr;
+      title: string;
+      /** plotshape 的 shape.* 名；plotchar 的字符走 char 字段 */
+      style: string;
+      char: string | null;
+      location: 'belowbar' | 'abovebar' | 'absolute';
+      color: string;
+      size: number;
+      text: string | null;
+      /** location.absolute 时的价格表达式 */
+      price: Expr | null;
+      line: number;
+    }
+  /** alertcondition：编译期注册条件（供警报面板选源；TV 纯警报脚本无 plot 亦合法） */
+  | { t: 'alertcondition'; cond: Expr; title: string; message: string; line: number };
 
 export type PlotStmt = Extract<Stmt, { t: 'plot' }>;
 export type HlineStmt = Extract<Stmt, { t: 'hline' }>;
 export type PaintStmt = Extract<Stmt, { t: 'bgcolor' } | { t: 'barcolor' }>;
+export type ShapeStmt = Extract<Stmt, { t: 'plotshape' | 'plotchar' }>;
+export type AlertStmt = Extract<Stmt, { t: 'alertcondition' }>;
 export type FundefStmt = Extract<Stmt, { t: 'fundef' }>;
 
 /** 解析后的脚本程序 */
@@ -64,5 +113,7 @@ export interface PineProgram {
   plots: PlotStmt[];
   hlines: HlineStmt[];
   paints: PaintStmt[];
+  shapes: ShapeStmt[];
+  alerts: AlertStmt[];
   funcs: Map<string, FundefStmt>;
 }
