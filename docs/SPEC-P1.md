@@ -2,7 +2,7 @@
 
 > 生成日期：2026-09-29
 > 基于：docs/GAP_ANALYSIS_TV_vs_tradingPA.md（§1.1/§1.4/§1.7/§1.8/§1.9/§1.11）+ SPEC-TV-ALIGNMENT v2.0（已交付，规则沿用）
-> 状态：已确认（用户 2026-09-29 选定全部 6 模块）
+> 状态：已交付（2026-09-29 全 6 模块交付；2026-09-30 文档回填：§2 P1-B 落点路径修正为 `src/indicators/pine/`）
 
 ---
 
@@ -17,7 +17,7 @@
 | 批次 | 模块 | 内容摘要 | 落点（点名文件） | 预估 |
 |---|---|---|---|---|
 | P1-A | 指标扩充 ~30 个 | 按 GAP §1.4 高频清单补齐（ROC/TRIX/TSI/Vortex/Alligator/KST/Coppock/Fisher/CMO/DPO/BOP/NATR/Stdev/BBWidth/PercentB/Choppiness/MassIndex/HistVol/AnchoredVWAP/ChaikinOsc/ElderRay/Klinger/A&D/VolumeOsc/NetVolume/CorrCoeff/PPO/Aroon 族/McGinley 等），声明式 schema + 窗口化计算 + 金标准单测，先 diff registry 只补缺失 | `src/indicators/builtin/`、`src/indicators/registry.ts`、`tests/unit/indicators*.test.ts` | 10-15d |
-| P1-B | Pine 控制流 + ta 扩容 | 语句节点 if/for、var 声明、用户自定义 function、~20 个 ta.*（wma/hma/vwma/dema/tema/atr/tr/macd/adx/cci/mfi/wpr/bb/kc/donchian/supertrend/psar/linreg/tsi/fisher/rma）、绘图指令 hline/bgcolor/barcolor；compile.ts 已超红线，新增逻辑必须拆新模块（tokenizer/parser/interpreter 分置），barrel 兼容 | `src/features/pine/`、`tests/unit/pine-compile.test.ts` | 9-14d |
+| P1-B | Pine 控制流 + ta 扩容 | 语句节点 if/for、var 声明、用户自定义 function、~20 个 ta.*（wma/hma/vwma/dema/tema/atr/tr/macd/adx/cci/mfi/wpr/bb/kc/donchian/supertrend/psar/linreg/tsi/fisher/rma）、绘图指令 hline/bgcolor/barcolor；compile.ts 已超红线，新增逻辑必须拆新模块（tokenizer/parser/interpreter 分置），barrel 兼容 | `src/indicators/pine/`（2026-09-30 回填修正：P1-B 实际落点，原写 `src/features/pine/` 系计划笔误；ta.* 以代码核实 32 个为准）、`tests/unit/pine-compile.test.ts` | 9-14d |
 | P1-C | 警报丰富化 | 触发条件补 greater/less（不依赖穿越）；作用对象扩展到指标值（副图指标 overbought/oversold 类）；警报编辑（改价/改条件/暂停）；触发频率 Once/Every time；过期时间；声音提示（Web Audio）；按品种分组可选 | `src/store/alertStore.ts`、`src/features/alerts/AlertPanel.tsx`、`App.tsx`（checkAlerts effect） | 9-14d |
 | P1-D | 模拟交易 limit/stop | limit/stop/stop-limit 挂单 + 挂单列表 + 触价成交引擎（tick 穿越判定，涨跌停/gap 开盘按 TV 语义：limit 优价成交、stop 触发转市价）+ 撤单；paperEngine 纯函数化 + 单测 | `src/features/trading/`、paperEngine 及其单测 | 4-6d |
 | P1-E | 命令面板 | 全局命令注册表（切周期/切类型/开指标/警报/布局/截图/主题/复盘等全部顶栏动作）+ 模糊匹配浮层 + 键盘导航（↑/↓/Enter/Esc）；Ctrl+P 唤起 + 顶栏按钮入口；与既有 `/`、Ctrl+K 符号搜索不冲突 | 新增 `src/features/command/CommandPalette.tsx` + `commandRegistry.ts`、`App.tsx` 接线 | 3-5d |
@@ -76,3 +76,4 @@ React 18.3.1 / TS 5.6.3 / Vite 5.4.11 / Zustand 4.5.5 / Radix + lucide-react 1.4
 | 2026-09-29 | **Wave 1 四流交付**：P1-A 指标 30 个（registry diff 跳过已有 Aroon/ATR；Anchored VWAP 需锚定交互，落 OPEN-DECISIONS）；P1-B Pine if/for/var/用户函数 + 21 ta.*（taCore 与指标引擎同源）+ hline/bgcolor/barcolor（bgcolor/barcolor 渲染接线留 P2，pinePaint 旁路已就绪）；P1-C 警报 4 条件/指标值触发/编辑/频率/过期/声音 + schema v2 迁移；P1-E 命令面板 ~45 命令 Ctrl+P；P1-D limit/stop/stop-limit + gap 语义 + 无效单拒绝 | 成员 RoleVerdict 全部 pass | 见各提交白名单 |
 | 2026-09-29 | **集成门禁全绿**：typecheck 0 错误；单测 544/544（批次前 427，净增 117）；E2E 47/47（1.2m）；P0 双扫零（emoji 零匹配；hex 命中均为 v2.0 已裁决存量）。**环境坑记录**：Playwright webServer(npm run dev) 在 Windows 退出时无法杀 npm→vite 孙进程导致进程挂死（30min 无汇总、test-results 空）；绕过=预先自起 dev server 让 reuseExistingServer 生效，跑完 1.2m 退出（已入 pitfalls.jsonl validated） | 批次出口门禁 | 全项目 |
 | 2026-09-29 | **P1-F Volume Profile 实装交付（Wave 2）**：computeProfile 纯函数+签名缓存（dataEpoch 门控）、drawVolumeProfile 右对齐直方图+POC/VAH/VAL（插 drawTrading 前，仅 timeBasedChart 绘制）、IndicatorManager profile 分支（固定 uid 'vp'，模板持久化自动兼容）、theme 4 token × 双主题、delta 源 buyRatio 近似。已知边界：同图单 VP 实例（蓝图语义）；设置面板色参初值随加载时主题快照（渲染实时读 token） | Wave 2 施工（蓝图 DESIGN-volume-profile.md 全量落地） | engine/profile、engine/renderer、indicators、theme |
+| 2026-09-30 | **文档回填（路径修正）**：§2 P1-B 落点 `src/features/pine/` → `src/indicators/pine/`（P1-B 实际落点：tokenizer/parser/validator/interpreter 等 12 模块，compile.ts 为 30 行 barrel）；ta.* 函数数以代码核实 **32** 个为准（compile.ts:16 自述「31 个」系笔误，按纪律不改代码、仅在文档更正） | 文档与代码一致性（用户指令） | docs/SPEC-P1.md |

@@ -1,6 +1,6 @@
 # tradingPA × TradingView UI/交互细节维度差距分析
 
-> 作者：颜好看（UI/UX 设计师）｜日期：2026-09-28｜版本：v1.0（v1.1 追加实施状态）
+> 作者：颜好看（UI/UX 设计师）｜日期：2026-09-28（v1.2 回填：2026-09-30）｜版本：v1.2（v1.1 追加实施状态；v1.2 回填：收盘倒计时已交付，移出 §5.3 仍未实施列表）
 > 输入：src 静态分析（global.css / ui/primitives / ui/tokens / ui/ToolbarSelect / engine/theme.ts / engine/renderer/drawCrosshair+drawAxes / ChartRenderer / features 10 面板）+ TradingView 官方 7 来源 + 第三方 DOM 抓取 1 来源
 > 结论：**视觉基座对齐度高（TV 色板/字体栈/tabular-nums/双主题/crosshair 虚线吸附/图例悬停跟随均已到位）；剩余差距集中在「画布级细节（轴标签对齐/多面板价格换算）」「右键菜单广度」「快捷键面板」「设置对话框深度」「原生控件 TV 化」「Token 收敛」六层。另发现 2 项 P0 违规（emoji 作功能图标 / 硬编码颜色），须优先清除。**
 
@@ -58,7 +58,7 @@
 | **边框 Token** | 1px `--border` 统一 | 全部组件 `1px solid var(--border)` | 无差距 | — |
 | **原生控件** | 自定义勾选框（accent 底+白勾 radius 2-3）、自定义下拉、自定义色板 | 设置/指标对话框用原生 `input[type=checkbox]`、原生 `<select>`（lineWidth/精度/周期）、裸 `input[type=color]` 22px | 深色主题下原生控件样式出戏、select 弹系统菜单；ToolbarSelect 已有实现可复用为通用下拉 | **P1** |
 | **底部面板** | 时间范围预设条（1D/5D/1M/3M/6M/1Y/5Y/All）+ Go to date + 时区选择 + 齿轮；导航按钮（缩放/平移/重置） | `StatusBar.tsx`：UTC 标签 + 数据状态 + %/log/auto 三开关 | 缺预设时间范围条、前往日期、时区选择、底部齿轮入口、导航按钮 | P1 |
-| **画布级特性** | Watermark（代码+周期半透明）、K 线收盘倒计时、Bid/Ask 标签、Symbol name label、High/Low 标签 | 均无（`ChartRenderer.ts` grep 确认） | TV 画布信息层缺失；倒计时/水印对复刻辨识度影响大 | P2 |
+| **画布级特性** | Watermark（代码+周期半透明）、Bid/Ask 标签、Symbol name label、High/Low 标签 | K 线收盘倒计时已交付（TV-ALIGNMENT B3：`engine/countdown.ts` + 51 条单测 + E2E 行为断言）；水印为死开关（设置 UI 就位、引擎未渲染）；其余均无 | TV 画布信息层缺失；水印对复刻辨识度影响大 | P2 |
 | **字体字重** | TV Trebuchet MS，字重 400/600/700 | 项目 400/500/600/700 混用（如 watchlist 500 价格、symbol 700） | 微差；建议 400/600/700 三档 | P2 |
 
 ---
@@ -98,7 +98,7 @@
 9. 底部时间范围预设条
 10. 图例悬停按钮/pane 按钮抽共享 SVG path 常量
 
-**第三批（P2，打磨）**：市场状态圆点、日涨跌、watermark、收盘倒计时、价格轴 + 按钮、Bid/Ask、菜单快捷键提示全量化、时间格式 zh 化、Toast、对话框动效、字重三档、浅色 elevated 分层。
+**第三批（P2，打磨）**：市场状态圆点、日涨跌、watermark（引擎渲染接线或撤离开关）、价格轴 + 按钮、Bid/Ask、菜单快捷键提示全量化、时间格式 zh 化、Toast、对话框动效、字重三档、浅色 elevated 分层。
 
 ---
 
@@ -141,8 +141,10 @@
 
 ### 5.3 仍未实施（需引擎能力或归属其他任务，见主表 P2）
 
+> v1.2 回填（2026-09-30）：「收盘倒计时」已于 TV-ALIGNMENT B3 交付（`engine/countdown.ts` 纪元对齐 + 日历分桶、价格轴右端 mm:ss 递减接线、51 条单测），自本列表移除；主表「画布级特性」行与 §3 第三批中的倒计时表述本次未动（按回填范围「其余保持」）。
+
 - 图表设置对话框 9 页签深度（水印/背景色/坐标位置/网格四态等依赖渲染引擎能力，归属任务 #4）
-- Toast 系统、对话框 150ms 进入动效、market status 圆点、当日累计涨跌、watermark、收盘倒计时、价格轴「+」按钮、Bid/Ask 标签、时间格式 zh 化、字重三档收敛、浅色 elevated 分层
+- Toast 系统、对话框 150ms 进入动效、market status 圆点、当日累计涨跌、watermark、价格轴「+」按钮、Bid/Ask 标签、时间格式 zh 化、字重三档收敛、浅色 elevated 分层
 - 指标对话框样式页 plot 类型下拉、输入页 number stepper（TV 规格深化）
 
 ### 5.4 E2E 回归修复（前端队友回报，2026-09-28 闭环）
