@@ -10,6 +10,7 @@ import type { PanZoomPane, PanZoomGesture, PanZoomHost } from './PanZoomGesture'
 import type { DrawingGesture, DrawingHost } from './DrawingGesture';
 import type { TradePane, TradeGesture, TradeHost } from './TradeGesture';
 import type { HoverController, HoverHost } from './HoverController';
+import { selectStudyAt, type SelectionPopupTracker } from './hitTestIndicator';
 
 /**
  * 输入控制器（D 批次拆分③；架构映射：ChartRenderer 输入区的 bind/unbind 与
@@ -45,6 +46,8 @@ export interface InputHost extends PanZoomHost, DrawingHost, TradeHost, HoverHos
   studyRects(): readonly StudyLegendRect[];
   /** 复盘位置 index（null = 非回放） */
   replayIndex(): number | null;
+  visibleRange(): { from: number; to: number }; // 可视 bar 区间（指标命中测试与绘制同窗口）
+  visibleStudies(): readonly IndicatorInstance[]; // 主面板可见指标（hideStudies/周期已过滤；指标选中命中用）
 
   // ---- 复合动作（宿主侧多步效果） ----
   /** 选择K线落点：clamp 有效 bar + 回调 + 退出选择模式 */
@@ -74,6 +77,7 @@ export class InputController {
     private drawing: DrawingGesture,
     private trade: TradeGesture,
     private hover: HoverController,
+    private popup: SelectionPopupTracker | null = null,
   ) {}
 
   /** 事件监听表（bind/unbind 共用，保证成对；处理器按窄事件类型书写，入表转 EventListener） */
@@ -155,6 +159,7 @@ export class InputController {
     // 交易可视化命中：挂单线拖动改价 / 撤单 / 持仓详情块拖动设 TP-SL
     if (this.trade.onPointerDown(x, y, pane)) return;
     this.drawing.deselect();
+    if (this.popup) selectStudyAt(this.host, this.popup, x, y); // 指标选中（互斥单选；空白点击即清除）
     this.panzoom.beginPan(e.clientX, e.clientY);
     this.host.crosshair.clear();
     this.host.invalidate();

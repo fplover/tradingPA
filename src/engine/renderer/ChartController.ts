@@ -25,6 +25,7 @@ import { HoverController } from './HoverController';
 import { InputController, type InputHost } from './InputController';
 import { PaneRenderer, type PaneRenderHost } from './PaneRenderer';
 import { RenderPipeline } from './RenderPipeline';
+import { SelectionPopupTracker, type SelectionPopupInfo } from './selectionPopup';
 
 /**
  * 图表控制器（D 批次拆分④；架构映射：ChartRenderer 门面化）。
@@ -56,6 +57,8 @@ export class ChartController {
   private drawingsListeners = new Set<() => void>();
   /** 拖拽中画线变更的合帧广播（P2-D③：rAF 每帧至多冲刷一次；状态机见 DrawingsNotifyCoalescer） */
   private drawingsNotify = new DrawingsNotifyCoalescer();
+  /** TV 式选择工具栏状态机（选中画线/指标 → 弹窗锚点；DOM 渲染在 React 层，见 selectionPopup.ts） */
+  readonly selectionPopup = new SelectionPopupTracker();
   // 交互回调（UI 层经 setXxxCallback 注册）
   private studyActionCb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null = null;
   private drawingSettingsCb: ((id: string) => void) | null = null;
@@ -114,6 +117,8 @@ export class ChartController {
       studyRects: () => this.state.studyRects,
       barSelectMode: () => this.state.barSelectMode,
       replayIndex: () => this.state.replayIndex,
+      visibleRange: () => this.state.visibleRange(),
+      visibleStudies: () => this.state.hideStudies ? [] : this.state.panes[0].indicators.filter((i) => i.isVisibleOn(this.legend.timeframeId)),
       barSelected: (rawIndex) => {
         const idx = Math.min(Math.max(rawIndex, 0), Math.max(0, this.state.displaySeries.length - 1));
         this.barSelectCb?.(idx);
@@ -131,10 +136,10 @@ export class ChartController {
       priceLineDblClickCb: () => this.priceLineDblClickCb,
     };
     this.panzoom = new PanZoomGesture(inputHost);
-    this.drawing = new DrawingGesture(inputHost);
+    this.drawing = new DrawingGesture(inputHost, this.selectionPopup);
     this.trade = new TradeGesture(inputHost);
     this.hover = new HoverController(inputHost, this.drawing, this.trade);
-    this.input = new InputController(inputHost, this.panzoom, this.drawing, this.trade, this.hover);
+    this.input = new InputController(inputHost, this.panzoom, this.drawing, this.trade, this.hover, this.selectionPopup);
     // AVWAP 锚定落点装配（P2-B 红线拆分）：host 注入指标查询/选 bar 模式/落点解析与写回
     const avwapHost: AvwapAnchorHost = {
       lookupIndicator: (uid) => {
@@ -196,6 +201,7 @@ export class ChartController {
 
   private notifyDrawings(): void {
     for (const cb of this.drawingsListeners) cb();
+    this.drawing.syncSelection(); // 画线选中变更（增删/撤销/导入/多选等 API 路径）→ 工具栏
   }
 
   /** 拖拽中画线变更的合帧广播（P2-D③遗留）：画线警报面板清单/对象树不逐像素刷新。
@@ -210,7 +216,7 @@ export class ChartController {
   setLegend(legend: Partial<LegendInfo>): void {
     this.legend = { ...this.legend, ...legend };
     this.countdown.setTimeframe(this.resolveTimeframe()); // 周期切换 → 重算倒计时
-    this.invalidate();
+    this.invalidate(); this.clearStudySelection(); // 周期切换 → 指标选中目标可能失效
   }
 
   /** 日历桶时区（分钟，东为正）：crypto=UTC / CN 源=本地（bar 时间戳语义决定，见 data/tz.ts） */
@@ -219,7 +225,7 @@ export class ChartController {
     this.invalidate();
   }
 
-  setData(bars: Bar[]): void { this.state.setData(bars); }
+  setData(bars: Bar[]): void { this.state.setData(bars); this.clearStudySelection(); }
   updateBar(bar: Bar): void { this.state.updateBar(bar); }
 
   /** 前插更早的历史（懒加载），保持当前视口不跳动 */
@@ -228,10 +234,10 @@ export class ChartController {
     this.state.prependData(bars);
     this.viewport.panByBars(bars.length);
     this.notifyDrawings();
-    this.invalidate();
+    this.invalidate(); this.clearStudySelection();
   }
 
-  setChartType(type: ChartTypeId): void { this.state.setChartType(type); }
+  setChartType(type: ChartTypeId): void { this.state.setChartType(type); this.clearStudySelection(); }
   get chartTypeNow(): ChartTypeId { return this.state.chartType; }
   setLogScale(on: boolean): void { this.state.setLogScale(on); }
   setAutoScale(on: boolean): void { this.state.setAutoScale(on); }
@@ -250,8 +256,14 @@ export class ChartController {
   setPriceLineDblClickCallback(cb: (() => void) | null): void { this.priceLineDblClickCb = cb; }
   setLegendMenuCallback(cb: ((x: number, y: number) => void) | null): void { this.legendMenuCb = cb; }
   setDrawingMenuCallback(cb: ((id: string, x: number, y: number) => void) | null): void { this.drawingMenuCb = cb; }
-  setHideStudies(hidden: boolean): void { this.state.setHideStudies(hidden); }
+  setHideStudies(hidden: boolean): void { this.state.setHideStudies(hidden); this.clearStudySelection(); }
   get studiesHidden(): boolean { return this.state.hideStudies; }
+  /** 注册 TV 式选择工具栏回调（薄委托 tracker.subscribe；选中变化时推送，画线/指标双空 → null） */
+  setSelectionPopupCallback(cb: (info: SelectionPopupInfo | null) => void): void { this.selectionPopup.subscribe(cb); }
+  /** 当前选择工具栏信息（React 层读初始值用） */
+  get selectionPopupInfo(): SelectionPopupInfo | null { return this.selectionPopup.current; }
+  /** 指标选中失效（指标增删/隐藏/换周期/换数据后目标不存在）→ 工具栏收起 */
+  private clearStudySelection(): void { this.selectionPopup.setStudySelection(null, null, this.manager.width - AXIS_WIDTH); }
   /** 回放位置公开读 API（拆分前为实例私有字段、运行时经 window.__chartRenderer 可读；
    *  D 批次迁入 ChartState 后补此 getter 保持对外读取面不变——E2E 回放用例依赖） */
   get replayIndex(): number | null { return this.state.replayIndex; }
@@ -271,7 +283,7 @@ export class ChartController {
 
   removeIndicator(uid: string): void {
     this.avwapAnchor.maybeCancel(uid); // 被锚定实例移除 → 退出选 bar 模式
-    this.state.indicators.remove(uid);
+    this.state.indicators.remove(uid); this.clearStudySelection();
   }
 
   updateIndicator(uid: string, options: IndicatorOptions): void {
@@ -281,7 +293,7 @@ export class ChartController {
 
   listIndicators(): IndicatorInfo[] { return this.state.indicators.list(); }
   exportIndicatorTemplate(): Array<{ id: string; params: Record<string, string | number | boolean> }> { return this.state.indicators.exportTemplate(); }
-  importIndicatorTemplate(list: Array<{ id: string; params?: Record<string, string | number | boolean> }>): void { this.state.indicators.importTemplate(list); }
+  importIndicatorTemplate(list: Array<{ id: string; params?: Record<string, string | number | boolean> }>): void { this.state.indicators.importTemplate(list); this.clearStudySelection(); }
 
   // ---------- 生命周期 ----------
 
@@ -293,6 +305,7 @@ export class ChartController {
       this.drawingsNotify.flush(() => this.notifyDrawings());
       if (this.dirty) {
         this.dirty = false;
+        if (this.selectionPopup.current) this.drawing.syncSelection(); // 平移/缩放/改尺寸后工具栏锚点跟随选中对象
         this.pipeline.draw();
       } else if (this.countdown.needsRedraw(Date.now())) {
         // 收盘倒计时秒级唤醒：借既有 rAF 合帧机制，不另起定时器抢帧
@@ -502,7 +515,7 @@ export class ChartController {
   setDrawingLocked(id: string, locked: boolean): void { this.drawing.layer.setLocked(id, locked); this.notifyDrawings(); this.invalidate(); }
 
   /** 选中画线（对象树点击行） */
-  selectDrawing(id: string | null): void { this.drawing.layer.select(id); this.invalidate(); }
+  selectDrawing(id: string | null): void { this.drawing.layer.select(id); this.drawing.syncSelection(); this.invalidate(); }
 
   /** Ctrl+点击切换多选集合成员（对象树/画布同语义） */
   toggleDrawingSelection(id: string): void { this.drawing.layer.toggleSelect(id); this.notifyDrawings(); this.invalidate(); }

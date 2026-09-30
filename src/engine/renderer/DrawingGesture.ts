@@ -8,6 +8,7 @@ import { DragBroadcast, draggedHlinePrice } from '../drawing/dragBroadcast';
 import { computeDragPoints } from '../drawing/drawDrag';
 import { detectVisibleSwing } from '../drawing/fibMath';
 import { hitDrawings, type DrawingHit } from './hitTest';
+import { syncDrawingSelection, type SelectionPopupTracker } from './selectionPopup';
 
 /**
  * 画线手势（D 批次拆分③；架构映射：ChartRenderer 的画线放置/预览/拖拽状态机、
@@ -67,7 +68,7 @@ export class DrawingGesture {
   private dragNotify = new DragBroadcast();
   private toolFinishedCb: (() => void) | null = null;
 
-  constructor(private host: DrawingHost) {}
+  constructor(private host: DrawingHost, private popup: SelectionPopupTracker | null = null) {}
 
   // ---------- 绘制与公开 API 读取 ----------
 
@@ -76,6 +77,10 @@ export class DrawingGesture {
   get preview(): DrawingPoint | null { return this.previewPoint; }
   get hoverCursor(): string { return this.hover; }
   setHoverCursor(cursor: string): void { this.hover = cursor; }
+
+  /** 选中变更 → TV 式选择工具栏（bbox = 选中锚点像素范围；纯几何在 selectionPopup.ts）。
+   *  手势内选中变更直接调；公开 API 的选中变更经 ChartController.notifyDrawings 汇聚到此 */
+  syncSelection(): void { if (this.popup) syncDrawingSelection(this.popup, this.layer, (p) => pointToPixel(p, this.host.drawingCtx()), this.host.chartW()); }
 
   setToolFinishedCallback(cb: (() => void) | null): void {
     this.toolFinishedCb = cb;
@@ -93,7 +98,7 @@ export class DrawingGesture {
   /** 完成路径类画线（双击/回车） */
   finishPlacing(): void {
     if (this.activeTool === 'path' && this.placing.length >= 2) {
-      this.layer.add('path', this.placing);
+      this.layer.add('path', this.placing); this.syncSelection();
     }
     this.placing = [];
     this.previewPoint = null;
@@ -106,15 +111,13 @@ export class DrawingGesture {
     this.placing = [];
     this.previewPoint = null;
     this.pendingClone = null;
-    this.layer.select(null);
+    this.layer.select(null); this.syncSelection();
     this.host.notifyDrawings();
     this.host.invalidate();
   }
 
   /** 空白处点击：清空选中（进入平移拖拽的前置） */
-  deselect(): void {
-    this.layer.select(null);
-  }
+  deselect(): void { this.layer.select(null); this.syncSelection(); }
 
   /** 画布级画线命中（锁定态守卫 + 上下文装配；逐对象判定在 hitTest.ts） */
   hitAt(x: number, y: number, paneY: number): DrawingHit | null {
@@ -133,7 +136,7 @@ export class DrawingGesture {
     if (this.activeTool === 'fib-auto') {
       const swing = this.detectSwingForAutoFib();
       if (swing) {
-        this.layer.add('fib-auto', [swing.start, swing.end]);
+        this.layer.add('fib-auto', [swing.start, swing.end]); this.syncSelection();
         this.toolFinishedCb?.();
       }
       this.host.invalidate();
@@ -145,14 +148,14 @@ export class DrawingGesture {
     }
     const def = getToolDef(this.activeTool!);
     if (def.points === 1) {
-      this.layer.add(this.activeTool!, [pt]);
+      this.layer.add(this.activeTool!, [pt]); this.syncSelection();
       this.host.invalidate();
       this.toolFinishedCb?.();
       return;
     }
     this.placing.push(pt);
     if (def.points > 0 && this.placing.length >= def.points) {
-      this.layer.add(this.activeTool!, this.placing);
+      this.layer.add(this.activeTool!, this.placing); this.syncSelection();
       this.placing = [];
       this.previewPoint = null;
       this.toolFinishedCb?.();
@@ -174,7 +177,7 @@ export class DrawingGesture {
     }
     // 多选态下点击已选中对象 = 整组拖拽；否则单选该对象
     const groupDrag = hit.part === 'body' && this.layer.isSelected(hit.id) && this.layer.selectedIdList.length > 1;
-    if (!groupDrag) this.layer.select(hit.id);
+    if (!groupDrag) { this.layer.select(hit.id); this.syncSelection(); }
     const ids = groupDrag ? this.layer.selectedIdList : [hit.id];
     const origins = new Map<string, DrawingPoint[]>();
     for (const id of ids) {
@@ -207,7 +210,7 @@ export class DrawingGesture {
         if (src && !src.locked) {
           // 先快照再克隆：克隆 + 拖拽 = 单步撤销
           this.layer.beginHistory();
-          const clone = this.layer.cloneDrawing(src.id)!;
+          const clone = this.layer.cloneDrawing(src.id)!; this.syncSelection();
           this.dragDrawing = {
             ids: [clone.id],
             part: pc.part,

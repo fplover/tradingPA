@@ -16,6 +16,7 @@ import {
   fibArcHit,
   fibExtensionPrice,
   fibFanEdgePrice,
+  fibLevelEndX,
   fibRetracementPrice,
   fibZoneOffsets,
   fibZoneTimes,
@@ -29,7 +30,7 @@ import {
   fanRayEndPix,
   hitTestFib,
 } from '@/engine/drawing/fibRender';
-import { createMockCtx, asCtx, callsOf, fillTexts, hasCall, hasPair, type MockCtx } from './helpers/mock-ctx';
+import { createMockCtx, asCtx, callsOf, fillTexts, hasCall, hasPair, propSets, type MockCtx } from './helpers/mock-ctx';
 
 /**
  * B6 斐波那契家族单测：
@@ -264,6 +265,22 @@ function toPix(p: DrawingPoint, dctx: DrawContext): { x: number; y: number } {
   };
 }
 
+describe('fibLevelEndX（回撤/扩展水平线右端：摆幅外再延一个摆幅，最短 24px，不超画布）', () => {
+  it('正常摆幅：endX = xLabel + (xLabel - x0)', () => {
+    expect(fibLevelEndX(100, 140, 1000)).toBe(180);
+    expect(fibLevelEndX(372, 412, 460)).toBe(452); // 摆幅 40 → 末端 452（不到右缘 460）
+  });
+  it('摆幅下限 24px（锚点几乎重合时）', () => {
+    expect(fibLevelEndX(100, 110, 1000)).toBe(134); // 摆幅 10 → 取下限 24
+    expect(fibLevelEndX(100, 100, 1000)).toBe(124); // 零摆幅 → 124
+  });
+  it('chartW 钳制：末端绝不超出画布', () => {
+    expect(fibLevelEndX(100, 140, 200)).toBe(180); // 180 < 200 不钳
+    expect(fibLevelEndX(100, 300, 200)).toBe(200); // 300 + 200 = 500 → 钳到 200
+    expect(fibLevelEndX(400, 500, 460)).toBe(460);
+  });
+});
+
 describe('drawFibRetracement（回撤水平组）', () => {
   it('7 条水平线 + 7 个「比率% 价格」标签', () => {
     const { ctx, dctx, priceScale } = makeDctx();
@@ -273,7 +290,10 @@ describe('drawFibRetracement（回撤水平组）', () => {
 
     // 每条水平线：beginPath + moveTo + lineTo + stroke
     expect(callsOf(ctx, 'stroke')).toHaveLength(7);
-    expect(hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(100)) + 0.5], 'lineTo', [W, Math.round(priceScale.priceToY(100)) + 0.5])).toBe(true);
+    // 末端 = xLabel(412) + 摆幅(40) = 452（不再到画布右缘 460）
+    const endX = fibLevelEndX(pts[0].x, pts[1].x, W);
+    expect(endX).toBe(452);
+    expect(hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(100)) + 0.5], 'lineTo', [endX, Math.round(priceScale.priceToY(100)) + 0.5])).toBe(true);
     expect(fillTexts(ctx)).toEqual([
       '0.0% 100.00',
       '23.6% 100.47',
@@ -283,6 +303,21 @@ describe('drawFibRetracement（回撤水平组）', () => {
       '78.6% 101.57',
       '100.0% 102.00',
     ]);
+    // 标签溢出画布（452 + 4 + 字宽 > 458）→ 钳到 chartW - 字宽 - 2 并右对齐：
+    // mock 字宽 = 字数 × 6；'0.0% 100.00' 11 字 → x = 460 - 66 - 2 = 392
+    expect(hasCall(ctx, 'fillText', ['0.0% 100.00', 392, Math.round(priceScale.priceToY(100)) + 0.5])).toBe(true);
+    expect(propSets(ctx, 'textAlign').at(-1)).toBe('right');
+  });
+
+  it('末端靠近左缘时标签放得下：贴 endX + 4 左对齐', () => {
+    const { ctx, dctx, priceScale } = makeDctx();
+    const d = drawing({ type: 'fib', points: [{ time: T0, price: 100 }, { time: T0 + IV, price: 102 }] });
+    // 手工指定锚点像素（x 位置才是本用例变量）：x0=100 / xLabel=124 → 摆幅下限 24 → endX=148
+    drawFibRetracement(asCtx(ctx), d, [{ x: 100, y: 0 }, { x: 124, y: 0 }], dctx, 2);
+    const y0 = Math.round(priceScale.priceToY(100)) + 0.5;
+    // '0.0% 100.00' 宽 72：148 + 4 + 72 = 224 ≤ 458 → 贴末端左对齐
+    expect(hasCall(ctx, 'fillText', ['0.0% 100.00', 152, y0])).toBe(true);
+    expect(propSets(ctx, 'textAlign').at(-1)).toBe('left');
   });
 });
 
@@ -303,7 +338,13 @@ describe('drawFibExtension（扩展）', () => {
     // 锚线 2→3
     expect(hasPair(ctx, 'moveTo', [pts[1].x, pts[1].y], 'lineTo', [pts[2].x, pts[2].y])).toBe(true);
     // 扩展价 = 枢轴 104 + (108-100) × 比率；100% 档 = 112
-    expect(hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(112)) + 0.5], 'lineTo', [W, Math.round(priceScale.priceToY(112)) + 0.5])).toBe(true);
+    // 末端 = xLabel(404) + 摆幅(32) = 436（与回撤同规则）
+    const endX = fibLevelEndX(pts[0].x, pts[2].x, W);
+    expect(endX).toBe(436);
+    expect(hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(112)) + 0.5], 'lineTo', [endX, Math.round(priceScale.priceToY(112)) + 0.5])).toBe(true);
+    // 标签溢出 → 钳到 460 - 78 - 2 = 380 右对齐（'100.0% 112.00' 13 字 × 6px）
+    expect(hasCall(ctx, 'fillText', ['100.0% 112.00', 380, Math.round(priceScale.priceToY(112)) + 0.5])).toBe(true);
+    expect(propSets(ctx, 'textAlign').at(-1)).toBe('right');
     expect(fillTexts(ctx)).toEqual([
       '23.6% 105.89',
       '38.2% 107.06',
@@ -395,6 +436,8 @@ describe('hitTestFib', () => {
     expect(hitTestFib(d, pts, mid.x, mid.y, dctx)).toBe(true);
     // 0% 水平线（price 100）上、锚点右侧
     expect(hitTestFib(d, pts, pts[0].x + 20, priceScale.priceToY(100), dctx)).toBe(true);
+    // 末端 452 之外不再命中（与渲染线组一一对应）
+    expect(hitTestFib(d, pts, W, priceScale.priceToY(100), dctx)).toBe(false);
     // 空白处
     expect(hitTestFib(d, pts, 50, 50, dctx)).toBe(false);
   });
@@ -409,6 +452,7 @@ describe('hitTestFib', () => {
     const mid = { x: (pts[1].x + pts[2].x) / 2, y: (pts[1].y + pts[2].y) / 2 };
     expect(hitTestFib(d, pts, mid.x, mid.y, dctx)).toBe(true);
     expect(hitTestFib(d, pts, pts[0].x + 30, priceScale.priceToY(112), dctx)).toBe(true); // 100% 扩展线
+    expect(hitTestFib(d, pts, W, priceScale.priceToY(112), dctx)).toBe(false); // 末端 436 之外
     expect(hitTestFib(d, pts, 50, 50, dctx)).toBe(false);
   });
 

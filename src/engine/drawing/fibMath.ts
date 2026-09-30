@@ -31,6 +31,18 @@ export function fibExtensionPrice(startPrice: number, endPrice: number, pivotPri
 }
 
 /**
+ * 回撤/扩展水平线右端 x：锚点摆动幅度外再延一个摆动幅度（最短 24px），绝不超出画布。
+ * TV 实测：水平比率线不一路延伸到画布右缘——末端落在最右锚点外侧一个摆幅处，
+ * 标签贴末端右侧（空间不足时翻到左侧，见 fibRender 的 drawLevelLabel）。
+ * 渲染（drawFibRetracement/drawFibExtension）与命中（hitTestFib）共用同一 endX，
+ * 保证命中规则与线组一一对应。
+ */
+export function fibLevelEndX(x0: number, xLabel: number, chartW: number): number {
+  const span = Math.max(xLabel - x0, 24);
+  return Math.min(chartW, xLabel + span);
+}
+
+/**
  * 扇形射线在边缘时刻的价格：从起点出发、斜率 = 价格差 × 比率 / 时间差。
  * edgeTime 为画布边缘（左/右由趋势方向决定）对应的世界时间。
  */

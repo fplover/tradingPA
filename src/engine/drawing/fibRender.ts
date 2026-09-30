@@ -15,6 +15,7 @@ import {
   fibArcHit,
   fibExtensionPrice,
   fibFanEdgePrice,
+  fibLevelEndX,
   fibRetracementPrice,
   fibZoneTimes,
 } from './fibMath';
@@ -34,6 +35,16 @@ function levelLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: n
   ctx.textAlign = align;
   ctx.fillStyle = theme.axisText;
   ctx.fillText(text, x, y);
+}
+
+/** 回撤/扩展水平位标签：贴线右端外侧（endX + 4，左对齐）；
+ *  溢出画布右缘（endX + 4 + 字宽 > chartW - 2）时钳到 chartW - 字宽 - 2 并改右对齐 */
+function drawLevelLabel(ctx: CanvasRenderingContext2D, text: string, endX: number, y: number, chartW: number): void {
+  ctx.font = `10px ${TV_FONT}`;
+  const w = ctx.measureText(text).width;
+  const lx = endX + 4;
+  if (lx + w > chartW - 2) levelLabel(ctx, text, Math.max(0, chartW - w - 2), y, 'right');
+  else levelLabel(ctx, text, lx, y, 'left');
 }
 
 /** 画布 x → 世界时间（视口线性映射；区间外按相邻间隔外推，供射线求边缘时间） */
@@ -65,17 +76,18 @@ export function timezonePixelXs(anchorTime: number, dctx: DrawContext): number[]
   );
 }
 
-/** 回撤水平组（fib / fib-auto 共用）：水平线 + 比率/价格标签 */
+/** 回撤水平组（fib / fib-auto 共用）：水平线 + 比率/价格标签（线末端与标签见 fibLevelEndX/drawLevelLabel） */
 export function drawFibRetracement(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[], dctx: DrawContext, decimals: number): void {
   if (pts.length < 2) return;
   const [p0, p1] = d.points;
   const x0 = Math.min(pts[0].x, pts[1].x);
   const xLabel = Math.max(pts[0].x, pts[1].x);
+  const endX = fibLevelEndX(x0, xLabel, dctx.geo.chartW);
   for (const lv of FIB_RETRACEMENT_LEVELS) {
     const price = fibRetracementPrice(p0.price, p1.price, lv);
     const y = Math.round(dctx.priceScale.priceToY(price)) + 0.5;
-    strokeLine(ctx, x0, y, dctx.geo.chartW, y);
-    levelLabel(ctx, `${(lv * 100).toFixed(1)}% ${price.toFixed(decimals)}`, xLabel + 4, y, 'left');
+    strokeLine(ctx, x0, y, endX, y);
+    drawLevelLabel(ctx, `${(lv * 100).toFixed(1)}% ${price.toFixed(decimals)}`, endX, y, dctx.geo.chartW);
   }
 }
 
@@ -87,12 +99,13 @@ export function drawFibExtension(ctx: CanvasRenderingContext2D, d: Drawing, pts:
   strokeLine(ctx, pts[1].x, pts[1].y, pts[2].x, pts[2].y);
   const x0 = Math.min(pts[0].x, pts[1].x, pts[2].x);
   const xLabel = Math.max(pts[0].x, pts[1].x, pts[2].x);
+  const endX = fibLevelEndX(x0, xLabel, dctx.geo.chartW);
   const [e0, e1, pivot] = d.points;
   for (const lv of FIB_EXTENSION_LEVELS) {
     const price = fibExtensionPrice(e0.price, e1.price, pivot.price, lv);
     const y = Math.round(dctx.priceScale.priceToY(price)) + 0.5;
-    strokeLine(ctx, x0, y, dctx.geo.chartW, y);
-    levelLabel(ctx, `${(lv * 100).toFixed(1)}% ${price.toFixed(decimals)}`, xLabel + 4, y, 'left');
+    strokeLine(ctx, x0, y, endX, y);
+    drawLevelLabel(ctx, `${(lv * 100).toFixed(1)}% ${price.toFixed(decimals)}`, endX, y, dctx.geo.chartW);
   }
 }
 
@@ -145,11 +158,12 @@ export function hitTestFib(drawing: Drawing, pts: Pix[], x: number, y: number, d
       if (pts.length < 2) return false;
       if (distToSegment(x, y, pts[0].x, pts[0].y, pts[1].x, pts[1].y) <= 6) return true;
       const x0 = Math.min(pts[0].x, pts[1].x);
+      const endX = fibLevelEndX(x0, Math.max(pts[0].x, pts[1].x), dctx.geo.chartW); // 与渲染同末端
       const p0 = drawing.points[0].price;
       const p1 = drawing.points[1].price;
       for (const lv of FIB_RETRACEMENT_LEVELS) {
         const ly = dctx.priceScale.priceToY(fibRetracementPrice(p0, p1, lv));
-        if (distToSegment(x, y, x0, ly, dctx.geo.chartW, ly) <= 6) return true;
+        if (distToSegment(x, y, x0, ly, endX, ly) <= 6) return true;
       }
       return false;
     }
@@ -158,10 +172,11 @@ export function hitTestFib(drawing: Drawing, pts: Pix[], x: number, y: number, d
       if (distToSegment(x, y, pts[0].x, pts[0].y, pts[1].x, pts[1].y) <= 6) return true;
       if (distToSegment(x, y, pts[1].x, pts[1].y, pts[2].x, pts[2].y) <= 6) return true;
       const x0 = Math.min(pts[0].x, pts[1].x, pts[2].x);
+      const endX = fibLevelEndX(x0, Math.max(pts[0].x, pts[1].x, pts[2].x), dctx.geo.chartW); // 与渲染同末端
       const [e0, e1, pivot] = drawing.points;
       for (const lv of FIB_EXTENSION_LEVELS) {
         const ly = dctx.priceScale.priceToY(fibExtensionPrice(e0.price, e1.price, pivot.price, lv));
-        if (distToSegment(x, y, x0, ly, dctx.geo.chartW, ly) <= 6) return true;
+        if (distToSegment(x, y, x0, ly, endX, ly) <= 6) return true;
       }
       return false;
     }

@@ -18,6 +18,7 @@ import {
   detectVisibleSwing,
   type DrawContext,
 } from '@/engine/drawing/drawDrawings';
+import { fibLevelEndX } from '@/engine/drawing/fibMath';
 import { DrawingLayer } from '@/engine/drawing/DrawingLayer';
 import type { Drawing, DrawingPoint, DrawingTypeId } from '@/engine/drawing/types';
 import { serializeDrawings, deserializeDrawings, getToolDef, DRAWING_TOOLS } from '@/engine/drawing/types';
@@ -103,6 +104,19 @@ describe('fibZoneOffsets / fibZoneTimes', () => {
   it('时间点 = anchor + 数列 × bar 间隔', () => {
     const times = fibZoneTimes(1000, IV, 4);
     expect(times).toEqual([1000 + IV, 1000 + 2 * IV, 1000 + 3 * IV, 1000 + 5 * IV]);
+  });
+});
+
+// ---------- 纯函数：水平线末端（TV：不延伸到画布右缘） ----------
+
+describe('fibLevelEndX', () => {
+  it('末端 = 最右锚点外侧一个摆幅；最短 24px', () => {
+    expect(fibLevelEndX(372, 412, 460)).toBe(452); // 摆幅 40
+    expect(fibLevelEndX(100, 108, 1000)).toBe(132); // 摆幅 8 → 下限 24
+  });
+  it('末端被 chartW 钳制，绝不超出画布', () => {
+    expect(fibLevelEndX(100, 300, 200)).toBe(200);
+    expect(fibLevelEndX(400, 500, 460)).toBe(460);
   });
 });
 
@@ -314,15 +328,17 @@ describe('渲染：斐波那契扩展', () => {
     expect(hasPair(ctx, 'moveTo', [x0, priceScale.priceToY(100)], 'lineTo', [x3, priceScale.priceToY(110)])).toBe(true);
     expect(hasPair(ctx, 'moveTo', [x3, priceScale.priceToY(110)], 'lineTo', [x5, priceScale.priceToY(105)])).toBe(true);
 
-    // 9 档水平线：从最左锚轴到右缘；抽验 0.236 / 1.0 / 1.618 / 2.618
+    // 9 档水平线：从最左锚轴到末端（xLabel + 一个摆幅 = 452，不到右缘 460）；抽验 0.236 / 1.0 / 1.618 / 2.618
     const y0236 = Math.round(priceScale.priceToY(fibExtensionPrice(100, 110, 105, 0.236))) + 0.5;
     const y100 = Math.round(priceScale.priceToY(fibExtensionPrice(100, 110, 105, 1))) + 0.5;
     const y1618 = Math.round(priceScale.priceToY(fibExtensionPrice(100, 110, 105, 1.618))) + 0.5;
     const y2618 = Math.round(priceScale.priceToY(fibExtensionPrice(100, 110, 105, 2.618))) + 0.5;
-    expect(hasPair(ctx, 'moveTo', [x0, y0236], 'lineTo', [W, y0236])).toBe(true);
-    expect(hasPair(ctx, 'moveTo', [x0, y100], 'lineTo', [W, y100])).toBe(true);
-    expect(hasPair(ctx, 'moveTo', [x0, y1618], 'lineTo', [W, y1618])).toBe(true);
-    expect(hasPair(ctx, 'moveTo', [x0, y2618], 'lineTo', [W, y2618])).toBe(true);
+    const endX = fibLevelEndX(x0, x5, W);
+    expect(endX).toBe(452);
+    expect(hasPair(ctx, 'moveTo', [x0, y0236], 'lineTo', [endX, y0236])).toBe(true);
+    expect(hasPair(ctx, 'moveTo', [x0, y100], 'lineTo', [endX, y100])).toBe(true);
+    expect(hasPair(ctx, 'moveTo', [x0, y1618], 'lineTo', [endX, y1618])).toBe(true);
+    expect(hasPair(ctx, 'moveTo', [x0, y2618], 'lineTo', [endX, y2618])).toBe(true);
 
     // 标签：'23.6% 107.36' / '100.0% 115.00' / '161.8% 121.18' / '261.8% 131.18'
     const texts = callsOf(ctx, 'fillText').map((a) => String(a[0]));
@@ -443,6 +459,7 @@ describe('命中测试：斐波那契家族', () => {
     const ly = priceScale.priceToY(fibExtensionPrice(100, 110, 105, 1.0)); // 115
     expect(hitTestDrawing(d, viewport.indexToX(2), ly, c)).toEqual({ part: 'body' });
     expect(hitTestDrawing(d, viewport.indexToX(2), ly + 10, c)).toBeNull();
+    expect(hitTestDrawing(d, W, ly, c)).toBeNull(); // 水平线末端 452 之外不再命中
     // 手柄优先
     const h = pointToPixel(d.points[2], c);
     expect(hitTestDrawing(d, h.x + 3, h.y + 3, c)).toEqual({ part: 'handle', index: 2 });
