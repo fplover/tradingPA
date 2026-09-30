@@ -5,8 +5,13 @@ import { Modal } from '@/ui/primitives';
 import { Checkbox } from '@/ui/controls';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { fontSize, radius, space } from '@/ui/tokens';
+import { defaultLevelsFor, type DrawingTypeId } from '@/engine/drawing/types';
+import { DrawingLevelsEditor } from './DrawingLevelsEditor';
 
 const LINE_WIDTH_OPTIONS: ToolbarOption[] = [1, 2, 3, 4].map((w) => ({ value: String(w), label: `${w}px` }));
+
+/** 支持自定义分割档位的工具（TV fib 设置 levels 页）：回撤 / 扩展 / 百分比线 */
+const LEVELS_TOOLS: ReadonlySet<DrawingTypeId> = new Set<DrawingTypeId>(['fib', 'fib-extension', 'percent-line']);
 
 /** 画线设置（TV 双击画线打开）：样式实时生效，无确定按钮 */
 export function DrawingSettingsDialog({ renderer }: { renderer: ChartRenderer | null }) {
@@ -22,8 +27,21 @@ export function DrawingSettingsDialog({ renderer }: { renderer: ChartRenderer | 
     force();
   };
 
+  // 分割档位（fib / 扩展 / 百分比线）：自定义 levels 优先，undefined 时展示工具默认档
+  const supportsLevels = LEVELS_TOOLS.has(drawing.type);
+  const effectiveLevels = drawing.levels ?? defaultLevelsFor(drawing.type) ?? [];
+
   return (
-    <Modal open onOpenChange={(o) => !o && setSettingsFor(null)} title="画线设置" width={300}>
+    <Modal open onOpenChange={(o) => !o && setSettingsFor(null)} title="画线设置" width={supportsLevels ? 320 : 300}>
+      {supportsLevels && (
+        <DrawingLevelsEditor
+          levels={effectiveLevels}
+          onChange={(next) => {
+            renderer.updateDrawingLevels(id, next);
+            force();
+          }}
+        />
+      )}
       <Row label="颜色">
         <input
           type="color"

@@ -46,7 +46,7 @@ export {
   fibZoneOffsets,
   fibZoneTimes,
 } from './fibMath';
-// 百分比线（八分法）：档位常量与纯几何同样在独立数学模块，渲染/命中在 percentRender。
+// 百分比线（默认 0% / 50% / 100%，支持自定义档位）：档位常量与纯几何同样在独立数学模块，渲染/命中在 percentRender。
 export { PERCENT_LEVELS, percentLevelLabel, percentPrice } from './percentMath';
 
 /** 命中测试：返回 'body' / 'handle:i' / null */
@@ -267,7 +267,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
     case 'measure':
       drawMeasure(ctx, d, pts, dctx.series, decimals);
       break;
-    // 百分比线（八分法水平线组 + 右端「百分比 价格」标签）
+    // 百分比线（水平分割线组 + 右端「百分比 价格」标签）
     case 'percent-line':
       drawPercentLine(ctx, d, pts, dctx, decimals);
       break;

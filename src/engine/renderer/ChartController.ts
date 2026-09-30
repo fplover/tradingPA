@@ -511,6 +511,8 @@ export class ChartController {
   listDrawings(): Drawing[] { return [...this.drawing.layer.list()]; }
   get selectedDrawingId(): string | null { return this.drawing.layer.selected?.id ?? null; }
   updateDrawingStyle(id: string, style: Partial<Drawing['style']>): void { this.drawing.layer.updateStyle(id, style); this.notifyDrawings(); this.invalidate(); }
+  /** 更新画线分割档位（fib / fib-extension / percent-line；levels = 百分比小数，去重且非空由调用方保证） */
+  updateDrawingLevels(id: string, levels: number[]): void { this.drawing.layer.updateLevels(id, levels); this.notifyDrawings(); this.invalidate(); }
   setDrawingVisible(id: string, visible: boolean): void { this.drawing.layer.setVisible(id, visible); this.notifyDrawings(); this.invalidate(); }
   setDrawingLocked(id: string, locked: boolean): void { this.drawing.layer.setLocked(id, locked); this.notifyDrawings(); this.invalidate(); }
 

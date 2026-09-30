@@ -65,8 +65,9 @@ export const ICONS: Record<ToolbarItem, TvIconComponent> = {
   'price-label': TvPriceLabel,
   'anchored-text': TvAnchoredText,
   'arrow-mark': TvArrowMark,
-  // P2-B 测量 + 百分比线（八分法，与 measure 同组）
+  // P2-B 测量（两点浮层，独占「预测和测量工具」组）
   measure: TvMeasure,
+  // P2-B 百分比线（现归「江恩和斐波那契工具」组，图标仍随工具栏注册表保留）
   'percent-line': TvPercentLine,
   // P2-B 几何 3 种
   polygon: TvPolygon,
@@ -92,11 +93,11 @@ export const GROUPS: ToolGroup[] = [
   { items: ['cursor'], title: '游标' },
   { items: ['trendline', 'ray', 'info-line', 'hline', 'vline', 'arrow'], title: '趋势线工具' },
   { items: ['channel'], title: '通道工具' },
-  // P2-B：江恩 3 件并入「江恩和斐波那契工具」组（TV 同名合并组）
-  { items: ['fib', 'fib-extension', 'fib-fan', 'fib-arc', 'fib-timezone', 'fib-auto', 'gann-fan', 'gann-line', 'gann-box'], title: '江恩和斐波那契工具' },
+  // P2-B：江恩 3 件 + 百分比线并入「江恩和斐波那契工具」组（TV 同名合并组；percent-line 位于 fib-auto 之后、gann-fan 之前）
+  { items: ['fib', 'fib-extension', 'fib-fan', 'fib-arc', 'fib-timezone', 'fib-auto', 'percent-line', 'gann-fan', 'gann-line', 'gann-box'], title: '江恩和斐波那契工具' },
   { items: ['rect', 'ellipse', 'path', 'polygon', 'arc', 'curve'], title: '几何形状' },
   { items: ['text', 'anchored-text', 'note', 'price-label', 'arrow-mark'], title: '文本工具' },
-  { items: ['measure', 'percent-line'], title: '预测和测量工具' },
+  { items: ['measure'], title: '预测和测量工具' },
   { items: ['elliott-wave'], title: '艾略特波浪' },
 ];
 

@@ -97,11 +97,13 @@ export class DrawingLayer {
   cloneDrawing(id: string): Drawing | null {
     const src = this.drawings.find((d) => d.id === id);
     if (!src) return null;
-    return this.add(
+    const clone = this.add(
       src.type,
       src.points.map((p) => ({ ...p })),
       { ...src.style },
     );
+    if (src.levels) clone.levels = [...src.levels]; // 自定义档位随克隆复制
+    return clone;
   }
 
   remove(id: string): void {
@@ -153,6 +155,15 @@ export class DrawingLayer {
     if (!d) return;
     this.snapshot();
     d.style = { ...d.style, ...style };
+  }
+
+  /** 更新自定义分割档位（百分比小数；调用方（设置对话框）已去重且保证非空）。
+   *  单步历史：与 updateStyle 同范式，快照后整组替换（旧数组不被原地修改，撤销可回退）。 */
+  updateLevels(id: string, levels: number[]): void {
+    const d = this.drawings.find((x) => x.id === id);
+    if (!d) return;
+    this.snapshot();
+    d.levels = [...levels];
   }
 
   setVisible(id: string, visible: boolean): void {

@@ -16,12 +16,13 @@ import type { Drawing, DrawingPoint } from '@/engine/drawing/types';
 import type { DrawContext } from '@/engine/drawing/drawDrawings';
 
 /**
- * 百分比线（八分法）单测：
+ * 百分比线（默认 0% / 50% / 100% 三档，档位可自定义）单测：
  * - percentMath：档位常量 + 锚点→价位纯函数 golden（手算）
  * - percentRender：canvas mock 断言水平线组 + 右端「百分比 价格」标签（线长/标签位置复用 fib 策略）
  * - 命中：回撤式（锚线 ±6px + 各水平线 ±6px，末端与渲染一致，末端外不命中）
  * - DrawingLayer：两点放置 / 序列化往返 / 撤销重做
  * - ChartRenderer：指针级两点落点 / Esc 取消 / 命中选中 / 撤销 / 导出导入
+ * 自定义档位（Drawing.levels）的渲染/命中/持久化见 drawing-levels.test.ts。
  */
 
 afterAll(() => {
@@ -30,9 +31,9 @@ afterAll(() => {
 
 // ---------- percentMath：档位常量与价位 golden ----------
 
-describe('PERCENT_LEVELS（八分法 7 档）', () => {
-  it('12.5%…87.5% 严格递增，不含 0% 与 100%', () => {
-    expect([...PERCENT_LEVELS]).toEqual([0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875]);
+describe('PERCENT_LEVELS（默认三档：0% / 50% / 100%）', () => {
+  it('经典百分比线形态：0% 与 100% 即两锚点价，50% 为中点，严格递增', () => {
+    expect([...PERCENT_LEVELS]).toEqual([0, 0.5, 1]);
     for (let i = 1; i < PERCENT_LEVELS.length; i++) {
       expect(PERCENT_LEVELS[i]).toBeGreaterThan(PERCENT_LEVELS[i - 1]);
     }
@@ -40,31 +41,33 @@ describe('PERCENT_LEVELS（八分法 7 档）', () => {
 });
 
 describe('percentPrice（p0 + (p1 - p0) × 档位）', () => {
-  it('上升段 golden：p0=100, p1=110 → 12.5%=101.25 / 50%=105 / 87.5%=108.75', () => {
-    expect(percentPrice(100, 110, 0.125)).toBe(101.25);
-    expect(percentPrice(100, 110, 0.25)).toBe(102.5);
-    expect(percentPrice(100, 110, 0.375)).toBe(103.75);
+  it('上升段 golden：p0=100, p1=110 → 0%=100 / 50%=105 / 100%=110', () => {
+    expect(percentPrice(100, 110, 0)).toBe(100); // 0% 档 = 起点价（锚点价）
     expect(percentPrice(100, 110, 0.5)).toBe(105); // 50% 档 = 区间中点
-    expect(percentPrice(100, 110, 0.625)).toBe(106.25);
-    expect(percentPrice(100, 110, 0.75)).toBe(107.5);
+    expect(percentPrice(100, 110, 1)).toBe(110); // 100% 档 = 终点价（锚点价）
+  });
+  it('任意档位仍按公式取值（自定义档位同规则）：12.5%=101.25 / 87.5%=108.75', () => {
+    expect(percentPrice(100, 110, 0.125)).toBe(101.25);
     expect(percentPrice(100, 110, 0.875)).toBe(108.75);
   });
   it('下跌段（p1 < p0）档位价递减，符号天然延续', () => {
-    expect(percentPrice(110, 100, 0.125)).toBe(108.75);
+    expect(percentPrice(110, 100, 0)).toBe(110);
     expect(percentPrice(110, 100, 0.5)).toBe(105);
-    expect(percentPrice(110, 100, 0.875)).toBe(101.25);
+    expect(percentPrice(110, 100, 1)).toBe(100);
   });
   it('零价差（水平锚线）各档同价', () => {
-    expect(percentPrice(100, 100, 0.125)).toBe(100);
-    expect(percentPrice(100, 100, 0.875)).toBe(100);
+    expect(percentPrice(100, 100, 0)).toBe(100);
+    expect(percentPrice(100, 100, 0.5)).toBe(100);
+    expect(percentPrice(100, 100, 1)).toBe(100);
   });
 });
 
 describe('percentLevelLabel（右端标签文本）', () => {
   it('「百分比 价格」两位小数，与 fib 回撤同款口径', () => {
-    expect(percentLevelLabel(0.125, 101.25, 2)).toBe('12.5% 101.25');
+    expect(percentLevelLabel(0, 100, 2)).toBe('0.0% 100.00');
     expect(percentLevelLabel(0.5, 105, 2)).toBe('50.0% 105.00');
-    expect(percentLevelLabel(0.875, 108.75, 4)).toBe('87.5% 108.7500');
+    expect(percentLevelLabel(1, 110, 4)).toBe('100.0% 110.0000');
+    expect(percentLevelLabel(0.236, 102.36, 2)).toBe('23.6% 102.36');
   });
 });
 
@@ -123,31 +126,30 @@ function pts0(d: Drawing, dctx: DrawContext): { x: number; y: number } {
   return toPix(d.points[0], dctx);
 }
 
-describe('drawPercentLine（八分法水平线组 + 右端标签）', () => {
-  it('7 条水平线 + 7 个「百分比 价格」标签（golden：p0=100, p1=110）', () => {
+describe('drawPercentLine（默认三档水平线组 + 右端标签）', () => {
+  it('3 条水平线 + 3 个「百分比 价格」标签（golden：p0=100, p1=110 → 0%/50%/100%）', () => {
     const { ctx, dctx, priceScale } = makeDctx();
     const d = drawing({ type: 'percent-line', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 110 }] });
     const pts = d.points.map((p) => toPix(p, dctx));
     drawPercentLine(asCtx(ctx), d, pts, dctx, 2);
 
-    expect(callsOf(ctx, 'stroke')).toHaveLength(7);
+    expect(callsOf(ctx, 'stroke')).toHaveLength(3);
     // 线长与 fib 回撤同策略：末端 = 最右锚点 + 一个锚点摆幅（452，不到画布右缘 460）
     const endX = fibLevelEndX(pts[0].x, pts[1].x, W);
     expect(endX).toBe(452);
-    // 12.5% 档 = 101.25：从左锚点 x0 画到 endX
-    const y125 = Math.round(priceScale.priceToY(101.25)) + 0.5;
-    expect(hasPair(ctx, 'moveTo', [pts[0].x, y125], 'lineTo', [endX, y125])).toBe(true);
-    // 50% 档 = 105
+    // 0% 档 = 100（起点锚点价）：从左锚点 x0 画到 endX
+    const y0 = Math.round(priceScale.priceToY(100)) + 0.5;
+    expect(hasPair(ctx, 'moveTo', [pts[0].x, y0], 'lineTo', [endX, y0])).toBe(true);
+    // 50% 档 = 105（区间中点）
     const y50 = Math.round(priceScale.priceToY(105)) + 0.5;
     expect(hasPair(ctx, 'moveTo', [pts[0].x, y50], 'lineTo', [endX, y50])).toBe(true);
+    // 100% 档 = 110（终点锚点价）
+    const y100 = Math.round(priceScale.priceToY(110)) + 0.5;
+    expect(hasPair(ctx, 'moveTo', [pts[0].x, y100], 'lineTo', [endX, y100])).toBe(true);
     expect(fillTexts(ctx)).toEqual([
-      '12.5% 101.25',
-      '25.0% 102.50',
-      '37.5% 103.75',
+      '0.0% 100.00',
       '50.0% 105.00',
-      '62.5% 106.25',
-      '75.0% 107.50',
-      '87.5% 108.75',
+      '100.0% 110.00',
     ]);
   });
 
@@ -156,9 +158,9 @@ describe('drawPercentLine（八分法水平线组 + 右端标签）', () => {
     const d = drawing({ type: 'percent-line', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 110 }] });
     const pts = d.points.map((p) => toPix(p, dctx));
     drawPercentLine(asCtx(ctx), d, pts, dctx, 2);
-    // mock 字宽 = 字数 × 6；'12.5% 101.25' 12 字 → 72；endX(452) + 4 + 72 = 528 > 458
-    // → x = 460 - 72 - 2 = 386，右对齐
-    expect(hasCall(ctx, 'fillText', ['12.5% 101.25', 386, Math.round(priceScale.priceToY(101.25)) + 0.5])).toBe(true);
+    // mock 字宽 = 字数 × 6；'0.0% 100.00' 11 字 → 66；endX(452) + 4 + 66 = 522 > 458
+    // → x = 460 - 66 - 2 = 392，右对齐
+    expect(hasCall(ctx, 'fillText', ['0.0% 100.00', 392, Math.round(priceScale.priceToY(100)) + 0.5])).toBe(true);
     expect(propSets(ctx, 'textAlign').at(-1)).toBe('right');
   });
 
@@ -167,9 +169,9 @@ describe('drawPercentLine（八分法水平线组 + 右端标签）', () => {
     const d = drawing({ type: 'percent-line', points: [{ time: T0, price: 100 }, { time: T0 + IV, price: 110 }] });
     // 手工指定锚点像素（x 位置才是本用例变量）：x0=100 / xLabel=124 → 摆幅下限 24 → endX=148
     drawPercentLine(asCtx(ctx), d, [{ x: 100, y: 0 }, { x: 124, y: 0 }], dctx, 2);
-    const y125 = Math.round(priceScale.priceToY(101.25)) + 0.5;
-    // '12.5% 101.25' 宽 72：148 + 4 + 72 = 224 ≤ 458 → 贴末端左对齐
-    expect(hasCall(ctx, 'fillText', ['12.5% 101.25', 152, y125])).toBe(true);
+    const y0 = Math.round(priceScale.priceToY(100)) + 0.5;
+    // '0.0% 100.00' 宽 66：148 + 4 + 66 = 218 ≤ 458 → 贴末端左对齐
+    expect(hasCall(ctx, 'fillText', ['0.0% 100.00', 152, y0])).toBe(true);
     expect(propSets(ctx, 'textAlign').at(-1)).toBe('left');
   });
 
@@ -192,14 +194,14 @@ describe('hitTestPercentLine（锚线 ±6px + 水平线 ±6px，末端与渲染�
     // 锚线（两落点对角线）中点
     const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
     expect(hitTestPercentLine(d, pts, mid.x, mid.y, dctx)).toBe(true);
-    // 12.5% 水平线（101.25）上、锚点右侧 20px
-    expect(hitTestPercentLine(d, pts, pts[0].x + 20, priceScale.priceToY(101.25), dctx)).toBe(true);
+    // 0% 水平线（100 = 起点锚点价）上、锚点右侧 20px
+    expect(hitTestPercentLine(d, pts, pts[0].x + 20, priceScale.priceToY(100), dctx)).toBe(true);
     // ±6px 容差内
-    expect(hitTestPercentLine(d, pts, pts[0].x + 20, priceScale.priceToY(101.25) + 5, dctx)).toBe(true);
+    expect(hitTestPercentLine(d, pts, pts[0].x + 20, priceScale.priceToY(100) + 5, dctx)).toBe(true);
     // 超出容差（+9px）不中
-    expect(hitTestPercentLine(d, pts, pts[0].x + 20, priceScale.priceToY(101.25) + 9, dctx)).toBe(false);
+    expect(hitTestPercentLine(d, pts, pts[0].x + 20, priceScale.priceToY(100) + 9, dctx)).toBe(false);
     // 末端 452 之外不再命中（与渲染线组一一对应）
-    expect(hitTestPercentLine(d, pts, W, priceScale.priceToY(101.25), dctx)).toBe(false);
+    expect(hitTestPercentLine(d, pts, W, priceScale.priceToY(100), dctx)).toBe(false);
     // 远离全部线组
     expect(hitTestPercentLine(d, pts, 50, 50, dctx)).toBe(false);
   });

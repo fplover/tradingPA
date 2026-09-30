@@ -1,3 +1,6 @@
+import { FIB_EXTENSION_LEVELS, FIB_RETRACEMENT_LEVELS } from './fibMath';
+import { PERCENT_LEVELS } from './percentMath';
+
 /** 画线锚点：世界坐标（时间 + 价格），与缩放平移无关 */
 export interface DrawingPoint {
   time: number;
@@ -29,7 +32,7 @@ export type DrawingTypeId =
   | 'arrow-mark'
   // P2-B 测量（两点浮层：bar 数/价差/百分比，Esc 取消）
   | 'measure'
-  // 百分比线（八分法水平线组）：两点落点，与 fib 回撤同构
+  // 百分比线（经典三档分割：0% / 50% / 100%，档位可自定义）：两点落点，与 fib 回撤同构
   | 'percent-line'
   // P2-B 几何 3 种：多边形（N 顶点）/ 圆弧（三点）/ 曲线（贝塞尔锚点+控制柄）
   | 'polygon'
@@ -61,6 +64,10 @@ export interface Drawing {
   style: DrawingStyle;
   locked: boolean;
   visible: boolean;
+  /** 自定义分割档位（百分比小数，仅 fib / fib-extension / percent-line 支持）：
+   *  undefined = 用工具默认档（见 defaultLevelsFor）；数组即可见档位集合，
+   *  删除档 = 从数组移除、新增 = push，保存前去重（同值跳过）且保持用户顺序。 */
+  levels?: number[];
 }
 
 export interface DrawingToolDef {
@@ -99,7 +106,7 @@ export const DRAWING_TOOLS: DrawingToolDef[] = [
   { id: 'arrow-mark', label: '箭头标记', points: 1, defaultStyle: { color: '#787b86', lineWidth: 2, text: '标记', fontSize: 12 } },
   // P2-B 测量（TV Measure）：Shift+点击两点锁轴，浮层 bar 数/价差/百分比
   { id: 'measure', label: '测量', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1, dash: true } },
-  // 百分比线（八分法）：两点按价格区间八等分画 7 档水平线组，默认色同 fib 家族灰
+  // 百分比线（默认 0% / 50% / 100% 三条分割线，档位可自定义）：两点按价格区间画水平线组，默认色同 fib 家族灰
   { id: 'percent-line', label: '百分比线', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
   // P2-B 几何 3 种：多边形 points:0 = 任意顶点数，双击/回车结束（path 同范式）
   { id: 'polygon', label: '多边形', points: 0, defaultStyle: { color: '#2962ff', lineWidth: 1, fillColor: '#2962ff22' } },
@@ -115,6 +122,22 @@ export const DRAWING_TOOLS: DrawingToolDef[] = [
 
 export function getToolDef(id: DrawingTypeId): DrawingToolDef {
   return DRAWING_TOOLS.find((t) => t.id === id) ?? DRAWING_TOOLS[0];
+}
+
+/** 工具默认分割档位（百分比小数；仅 fib / fib-extension / percent-line 支持自定义，其余返回 null）。
+ *  与渲染层回退常量同源（fibMath / percentMath）：d.levels 为 undefined 时渲染即用此处默认值。
+ *  注：fib-auto 与 fib 共用回撤渲染，但按需求仅上述三个工具在设置对话框暴露「分割线」分区。 */
+export function defaultLevelsFor(id: DrawingTypeId): number[] | null {
+  switch (id) {
+    case 'fib':
+      return [...FIB_RETRACEMENT_LEVELS];
+    case 'fib-extension':
+      return [...FIB_EXTENSION_LEVELS];
+    case 'percent-line':
+      return [...PERCENT_LEVELS];
+    default:
+      return null;
+  }
 }
 
 /** Shift 拖动约束工具（TV：限制水平/垂直）：线类工具 + 斐波那契家族 + 测量 + 百分比线。
