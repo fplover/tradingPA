@@ -13,7 +13,7 @@
  *
  * 能力：indicator()/study()、input.int/bool/source、赋值/var、元组解构赋值、
  * if/else/else if、for..to..by、用户函数、plot/hline/bgcolor/barcolor、
- * ta.* 31 个、math.* 10 个。运行期错误编译期 dry-run 前置拦截（AC-B2）。
+ * ta.* 32 个、math.* 10 个。运行期错误编译期 dry-run 前置拦截（AC-B2）。
  */
 
 export { compilePine, pinePaint, pineRuntimeError } from './program';

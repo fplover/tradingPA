@@ -1,45 +1,25 @@
-import { PriceScale } from '../scale/PriceScale';
 import type { Viewport } from '../viewport/Viewport';
 import type { Crosshair } from '../crosshair/Crosshair';
 import { BarSeries } from '@/data/BarSeries';
 import type { CloseCountdown } from '../countdown';
 import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
 import { CHART_TYPES, type Bar, type ChartTypeId } from '@/types/market';
-import type { IndicatorInstance } from '@/indicators/core/instance';
 import { DEFAULT_LEGEND_OPTIONS, type LegendOptions, type StudyLegendRect } from './drawCrosshair';
-import type { GridMode, PaneButtonRects } from './drawAxes';
+import type { GridMode } from './drawAxes';
 import { IndicatorManager } from './IndicatorManager';
-import { DEFAULT_VP_PARAMS, VolumeProfileModel, coerceVpParams, type VolumeProfileParams } from '../profile/volumeProfile';
+import { DEFAULT_VP_PARAMS, VolumeProfileModel, coerceVpParams } from '../profile/volumeProfile';
+import { PANE_GAP, createPane, type PaneState } from './chartPanes';
+import { type VolumeProfileRuntime, bindVpRuntime } from './chartVp';
+
+export { AXIS_HEIGHT, AXIS_WIDTH, type PaneKind, type PaneState, createPane } from './chartPanes';
+export { type VolumeProfileRuntime, vpRuntimeOf } from './chartVp';
 
 /**
- * 图表级状态（D 批次拆分④；架构映射：ChartRenderer 字段区、createPane、
- * resetPriceScale、layout、applyData/materialize）。Model 层：只持有状态与
- * 状态迁移，不画图、不绑事件；viewport/crosshair/countdown 构造注入，
- * 重绘经 invalidate 回调上送。
+ * 图表级状态（D 批次拆分④；架构映射：ChartRenderer 字段区、resetPriceScale、
+ * layout、applyData/materialize）。Model 层：只持有状态与状态迁移，不画图、
+ * 不绑事件；viewport/crosshair/countdown 构造注入，重绘经 invalidate 上送。
+ * 面板/几何与 VP 运行态迁 chartPanes.ts / chartVp.ts，导出面 barrel 保持不变。
  */
-
-/** 画布几何常量（图表区 = 画布 - 价格轴/时间轴；跨模块共享，随模型定义） */
-export const AXIS_WIDTH = 64;
-export const AXIS_HEIGHT = 24;
-export const PANE_GAP = 0;
-
-export type PaneKind = 'price' | 'indicator';
-
-export interface PaneState {
-  id: string;
-  kind: PaneKind;
-  heightRatio: number;
-  priceScale: PriceScale;
-  indicators: IndicatorInstance[];
-  y: number;
-  height: number;
-  /** 手动价格域：上下拖动/价格轴拖动后锁定，不再自动适配 */
-  manual: boolean;
-  /** “自动”按钮命中区（面板局部坐标） */
-  autoBtn: { x: number; y: number; w: number; h: number } | null;
-  /** 面板头部操作按钮命中区（设置/移除，选中指标面板时绘制） */
-  headerBtns: PaneButtonRects | null;
-}
 
 /** 砖块类图表类型的默认参数（按 ATR 自适应） */
 function brickOptions(bars: Bar[]): BrickOptions {
@@ -47,31 +27,11 @@ function brickOptions(bars: Bar[]): BrickOptions {
   return { brickSize: size, reversal: size * 3, lineCount: 3 };
 }
 
-export function createPane(id: string, kind: PaneKind, heightRatio: number): PaneState {
-  return { id, kind, heightRatio, priceScale: new PriceScale(), indicators: [], y: 0, height: 0, manual: false, autoBtn: null, headerBtns: null };
-}
-
 /** 砖块类图表类型（无收盘概念，VP 不绘制；applyData 变换分支同用此清单） */
 const TRANSFORM_TYPES: ChartTypeId[] = ['heikin-ashi', 'renko', 'kagi', 'line-break', 'point-figure', 'range'];
 
 export function isTimeBasedChartType(type: ChartTypeId): boolean {
   return !TRANSFORM_TYPES.includes(type);
-}
-
-/** Volume Profile 运行态（P1-F）：状态挂 ChartState 实例，多图表布局互不干扰 */
-export interface VolumeProfileRuntime {
-  on: boolean;
-  params: VolumeProfileParams;
-  /** 数据纪元：applyData/updateBar 路径自增，进入 VP 缓存签名（蓝图 §2） */
-  dataEpoch: number;
-  model: VolumeProfileModel;
-}
-
-/** 渲染层取数：PaneRenderer 仅持 viewport getter，按 viewport 键取同图表的 VP 运行态 */
-const vpRuntimeByViewport = new WeakMap<Viewport, VolumeProfileRuntime>();
-
-export function vpRuntimeOf(viewport: Viewport): VolumeProfileRuntime | undefined {
-  return vpRuntimeByViewport.get(viewport);
 }
 
 export class ChartState {
@@ -121,7 +81,7 @@ export class ChartState {
     private chartW: () => number,
     private invalidate: () => void,
   ) {
-    vpRuntimeByViewport.set(viewport, this.vp);
+    bindVpRuntime(viewport, this.vp);
     this.indicators = new IndicatorManager({
       panes: { get: () => this.panes, set: (p) => (this.panes = p) },
       selectedPaneId: { get: () => this.selectedPaneId, set: (id) => (this.selectedPaneId = id) },

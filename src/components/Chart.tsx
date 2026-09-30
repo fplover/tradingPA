@@ -1,19 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronsRight } from 'lucide-react';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Bar, ChartTypeId } from '@/types/market';
 import type { MarketId } from '@/types/instrument';
-import type { IndicatorOptions } from '@/indicators/core/instance';
 import { getIndicatorDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { useDrawingStore } from '@/store/drawingStore';
 import { useLayoutStore } from '@/store/layoutStore';
-import { useThemeStore } from '@/store/themeStore';
 import { useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { useOrderMenuStore } from '@/store/orderMenuStore';
 import { syncBus } from '@/store/syncBus';
 import { registerChartRenderer, unregisterChartRenderer } from '@/hooks/useTvShortcuts';
+import { useChartCommands } from '@/hooks/useChartCommands';
+import { useLazyLoad } from '@/hooks/useLazyLoad';
+import { useLiveTick } from '@/hooks/useLiveTick';
+import { BackToLatestButton, useBackToLatest } from '@/hooks/useBackToLatest';
 
 interface ChartProps {
   bars: Bar[];
@@ -110,29 +111,6 @@ export function Chart({
     else renderer.setData(bars);
   }, [bars]);
 
-  useEffect(() => {
-    rendererRef.current?.setLegend({ symbol, interval, decimals, exchange, timeframeId, market });
-  }, [symbol, interval, decimals, exchange, timeframeId, market]);
-
-  useEffect(() => {
-    rendererRef.current?.setChartType(chartType);
-  }, [chartType]);
-
-  useEffect(() => {
-    rendererRef.current?.setLogScale(logScale);
-  }, [logScale]);
-
-  // 画线工具/磁吸同步
-  const activeTool = useDrawingStore((s) => s.activeTool);
-  const magnet = useDrawingStore((s) => s.magnet);
-  useEffect(() => {
-    rendererRef.current?.setActiveTool(activeTool as Parameters<ChartRenderer['setActiveTool']>[0]);
-  }, [activeTool]);
-
-  useEffect(() => {
-    rendererRef.current?.setMagnet(magnet);
-  }, [magnet]);
-
   // Shift+滚轮：图表左右平移（TV 官方映射）。渲染器自身的 wheel 监听挂在 canvas 上，
   // 这里在 window 捕获阶段抢先处理并阻断传播，避免与「普通滚轮缩放」叠加。
   useEffect(() => {
@@ -148,66 +126,16 @@ export function Chart({
     return () => window.removeEventListener('wheel', onWheelCapture, { capture: true });
   }, []);
 
-  // 指标同步：store 为意图源，renderer 为实例源（按 id 对齐，增删与全量选项下发）
-  const activeIndicators = useIndicatorStore((s) => s.active);
-  useEffect(() => {
-    const renderer = rendererRef.current;
-    if (!renderer) return;
-    const current = renderer.listIndicators();
-    const desiredIds = new Set(activeIndicators.map((a) => a.id));
-    for (const cur of current) {
-      if (!desiredIds.has(cur.id)) renderer.removeIndicator(cur.uid);
-    }
-    for (const des of activeIndicators) {
-      const options: IndicatorOptions = {
-        params: des.params,
-        styles: des.styles,
-        precision: des.precision,
-        displayName: des.displayName,
-        visibleTimeframes: des.visibleTimeframes,
-      };
-      const cur = current.find((c) => c.id === des.id);
-      if (!cur) renderer.addIndicator(des.id, options);
-      else renderer.updateIndicator(cur.uid, options);
-    }
-  }, [activeIndicators]);
+  // store / props → renderer 命令下发（图例/类型/对数轴/工具/指标/交易/复盘/主题）
+  useChartCommands({ rendererRef, symbol, interval, decimals, exchange, timeframeId, market, chartType, logScale });
 
-  useEffect(() => {
-    if (!liveTickMs) return;
-    const id = setInterval(() => {
-      const renderer = rendererRef.current;
-      const last = lastBarRef.current;
-      if (!renderer || !last) return;
-      const close = Math.max(0.01, last.close * (1 + (Math.random() - 0.5) * 0.002));
-      const updated: Bar = {
-        ...last,
-        close,
-        high: Math.max(last.high, close),
-        low: Math.min(last.low, close),
-        volume: last.volume + Math.random() * 5,
-      };
-      lastBarRef.current = updated;
-      renderer.updateBar(updated);
-    }, liveTickMs);
-    return () => clearInterval(id);
-  }, [liveTickMs]);
+  // 实时模拟：以该间隔抖动最后一根 K 线（M5 替换为真实 WS）
+  useLiveTick(rendererRef, lastBarRef, liveTickMs);
 
   // 懒加载检测：视口接近数据左边缘时通知外部
-  useEffect(() => {
-    if (!onNeedsMoreHistory) return;
-    const id = setInterval(() => {
-      const renderer = rendererRef.current;
-      if (renderer && renderer.viewportFirst < 30) onNeedsMoreHistory();
-    }, 500);
-    return () => clearInterval(id);
-  }, [onNeedsMoreHistory]);
+  useLazyLoad(rendererRef, onNeedsMoreHistory);
 
-  // 交易可视化：数据同步 + 交互回调
-  const tradeVersion = useTradeStore((s) => s.version);
-  useEffect(() => {
-    rendererRef.current?.setTradeVisual(useTradeStore.getState().visual());
-  }, [tradeVersion]);
-
+  // 交易可视化：交互回调（引擎 → store 写回）
   useEffect(() => {
     rendererRef.current?.setTradeCallbacks({
       onOrderMove: (id, price) => useTradeStore.getState().updateOrderPrice(id, price),
@@ -282,31 +210,6 @@ export function Chart({
     return () => rendererRef.current?.setPriceLineDblClickCallback(null);
   }, [onPriceLineDblClick]);
 
-
-
-  // 复盘模式：订阅 store（index → 隐藏未来 K 线；selectMode → 图表点击定位）
-  const replayIndex = useReplayStore((s) => s.index);
-  const replaySelectMode = useReplayStore((s) => s.selectMode);
-  const setReplayIndexStore = useReplayStore((s) => s.setIndex);
-  const setReplaySelectMode = useReplayStore((s) => s.setSelectMode);
-  useEffect(() => {
-    rendererRef.current?.setReplayIndex(replayIndex);
-  }, [replayIndex]);
-
-  useEffect(() => {
-    rendererRef.current?.setBarSelectMode(replaySelectMode, (idx) => {
-      setReplayIndexStore(idx);
-      setReplaySelectMode(false);
-    });
-    return () => rendererRef.current?.setBarSelectMode(false, null);
-  }, [replaySelectMode, setReplayIndexStore, setReplaySelectMode]);
-
-  // 主题切换：立即重绘画布（不等 rAF，避免图表区滞后于界面）
-  const themeName = useThemeStore((s) => s.name);
-  useEffect(() => {
-    rendererRef.current?.redraw();
-  }, [themeName]);
-
   // 多图表联动：十字光标时间 + 视口广播。
   // 载荷为时间空间 {fromTime, toTime}（TV 时间轴同步语义）；sourceId 显式防环；
   // 30Hz 限频统一在 syncBus（原每实例 32ms 闭包已上移，此处只做桥接不做策略）。
@@ -328,14 +231,7 @@ export function Chart({
   }, [sync]);
 
   // 离开右边缘时显示「回到最新」（TradingView 同位置按钮）
-  const [atRight, setAtRight] = useState(true);
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      const r = rendererRef.current;
-      if (r) setAtRight(r.atRightEdge);
-    }, 300);
-    return () => window.clearInterval(id);
-  }, []);
+  const atRight = useBackToLatest(rendererRef);
 
   // 多图表：画布可聚焦（Tab/Shift+Tab 切换单元格，TV 行为），聚焦态描边标示当前单元格
   const layout = useLayoutStore((s) => s.layout);
@@ -359,33 +255,7 @@ export function Chart({
           outlineOffset: -2,
         }}
       />
-      {!atRight && (
-        <button
-          onClick={() => rendererRef.current?.scrollToRealtime()}
-          title="回到最新"
-          aria-label="回到最新"
-          style={gotoLatestStyle}
-        >
-          <ChevronsRight size={14} />
-        </button>
-      )}
+      {!atRight && <BackToLatestButton rendererRef={rendererRef} />}
     </>
   );
 }
-
-const gotoLatestStyle: React.CSSProperties = {
-  position: 'absolute',
-  right: 72,
-  bottom: 30,
-  width: 28,
-  height: 28,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'var(--panel)',
-  color: 'var(--text-dim)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
-  cursor: 'pointer',
-  zIndex: 12,
-};
