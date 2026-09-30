@@ -2,6 +2,7 @@ import { CanvasManager } from '../canvas/CanvasManager';
 import { Viewport } from '../viewport/Viewport';
 import { Crosshair } from '../crosshair/Crosshair';
 import { TIMEFRAMES, type Bar, type ChartTypeId, type Timeframe } from '@/types/market';
+import type { ParamValue } from '@/indicators/core/types';
 import { CloseCountdown } from '../countdown';
 import type { IndicatorOptions } from '@/indicators/core/instance';
 import { serializeDrawings, deserializeDrawings, type Drawing, type DrawingTypeId } from '../drawing/types';
@@ -52,6 +53,8 @@ export class ChartController {
   /** 最近一帧绘制耗时（ms），供性能监控与测试 */
   lastFrameMs = 0;
   private drawingsListeners = new Set<() => void>();
+  /** 拖拽中画线变更的合帧广播待冲刷标志（P2-D③：rAF 每帧至多冲刷一次） */
+  private drawingsNotifyPending = false;
   // 交互回调（UI 层经 setXxxCallback 注册）
   private studyActionCb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null = null;
   private drawingSettingsCb: ((id: string) => void) | null = null;
@@ -62,6 +65,9 @@ export class ChartController {
   private contextMenuCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
   private paneActionCb: ((action: 'settings' | 'remove', indicatorId: string) => void) | null = null;
   private barSelectCb: ((index: number) => void) | null = null;
+  /** 引擎 → store 的参数写回通道（P2-D③：AVWAP 落锚后把 anchorTime 写回 indicatorStore，
+   *  仿 setXxxCallback 家族由 Chart.tsx 注册；store 为意图源、renderer 为实例源） */
+  private indicatorParamsCb: ((uid: string, params: Record<string, ParamValue>) => void) | null = null;
   /** AVWAP 锚定落点编排（P2-B 红线拆分：选 bar 模式状态机与落点写回，实现见 avwapAnchor.ts） */
   private avwapAnchor: AvwapAnchorDrop;
 
@@ -91,6 +97,7 @@ export class ChartController {
       displaySeries: () => this.state.displaySeries,
       invalidate: () => this.invalidate(),
       notifyDrawings: () => this.notifyDrawings(),
+      requestDrawingsNotify: () => this.requestDrawingsNotify(),
       layout: () => this.state.layout(this.manager.height - AXIS_HEIGHT),
       chartW: () => this.manager.width - AXIS_WIDTH,
       chartH: () => this.manager.height - AXIS_HEIGHT,
@@ -138,7 +145,10 @@ export class ChartController {
       },
       setBarSelectMode: (on, cb) => this.setBarSelectMode(on, cb),
       barTimeAt: (idx) => this.state.displaySeries.barAt(idx)?.time ?? null,
-      onAnchored: (uid, barTime) => this.updateIndicator(uid, { params: { anchorTime: barTime } }),
+      onAnchored: (uid, barTime) => {
+        this.updateIndicator(uid, { params: { anchorTime: barTime } }); // 实例源（既有链路）
+        this.indicatorParamsCb?.(uid, { anchorTime: barTime }); // store 源写回（P2-D③ 持久化）
+      },
       invalidate: () => this.invalidate(),
     };
     this.avwapAnchor = new AvwapAnchorDrop(avwapHost);
@@ -187,6 +197,17 @@ export class ChartController {
     for (const cb of this.drawingsListeners) cb();
   }
 
+  /** 拖拽中画线变更的合帧广播（P2-D③遗留）：画线警报面板清单/对象树不逐像素刷新。
+   *  rAF 运行中只记 pending，由主循环每帧至多冲刷一次（与收盘倒计时唤醒同源的
+   *  合帧机制）；rAF 未运行（测试/暂停）立即广播，不丢事件。 */
+  requestDrawingsNotify(): void {
+    if (this.rafId !== 0) {
+      this.drawingsNotifyPending = true;
+      return;
+    }
+    this.notifyDrawings();
+  }
+
   // ---------- 公开 API ----------
 
   setLegend(legend: Partial<LegendInfo>): void {
@@ -223,6 +244,9 @@ export class ChartController {
   setDrawingsLocked(locked: boolean): void { this.state.setDrawingsLocked(locked); }
   setLegendOptions(options: Partial<LegendOptions>): void { this.state.setLegendOptions(options); }
   setStudyActionCallback(cb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null): void { this.studyActionCb = cb; }
+  /** 注册引擎 → store 的参数写回回调（P2-D③：AVWAP 落锚后 anchorTime 落入 indicatorStore；
+   *  Chart.tsx 接线，store 侧同值短路避免 store→engine→store 回环） */
+  setIndicatorParamsCallback(cb: ((uid: string, params: Record<string, ParamValue>) => void) | null): void { this.indicatorParamsCb = cb; }
   setToolFinishedCallback(cb: (() => void) | null): void { this.drawing.setToolFinishedCallback(cb); }
   setDrawingSettingsCallback(cb: ((id: string) => void) | null): void { this.drawingSettingsCb = cb; }
   /** 双击最新价线打开图表设置（TV：double-click on the price line → settings） */
@@ -268,6 +292,11 @@ export class ChartController {
     if (this.rafId || this.disposed) return;
     const loop = () => {
       if (this.disposed) return;
+      if (this.drawingsNotifyPending) {
+        // 拖拽画线合帧广播：每帧至多一次（P2-D③）
+        this.drawingsNotifyPending = false;
+        this.notifyDrawings();
+      }
       if (this.dirty) {
         this.dirty = false;
         this.pipeline.draw();

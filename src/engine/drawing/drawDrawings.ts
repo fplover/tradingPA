@@ -26,7 +26,7 @@ import { drawHandles, strokeLine } from './drawingChrome';
 import { pointToPixel, type DrawContext } from './coords';
 
 // 画线坐标换算已抽至 coords.ts；此处 re-export 保持画线模块公开 API 不变。
-export { pointToPixel, pixelToPoint, type DrawContext, type MagnetMode } from './coords';
+export { pointToPixel, pixelToPoint, constrainPointPixel, type DrawContext, type MagnetMode } from './coords';
 // 斐波那契家族（B6）：比率常量与纯几何抽至 fibMath.ts，渲染/命中抽至 fibRender.ts。
 // P2-B：文字/测量/几何/江恩/艾略特五家族的渲染与命中同样各自成模块，此处只做分发。
 // 此处 re-export 保持画线模块公开 API 不变（调用方与既有测试无需改 import 路径）。

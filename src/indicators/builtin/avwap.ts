@@ -10,9 +10,10 @@ const AVWAP_LOOKBACK = 5000;
 
 /**
  * Anchored VWAP（P2-B）：自锚定 bar 到最新 bar 的成交量加权均价。
- * 锚点经画线锚定落点交互（ChartController.beginAvwapAnchor：选 bar 模式单击）
- * 写入 params.anchorTime（纪元毫秒）；实时 bar 更新由实例脏缓存自动生效
- * （末 bar 引用变化即失效重算，随最新 bar 连续延伸）。
+ * 锚点经画线锚定落点交互（ChartController 选 bar 模式单击）写入 params.anchorTime
+ * （纪元毫秒），并经 setIndicatorParamsCallback 写回 indicatorStore（P2-D③：
+ * renderer 重建/布局切换不丢锚；store 为意图源、renderer 为实例源）；
+ * 实时 bar 更新由实例脏缓存自动生效（末 bar 引用变化即失效重算，随最新 bar 连续延伸）。
  *
  * 与内置 VWAP 同源口径：典型价 (H+L+C)/3 累计量权和 / 累计成交量；
  * anchorTime ≤ 首 bar 时间时与内置 VWAP 完全一致（金标准单测同源验证）。

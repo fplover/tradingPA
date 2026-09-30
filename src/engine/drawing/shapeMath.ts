@@ -40,15 +40,17 @@ function segDist(px: number, py: number, x1: number, y1: number, x2: number, y2:
   return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
 }
 
-/** 插入顶点：afterIndex 之后插入（越界下标夹到末尾） */
-export function insertPolygonVertex(pts: readonly Pix[], afterIndex: number, pt: Pix): Pix[] {
-  const at = Math.max(0, Math.min(afterIndex + 1, pts.length));
-  return [...pts.slice(0, at), { ...pt }, ...pts.slice(at)];
+/** 插入顶点：afterIndex 之后插入（越界下标夹到末尾）。
+ *  泛型点结构：像素域（Pix）与世界坐标域（DrawingPoint）共用（只做数组拼接）。 */
+export function insertPolygonVertex<T>(pts: readonly T[], afterIndex: number, pt: T): T[] {
+  const out = pts.slice();
+  out.splice(Math.max(0, Math.min(afterIndex + 1, pts.length)), 0, pt);
+  return out;
 }
 
-/** 删除顶点：少于 3 个顶点时不再删（多边形退化成线段，返回原数组） */
-export function removePolygonVertex(pts: readonly Pix[], index: number): Pix[] {
-  if (pts.length <= 3 || index < 0 || index >= pts.length) return [...pts];
+/** 删除顶点：少于 3 个顶点时不再删（多边形退化成线段，返回原数组副本） */
+export function removePolygonVertex<T>(pts: readonly T[], index: number): T[] {
+  if (pts.length <= 3 || index < 0 || index >= pts.length) return pts.slice();
   return pts.filter((_, i) => i !== index);
 }
 

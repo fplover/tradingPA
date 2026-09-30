@@ -46,6 +46,9 @@ interface IndicatorStore {
   add: (id: string, params?: Record<string, ParamValue>) => void;
   remove: (id: string) => void;
   updateParams: (id: string, params: Record<string, ParamValue>) => void;
+  /** AVWAP 锚点写回（P2-D③）：引擎落锚后经回调把 anchorTime 落入 params；
+   *  同值短路——已是该锚点不新建 state（避免 store→engine→store 回环） */
+  setAnchorTime: (id: string, anchorTime: number) => void;
   updateInstance: (id: string, patch: Partial<Omit<ActiveIndicator, 'id' | 'params'>>) => void;
   toggleFavorite: (id: string) => void;
   replaceAll: (list: ActiveIndicator[]) => void;
@@ -66,6 +69,13 @@ export const useIndicatorStore = create<IndicatorStore>((set, get) => ({
   remove: (id) => set((s) => ({ active: s.active.filter((a) => a.id !== id), settingsFor: null })),
   updateParams: (id, params) =>
     set((s) => ({ active: s.active.map((a) => (a.id === id ? { ...a, params: { ...a.params, ...params } } : a)) })),
+  setAnchorTime: (id, anchorTime) =>
+    set((s) => {
+      const entry = s.active.find((a) => a.id === id);
+      // 同值短路 / 目标不存在：原样返回，不新建 state（useChartCommands 不会重复下发）
+      if (!entry || entry.params.anchorTime === anchorTime) return s;
+      return { active: s.active.map((a) => (a.id === id ? { ...a, params: { ...a.params, anchorTime } } : a)) };
+    }),
   updateInstance: (id, patch) =>
     set((s) => ({ active: s.active.map((a) => (a.id === id ? { ...a, ...patch } : a)) })),
   toggleFavorite: (id) =>

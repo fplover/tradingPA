@@ -187,6 +187,7 @@ describe('DrawingGesture：放置/预览/拖拽/克隆', () => {
     const priceScale = makePriceScale();
     const invalidate = vi.fn();
     const notify = vi.fn();
+    const notifyReq = vi.fn();
     const host: DrawingHost = {
       drawingCtx: () => ({ viewport, priceScale, series, geo: { chartW: CHART_W, chartH: CHART_H } }),
       mainPaneY: () => 0,
@@ -196,11 +197,12 @@ describe('DrawingGesture：放置/预览/拖拽/克隆', () => {
       drawingsLocked: () => locked,
       invalidate,
       notifyDrawings: notify,
+      requestDrawingsNotify: notifyReq,
     };
     const finished = vi.fn();
     const g = new DrawingGesture(host);
     g.setToolFinishedCallback(finished);
-    return { g, finished, invalidate, notify };
+    return { g, finished, invalidate, notify, notifyReq };
   }
 
   it('1 点工具（hline）：单击即落成并触发 toolFinished', () => {
@@ -449,6 +451,7 @@ describe('HoverController：悬停态/十字光标/光标决策', () => {
       drawingsLocked: () => false,
       invalidate: () => {},
       notifyDrawings: () => {},
+      requestDrawingsNotify: () => {},
     });
     const trade = new TradeGesture({ paneAt: () => ({ y: 0, height: CHART_H, priceScale }), mainPane: () => ({ y: 0, height: CHART_H, priceScale }), chartW: () => CHART_W, invalidate: () => {} });
     return { h: new HoverController(host, drawing, trade), crosshair, published, canvas, viewport };
@@ -528,6 +531,7 @@ describe('InputController：事件路由到手势', () => {
       displaySeries: () => series,
       invalidate: () => {},
       notifyDrawings: () => {},
+      requestDrawingsNotify: () => {},
       layout: () => {},
       chartW: () => 1216,
       chartH: () => 776,

@@ -184,6 +184,15 @@ export function Chart({
       const ds = useDrawingStore.getState();
       if (!ds.stayMode) ds.setActiveTool(null);
     });
+    // AVWAP 锚点持久化（P2-D③）：引擎落锚后写回 indicatorStore params
+    // （store 为意图源；renderer 重建/布局切换时经 useChartCommands 全量下发不丢锚）。
+    // 同值短路在 store.setAnchorTime 内，store→engine→store 不回环。
+    rendererRef.current?.setIndicatorParamsCallback((uid, params) => {
+      const found = (rendererRef.current?.listIndicators() ?? []).find((l) => l.uid === uid);
+      if (found && typeof params.anchorTime === 'number') {
+        useIndicatorStore.getState().setAnchorTime(found.id, params.anchorTime);
+      }
+    });
     // 双击画线 → 画线设置
     rendererRef.current?.setDrawingSettingsCallback((drawingId) => useDrawingStore.getState().setSettingsFor(drawingId));
     // 图例区右键 → 图例菜单
@@ -196,6 +205,7 @@ export function Chart({
       rendererRef.current?.setContextMenuCallback(null);
       rendererRef.current?.setStudyActionCallback(null);
       rendererRef.current?.setToolFinishedCallback(null);
+      rendererRef.current?.setIndicatorParamsCallback(null);
       rendererRef.current?.setDrawingSettingsCallback(null);
       rendererRef.current?.setLegendMenuCallback(null);
       rendererRef.current?.setDrawingMenuCallback(null);

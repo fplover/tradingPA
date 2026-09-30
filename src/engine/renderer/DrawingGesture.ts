@@ -2,14 +2,18 @@ import type { BarSeries } from '@/data/BarSeries';
 import type { Viewport } from '../viewport/Viewport';
 import { DrawingLayer } from '../drawing/DrawingLayer';
 import { getToolDef, isConstrainableTool, type DrawingPoint, type DrawingTypeId } from '../drawing/types';
-import { pixelToPoint, pointToPixel, type DrawContext } from '../drawing/drawDrawings';
+import { pixelToPoint, pointToPixel, constrainPointPixel, type DrawContext } from '../drawing/drawDrawings';
+import { applyPolygonEdit, polygonEditHit } from '../drawing/polygonEdit';
+import { DragBroadcast, draggedHlinePrice } from '../drawing/dragBroadcast';
+import { computeDragPoints } from '../drawing/drawDrag';
 import { detectVisibleSwing } from '../drawing/fibMath';
 import { hitDrawings, type DrawingHit } from './hitTest';
 
 /**
  * 画线手势（D 批次拆分③；架构映射：ChartRenderer 的画线放置/预览/拖拽状态机、
  * activeTool/placing/previewPoint/dragDrawing/pendingClone 字段与画线命中）。
- * 持有 DrawingLayer；放置/预览/整体与手柄拖拽/Shift 约束/Auto Fib 收敛于此。
+ * 持有 DrawingLayer；放置/预览/整体与手柄拖拽/懒克隆/Auto Fib 收敛于此；
+ * 顶点编辑几何在 polygonEdit.ts、拖拽换算在 drawDrag.ts、Shift 锁轴在 coords.ts。
  */
 
 /** 画线手势宿主契约（ChartRenderer 实现；结构子集避免反向依赖） */
@@ -27,6 +31,8 @@ export interface DrawingHost {
   drawingsLocked(): boolean;
   invalidate(): void;
   notifyDrawings(): void;
+  /** 拖拽中画线变更的合帧广播请求（P2-D③：rAF 合帧每帧至多一次；未运行立即发） */
+  requestDrawingsNotify(): void;
 }
 
 /** 拖拽画线：ids 为本次受动对象集合（单选=1；多选整体=全部选中；手柄=1） */
@@ -57,6 +63,8 @@ export class DrawingGesture {
   private pendingClone: PendingClone | null = null;
   /** 画线悬停光标：body=move、handle=pointer（决策纯函数在 cursor.ts） */
   private hover = '';
+  /** 拖拽广播门襟（P2-D③）：水平线价格实际变化才请求合帧广播 */
+  private dragNotify = new DragBroadcast();
   private toolFinishedCb: (() => void) | null = null;
 
   constructor(private host: DrawingHost) {}
@@ -116,7 +124,11 @@ export class DrawingGesture {
 
   /** 工具模式落点（1 点工具即落成；多点工具累积锚点，满点数落成） */
   place(x: number, y: number, paneY: number, shift: boolean): void {
-    let pt = pixelToPoint(x, y - paneY, this.host.drawingCtx(), this.layer.magnetModeForDraw);
+    // 多边形工具态顶点增删（P2-B 遗留接线）：放置空位时点中选中多边形的
+    // 边 = 插顶点、顶点 = 删顶点；未命中才照常累积新多边形放置
+    if (this.activeTool === 'polygon' && this.placing.length === 0 && this.editPolygonVertex(x, y - paneY)) return;
+    const dctx = this.host.drawingCtx();
+    let pt = pixelToPoint(x, y - paneY, dctx, this.layer.magnetModeForDraw);
     // Auto Fib：无锚点点击——一次点击即按可见区间 swing 生成标准回撤对象
     if (this.activeTool === 'fib-auto') {
       const swing = this.detectSwingForAutoFib();
@@ -129,7 +141,7 @@ export class DrawingGesture {
     }
     // B7：Shift 约束——新落点相对上一个锚点按主导轴锁轴（TV 肌肉记忆）
     if (shift && this.placing.length > 0 && isConstrainableTool(this.activeTool!)) {
-      pt = this.constrainPoint(this.placing[this.placing.length - 1], x, y - paneY);
+      pt = constrainPointPixel(this.placing[this.placing.length - 1], x, y - paneY, dctx, this.layer.magnetModeForDraw);
     }
     const def = getToolDef(this.activeTool!);
     if (def.points === 1) {
@@ -170,8 +182,10 @@ export class DrawingGesture {
       if (dd && !dd.locked) origins.set(id, dd.points.map((p) => ({ ...p })));
     }
     this.layer.beginHistory();
+    const dragIds = [...origins.keys()];
+    this.dragNotify.reset(draggedHlinePrice(dragIds, this.layer.list())); // 基线 = 被拖水平线起始价
     this.dragDrawing = {
-      ids: [...origins.keys()],
+      ids: dragIds,
       part: hit.part,
       index: hit.index,
       start: pixelToPoint(x, y - paneY, this.host.drawingCtx(), 'off'),
@@ -180,7 +194,7 @@ export class DrawingGesture {
     this.host.invalidate();
   }
 
-  // ---------- 内部：拖拽换算 / Shift 约束 / Auto Fib ----------
+  // ---------- 内部：指针迁移 / 拖拽广播 / 多边形顶点编辑 / Auto Fib ----------
   onPointerMove(x: number, y: number, paneY: number, shift: boolean): boolean {
     if (this.pendingClone) {
       // B7：Ctrl+拖动——首次移动超过 2px 阈值即懒克隆并进入克隆体拖拽（原对象不动）
@@ -201,6 +215,7 @@ export class DrawingGesture {
             start: pc.start,
             origins: new Map([[clone.id, clone.points.map((p) => ({ ...p }))]]),
           };
+          this.dragNotify.reset(draggedHlinePrice([clone.id], this.layer.list())); // 克隆体起始价为基线
           this.updateDrawingDrag(x, y, shift);
         } else {
           this.host.invalidate();
@@ -213,10 +228,11 @@ export class DrawingGesture {
       return true;
     }
     if (this.activeTool && this.placing.length > 0) {
-      let pt = pixelToPoint(x, y - paneY, this.host.drawingCtx(), this.layer.magnetModeForDraw);
+      const dctx = this.host.drawingCtx();
+      let pt = pixelToPoint(x, y - paneY, dctx, this.layer.magnetModeForDraw);
       // B7：Shift 约束预览——与落点约束同规则（相对上一个锚点按主导轴锁轴）
       if (shift && isConstrainableTool(this.activeTool)) {
-        pt = this.constrainPoint(this.placing[this.placing.length - 1], x, y - paneY);
+        pt = constrainPointPixel(this.placing[this.placing.length - 1], x, y - paneY, dctx, this.layer.magnetModeForDraw);
       }
       this.previewPoint = pt;
       this.host.invalidate();
@@ -232,61 +248,43 @@ export class DrawingGesture {
       this.host.notifyDrawings();
     }
     this.pendingClone = null;
+    // 拖拽提交（P2-D③）：本手势水平线价格实际变化过 → 补一次广播（合帧末态 + 精确末值）
+    if (this.dragNotify.commit()) this.host.notifyDrawings();
     this.dragDrawing = null;
   }
 
-  // ---------- 内部：拖拽换算 / Shift 约束 / Auto Fib ----------
+  // ---------- 内部：拖拽坐标 / 广播门襟 / 多边形顶点编辑 / Auto Fib ----------
 
-  /** 拖拽画线：整体平移（单选/多选整组）或单手柄移动；Shift = 水平/垂直约束（按主导轴） */
+  /** 拖拽画线：整体平移或单手柄移动（Shift 主导轴约束）；坐标运算纯函数在 drawDrag.ts，
+   *  被拖水平线价格实际变化时经 dragNotify 请求合帧广播（P2-D③）。 */
   private updateDrawingDrag(x: number, y: number, shift: boolean): void {
     const drag = this.dragDrawing;
     if (!drag) return;
-    const paneY = this.host.mainPaneY();
     const dctx = this.host.drawingCtx();
-    const cur = pixelToPoint(x, y - paneY, dctx, 'off');
-    // Shift 约束仅对线类工具生效（趋势线/射线/箭头/信息线/斐波那契家族）
-    const constrain =
-      shift && drag.ids.some((id) => isConstrainableTool(this.layer.list().find((d) => d.id === id)?.type ?? 'rect'));
-    if (drag.part === 'body') {
-      let dt = cur.time - drag.start.time;
-      let dp = cur.price - drag.start.price;
-      if (constrain) {
-        const sp = pointToPixel(drag.start, dctx);
-        if (Math.abs(x - sp.x) >= Math.abs(y - paneY - sp.y)) dp = 0;
-        else dt = 0;
-      }
-      for (const [id, origin] of drag.origins) {
-        this.layer.updatePoints(
-          id,
-          origin.map((p) => ({ time: p.time + dt, price: p.price + dp })),
-        );
-      }
-    } else {
-      let target = cur;
-      if (constrain) {
-        const h = drag.origins.get(drag.ids[0])?.[drag.index];
-        if (h) {
-          const hp = pointToPixel(h, dctx);
-          target =
-            Math.abs(x - hp.x) >= Math.abs(y - paneY - hp.y)
-              ? pixelToPoint(x, hp.y, dctx, 'off')
-              : pixelToPoint(hp.x, y - paneY, dctx, 'off');
-        }
-      }
-      const pts = (drag.origins.get(drag.ids[0]) ?? []).map((p) => ({ ...p }));
-      if (pts[drag.index]) pts[drag.index] = target;
-      this.layer.updatePoints(drag.ids[0], pts);
+    const list = this.layer.list();
+    for (const [id, pts] of computeDragPoints(drag, x, y, this.host.mainPaneY(), shift, dctx, (zid) => list.find((d) => d.id === zid)?.type)) {
+      this.layer.updatePoints(id, pts);
     }
+    if (this.dragNotify.onMove(draggedHlinePrice(drag.ids, list))) this.host.requestDrawingsNotify();
     this.host.invalidate();
   }
 
-  /** Shift 约束：像素域按主导轴锁轴——|Δx| ≥ |Δy| 锁水平（价格固定），否则锁垂直（时间固定） */
-  private constrainPoint(anchor: DrawingPoint, px: number, py: number): DrawingPoint {
+  /** 多边形工具态顶点编辑（P2-B 遗留接线）：点上边 = 插顶点、点顶点 = 删顶点
+   *  （≥3 下限拒绝并保持原状）；true = 已消费本次点击 */
+  private editPolygonVertex(px: number, py: number): boolean {
+    const sel = this.layer.selected;
+    if (!sel || sel.type !== 'polygon' || sel.locked) return false;
     const dctx = this.host.drawingCtx();
-    const a = pointToPixel(anchor, dctx);
-    const magnet = this.layer.magnetModeForDraw;
-    if (Math.abs(px - a.x) >= Math.abs(py - a.y)) return pixelToPoint(px, a.y, dctx, magnet);
-    return pixelToPoint(a.x, py, dctx, magnet);
+    const pix = sel.points.map((p) => pointToPixel(p, dctx));
+    const edit = polygonEditHit(sel.points, pix, px, py, pixelToPoint(px, py, dctx, this.layer.magnetModeForDraw));
+    if (!edit) return false;
+    if (edit.kind !== 'reject') {
+      this.layer.beginHistory(); // 每插/删一个顶点 = 一步撤销
+      this.layer.updatePoints(sel.id, applyPolygonEdit(sel.points, edit));
+    }
+    this.host.notifyDrawings();
+    this.host.invalidate();
+    return true;
   }
 
   /** Auto Fib 摆动检测：可见 bar 区间的最高/最低点对（不足则 null，本次点击不放置） */

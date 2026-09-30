@@ -23,6 +23,14 @@ export function pointToPixel(p: DrawingPoint, ctx: DrawContext): { x: number; y:
 /** 磁吸模式：off 不吸附；weak 仅当吸附点在 50px 内生效；strong 始终吸附（TV 实测） */
 export type MagnetMode = 'off' | 'weak' | 'strong';
 
+/** Shift 约束：像素域按主导轴锁轴——|Δx| ≥ |Δy| 锁水平（价格固定），否则锁垂直（时间固定）。
+ *  落点仍走 pixelToPoint 既有链路（磁吸两档生效）。 */
+export function constrainPointPixel(anchor: DrawingPoint, px: number, py: number, ctx: DrawContext, magnet: MagnetMode): DrawingPoint {
+  const a = pointToPixel(anchor, ctx);
+  if (Math.abs(px - a.x) >= Math.abs(py - a.y)) return pixelToPoint(px, a.y, ctx, magnet);
+  return pixelToPoint(a.x, py, ctx, magnet);
+}
+
 export function pixelToPoint(x: number, y: number, ctx: DrawContext, magnet: MagnetMode): DrawingPoint {
   const index = ctx.viewport.xToIndex(x);
   const roundIdx = Math.round(index);

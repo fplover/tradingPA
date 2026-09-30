@@ -13,7 +13,8 @@ export interface AvwapAnchorHost {
   setBarSelectMode(on: boolean, cb: ((index: number) => void) | null): void;
   /** 落点解析：视口 index → bar 时间（纪元毫秒）；无 bar 返回 null */
   barTimeAt(index: number): number | null;
-  /** 落点写回：把 bar 时间写为实例锚点（host 侧经 updateIndicator 保持链路） */
+  /** 落点写回：把 bar 时间写为实例锚点（host 侧经 updateIndicator 保持链路），
+   *  并经 indicatorParamsCallback 同帧写回 indicatorStore（P2-D③ 持久化） */
   onAnchored(uid: string, barTime: number): void;
   /** 请求重绘（进入选 bar 模式后刷新界面） */
   invalidate(): void;
