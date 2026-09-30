@@ -15,6 +15,9 @@ export interface ChartTheme {
   downWick: string;
   border: string;
   tooltipBg: string;
+  /** 价格轴「自动」恢复按钮底色（tooltipBg 在浅色主题为深色——轴标签专用；
+   *  本令牌跟随主题：深色面板灰 / 浅色纯白） */
+  autoBtnBg: string;
   /** 图例主文字（代码/数值） */
   legendText: string;
   /** 图例次文字（O/H/L/C 标签、周期、交易所） */
@@ -54,6 +57,7 @@ const darkTheme: ChartTheme = {
   downWick: '#ef5350',
   border: '#2a2e39',
   tooltipBg: '#1e222d',
+  autoBtnBg: '#1e222d',
   legendText: '#d1d4dc',
   legendDim: '#868993',
   axisLabelText: '#b2b5be',
@@ -82,6 +86,7 @@ const lightTheme: ChartTheme = {
   downWick: '#ef5350',
   border: '#e0e3eb',
   tooltipBg: '#131722',
+  autoBtnBg: '#ffffff',
   legendText: '#131722',
   legendDim: '#5d606b',
   /** 浅色主题的光标轴标签用深色底白字，白底上才看得清 */

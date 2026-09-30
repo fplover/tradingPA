@@ -145,7 +145,7 @@ export class PaneRenderer {
       const bh = 16;
       const bx = geo.chartW + (AXIS_WIDTH - bw) / 2;
       const by = geo.chartH - bh - 4;
-      ctx.fillStyle = theme.tooltipBg;
+      ctx.fillStyle = theme.autoBtnBg;
       ctx.fillRect(bx, by, bw, bh);
       ctx.strokeStyle = theme.axisLine;
       ctx.lineWidth = 1;

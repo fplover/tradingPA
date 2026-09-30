@@ -41,7 +41,7 @@ export function BottomMenu({
                 <DropdownMenu.Item
                   key={m}
                   className="tv-menu-item"
-                  style={{ ...itemStyle, background: magnetMode === m ? 'var(--accent)' : undefined, color: magnetMode === m ? 'var(--text-on-accent)' : undefined }}
+                  style={{ ...itemStyle, background: magnetMode === m ? 'var(--accent)' : undefined, color: magnetMode === m ? 'var(--text-on-accent)' : 'var(--text)' }}
                   onSelect={() => setMagnetMode(m)}
                 >
                   {m === 'weak' ? '弱磁铁（50px 内吸附）' : '强磁铁（始终吸附）'}
@@ -114,7 +114,7 @@ export function ToolFlyoutMenu({
                 <DropdownMenu.Item
                   key={id}
                   className="tv-menu-item"
-                  style={{ ...itemStyle, background: selected ? 'var(--accent)' : undefined, color: selected ? 'var(--text-on-accent)' : undefined }}
+                  style={{ ...itemStyle, background: selected ? 'var(--accent)' : undefined, color: selected ? 'var(--text-on-accent)' : 'var(--text)' }}
                   onSelect={() => onSelect(id)}
                 >
                   <span style={iconSlot}>
