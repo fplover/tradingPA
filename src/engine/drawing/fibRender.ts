@@ -38,8 +38,9 @@ function levelLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: n
 }
 
 /** 回撤/扩展水平位标签：贴线右端外侧（endX + 4，左对齐）；
- *  溢出画布右缘（endX + 4 + 字宽 > chartW - 2）时钳到 chartW - 字宽 - 2 并改右对齐 */
-function drawLevelLabel(ctx: CanvasRenderingContext2D, text: string, endX: number, y: number, chartW: number): void {
+ *  溢出画布右缘（endX + 4 + 字宽 > chartW - 2）时钳到 chartW - 字宽 - 2 并改右对齐。
+ *  导出供百分比线（percentRender）复用：fib 类水平线组的标签贴线策略完全一致。 */
+export function drawLevelLabel(ctx: CanvasRenderingContext2D, text: string, endX: number, y: number, chartW: number): void {
   ctx.font = `10px ${TV_FONT}`;
   const w = ctx.measureText(text).width;
   const lx = endX + 4;

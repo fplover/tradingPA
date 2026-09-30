@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { TvCaret } from './tvIcons';
 import { ICONS, isGroupActive, shownOf, TOOL_LABELS, type ToolGroup, type ToolbarItem } from './drawingToolGroups';
 import { caretStyle, cellStyle, controlStyle, mainBtnStyle } from './drawingToolbarStyles';
 
@@ -93,7 +93,7 @@ export function DrawingToolButton({
             }
           }}
         >
-          <ChevronRight
+          <TvCaret
             size={12}
             style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}
           />

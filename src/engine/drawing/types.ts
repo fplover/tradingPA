@@ -29,6 +29,8 @@ export type DrawingTypeId =
   | 'arrow-mark'
   // P2-B 测量（两点浮层：bar 数/价差/百分比，Esc 取消）
   | 'measure'
+  // 百分比线（八分法水平线组）：两点落点，与 fib 回撤同构
+  | 'percent-line'
   // P2-B 几何 3 种：多边形（N 顶点）/ 圆弧（三点）/ 曲线（贝塞尔锚点+控制柄）
   | 'polygon'
   | 'arc'
@@ -97,6 +99,8 @@ export const DRAWING_TOOLS: DrawingToolDef[] = [
   { id: 'arrow-mark', label: '箭头标记', points: 1, defaultStyle: { color: '#787b86', lineWidth: 2, text: '标记', fontSize: 12 } },
   // P2-B 测量（TV Measure）：Shift+点击两点锁轴，浮层 bar 数/价差/百分比
   { id: 'measure', label: '测量', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1, dash: true } },
+  // 百分比线（八分法）：两点按价格区间八等分画 7 档水平线组，默认色同 fib 家族灰
+  { id: 'percent-line', label: '百分比线', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
   // P2-B 几何 3 种：多边形 points:0 = 任意顶点数，双击/回车结束（path 同范式）
   { id: 'polygon', label: '多边形', points: 0, defaultStyle: { color: '#2962ff', lineWidth: 1, fillColor: '#2962ff22' } },
   { id: 'arc', label: '圆弧', points: 3, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
@@ -113,7 +117,7 @@ export function getToolDef(id: DrawingTypeId): DrawingToolDef {
   return DRAWING_TOOLS.find((t) => t.id === id) ?? DRAWING_TOOLS[0];
 }
 
-/** Shift 拖动约束工具（TV：限制水平/垂直）：线类工具 + 斐波那契家族 + 测量。
+/** Shift 拖动约束工具（TV：限制水平/垂直）：线类工具 + 斐波那契家族 + 测量 + 百分比线。
  *  hline/vline 天然单轴无需约束；rect/ellipse/path/text/channel 不约束（TV 同） */
 const CONSTRAINABLE_TOOLS: ReadonlySet<DrawingTypeId> = new Set<DrawingTypeId>([
   'trendline',
@@ -125,6 +129,7 @@ const CONSTRAINABLE_TOOLS: ReadonlySet<DrawingTypeId> = new Set<DrawingTypeId>([
   'fib-fan',
   'fib-arc',
   'measure',
+  'percent-line',
 ]);
 
 export function isConstrainableTool(id: DrawingTypeId): boolean {

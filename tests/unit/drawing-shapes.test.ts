@@ -184,7 +184,7 @@ describe('P2-B 几何工具注册', () => {
     expect(getToolDef('arc').points).toBe(3);
     expect(getToolDef('curve').points).toBe(4);
     expect(getToolDef('polygon').defaultStyle.fillColor).toBe('#2962ff22');
-    expect(DRAWING_TOOLS).toHaveLength(29);
+    expect(DRAWING_TOOLS).toHaveLength(30);
   });
 });
 

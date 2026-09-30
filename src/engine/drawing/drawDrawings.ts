@@ -18,6 +18,7 @@ import {
   hitTestTextFamily,
 } from './textRender';
 import { drawMeasure, hitTestMeasure } from './measureRender';
+import { drawPercentLine, hitTestPercentLine } from './percentRender';
 import { drawShapes, hitTestShapes } from './shapeRender';
 import { drawGann, hitTestGann } from './gannRender';
 import { drawElliott, hitTestElliott } from './elliottRender';
@@ -45,6 +46,8 @@ export {
   fibZoneOffsets,
   fibZoneTimes,
 } from './fibMath';
+// 百分比线（八分法）：档位常量与纯几何同样在独立数学模块，渲染/命中在 percentRender。
+export { PERCENT_LEVELS, percentLevelLabel, percentPrice } from './percentMath';
 
 /** 命中测试：返回 'body' / 'handle:i' / null */
 export function hitTestDrawing(
@@ -118,6 +121,9 @@ export function hitTestDrawing(
     // P2-B：测量（主轴 + 浮层框）
     case 'measure':
       return hitTestMeasure(drawing, pts, x, y, ctx.series) ? { part: 'body' } : null;
+    // 百分比线（回撤式：锚线 ±6px + 各水平线 ±6px，末端与渲染一致）
+    case 'percent-line':
+      return hitTestPercentLine(drawing, pts, x, y, ctx) ? { part: 'body' } : null;
     // P2-B：几何 3 种（多边形内部/边、弧与曲线采样折线）
     case 'polygon':
     case 'arc':
@@ -260,6 +266,10 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
     // P2-B：测量（点线 + 浮层三行标签）
     case 'measure':
       drawMeasure(ctx, d, pts, dctx.series, decimals);
+      break;
+    // 百分比线（八分法水平线组 + 右端「百分比 价格」标签）
+    case 'percent-line':
+      drawPercentLine(ctx, d, pts, dctx, decimals);
       break;
     // P2-B：几何 3 种（多边形/圆弧/曲线）
     case 'polygon':

@@ -126,6 +126,7 @@ function labelOf(d: Drawing): string {
     'anchored-text': `锚定文本「${d.style.text ?? ''}」`,
     'arrow-mark': `箭头标记「${d.style.text ?? ''}」`,
     measure: '测量',
+    'percent-line': '百分比线',
     polygon: `多边形（${d.points.length} 顶点）`,
     arc: '圆弧', curve: '曲线',
     'gann-fan': '江恩扇形', 'gann-line': '江恩线', 'gann-box': '江恩箱',
