@@ -21,7 +21,24 @@ export type DrawingTypeId =
   | 'fib-fan'
   | 'fib-arc'
   | 'fib-timezone'
-  | 'fib-auto';
+  | 'fib-auto'
+  // P2-B 文字类 4 种：便签（多行+背景框）/ 价格标签（锚价注记）/ 锚定文本（time+price）/ 箭头标记
+  | 'note'
+  | 'price-label'
+  | 'anchored-text'
+  | 'arrow-mark'
+  // P2-B 测量（两点浮层：bar 数/价差/百分比，Esc 取消）
+  | 'measure'
+  // P2-B 几何 3 种：多边形（N 顶点）/ 圆弧（三点）/ 曲线（贝塞尔锚点+控制柄）
+  | 'polygon'
+  | 'arc'
+  | 'curve'
+  // P2-B 江恩 3 件：扇形（1x1/1x2/2x1 角度族）/ 江恩线（1x1）/ 江恩箱
+  | 'gann-fan'
+  | 'gann-line'
+  | 'gann-box'
+  // P2-B 艾略特波浪：5-3 标注组（5 上 3 下锚点）
+  | 'elliott-wave';
 
 export interface DrawingStyle {
   color: string;
@@ -73,13 +90,30 @@ export const DRAWING_TOOLS: DrawingToolDef[] = [
   { id: 'fib-timezone', label: '斐波那契时区', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1 } },
   // Auto Fib：放置时无锚点点击，由 ChartRenderer 按可见区间 swing 一次生成 2 点对象
   { id: 'fib-auto', label: 'Auto Fib（自动回撤）', points: 0, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  // P2-B 文字类 4 种（TV 文本工具组）：便签底色为语义黄，文本色深灰
+  { id: 'note', label: '便签', points: 1, defaultStyle: { color: '#131722', lineWidth: 1, fillColor: '#fff9c4', text: '便签', fontSize: 12 } },
+  { id: 'price-label', label: '价格标签', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1, text: '', fontSize: 11 } },
+  { id: 'anchored-text', label: '锚定文本', points: 1, defaultStyle: { color: '#d1d4dc', lineWidth: 1, text: '锚定文本', fontSize: 12 } },
+  { id: 'arrow-mark', label: '箭头标记', points: 1, defaultStyle: { color: '#787b86', lineWidth: 2, text: '标记', fontSize: 12 } },
+  // P2-B 测量（TV Measure）：Shift+点击两点锁轴，浮层 bar 数/价差/百分比
+  { id: 'measure', label: '测量', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1, dash: true } },
+  // P2-B 几何 3 种：多边形 points:0 = 任意顶点数，双击/回车结束（path 同范式）
+  { id: 'polygon', label: '多边形', points: 0, defaultStyle: { color: '#2962ff', lineWidth: 1, fillColor: '#2962ff22' } },
+  { id: 'arc', label: '圆弧', points: 3, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
+  { id: 'curve', label: '曲线', points: 4, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
+  // P2-B 江恩 3 件：扇形/江恩线同 TV 默认灰，箱体带淡填充
+  { id: 'gann-fan', label: '江恩扇形', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'gann-line', label: '江恩线', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'gann-box', label: '江恩箱', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1, fillColor: '#787b8622' } },
+  // P2-B 艾略特波浪：5-3 标注组 = 8 锚点（5 上 + 3 下）
+  { id: 'elliott-wave', label: '艾略特波浪', points: 8, defaultStyle: { color: '#787b86', lineWidth: 1 } },
 ];
 
 export function getToolDef(id: DrawingTypeId): DrawingToolDef {
   return DRAWING_TOOLS.find((t) => t.id === id) ?? DRAWING_TOOLS[0];
 }
 
-/** Shift 拖动约束工具（TV：限制水平/垂直）：线类工具 + 斐波那契家族。
+/** Shift 拖动约束工具（TV：限制水平/垂直）：线类工具 + 斐波那契家族 + 测量。
  *  hline/vline 天然单轴无需约束；rect/ellipse/path/text/channel 不约束（TV 同） */
 const CONSTRAINABLE_TOOLS: ReadonlySet<DrawingTypeId> = new Set<DrawingTypeId>([
   'trendline',
@@ -90,6 +124,7 @@ const CONSTRAINABLE_TOOLS: ReadonlySet<DrawingTypeId> = new Set<DrawingTypeId>([
   'fib-extension',
   'fib-fan',
   'fib-arc',
+  'measure',
 ]);
 
 export function isConstrainableTool(id: DrawingTypeId): boolean {

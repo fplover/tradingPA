@@ -32,7 +32,7 @@ export function DrawingToolbar({
   const stayMode = useDrawingStore((s) => s.stayMode);
   const setStayMode = useDrawingStore((s) => s.setStayMode);
 
-  const activate = (item: ToolbarItem) => setActiveTool(item === 'cursor' ? null : (item as DrawingTypeId));
+  const activate = (item: ToolbarItem) => setActiveTool(item === 'cursor' ? null : item);
 
   /** 底部磁吸/清空两个带 caret 的控件 */
   const [bottomMenu, setBottomMenu] = useState<BottomMenuState | null>(null);

@@ -58,6 +58,7 @@ const METHODS = [
   'scale',
   'translate',
   'rotate',
+  'bezierCurveTo',
 ] as const;
 
 export function createMockCtx(): MockCtx & Record<string, unknown> {

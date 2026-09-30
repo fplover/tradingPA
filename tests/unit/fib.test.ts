@@ -222,9 +222,9 @@ describe('detectVisibleSwing', () => {
 
 // ---------- 工具注册表 ----------
 
-describe('DRAWING_TOOLS 注册表（B6 新增 5 工具）', () => {
-  it('总数 17，既有 12 工具不动', () => {
-    expect(DRAWING_TOOLS).toHaveLength(17);
+describe('DRAWING_TOOLS 注册表（B6 新增 5 工具 + P2-B 新增 12 工具）', () => {
+  it('总数 29，既有 12 工具不动', () => {
+    expect(DRAWING_TOOLS).toHaveLength(29);
     expect(DRAWING_TOOLS.slice(0, 12).map((t) => t.id)).toEqual([
       'trendline', 'ray', 'hline', 'vline', 'arrow', 'info-line', 'channel',
       'rect', 'ellipse', 'path', 'text', 'fib',

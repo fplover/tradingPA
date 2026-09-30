@@ -18,6 +18,18 @@ import {
   Radius,
   Timer,
   WandSparkles,
+  StickyNote,
+  Tag,
+  TextSelect,
+  CornerUpRight,
+  Ruler,
+  Pentagon,
+  CircleDashed,
+  Spline,
+  Antenna,
+  Slash,
+  Grid2x2,
+  Waves,
   type LucideIcon,
 } from 'lucide-react';
 import type { DrawingTypeId } from '@/engine/drawing/types';
@@ -46,6 +58,23 @@ export const ICONS: Record<ToolbarItem, LucideIcon> = {
   'fib-arc': Radius,
   'fib-timezone': Timer,
   'fib-auto': WandSparkles,
+  // P2-B 文字类 4 种
+  note: StickyNote,
+  'price-label': Tag,
+  'anchored-text': TextSelect,
+  'arrow-mark': CornerUpRight,
+  // P2-B 测量
+  measure: Ruler,
+  // P2-B 几何 3 种
+  polygon: Pentagon,
+  arc: CircleDashed,
+  curve: Spline,
+  // P2-B 江恩 3 件（扇形与 fib-fan 图标做区分：天线放射状）
+  'gann-fan': Antenna,
+  'gann-line': Slash,
+  'gann-box': Grid2x2,
+  // P2-B 艾略特波浪
+  'elliott-wave': Waves,
   magnet: Magnet,
 };
 
@@ -60,9 +89,12 @@ export const GROUPS: ToolGroup[] = [
   { items: ['cursor'], title: '游标' },
   { items: ['trendline', 'ray', 'info-line', 'hline', 'vline', 'arrow'], title: '趋势线工具' },
   { items: ['channel'], title: '通道工具' },
-  { items: ['fib', 'fib-extension', 'fib-fan', 'fib-arc', 'fib-timezone', 'fib-auto'], title: '江恩和斐波那契工具' },
-  { items: ['rect', 'ellipse', 'path'], title: '几何形状' },
-  { items: ['text'], title: '文本工具' },
+  // P2-B：江恩 3 件并入「江恩和斐波那契工具」组（TV 同名合并组）
+  { items: ['fib', 'fib-extension', 'fib-fan', 'fib-arc', 'fib-timezone', 'fib-auto', 'gann-fan', 'gann-line', 'gann-box'], title: '江恩和斐波那契工具' },
+  { items: ['rect', 'ellipse', 'path', 'polygon', 'arc', 'curve'], title: '几何形状' },
+  { items: ['text', 'anchored-text', 'note', 'price-label', 'arrow-mark'], title: '文本工具' },
+  { items: ['measure'], title: '预测和测量工具' },
+  { items: ['elliott-wave'], title: '艾略特波浪' },
 ];
 
 export const TOOL_LABELS: Record<ToolbarItem, string> = {
@@ -80,6 +112,18 @@ export const TOOL_LABELS: Record<ToolbarItem, string> = {
   'fib-arc': '斐波那契弧线',
   'fib-timezone': '斐波那契时区',
   'fib-auto': 'Auto Fib（自动回撤）',
+  note: '便签',
+  'price-label': '价格标签',
+  'anchored-text': '锚定文本',
+  'arrow-mark': '箭头标记',
+  measure: '测量',
+  polygon: '多边形',
+  arc: '圆弧',
+  curve: '曲线',
+  'gann-fan': '江恩扇形',
+  'gann-line': '江恩线',
+  'gann-box': '江恩箱',
+  'elliott-wave': '艾略特波浪',
   rect: '矩形',
   ellipse: '椭圆',
   path: '路径',

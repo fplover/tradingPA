@@ -120,6 +120,16 @@ function labelOf(d: Drawing): string {
     text: `文本「${d.style.text ?? ''}」`, fib: '斐波那契回撤',
     'fib-extension': '斐波那契扩展', 'fib-fan': '斐波那契扇形', 'fib-arc': '斐波那契弧线',
     'fib-timezone': '斐波那契时区', 'fib-auto': 'Auto Fib（自动回撤）',
+    // P2-B 新增工具（文本类带内容预览）
+    note: `便签「${d.style.text ?? ''}」`,
+    'price-label': '价格标签',
+    'anchored-text': `锚定文本「${d.style.text ?? ''}」`,
+    'arrow-mark': `箭头标记「${d.style.text ?? ''}」`,
+    measure: '测量',
+    polygon: `多边形（${d.points.length} 顶点）`,
+    arc: '圆弧', curve: '曲线',
+    'gann-fan': '江恩扇形', 'gann-line': '江恩线', 'gann-box': '江恩箱',
+    'elliott-wave': '艾略特波浪',
   };
   return names[d.type] ?? d.type;
 }

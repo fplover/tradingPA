@@ -10,6 +10,7 @@ import { momentumOscIndicators } from './builtin/momentum-osc';
 import { volatilityIndicators } from './builtin/volatility';
 import { volumeExtendedIndicators } from './builtin/volume-extended';
 import { profileIndicators } from './builtin/profile';
+import { AVWAP } from './builtin/avwap';
 
 export const ALL_INDICATORS: IndicatorDef[] = [
   ...trendIndicators,
@@ -23,6 +24,8 @@ export const ALL_INDICATORS: IndicatorDef[] = [
   ...volatilityIndicators,
   ...volumeExtendedIndicators,
   ...profileIndicators,
+  // P2-B：Anchored VWAP（锚定 bar 由画线锚定落点交互写入 params.anchorTime）
+  AVWAP,
 ];
 
 /** 自定义指标（Pine 子集编译产物）：运行时注册，与内置指标同管线 */

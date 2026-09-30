@@ -1,5 +1,5 @@
 import type { Drawing } from './types';
-import { theme, TV_FONT } from '../theme';
+import { TV_FONT } from '../theme';
 import { distToSegment } from './geom';
 import {
   drawFibArc,
@@ -9,11 +9,26 @@ import {
   drawFibTimezone,
   hitTestFib,
 } from './fibRender';
+import {
+  drawArrow,
+  drawInfoLine,
+  drawPlainText,
+  drawTextFamily,
+  hitTestPlainText,
+  hitTestTextFamily,
+} from './textRender';
+import { drawMeasure, hitTestMeasure } from './measureRender';
+import { drawShapes, hitTestShapes } from './shapeRender';
+import { drawGann, hitTestGann } from './gannRender';
+import { drawElliott, hitTestElliott } from './elliottRender';
+import { drawLineFamily } from './lineRender';
+import { drawHandles, strokeLine } from './drawingChrome';
 import { pointToPixel, type DrawContext } from './coords';
 
 // 画线坐标换算已抽至 coords.ts；此处 re-export 保持画线模块公开 API 不变。
 export { pointToPixel, pixelToPoint, type DrawContext, type MagnetMode } from './coords';
 // 斐波那契家族（B6）：比率常量与纯几何抽至 fibMath.ts，渲染/命中抽至 fibRender.ts。
+// P2-B：文字/测量/几何/江恩/艾略特五家族的渲染与命中同样各自成模块，此处只做分发。
 // 此处 re-export 保持画线模块公开 API 不变（调用方与既有测试无需改 import 路径）。
 export {
   FIB_ARC_LEVELS,
@@ -52,13 +67,8 @@ export function hitTestDrawing(
       const px = pts[0]?.x;
       return px !== undefined && Math.abs(x - px) <= 5 ? { part: 'body' } : null;
     }
-    case 'text': {
-      const p = pts[0];
-      if (!p) return null;
-      const w = (drawing.style.text ?? '').length * (drawing.style.fontSize ?? 12) * 0.6 + 8;
-      const h = (drawing.style.fontSize ?? 12) + 8;
-      return x >= p.x - 4 && x <= p.x + w && y >= p.y - 4 && y <= p.y + h ? { part: 'body' } : null;
-    }
+    case 'text':
+      return hitTestPlainText(drawing, pts, x, y) ? { part: 'body' } : null;
     case 'rect':
     case 'ellipse': {
       if (pts.length < 2) return null;
@@ -99,6 +109,28 @@ export function hitTestDrawing(
       }
       return null;
     }
+    // P2-B：文字类 4 种（框命中）
+    case 'note':
+    case 'price-label':
+    case 'anchored-text':
+    case 'arrow-mark':
+      return hitTestTextFamily(drawing, pts, x, y) ? { part: 'body' } : null;
+    // P2-B：测量（主轴 + 浮层框）
+    case 'measure':
+      return hitTestMeasure(drawing, pts, x, y, ctx.series) ? { part: 'body' } : null;
+    // P2-B：几何 3 种（多边形内部/边、弧与曲线采样折线）
+    case 'polygon':
+    case 'arc':
+    case 'curve':
+      return hitTestShapes(drawing, pts, x, y) ? { part: 'body' } : null;
+    // P2-B：江恩 3 件（射线族 / 箱体格线）
+    case 'gann-fan':
+    case 'gann-line':
+    case 'gann-box':
+      return hitTestGann(drawing, pts, x, y, ctx) ? { part: 'body' } : null;
+    // P2-B：艾略特波浪（折线段）
+    case 'elliott-wave':
+      return hitTestElliott(pts, x, y) ? { part: 'body' } : null;
     default:
       return null;
   }
@@ -138,67 +170,19 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
   ctx.font = `${d.style.fontSize ?? 12}px ${TV_FONT}`;
   ctx.textBaseline = 'middle';
 
-  const line = (x1: number, y1: number, x2: number, y2: number) => {
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  };
-
   switch (d.type) {
-    case 'hline': {
-      const y = Math.round(pts[0].y) + 0.5;
-      line(0, y, dctx.geo.chartW, y);
-      label(ctx, d.points[0].price.toFixed(decimals), dctx.geo.chartW - 4, pts[0].y, 'right');
-      break;
-    }
-    case 'vline': {
-      const x = Math.round(pts[0].x) + 0.5;
-      line(x, 0, x, dctx.geo.chartH);
-      break;
-    }
+    case 'hline':
+    case 'vline':
     case 'trendline':
-      if (pts.length >= 2) line(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
+    case 'ray':
+      drawLineFamily(ctx, d, pts, dctx, decimals);
       break;
-    case 'ray': {
-      if (pts.length < 2) break;
-      const dx = pts[1].x - pts[0].x;
-      const dy = pts[1].y - pts[0].y;
-      const scale = dx === 0 ? 1 : (dctx.geo.chartW - pts[0].x) / dx;
-      line(pts[0].x, pts[0].y, pts[0].x + dx * Math.max(scale, 0), pts[0].y + dy * Math.max(scale, 0));
+    case 'arrow':
+      drawArrow(ctx, pts);
       break;
-    }
-    case 'arrow': {
-      if (pts.length < 2) break;
-      line(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
-      const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
-      const size = 8;
-      ctx.beginPath();
-      ctx.moveTo(pts[1].x, pts[1].y);
-      ctx.lineTo(pts[1].x - size * Math.cos(angle - 0.4), pts[1].y - size * Math.sin(angle - 0.4));
-      ctx.lineTo(pts[1].x - size * Math.cos(angle + 0.4), pts[1].y - size * Math.sin(angle + 0.4));
-      ctx.closePath();
-      ctx.fill();
+    case 'info-line':
+      drawInfoLine(ctx, d, pts, decimals);
       break;
-    }
-    case 'info-line': {
-      if (pts.length < 2) break;
-      line(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
-      const p0 = d.points[0].price;
-      const p1 = d.points[1].price;
-      const diff = p1 - p0;
-      const pct = p0 !== 0 ? (diff / p0) * 100 : 0;
-      const midX = (pts[0].x + pts[1].x) / 2;
-      const midY = (pts[0].y + pts[1].y) / 2;
-      const text = `${diff >= 0 ? '+' : ''}${diff.toFixed(decimals)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
-      ctx.fillStyle = theme.infoLabelBg;
-      const w = ctx.measureText(text).width + 10;
-      ctx.fillRect(midX - w / 2, midY - 9, w, 18);
-      ctx.fillStyle = diff >= 0 ? theme.up : theme.down;
-      ctx.textAlign = 'center';
-      ctx.fillText(text, midX, midY);
-      break;
-    }
     case 'channel': {
       if (pts.length < 3) break;
       const ox = pts[2].x - pts[0].x;
@@ -211,8 +195,8 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
       ctx.lineTo(pts[0].x + ox, pts[0].y + oy);
       ctx.closePath();
       ctx.fill();
-      line(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
-      line(pts[0].x + ox, pts[0].y + oy, pts[1].x + ox, pts[1].y + oy);
+      strokeLine(ctx, pts[0].x, pts[0].y, pts[1].x, pts[1].y);
+      strokeLine(ctx, pts[0].x + ox, pts[0].y + oy, pts[1].x + ox, pts[1].y + oy);
       break;
     }
     case 'rect': {
@@ -247,13 +231,9 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
       ctx.stroke();
       break;
     }
-    case 'text': {
-      const text = d.style.text ?? '';
-      ctx.fillStyle = d.style.color;
-      ctx.textAlign = 'left';
-      ctx.fillText(text, pts[0].x, pts[0].y);
+    case 'text':
+      drawPlainText(ctx, d, pts);
       break;
-    }
     case 'fib':
     case 'fib-auto':
       drawFibRetracement(ctx, d, pts, dctx, decimals);
@@ -270,26 +250,33 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
     case 'fib-timezone':
       drawFibTimezone(ctx, d, pts, dctx);
       break;
+    // P2-B：文字类 4 种（便签/价格标签/锚定文本/箭头标记）
+    case 'note':
+    case 'price-label':
+    case 'anchored-text':
+    case 'arrow-mark':
+      drawTextFamily(ctx, d, pts, decimals);
+      break;
+    // P2-B：测量（点线 + 浮层三行标签）
+    case 'measure':
+      drawMeasure(ctx, d, pts, dctx.series, decimals);
+      break;
+    // P2-B：几何 3 种（多边形/圆弧/曲线）
+    case 'polygon':
+    case 'arc':
+    case 'curve':
+      drawShapes(ctx, d, pts);
+      break;
+    // P2-B：江恩 3 件（扇形/江恩线/江恩箱）
+    case 'gann-fan':
+    case 'gann-line':
+    case 'gann-box':
+      drawGann(ctx, d, pts, dctx);
+      break;
+    // P2-B：艾略特波浪（5-3 标注组）
+    case 'elliott-wave':
+      drawElliott(ctx, pts);
+      break;
   }
   ctx.setLineDash([]);
-}
-
-function label(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align: CanvasTextAlign) {
-  ctx.font = `10px ${TV_FONT}`;
-  ctx.textAlign = align;
-  ctx.fillStyle = theme.axisText;
-  ctx.fillText(text, x, y);
-}
-
-function drawHandles(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext): void {
-  for (const p of d.points) {
-    const { x, y } = pointToPixel(p, dctx);
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-    ctx.strokeStyle = d.style.color;
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-  }
 }
