@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
@@ -70,6 +70,16 @@ export function ChartWorkspace({
   const comparePickerOpen = useChartConfigStore((s) => s.comparePickerOpen);
   const compare = useCompareSeries(compareSymbol, timeframe, bars);
   const compareLegend = useMemo(() => buildCompareLegend(compareSymbol?.symbol ?? '', compare.aligned), [compareSymbol, compare.aligned]);
+
+  // 主图左缘懒加载（useLazyLoad 500ms 轮询触发）：主 series 与对比序列同步向左翻页，
+  // 各自携带 inflight / 无更多守卫，互不等待。经 ref 间接调用保住回调身份稳定——
+  // 否则每次渲染都重建 useLazyLoad 的轮询 effect，高频 tick 下左缘检测会被反复重置。
+  const needsMoreRef = useRef<() => void>(() => {});
+  needsMoreRef.current = () => {
+    series.loadMore();
+    compare.loadMore();
+  };
+  const handleNeedsMoreHistory = useCallback(() => needsMoreRef.current(), []);
 
   const panelOpen = useIndicatorStore((s) => s.panelOpen);
   const settingsFor = useIndicatorStore((s) => s.settingsFor);
@@ -165,7 +175,7 @@ export function ChartWorkspace({
             chartType={chartType}
             logScale={logScale}
             onRendererReady={onRendererReady}
-            onNeedsMoreHistory={series.loadMore}
+            onNeedsMoreHistory={handleNeedsMoreHistory}
             onChartContextMenu={(price, _time, x, y) => setChartMenu({ price, x, y })}
             onLegendMenu={(x, y) => setLegendMenu({ x, y })}
             onDrawingMenu={(id, x, y) => setDrawingMenu({ id, x, y })}

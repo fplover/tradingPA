@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Viewport } from '@/engine/viewport/Viewport';
 import { PriceScale } from '@/engine/scale/PriceScale';
 import { theme } from '@/engine/theme';
 import type { Bar } from '@/types/market';
-import { alignByTime, buildCompareLegend } from '@/features/market/useCompareSeries';
+import { makeInstrument, type Instrument } from '@/types/instrument';
+import { dataRegistry } from '@/data/sources/registry';
+import { alignByTime, buildCompareLegend, createCompareFeed, type CompareSeries } from '@/features/market/useCompareSeries';
 import { compareDomain, drawCompareOverlay, toPercent } from '@/engine/renderer/drawCompare';
 import { drawLegendBlock } from '@/engine/renderer/drawCrosshair';
 import type { CompareLegendInfo, LegendStudyValues, StudyLegendRect } from '@/engine/renderer/legendTypes';
@@ -223,5 +225,75 @@ describe('drawLegendBlock 对比第二行', () => {
     expect(fillTexts(ctx)).not.toContain('ETH/USDT');
     expect(rects).toHaveLength(1);
     expect(rects[0].y).toBe(28);
+  });
+});
+
+// ---------- createCompareFeed：左翻页补齐 / 合并去重 / 三重守卫 / 轮询保留 ----------
+
+describe('createCompareFeed', () => {
+  const A = makeInstrument('crypto', 'ETHUSDT', 'ETH');
+  const CMP_TAIL = [2, 3, 4, 5, 6].map((i) => bar(T0 + i * IV, 50 + i));
+  const CMP_OLD = [bar(T0, 48), bar(T0 + IV, 49), bar(T0 + 2 * IV, 51)];
+  const CMP_OLDER = [bar(T0 - IV, 47), bar(T0 - 2 * IV, 46)];
+  const flush = async () => { await Promise.resolve(); await Promise.resolve(); };
+  function deferred<T>() { let resolve!: (v: T) => void; const promise = new Promise<T>((r) => { resolve = r; }); return { promise, resolve }; }
+  function feedOf(instrument: Instrument | null, mainFirst: () => number | null = () => T0) {
+    const out: { bars: Bar[]; status: CompareSeries['status'] } = { bars: [], status: 'idle' };
+    const feed = createCompareFeed(instrument, '1m', { onBars: (b) => { out.bars = b; }, onStatus: (s) => { out.status = s; } }, mainFirst);
+    return { feed, out };
+  }
+  beforeEach(() => { vi.spyOn(dataRegistry, 'bars').mockResolvedValue(CMP_TAIL); vi.spyOn(dataRegistry, 'barsBefore'); });
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
+
+  it('左翻页：barsBefore(品种, 周期, 当前首柱时间, 500)，旧页前插合并去重升序；覆盖左缘即止', async () => {
+    const before = vi.spyOn(dataRegistry, 'barsBefore').mockResolvedValueOnce(CMP_OLD).mockResolvedValueOnce(CMP_OLDER).mockResolvedValue([]);
+    const { feed, out } = feedOf(A);
+    feed.start(); await flush();
+    feed.loadMore(); await flush(); feed.loadMore(); await flush(); // 连续两页：before 分别取首柱 T0+2IV / T0
+    expect(before).toHaveBeenCalledWith(A, '1m', T0 + 2 * IV, 500);
+    expect(out.bars.map((b) => b.close)).toEqual([46, 47, 48, 49, 52, 53, 54, 55, 56]); // T2 同时戳取新值 52，升序
+    feed.loadMore(); await flush(); // 对比首柱已严格早于主序列首柱 T0：无缺口，补齐即止
+    expect(before).toHaveBeenCalledTimes(2);
+  });
+
+  it('守卫：翻页在途重复触发只发一次；dispose（卸载/换品种）后迟到响应丢弃', async () => {
+    const d1 = deferred<Bar[]>(), d2 = deferred<Bar[]>();
+    const before = vi.spyOn(dataRegistry, 'barsBefore').mockReturnValueOnce(d1.promise).mockReturnValueOnce(d2.promise).mockResolvedValue([]);
+    const { feed, out } = feedOf(A);
+    feed.start(); await flush();
+    feed.loadMore(); feed.loadMore(); // 在途：第二次直接返回
+    expect(before).toHaveBeenCalledTimes(1);
+    d1.resolve(CMP_OLD); await flush();
+    feed.loadMore(); feed.dispose();
+    d2.resolve(CMP_OLDER); await flush(); // dispose 后迟到：不合流
+    expect(before).toHaveBeenCalledTimes(2); expect(out.bars[0].close).toBe(48); // 旧页已落地（T0=48），迟到更早页（46）未混入
+  });
+
+  it('源不支持翻页（barsBefore 空）：退避后重试一次、连续空即停；断线保持且静默', async () => {
+    vi.useFakeTimers();
+    const before = vi.spyOn(dataRegistry, 'barsBefore').mockResolvedValue([]);
+    const { feed, out } = feedOf(A);
+    feed.start(); await flush(); feed.loadMore(); await flush(); feed.loadMore();
+    expect(before).toHaveBeenCalledTimes(1); // 3s 退避内跳过
+    vi.advanceTimersByTime(3001); feed.loadMore(); await flush(); feed.loadMore(); await flush(); // 单次抖动重试 → 连续两次空
+    expect(before).toHaveBeenCalledTimes(2); // noMore：此后不再请求
+    expect(out.status).toBe('live'); expect(out.bars).toHaveLength(5); // 静默不报错；更早柱没进来：断线保持
+  });
+
+  it('30s 轮询保留：合并语义保住左翻页补齐的更早柱（非整窗替换）', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(dataRegistry, 'barsBefore').mockResolvedValue(CMP_OLDER);
+    const { feed, out } = feedOf(A);
+    feed.start(); await flush();
+    feed.loadMore(); await flush();
+    vi.advanceTimersByTime(30_000); await flush();
+    expect(dataRegistry.bars).toHaveBeenCalledTimes(2); expect(out.bars[0].close).toBe(46); // 轮询仍在跑；更早柱没被整窗替换丢掉
+  });
+
+  it('无对比：零开销——start 不请求不起轮询，loadMore 空转', async () => {
+    vi.useFakeTimers();
+    const { feed } = feedOf(null);
+    feed.start(); feed.loadMore(); vi.advanceTimersByTime(60_000); await flush();
+    expect(dataRegistry.bars).not.toHaveBeenCalled(); expect(dataRegistry.barsBefore).not.toHaveBeenCalled();
   });
 });
