@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
+import type { SelectionPopupInfo } from '@/engine/renderer/selectionPopup';
 import type { Bar, ChartTypeId } from '@/types/market';
 import type { MarketId } from '@/types/instrument';
 import { getIndicatorDef } from '@/indicators/registry';
@@ -42,6 +43,8 @@ interface ChartProps {
   onPriceLineDblClick?: () => void;
   /** 右键命中画线（画线 id + 屏幕坐标） */
   onDrawingMenu?: (id: string, clientX: number, clientY: number) => void;
+  /** 选中画线/指标（引擎上报锚点 canvas 坐标；null = 取消选中，浮动工具栏随之消失） */
+  onSelectionPopup?: (info: SelectionPopupInfo | null) => void;
   /** 参与多图表联动（十字光标/视口同步） */
   sync?: boolean;
 }
@@ -63,6 +66,7 @@ export function Chart({
   onChartContextMenu,
   onLegendMenu,
   onDrawingMenu,
+  onSelectionPopup,
   onPriceLineDblClick,
   sync = false,
 }: ChartProps) {
@@ -199,6 +203,8 @@ export function Chart({
     rendererRef.current?.setLegendMenuCallback((x, y) => onLegendMenu?.(x, y));
     // 右键画线 → 画线菜单
     rendererRef.current?.setDrawingMenuCallback((drawingId, x, y) => onDrawingMenu?.(drawingId, x, y));
+    // 选中画线/指标 → 浮动工具栏锚点（TV 行为；引擎在取消选中时发 null）
+    rendererRef.current?.setSelectionPopupCallback((info) => onSelectionPopup?.(info));
     return () => {
       rendererRef.current?.setTradeCallbacks({});
       rendererRef.current?.setChartClickCallback(null);
@@ -209,6 +215,9 @@ export function Chart({
       rendererRef.current?.setDrawingSettingsCallback(null);
       rendererRef.current?.setLegendMenuCallback(null);
       rendererRef.current?.setDrawingMenuCallback(null);
+      // 摘除：引擎签名委托 tracker.subscribe（不接受 null），传空函数等效退订；
+      // 订阅随 renderer 实例销毁一并回收，无跨实例残留
+      rendererRef.current?.setSelectionPopupCallback(() => {});
       rendererRef.current?.setPaneActionCallback(null);
       rendererRef.current?.setPriceLineDblClickCallback(null);
     };

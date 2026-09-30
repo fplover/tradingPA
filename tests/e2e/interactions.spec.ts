@@ -44,9 +44,16 @@ test('指标面板收藏与键盘操作', async ({ page }) => {
   await expect(page.getByRole('option').filter({ hasText: 'RSI 相对强弱' })).toHaveCount(1);
   await input.press('Enter');
 
-  // RSI 已加入图表（chip 出现）
-  const chip = page.locator('span').filter({ hasText: 'RSI 相对强弱' }).filter({ has: page.getByRole('button', { name: '设置' }) });
-  await expect(chip).toHaveCount(1);
+  // RSI 已加入图表（图例为画布绘制，不在 DOM 中）：经引擎 listIndicators 验证
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer?.listIndicators().some((i) => i.name === 'RSI 相对强弱') ??
+          false,
+      ),
+    )
+    .toBe(true);
 
   // 收藏后清空搜索，RSI 置顶
   await page.getByRole('button', { name: /收藏 RSI/ }).click();
@@ -122,8 +129,14 @@ test('研究图例中键删除与隐藏指标开关', async ({ page }) => {
   await expect(page.getByText('双均线交叉').first()).toBeVisible();
   await page.keyboard.press('Escape');
 
-  const chip = page.locator('span').filter({ hasText: '双均线交叉' }).filter({ has: page.getByRole('button', { name: '设置' }) });
-  await expect(chip).toHaveCount(1);
+  // Pine 研究已挂主图（图例为画布绘制，不在 DOM 中）：经引擎 listIndicators 验证
+  const hasPineStudy = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer?.listIndicators().some((i) => i.name === '双均线交叉') ??
+        false,
+    );
+  await expect.poll(hasPineStudy).toBe(true);
 
   // 底栏：隐藏所有指标
   const studiesHidden = () =>
@@ -136,5 +149,5 @@ test('研究图例中键删除与隐藏指标开关', async ({ page }) => {
 
   // 中键点击研究图例行 → 删除该研究
   await page.locator('canvas').first().click({ position: { x: 60, y: 40 }, button: 'middle' });
-  await expect(chip).toHaveCount(0);
+  await expect.poll(hasPineStudy).toBe(false);
 });

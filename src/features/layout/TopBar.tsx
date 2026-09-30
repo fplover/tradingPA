@@ -37,11 +37,11 @@ import { CUSTOM_INTERVAL_ACTION, customIntervalOptions, isCustomIntervalId } fro
 import type { ChartSeries } from '@/features/market/useChartSeries';
 import { LayoutSaveMenu } from './LayoutSaveMenu';
 import { LayoutMenu } from './LayoutGrid';
-import { ActiveIndicatorChips } from '@/features/indicators/ActiveIndicatorChips';
+import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IconButton } from '@/ui/primitives';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { decimalsFor } from '@/data/format';
-import { fontSize } from '@/ui/tokens';
+import { fontSize, space, zIndex } from '@/ui/tokens';
 
 /**
  * 顶栏（P2-C 自 App.tsx 拆出）：品种 / 周期 / 图表类型 / 回放入口 / 指标 / 布局存取 /
@@ -208,16 +208,23 @@ export function TopBar({
           </IconButton>
         </>
       )}
-      <IconButton active={panelOpen} onClick={() => setPanelOpen(!panelOpen)} title="指标">
-        <BarChart3 size={16} />
-      </IconButton>
+      {/* 指标按钮 + 指标列表框（需求②）：面板挂按钮正下方，绝对定位于外包 relative 容器 */}
+      <div style={{ position: 'relative', display: 'flex' }}>
+        <IconButton active={panelOpen} onClick={() => setPanelOpen(!panelOpen)} title="指标">
+          <BarChart3 size={16} />
+        </IconButton>
+        {panelOpen && (
+          <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: space.xs, zIndex: zIndex.dropdown }}>
+            <IndicatorPanel />
+          </div>
+        )}
+      </div>
       <IconButton onClick={saveTemplate} title="保存指标模板">
         <Save size={16} />
       </IconButton>
       <IconButton onClick={loadTemplate} title="加载指标模板">
         <FolderOpen size={16} />
       </IconButton>
-      <ActiveIndicatorChips />
       <span style={{ flex: 1 }} />
       {layout === 1 && (
         <>
@@ -279,5 +286,6 @@ const topBarStyle: React.CSSProperties = {
   background: 'var(--panel)',
   borderBottom: '1px solid var(--border)',
   flexShrink: 0,
-  overflowX: 'auto',
+  // 不设 overflow 滚动：指标列表框（需求②）以按钮为锚 absolute 展开在顶栏下方，
+  // overflow 裁剪会把浮层切掉；窄屏由各控件自身 flex-shrink 收敛
 };

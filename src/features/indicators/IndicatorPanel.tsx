@@ -5,7 +5,9 @@ import type { IndicatorDef } from '@/indicators/core/types';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { fontSize, radius, shadow, space } from '@/ui/tokens';
 
-/** 指标选择面板：TV 形态——搜索 + 扁平列表（收藏置顶）+ 每行星标 + ↑↓/Enter */
+/** 指标选择面板：TV 形态——搜索 + 扁平列表（收藏置顶）+ 每行星标 + ↑↓/Enter。
+ *  挂载在 TopBar 指标按钮正下方（需求②）：定位由外层 relative 容器承担，
+ *  根元素退为 static、maxHeight 60vh，列表区 flex:1 内部滚动。 */
 export function IndicatorPanel() {
   const groups = useMemo(() => indicatorsByCategory(), []);
   const allDefs = useMemo(() => groups.flatMap((g) => g.items), [groups]);
@@ -103,17 +105,13 @@ export function IndicatorPanel() {
     <div
       style={{
         color: 'var(--text)',
-        position: 'absolute',
-        top: 40,
-        left: 8,
         width: 300,
-        maxHeight: 'calc(100% - 60px)',
+        maxHeight: '60vh',
         display: 'flex',
         flexDirection: 'column',
         background: 'var(--panel)',
         border: '1px solid var(--border)',
         borderRadius: radius.md,
-        zIndex: 20,
         boxShadow: shadow.popover,
       }}
     >

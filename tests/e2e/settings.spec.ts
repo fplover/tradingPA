@@ -5,9 +5,15 @@ test('设置类对话框与 tooltip', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
 
-  // 指标设置：TV 页签顺序 输入 → 样式 → 可见范围
-  const volChip = page.locator('span').filter({ hasText: 'VOL 成交量' }).filter({ has: page.getByRole('button', { name: '设置' }) });
-  await volChip.getByRole('button', { name: '设置' }).click();
+  // 指标设置（VOL 副图，TV 副图面板路径）：点击副图面板选中 → 面板右上角齿轮打开设置
+  const canvas = page.locator('canvas').first();
+  const box = (await canvas.boundingBox())!;
+  const chartW = box.width - 64; // 右价格轴宽
+  const chartH = box.height - 24; // 下时间轴高
+  const volY = (chartH * 3) / 4; // 面板高度比 主图 3 : 副图 1
+  await page.mouse.click(box.x + Math.floor(chartW / 2), box.y + Math.floor(volY + chartH / 8));
+  await page.waitForTimeout(150); // 等一帧：选中副图面板后头部按钮才绘制
+  await page.mouse.click(box.x + Math.floor(chartW - 35), box.y + Math.floor(volY + 12));
   await expect(page.getByRole('button', { name: '输入', exact: true })).toBeVisible();
   // VOL 的 MA Length 来自 input 声明
   await expect(page.getByText('MA Length')).toBeVisible();

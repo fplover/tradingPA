@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
@@ -14,7 +14,8 @@ import { useReplayStore } from '@/store/replayStore';
 import type { ChartSeries } from '@/features/market/useChartSeries';
 import { buildCompareLegend, CompareSymbolPicker, useCompareSeries } from '@/features/market/useCompareSeries';
 import { notifyDrawingsChanged, setDrawingsGetter } from '@/features/alerts/useAlertWatcher';
-import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
+import type { SelectionPopupInfo } from '@/engine/renderer/selectionPopup';
+import { SelectionToolbar } from '@/features/indicators/SelectionToolbar';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
 import { DrawingSettingsDialog } from '@/features/drawings/DrawingSettingsDialog';
@@ -81,7 +82,6 @@ export function ChartWorkspace({
   };
   const handleNeedsMoreHistory = useCallback(() => needsMoreRef.current(), []);
 
-  const panelOpen = useIndicatorStore((s) => s.panelOpen);
   const settingsFor = useIndicatorStore((s) => s.settingsFor);
   const replayActive = useReplayStore((s) => s.index !== null || s.selectMode);
   const replayIndex = useReplayStore((s) => s.index);
@@ -93,6 +93,11 @@ export function ChartWorkspace({
   const setDrawingMenu = useUiStore((s) => s.setDrawingMenu);
   const setChartSettingsOpen = useUiStore((s) => s.setChartSettingsOpen);
   const activeQuote = useQuoteStore((s) => (instrument ? s.quotes[instrument.id] : undefined));
+
+  // 选中画线/指标浮动工具栏（需求③）：引擎经 setSelectionPopupCallback 上报锚点，
+  // 删除后引擎发 null 自动消失；renderer 重建（布局切换/重挂）时就地清除陈旧锚点。
+  const [selectionPopup, setSelectionPopup] = useState<SelectionPopupInfo | null>(null);
+  useEffect(() => setSelectionPopup(null), [renderer]);
 
   // 底部状态栏 / 左工具栏开关 → 渲染器（配置在 chartConfigStore，此处只做命令式下发）
   useEffect(() => {
@@ -179,11 +184,13 @@ export function ChartWorkspace({
             onChartContextMenu={(price, _time, x, y) => setChartMenu({ price, x, y })}
             onLegendMenu={(x, y) => setLegendMenu({ x, y })}
             onDrawingMenu={(id, x, y) => setDrawingMenu({ id, x, y })}
+            onSelectionPopup={setSelectionPopup}
             onPriceLineDblClick={() => setChartSettingsOpen(true)}
           />
           {/* 对比品种选择浮层（P2-D）：顶栏 Compare 按钮经 chartConfigStore 开合 */}
           {comparePickerOpen && <CompareSymbolPicker />}
-          {panelOpen && <IndicatorPanel />}
+          {/* 选中画线/指标的 TV 式浮动工具栏（需求③）：锚点为 canvas CSS 像素 */}
+          {selectionPopup && <SelectionToolbar info={selectionPopup} renderer={renderer} />}
           {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
           <DrawingSettingsDialog renderer={renderer} />
 

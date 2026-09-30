@@ -74,10 +74,16 @@ test('添加指标创建副图', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: '指标', exact: true }).click();
   await page.getByText('RSI 相对强弱').click();
-  // VOL 成交量默认激活，chip 区会有多个“设置”按钮；用“含设置按钮”过滤排除面板目录里的同名 span
-  const rsiChip = page.locator('span').filter({ hasText: 'RSI 相对强弱' }).filter({ has: page.getByRole('button', { name: '设置' }) });
-  await expect(rsiChip).toHaveCount(1);
-  await expect(rsiChip.getByRole('button', { name: '设置' })).toBeVisible();
+  // RSI 已加入图表（图例为画布绘制，不在 DOM 中）：经引擎 listIndicators 验证
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer?.listIndicators().some((i) => i.name === 'RSI 相对强弱') ??
+          false,
+      ),
+    )
+    .toBe(true);
 });
 
 /** 画线工具创建与删除 */
