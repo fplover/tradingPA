@@ -7,6 +7,7 @@ import { CloseCountdown } from '../countdown';
 import type { IndicatorOptions } from '@/indicators/core/instance';
 import { serializeDrawings, deserializeDrawings, type Drawing, type DrawingTypeId } from '../drawing/types';
 import { AvwapAnchorDrop, type AvwapAnchorHost } from './avwapAnchor';
+import { DrawingsNotifyCoalescer } from './drawingsNotifyCoalescer';
 import { earlyFinishMinPoints } from '../drawing/placingRules';
 import { pixelToPoint, type DrawContext } from '../drawing/drawDrawings';
 import type { TradeVisual } from './drawTrading';
@@ -53,8 +54,8 @@ export class ChartController {
   /** 最近一帧绘制耗时（ms），供性能监控与测试 */
   lastFrameMs = 0;
   private drawingsListeners = new Set<() => void>();
-  /** 拖拽中画线变更的合帧广播待冲刷标志（P2-D③：rAF 每帧至多冲刷一次） */
-  private drawingsNotifyPending = false;
+  /** 拖拽中画线变更的合帧广播（P2-D③：rAF 每帧至多冲刷一次；状态机见 DrawingsNotifyCoalescer） */
+  private drawingsNotify = new DrawingsNotifyCoalescer();
   // 交互回调（UI 层经 setXxxCallback 注册）
   private studyActionCb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null = null;
   private drawingSettingsCb: ((id: string) => void) | null = null;
@@ -201,11 +202,7 @@ export class ChartController {
    *  rAF 运行中只记 pending，由主循环每帧至多冲刷一次（与收盘倒计时唤醒同源的
    *  合帧机制）；rAF 未运行（测试/暂停）立即广播，不丢事件。 */
   requestDrawingsNotify(): void {
-    if (this.rafId !== 0) {
-      this.drawingsNotifyPending = true;
-      return;
-    }
-    this.notifyDrawings();
+    this.drawingsNotify.request(this.rafId !== 0, () => this.notifyDrawings());
   }
 
   // ---------- 公开 API ----------
@@ -292,11 +289,8 @@ export class ChartController {
     if (this.rafId || this.disposed) return;
     const loop = () => {
       if (this.disposed) return;
-      if (this.drawingsNotifyPending) {
-        // 拖拽画线合帧广播：每帧至多一次（P2-D③）
-        this.drawingsNotifyPending = false;
-        this.notifyDrawings();
-      }
+      // 拖拽画线合帧广播：每帧至多一次（P2-D③）
+      this.drawingsNotify.flush(() => this.notifyDrawings());
       if (this.dirty) {
         this.dirty = false;
         this.pipeline.draw();
