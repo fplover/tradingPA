@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
 
 /**
  * store 状态与布局快照迁移单测（P2-C）。
@@ -8,7 +8,9 @@ import { describe, expect, it, beforeEach } from 'vitest';
  * 2. layoutStore——单元格最大化（Alt+Enter / 双击标题区）、行列比例（边缘拖拽）、
  *    多图表联动开关（syncBus 三 channel 发布侧裁决）；
  * 3. layoutSnapshot 布局元数据（meta）——归一化兜底、v1 旧档（无 meta 字段）迁移默认值、
- *    采集/应用往返、commitMeta 写回激活布局并落盘（刷新后经恢复路径持久）。
+ *    采集/应用往返、commitMeta 写回激活布局并落盘（刷新后经恢复路径持久）；
+ * 4. indicatorStore 指标模板（TV Templates）——多命名 CRUD、持久化往返、重名序号、
+ *    旧单槽 key 迁移；indicatorTemplates 纯函数（重名解析 / 行排序 / 相对时间）。
  *
  * jsdom 环境：readFile 在 layoutStore 模块初始化时读 localStorage——旧档种子必须早于
  * 模块导入写入，故本文件用顶层 await 延后动态 import（静态 import 会先于种子求值）。
@@ -50,6 +52,16 @@ localStorage.setItem(STORAGE_KEY, JSON.stringify(V1_FILE));
 const { useLayoutStore } = await import('@/store/layoutStore');
 const { useChartConfigStore } = await import('@/store/chartConfigStore');
 const { useUiStore } = await import('@/store/uiStore');
+const { useIndicatorStore } = await import('@/store/indicatorStore');
+const {
+  LEGACY_KEY,
+  MAX_TEMPLATES,
+  TEMPLATES_KEY,
+  loadTemplates,
+  relativeTime,
+  resolveUniqueName,
+  sortTemplates,
+} = await import('@/store/indicatorTemplates');
 const {
   normalizeMeta,
   defaultMeta,
@@ -256,5 +268,171 @@ describe('layoutSnapshot：meta 采集 / 应用 / 落盘', () => {
     const stored = raw.items.find((i) => i.id === activeId);
     expect(stored).toBeDefined();
     expect((stored as unknown as { meta: { colRatios: number[] } }).meta.colRatios).toEqual([3, 1]);
+  });
+});
+
+describe('indicatorStore：指标模板多命名 CRUD（TV Templates）', () => {
+  beforeEach(() => {
+    // 模板存档与其他 describe 的布局种子共用 localStorage，逐例清场防串台
+    localStorage.removeItem(TEMPLATES_KEY);
+    useIndicatorStore.setState({ templates: [] });
+  });
+
+  it('命名保存 → 落盘往返 → 应用（replaceAll）→ 重命名 → 删除', () => {
+    const st = useIndicatorStore.getState();
+    st.replaceAll([{ id: 'rsi', params: { length: 14 } }]);
+    const id = st.saveTemplate('我的模板');
+
+    const s1 = useIndicatorStore.getState();
+    expect(s1.templates).toHaveLength(1);
+    expect(s1.templates[0]).toMatchObject({ id, name: '我的模板', list: [{ id: 'rsi', params: { length: 14 } }] });
+
+    // 持久化往返：经持久层重新读档（等价刷新后恢复）
+    const reloaded = loadTemplates();
+    expect(reloaded).toHaveLength(1);
+    expect(reloaded[0]).toMatchObject({ id, name: '我的模板', list: [{ id: 'rsi', params: { length: 14 } }] });
+
+    // 应用：整量替换 active（先打乱再按模板还原）
+    st.replaceAll([{ id: 'vol', params: {} }, { id: 'ema', params: {} }]);
+    expect(st.loadTemplate(id)).toBe(true);
+    expect(useIndicatorStore.getState().active).toEqual([{ id: 'rsi', params: { length: 14 } }]);
+    // 未知 id 返回 false 且不动 active
+    expect(st.loadTemplate('no-such-template')).toBe(false);
+    expect(useIndicatorStore.getState().active).toEqual([{ id: 'rsi', params: { length: 14 } }]);
+
+    // 重命名落盘
+    st.renameTemplate(id, '新名字');
+    expect(useIndicatorStore.getState().templates[0].name).toBe('新名字');
+    expect(loadTemplates()[0].name).toBe('新名字');
+
+    // 删除落盘；未知 id 删除不抛
+    st.deleteTemplate(id);
+    expect(useIndicatorStore.getState().templates).toHaveLength(0);
+    expect(loadTemplates()).toHaveLength(0);
+    st.deleteTemplate(id);
+  });
+
+  it('重名保存追加序号不覆盖；重命名避开其他模板占用名；空名回落默认名', () => {
+    const st = useIndicatorStore.getState();
+    st.replaceAll([{ id: 'rsi', params: {} }]);
+    const first = st.saveTemplate('RSI 组合');
+    st.replaceAll([{ id: 'ema', params: {} }]);
+    const second = st.saveTemplate('RSI 组合');
+    st.replaceAll([{ id: 'vol', params: {} }]);
+    const third = st.saveTemplate('RSI 组合');
+
+    const list = useIndicatorStore.getState().templates;
+    // 最新在前，三条独立条目（序号不覆盖、内容各自独立）
+    expect(list.map((t) => t.name)).toEqual(['RSI 组合 (3)', 'RSI 组合 (2)', 'RSI 组合']);
+    expect(new Set(list.map((t) => t.id)).size).toBe(3);
+    expect(list.find((t) => t.id === first)!.list[0].id).toBe('rsi');
+    expect(list.find((t) => t.id === second)!.list[0].id).toBe('ema');
+    expect(list.find((t) => t.id === third)!.list[0].id).toBe('vol');
+
+    // 重命名到已占用名 → 解析到未占用序号，被占用的原名条目不动
+    st.renameTemplate(first, 'RSI 组合 (2)');
+    const renamed = useIndicatorStore.getState().templates.find((t) => t.id === first)!;
+    expect(renamed.name).not.toBe('RSI 组合 (2)');
+    expect(renamed.name.startsWith('RSI 组合 (2)')).toBe(true);
+    expect(useIndicatorStore.getState().templates.filter((t) => t.name === 'RSI 组合 (2)')).toHaveLength(1);
+
+    // 空名（trim 后）回落「未命名模板」
+    st.renameTemplate(second, '   ');
+    expect(useIndicatorStore.getState().templates.find((t) => t.id === second)!.name).toBe('未命名模板');
+  });
+
+  it('超出数量上限时仅保留最新 50 条', () => {
+    const st = useIndicatorStore.getState();
+    for (let i = 0; i < MAX_TEMPLATES + 3; i += 1) st.saveTemplate(`t${i}`);
+    const list = useIndicatorStore.getState().templates;
+    expect(list).toHaveLength(MAX_TEMPLATES);
+    expect(list[0].name).toBe(`t${MAX_TEMPLATES + 2}`); // 最新在前
+    expect(loadTemplates()).toHaveLength(MAX_TEMPLATES);
+  });
+
+  it('store 初始化读档：新 key 缺失时旧单槽迁为「默认模板」并写新 key 清旧 key', async () => {
+    localStorage.removeItem(TEMPLATES_KEY);
+    localStorage.setItem(LEGACY_KEY, JSON.stringify([{ id: 'rsi', params: { length: 14 } }]));
+    vi.resetModules();
+    const mod = await import('@/store/indicatorStore');
+    const st = mod.useIndicatorStore.getState();
+    expect(st.templates).toHaveLength(1);
+    expect(st.templates[0]).toMatchObject({ name: '默认模板', list: [{ id: 'rsi', params: { length: 14 } }] });
+    expect(localStorage.getItem(TEMPLATES_KEY)).toBeTruthy();
+    expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
+  });
+});
+
+describe('indicatorTemplates：持久化层与纯函数', () => {
+  beforeEach(() => {
+    localStorage.removeItem(TEMPLATES_KEY);
+    localStorage.removeItem(LEGACY_KEY);
+  });
+
+  it('旧单槽 key 迁为「默认模板」并写新 key、清旧 key', () => {
+    localStorage.setItem(LEGACY_KEY, JSON.stringify([{ id: 'rsi', params: { length: 14 } }]));
+    const list = loadTemplates();
+    expect(list).toHaveLength(1);
+    expect(list[0]).toMatchObject({ name: '默认模板', list: [{ id: 'rsi', params: { length: 14 } }] });
+    expect(localStorage.getItem(TEMPLATES_KEY)).toBeTruthy();
+    expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
+  });
+
+  it('旧档损坏 / 空列表 → 不迁移不写新 key；无任何存档 → 空列表', () => {
+    expect(loadTemplates()).toEqual([]);
+    localStorage.setItem(LEGACY_KEY, '{broken');
+    expect(loadTemplates()).toEqual([]);
+    expect(localStorage.getItem(TEMPLATES_KEY)).toBeNull();
+    localStorage.setItem(LEGACY_KEY, JSON.stringify([]));
+    expect(loadTemplates()).toEqual([]);
+    expect(localStorage.getItem(TEMPLATES_KEY)).toBeNull();
+  });
+
+  it('新 key 存在时旧 key 不迁移；坏条目逐条丢弃、params 缺省补空、savedAt 非数回落当前时间', () => {
+    localStorage.setItem(
+      TEMPLATES_KEY,
+      JSON.stringify([
+        { id: 't1', name: '可用', list: [{ id: 'rsi' }], savedAt: 5 },
+        { id: '', name: '坏 id', list: [], savedAt: 1 },
+        'not-an-object',
+        { id: 't2', name: '缺 list', savedAt: 1 },
+        { id: 't3', name: 'savedAt 非数', list: [], savedAt: 'x' },
+      ]),
+    );
+    localStorage.setItem(LEGACY_KEY, JSON.stringify([{ id: 'ema', params: {} }]));
+    const list = loadTemplates();
+    expect(list.map((t) => t.id)).toEqual(['t1', 't3']);
+    expect(list[0].list).toEqual([{ id: 'rsi', params: {} }]);
+    expect(Number.isFinite(list[1].savedAt)).toBe(true);
+    expect(localStorage.getItem(LEGACY_KEY)).toBeTruthy(); // 新 key 在，旧 key 原样保留
+  });
+
+  it('resolveUniqueName：空名回落、占用追加序号', () => {
+    expect(resolveUniqueName('  ', [])).toBe('未命名模板');
+    expect(resolveUniqueName('A', [])).toBe('A');
+    expect(resolveUniqueName('A', ['A'])).toBe('A (2)');
+    expect(resolveUniqueName('A', ['A', 'A (2)'])).toBe('A (3)');
+    expect(resolveUniqueName('A (2)', ['A', 'A (2)'])).toBe('A (2) (2)');
+  });
+
+  it('sortTemplates 最新在前且不改入参；relativeTime 分档', () => {
+    const list = [
+      { id: 'a', name: 'a', list: [], savedAt: 100 },
+      { id: 'b', name: 'b', list: [], savedAt: 300 },
+      { id: 'c', name: 'c', list: [], savedAt: 200 },
+    ];
+    expect(sortTemplates(list).map((t) => t.id)).toEqual(['b', 'c', 'a']);
+    expect(list.map((t) => t.id)).toEqual(['a', 'b', 'c']); // 入参顺序不动
+
+    const now = 1_700_000_000_000;
+    expect(relativeTime(now, now)).toBe('刚刚');
+    expect(relativeTime(now - 30_000, now)).toBe('刚刚');
+    expect(relativeTime(now - 3 * 60_000, now)).toBe('3 分钟前');
+    expect(relativeTime(now - 59 * 60_000, now)).toBe('59 分钟前');
+    expect(relativeTime(now - 2 * 3_600_000, now)).toBe('2 小时前');
+    expect(relativeTime(now - 23 * 3_600_000, now)).toBe('23 小时前');
+    expect(relativeTime(now - 3 * 86_400_000, now)).toBe('3 天前');
+    expect(relativeTime(now - 40 * 86_400_000, now)).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(relativeTime(now + 5 * 60_000, now)).toBe('刚刚'); // 未来时间（时钟偏差）不出现负档位
   });
 });

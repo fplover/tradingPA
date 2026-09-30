@@ -6,14 +6,12 @@ import {
   ChevronDown,
   Command,
   FileCode2,
-  FolderOpen,
   GitCompareArrows,
   Maximize2,
   Moon,
   Play,
   Redo2,
   RefreshCw,
-  Save,
   Search,
   Settings2,
   Sun,
@@ -157,8 +155,6 @@ export function TopBar({
 
   const panelOpen = useIndicatorStore((s) => s.panelOpen);
   const setPanelOpen = useIndicatorStore((s) => s.setPanelOpen);
-  const saveTemplate = useIndicatorStore((s) => s.saveTemplate);
-  const loadTemplate = useIndicatorStore((s) => s.loadTemplate);
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
 
@@ -208,7 +204,8 @@ export function TopBar({
           </IconButton>
         </>
       )}
-      {/* 指标按钮 + 指标列表框（需求②）：面板挂按钮正下方，绝对定位于外包 relative 容器 */}
+      {/* 指标按钮 + 指标列表框（需求②）：面板挂按钮正下方，绝对定位于外包 relative 容器；
+          指标模板的保存/加载已收口进面板底部「模板」分区（TV 指标对话框 Templates 形态） */}
       <div style={{ position: 'relative', display: 'flex' }}>
         <IconButton active={panelOpen} onClick={() => setPanelOpen(!panelOpen)} title="指标">
           <BarChart3 size={16} />
@@ -219,12 +216,6 @@ export function TopBar({
           </div>
         )}
       </div>
-      <IconButton onClick={saveTemplate} title="保存指标模板">
-        <Save size={16} />
-      </IconButton>
-      <IconButton onClick={loadTemplate} title="加载指标模板">
-        <FolderOpen size={16} />
-      </IconButton>
       <span style={{ flex: 1 }} />
       {layout === 1 && (
         <>

@@ -3,9 +3,11 @@ import { Star, X } from 'lucide-react';
 import { indicatorsByCategory } from '@/indicators/registry';
 import type { IndicatorDef } from '@/indicators/core/types';
 import { useIndicatorStore } from '@/store/indicatorStore';
+import { TemplateSection } from './TemplateSection';
 import { fontSize, radius, shadow, space } from '@/ui/tokens';
 
-/** 指标选择面板：TV 形态——搜索 + 扁平列表（收藏置顶）+ 每行星标 + ↑↓/Enter。
+/** 指标选择面板：TV 形态——搜索 + 扁平列表（收藏置顶）+ 每行星标 + ↑↓/Enter，
+ *  底部内嵌「模板」分区（命名保存 / 应用 / 重命名 / 删除，TV 指标对话框 Templates 形态）。
  *  挂载在 TopBar 指标按钮正下方（需求②）：定位由外层 relative 容器承担，
  *  根元素退为 static、maxHeight 60vh，列表区 flex:1 内部滚动。 */
 export function IndicatorPanel() {
@@ -161,6 +163,8 @@ export function IndicatorPanel() {
       <div style={{ color: 'var(--text-faint)', fontSize: fontSize.sm, padding: `${space.xs}px ${space.md}px ${space.sm}px`, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
         共 {allDefs.length} 个指标（含自定义）
       </div>
+
+      <TemplateSection />
     </div>
   );
 }

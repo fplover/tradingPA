@@ -1,5 +1,15 @@
 import { create } from 'zustand';
 import type { ParamValue, PlotKind } from '@/indicators/core/types';
+import {
+  loadTemplates,
+  MAX_TEMPLATES,
+  newTemplateId,
+  persistTemplates,
+  resolveUniqueName,
+  type IndicatorTemplate,
+} from '@/store/indicatorTemplates';
+
+export type { IndicatorTemplate } from '@/store/indicatorTemplates';
 
 /** 逐 plot 的样式覆盖（TV 指标设置「样式」页） */
 export interface PlotStyleOverride {
@@ -22,7 +32,6 @@ export interface ActiveIndicator {
   visibleTimeframes?: string[];
 }
 
-const STORAGE_KEY = 'tradingpa.indicatorTemplate';
 const FAV_KEY = 'tradingpa.indicatorFavorites';
 
 function loadFavorites(): string[] {
@@ -41,6 +50,8 @@ function loadFavorites(): string[] {
 interface IndicatorStore {
   active: ActiveIndicator[];
   favorites: string[];
+  /** 已保存的命名指标模板（最新在前；TV 指标对话框 Templates 分区数据源） */
+  templates: IndicatorTemplate[];
   panelOpen: boolean;
   settingsFor: string | null;
   add: (id: string, params?: Record<string, ParamValue>) => void;
@@ -54,14 +65,21 @@ interface IndicatorStore {
   replaceAll: (list: ActiveIndicator[]) => void;
   setPanelOpen: (open: boolean) => void;
   setSettingsFor: (id: string | null) => void;
-  saveTemplate: () => void;
-  loadTemplate: () => void;
+  /** 命名保存当前指标组合（重名自动追加序号，不覆盖既有模板）；返回新模板 id */
+  saveTemplate: (name: string) => string;
+  /** 应用模板：整量替换 active；未知 id 返回 false */
+  loadTemplate: (id: string) => boolean;
+  /** 重命名（空名回落「未命名模板」；目标名被占用时解析到未占用序号） */
+  renameTemplate: (id: string, name: string) => void;
+  /** 删除模板；未知 id 忽略 */
+  deleteTemplate: (id: string) => void;
 }
 
 export const useIndicatorStore = create<IndicatorStore>((set, get) => ({
   // 默认挂 VOL 成交量指标（副图直方图），可通过工具栏复选框或指标面板增删
   active: [{ id: 'vol', params: {} }],
   favorites: loadFavorites(),
+  templates: loadTemplates(),
   panelOpen: false,
   settingsFor: null,
   add: (id, params) =>
@@ -91,15 +109,44 @@ export const useIndicatorStore = create<IndicatorStore>((set, get) => ({
   replaceAll: (list) => set({ active: list }),
   setPanelOpen: (panelOpen) => set({ panelOpen }),
   setSettingsFor: (settingsFor) => set({ settingsFor }),
-  saveTemplate: () => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(get().active));
+  saveTemplate: (name) => {
+    const finalName = resolveUniqueName(
+      name,
+      get().templates.map((t) => t.name),
+    );
+    const entry: IndicatorTemplate = {
+      id: newTemplateId(),
+      name: finalName,
+      list: get().active.map((a) => ({ ...a, params: { ...a.params } })),
+      savedAt: Date.now(),
+    };
+    set((s) => ({ templates: [entry, ...s.templates].slice(0, MAX_TEMPLATES) }));
+    persistTemplates(get().templates);
+    return entry.id;
   },
-  loadTemplate: () => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) set({ active: JSON.parse(raw) });
-    } catch {
-      /* 模板损坏时忽略 */
-    }
+  loadTemplate: (id) => {
+    const tpl = get().templates.find((t) => t.id === id);
+    if (!tpl) return false;
+    get().replaceAll(tpl.list.map((a) => ({ ...a, params: { ...a.params } })));
+    return true;
+  },
+  renameTemplate: (id, name) => {
+    const s = get();
+    const target = s.templates.find((t) => t.id === id);
+    if (!target) return;
+    // 占用名集合剔除自身：改回原名时不产生序号
+    const finalName = resolveUniqueName(
+      name,
+      s.templates.filter((t) => t.id !== id).map((t) => t.name),
+    );
+    if (finalName === target.name) return;
+    set({ templates: s.templates.map((t) => (t.id === id ? { ...t, name: finalName } : t)) });
+    persistTemplates(get().templates);
+  },
+  deleteTemplate: (id) => {
+    const s = get();
+    if (!s.templates.some((t) => t.id === id)) return;
+    set({ templates: s.templates.filter((t) => t.id !== id) });
+    persistTemplates(get().templates);
   },
 }));
