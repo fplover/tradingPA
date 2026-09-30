@@ -3,9 +3,10 @@ import type { Timeframe } from '@/types/market';
 /**
  * K 线收盘倒计时（TV 对齐：价格轴右端、最新价徽章旁的 mm:ss 实时递减）。
  *
- * 对齐约定与 data/aggregate.ts 的 bucketStart 保持一致：
- * - 秒级周期（seconds > 0）：纪元对齐 floor(lastBarTime / interval) * interval；
- * - 周：对齐周一 00:00 UTC；月：对齐自然月 1 日 00:00 UTC。
+ * 对齐约定与 data/aggregate.ts 的 bucketStart 保持一致（时区口径见 data/tz.ts）：
+ * - 秒级周期（seconds > 0）：纪元对齐 floor(lastBarTime / interval) * interval（与时区无关）；
+ * - 周/月：按 tzOffsetMinutes 时区的自然周/月归桶（默认 0 = UTC，crypto 口径；
+ *   CN 市场由 ChartController.setCalendarTzOffset 下发本地偏移）。
  * 本模块不自行起定时器：由渲染循环（rAF 合帧）按秒采样，见 CloseCountdown.needsRedraw。
  */
 
@@ -20,19 +21,21 @@ export function nextCloseTime(intervalMs: number, lastBarTime: number): number {
   return Math.floor(lastBarTime / intervalMs) * intervalMs + intervalMs;
 }
 
-/** 周桶起点：本周一 00:00 UTC（与 aggregate.ts 周分桶同一公式） */
-function weekBucketStart(time: number): number {
-  const d = new Date(time);
+/** 周桶起点：按 tzOffsetMinutes 时区的本周一 00:00（与 aggregate.ts 周分桶同一公式） */
+function weekBucketStart(time: number, tzOffsetMinutes: number): number {
+  const d = new Date(time + tzOffsetMinutes * 60_000);
   const day = (d.getUTCDay() + 6) % 7; // 周一 = 0
-  return time - day * MS_PER_DAY - (d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds()) * MS_PER_SECOND;
+  return (
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day) - tzOffsetMinutes * 60_000
+  );
 }
 
-/** 日历周期（周/月）的收盘时刻：下周周一 / 下月 1 日，00:00 UTC */
-export function nextCalendarClose(kind: 'week' | 'month', lastBarTime: number): number {
+/** 日历周期（周/月）的收盘时刻：下周周一 / 下月 1 日，按 tzOffsetMinutes 时区的 00:00 */
+export function nextCalendarClose(kind: 'week' | 'month', lastBarTime: number, tzOffsetMinutes = 0): number {
   if (!Number.isFinite(lastBarTime)) return Number.NaN;
-  if (kind === 'week') return weekBucketStart(lastBarTime) + MS_PER_WEEK;
-  const d = new Date(lastBarTime);
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1); // 月份溢出自动进位到次年
+  if (kind === 'week') return weekBucketStart(lastBarTime, tzOffsetMinutes) + MS_PER_WEEK;
+  const d = new Date(lastBarTime + tzOffsetMinutes * 60_000);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) - tzOffsetMinutes * 60_000; // 月份溢出自动进位到次年
 }
 
 /** 倒计时文本：mm:ss；≥1h 为 h:mm:ss（与 TV 一致）。
@@ -56,6 +59,8 @@ export class CloseCountdown {
   private tf: Timeframe | null = null;
   private lastBarTime = -1;
   private closeTime = Number.NaN;
+  /** 日历桶时区偏移（分钟，东为正）：crypto=UTC，CN 市场=本地（见 data/tz.ts） */
+  private tzOffsetMinutes = 0;
   /** 上一帧实际呈现的文本（null = 未显示），用于「内容变化才唤醒」比较 */
   private drawnText: string | null = null;
   private drawnSec = -1;
@@ -63,6 +68,13 @@ export class CloseCountdown {
   /** 周期切换/图例初始化；tf 为 null 或非法（seconds ≤ 0 且无日历类型）时停用 */
   setTimeframe(tf: Timeframe | null): void {
     this.tf = tf;
+    this.recompute();
+  }
+
+  /** 日历桶时区（分钟，东为正）：由市场决定（crypto=UTC / CN 源=本地），仅影响周/月收盘时刻 */
+  setCalendarTzOffset(minutes: number): void {
+    if (this.tzOffsetMinutes === minutes) return;
+    this.tzOffsetMinutes = minutes;
     this.recompute();
   }
 
@@ -124,9 +136,9 @@ export class CloseCountdown {
     if (!tf || this.lastBarTime < 0) {
       this.closeTime = Number.NaN;
     } else if (tf.calendar === 'week') {
-      this.closeTime = nextCalendarClose('week', this.lastBarTime);
+      this.closeTime = nextCalendarClose('week', this.lastBarTime, this.tzOffsetMinutes);
     } else if (tf.calendar === 'month') {
-      this.closeTime = nextCalendarClose('month', this.lastBarTime);
+      this.closeTime = nextCalendarClose('month', this.lastBarTime, this.tzOffsetMinutes);
     } else if (tf.seconds > 0) {
       this.closeTime = nextCloseTime(tf.seconds * MS_PER_SECOND, this.lastBarTime);
     } else {

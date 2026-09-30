@@ -176,6 +176,12 @@ export class ChartController {
     this.invalidate();
   }
 
+  /** 日历桶时区（分钟，东为正）：crypto=UTC / CN 源=本地（bar 时间戳语义决定，见 data/tz.ts） */
+  setCalendarTzOffset(minutes: number): void {
+    this.countdown.setCalendarTzOffset(minutes);
+    this.invalidate();
+  }
+
   setData(bars: Bar[]): void { this.state.setData(bars); }
   updateBar(bar: Bar): void { this.state.updateBar(bar); }
 

@@ -3,6 +3,7 @@ import { getTimeframe } from '@/types/market';
 import { customIntervalMinutes } from '@/features/market/customInterval';
 import type { Instrument } from '@/types/instrument';
 import { aggregateBars } from '@/data/aggregate';
+import { localTzOffsetMinutes } from '@/data/tz';
 import { fetchGbk } from './http';
 import { NoHistoryError, type BarsRequest, type MarketSource } from './types';
 
@@ -154,7 +155,7 @@ export const sinaSource: MarketSource = {
     const baseSeconds = plan.kind === 'daily' ? 86_400 : plan.type * 60;
     // 新浪一次给全上市以来的数据，不截断，向左滚动无需再翻页
     if (tf.calendar === undefined && tf.seconds <= baseSeconds) return bars;
-    return aggregateBars(bars, tf);
+    return aggregateBars(bars, tf, localTzOffsetMinutes());
   },
 
   async barsBefore(): Promise<Bar[]> {

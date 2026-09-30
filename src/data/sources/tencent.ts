@@ -3,6 +3,7 @@ import { getTimeframe } from '@/types/market';
 import { customIntervalMinutes } from '@/features/market/customInterval';
 import type { Instrument, MarketId } from '@/types/instrument';
 import { aggregateBars } from '@/data/aggregate';
+import { localTzOffsetMinutes } from '@/data/tz';
 import { fetchGbk, fetchJson, parseTencentPayload } from './http';
 import { NoHistoryError, type BarsRequest, type MarketSource, type Quote } from './types';
 
@@ -249,7 +250,7 @@ export const tencentSource: MarketSource = {
     if (bars.length === 0) throw new NoHistoryError(instrument, timeframe);
 
     if (!plan.aggregate) return bars.slice(-limit);
-    return aggregateBars(bars, tf).slice(-limit);
+    return aggregateBars(bars, tf, localTzOffsetMinutes()).slice(-limit);
   },
 
   /** 向左翻页：日线族用日期区间取终点之前的 count 根。
@@ -264,6 +265,6 @@ export const tencentSource: MarketSource = {
     const ratio = plan.aggregate ? Math.max(1, Math.ceil(tf.seconds / 86_400)) : 1;
     const bars = await fetchSeries(sym, plan, Math.min(800, limit * ratio), toDateParam(before - 86_400_000));
     if (bars.length === 0) return [];
-    return plan.aggregate ? aggregateBars(bars, tf) : bars;
+    return plan.aggregate ? aggregateBars(bars, tf, localTzOffsetMinutes()) : bars;
   },
 };

@@ -11,6 +11,7 @@ import { useIndicatorStore } from '@/store/indicatorStore';
 import { useReplayStore } from '@/store/replayStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
+import { calendarTzOffsetMinutes } from '@/data/tz';
 
 export interface ChartCommandsOptions {
   rendererRef: { current: ChartRenderer | null };
@@ -49,6 +50,11 @@ export function useChartCommands(options: ChartCommandsOptions): void {
   useEffect(() => {
     rendererRef.current?.setLegend({ symbol, interval, decimals, exchange, timeframeId, market });
   }, [symbol, interval, decimals, exchange, timeframeId, market]);
+
+  // 日历桶时区：market 决定（crypto=UTC / CN=本地），驱动周/月收盘倒计时与数据层归桶口径一致
+  useEffect(() => {
+    rendererRef.current?.setCalendarTzOffset(market === undefined ? 0 : calendarTzOffsetMinutes(market));
+  }, [market]);
 
   useEffect(() => {
     rendererRef.current?.setChartType(chartType);

@@ -9,6 +9,7 @@ import { AggregateFeedPath } from '@/data/aggregatePath';
 import { klineCache } from '@/data/cache/klineCache';
 import { dataRegistry, NoHistoryError } from '@/data/sources/registry';
 import { applyQuote } from '@/data/liveBar';
+import { calendarTzOffsetMinutes } from '@/data/tz';
 import { createMockFallback } from './mockFallback';
 import { useQuoteStore } from '@/store/quoteStore';
 
@@ -208,10 +209,13 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, timeframe, nonce]);
 
-  /** 历史 + 实时尾柱。模拟数据不参与报价合成，否则会和随机游走互相打架。 */
+  /** 历史 + 实时尾柱。模拟数据不参与报价合成，否则会和随机游走互相打架。
+   *  日历桶时区按市场取（crypto=UTC / CN 源=本地）：与源解析及聚合口径一致，
+   *  否则日/周/月末柱的对齐时间永不相待、报价被静默丢弃（tz 分裂修复，见 data/tz.ts）。 */
   const bars = useMemo(() => {
     if (mode === 'mock' || !quote || history.length === 0) return history;
-    return applyQuote(history, quote, tf);
+    const tz = calendarTzOffsetMinutes(instRef.current?.market ?? 'crypto');
+    return applyQuote(history, quote, tf, tz);
   }, [history, quote, mode, tf]);
 
   return {

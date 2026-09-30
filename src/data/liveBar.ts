@@ -8,15 +8,17 @@ import type { Quote } from './sources/types';
  */
 
 /** 报价时间对齐到所属 K 线的开盘时间。
- *  日/周/月按本地日历对齐（与各源返回的交易所本地时间一致），其余按绝对时间取整。 */
-export function alignBarTime(time: number, tf: Timeframe): number {
-  const d = new Date(time);
+ *  日/周/月按 tzOffsetMinutes 时区的日历对齐（与各源返回的 bar 时间戳语义一致：
+ *  crypto=UTC，CN 源=交易所本地墙上时间），其余按绝对时间取整（与时区无关）。 */
+export function alignBarTime(time: number, tf: Timeframe, tzOffsetMinutes = 0): number {
+  const t = time + tzOffsetMinutes * 60_000;
+  const d = new Date(t);
   if (tf.calendar === 'week') {
-    const dow = (d.getDay() + 6) % 7; // 本地周一 = 0
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate() - dow).getTime();
+    const dow = (d.getUTCDay() + 6) % 7; // 周一 = 0
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow) - tzOffsetMinutes * 60_000;
   }
-  if (tf.calendar === 'month') return new Date(d.getFullYear(), d.getMonth(), 1).getTime();
-  if (tf.id === '1D') return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  if (tf.calendar === 'month') return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - tzOffsetMinutes * 60_000;
+  if (tf.id === '1D') return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - tzOffsetMinutes * 60_000;
   const ms = Math.max(tf.seconds, 1) * 1000;
   return Math.floor(time / ms) * ms;
 }
@@ -34,11 +36,12 @@ function maxPos(...vals: number[]): number {
   return out;
 }
 
-/** 返回新数组；报价与末柱完全一致时返回原引用，避免无意义的重渲染 */
-export function applyQuote(bars: Bar[], quote: Quote, tf: Timeframe): Bar[] {
+/** 返回新数组；报价与末柱完全一致时返回原引用，避免无意义的重渲染。
+ *  tzOffsetMinutes 透传 alignBarTime（日/周/月对齐口径，见 data/tz.ts）。 */
+export function applyQuote(bars: Bar[], quote: Quote, tf: Timeframe, tzOffsetMinutes = 0): Bar[] {
   if (bars.length === 0 || !(quote.price > 0)) return bars;
   const last = bars[bars.length - 1];
-  const t = alignBarTime(quote.time, tf);
+  const t = alignBarTime(quote.time, tf, tzOffsetMinutes);
   // 报价里的 open/high/low/volume 是「当日」口径，只有日线及以上能直接套用；
   // 分钟柱若套用会把整日振幅画成一根巨柱。
   const dailyOrCoarser = tf.calendar !== undefined || tf.seconds >= 86_400;
