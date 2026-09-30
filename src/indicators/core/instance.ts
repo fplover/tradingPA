@@ -23,6 +23,8 @@ interface WindowCacheEntry {
   /** params 浅快照：防御调用方绕过 applyOptions 就地修改 params 字段 */
   paramsSnapshot: Record<string, ParamValue>;
   outputs: IndicatorOutputs;
+  /** computeExtra 旁路输出（Pine paint 用）：与 outputs 同窗口、同失效周期 */
+  extra: unknown;
   ctxFrom: number;
 }
 
@@ -137,7 +139,7 @@ export class IndicatorInstance {
    *
    * 返回的 outputs 是副本：调用方只读，禁就地修改（改副本不影响缓存）。
    */
-  computeWindow(bars: readonly Bar[], from: number, to: number): { outputs: IndicatorOutputs; ctxFrom: number } {
+  computeWindow(bars: readonly Bar[], from: number, to: number): { outputs: IndicatorOutputs; ctxFrom: number; extra: unknown } {
     const lastBar = bars.length > 0 ? bars[bars.length - 1] : undefined;
     const key = `${from}:${to}`;
     const hit = this.windowCache.get(key);
@@ -145,11 +147,12 @@ export class IndicatorInstance {
       // 命中提级到最新，避免活跃窗口被滑移窗口挤出
       this.windowCache.delete(key);
       this.windowCache.set(key, hit);
-      return { outputs: copyOutputs(hit.outputs), ctxFrom: hit.ctxFrom };
+      return { outputs: copyOutputs(hit.outputs), ctxFrom: hit.ctxFrom, extra: hit.extra };
     }
     const ctxFrom = Math.max(0, from - this.def.lookback);
     const ctx = bars.slice(ctxFrom, to + 1);
     const outputs = this.def.compute(ctx, this.params);
+    const extra = this.def.computeExtra?.(ctx, this.params);
     this.windowCache.set(key, {
       barsRef: bars,
       lastBarRef: lastBar,
@@ -158,13 +161,14 @@ export class IndicatorInstance {
       paramsVersion: this.paramsVersion,
       paramsSnapshot: { ...this.params },
       outputs,
+      extra,
       ctxFrom,
     });
     if (this.windowCache.size > WINDOW_CACHE_LIMIT) {
       const oldest = this.windowCache.keys().next().value;
       if (oldest !== undefined) this.windowCache.delete(oldest);
     }
-    return { outputs: copyOutputs(outputs), ctxFrom };
+    return { outputs: copyOutputs(outputs), ctxFrom, extra };
   }
 
   private isCacheHit(entry: WindowCacheEntry, bars: readonly Bar[], lastBar: Bar | undefined): boolean {

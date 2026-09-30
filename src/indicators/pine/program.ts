@@ -21,7 +21,11 @@ interface RuntimeMeta {
 /** def → 运行期元数据（paint 条件序列 / 最近一次运行期错误） */
 const metaMap = new WeakMap<IndicatorDef, RuntimeMeta>();
 
-/** 读取脚本 bgcolor/barcolor 指令的最近一次计算结果（渲染接线用，P2） */
+/** 最近一次 compute 的（入窗 bars 引用 → paint）：computeExtra 按窗精确取数，
+ *  避免图例窗口/绘制窗口交替调用时 WeakMap 元数据串窗（computeWindow 缓存旁路）。 */
+let lastPaintRun: { bars: readonly Bar[]; paint: PaintDirective[] } | null = null;
+
+/** 读取脚本 bgcolor/barcolor 指令的最近一次计算结果（编译期 dry-run 预演用） */
 export function pinePaint(def: IndicatorDef): PaintDirective[] | undefined {
   return metaMap.get(def)?.paint;
 }
@@ -110,13 +114,19 @@ export function compilePine(source: string, id: string): CompileResult {
           cond: r.paintConds[i],
           line: p.line,
         }));
+        lastPaintRun = { bars, paint: meta.paint };
         meta.lastError = undefined;
         return out;
       } catch (e) {
         // 运行期兜底：返回全 undefined 输出，不向渲染循环（rAF）抛错
         meta.lastError = e instanceof Error ? e.message : String(e);
+        lastPaintRun = null;
         return emptyOutputs(bars.length, allKeys);
       }
+    },
+    computeExtra(bars: readonly Bar[]) {
+      // 与 compute 同窗调用（computeWindow 保证）：按入窗引用精确取数，防串窗
+      return lastPaintRun?.bars === bars ? lastPaintRun.paint : undefined;
     },
   };
   metaMap.set(def, meta);

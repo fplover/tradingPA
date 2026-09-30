@@ -50,6 +50,21 @@ export interface IndicatorDef {
   params: IndicatorParam[];
   plots: IndicatorPlot[];
   compute(bars: readonly Bar[], params: Record<string, ParamValue>): IndicatorOutputs;
+  /** 可选旁路输出（Pine bgcolor/barcolor 条件序列用）：与 compute 同窗口调用、
+   *  同窗口脏缓存周期。窗口对齐由 computeWindow 保证——绘制/图例多窗口下
+   *  旁路数据随各自窗口缓存，不会串窗。 */
+  computeExtra?(bars: readonly Bar[], params: Record<string, ParamValue>): unknown;
+}
+
+/** 逐 bar 绘制指令（Pine paint 旁路的通用形状；core 不依赖 pine 具体类型） */
+export interface BarPaint {
+  kind: 'bgcolor' | 'barcolor';
+  /** CSS 颜色（hex）；渲染层按 kind 决定透明度 */
+  color: string;
+  /** 与 compute 入窗等长的条件序列：undefined/0 = 该 bar 不生效；null = 恒生效 */
+  cond: Array<number | undefined> | null;
+  /** 脚本体行号（诊断用） */
+  line: number;
 }
 
 export type IndicatorOutputs = Record<string, Array<number | undefined>>;
