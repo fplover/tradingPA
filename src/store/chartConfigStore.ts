@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
 import { DEFAULT_LEGEND_OPTIONS } from '@/engine/renderer/drawCrosshair';
 import type { ChartTypeId, TimeframeId } from '@/types/market';
+import type { Instrument } from '@/types/instrument';
 
 /**
  * 单图图表配置（P2-C：原 App.tsx 本地 state 下沉，释放上帝组件）。
@@ -45,6 +46,12 @@ export interface ChartConfigStore {
   /** 图例选项（图表设置 / 图例右键菜单） */
   legendOpts: LegendOptions;
   setLegendOpts: (patch: Partial<LegendOptions>) => void;
+  /** 对比品种（P2-D 叠加）：null = 不叠加；独立订阅数据，归一化百分比副坐标渲染 */
+  compareSymbol: Instrument | null;
+  setCompareSymbol: (inst: Instrument | null) => void;
+  /** 对比品种选择浮层开合（顶栏 Compare 按钮 ↔ ChartWorkspace 弹层） */
+  comparePickerOpen: boolean;
+  setComparePickerOpen: (v: boolean) => void;
 }
 
 export const useChartConfigStore = create<ChartConfigStore>((set) => ({
@@ -75,4 +82,9 @@ export const useChartConfigStore = create<ChartConfigStore>((set) => ({
 
   legendOpts: { ...DEFAULT_LEGEND_OPTIONS },
   setLegendOpts: (patch) => set((s) => ({ legendOpts: { ...s.legendOpts, ...patch } })),
+
+  compareSymbol: null,
+  setCompareSymbol: (compareSymbol) => set({ compareSymbol }),
+  comparePickerOpen: false,
+  setComparePickerOpen: (comparePickerOpen) => set({ comparePickerOpen }),
 }));

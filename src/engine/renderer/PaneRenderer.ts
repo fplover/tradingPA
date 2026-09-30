@@ -17,6 +17,8 @@ import { formatCompact } from '@/data/format';
 import { theme, TV_FONT } from '../theme';
 import { isTimeBasedChartType, vpRuntimeOf } from './ChartState';
 import { drawVolumeProfile } from './drawVolumeProfile';
+import { drawCompareOverlay } from './drawCompare';
+import type { CompareLegendInfo } from './legendTypes';
 
 /**
  * 单面板渲染（D 批次拆分④；架构映射：ChartRenderer draw() 的面板循环体与
@@ -46,8 +48,9 @@ export class PaneRenderer {
   constructor(private host: PaneRenderHost) {}
 
   /** 绘制单面板内容（面板局部坐标：调用方已 translate 到 pane.y）。
-   *  countdownText 由编排层每帧算一次后传入（多面板共用同一墙钟读数）。 */
-  draw(ctx: CanvasRenderingContext2D, pane: PaneState, from: number, to: number, opts: AutoscaleOptions, countdownText: string | null): void {
+   *  countdownText 由编排层每帧算一次后传入（多面板共用同一墙钟读数）。
+   *  compare = 对比序列图例信息（P2-D；随 legend 每帧经 RenderPipeline 下发，null = 不叠加）。 */
+  draw(ctx: CanvasRenderingContext2D, pane: PaneState, from: number, to: number, opts: AutoscaleOptions, countdownText: string | null, compare?: CompareLegendInfo | null): void {
     const geo: DrawGeometry = { chartW: this.host.chartW(), chartH: pane.height };
     ctx.save();
     ctx.translate(0, pane.y);
@@ -79,6 +82,24 @@ export class PaneRenderer {
       for (const inst of pane.indicators) {
         if (this.host.hideStudies() || !inst.isVisibleOn(this.host.timeframeId())) continue;
         drawIndicator(ctx, inst, this.host.series().raw(), from, to, this.host.viewport, pane.priceScale, geo);
+      }
+      // Compare 叠加（P2-D①）：唯一 call point，置于叠加指标之后——对比线画在面板
+      // 最顶层，避免被指标曲线/填充遮挡（TV 对比序列同在最上层）；其坐标为归一化
+      // 百分比副坐标，与主价格域/autoscale 完全隔离，先后次序不影响主序列几何。
+      // percent 模式下与主序列同一坐标系：基准价取首根可见 bar 收盘（与下方
+      // setPercentBase 同源），compare 序列本身不进 autoscale 价格域。
+      if (compare) {
+        drawCompareOverlay(
+          ctx,
+          compare,
+          from,
+          to,
+          this.host.viewport,
+          pane.priceScale,
+          geo,
+          this.host.percentOn(),
+          this.host.series().barAt(from)?.close ?? null,
+        );
       }
     }
 

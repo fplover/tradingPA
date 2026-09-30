@@ -3,6 +3,7 @@ export { drawLegendBlock, legendFieldsFor } from './drawLegend';
 export {
   DEFAULT_LEGEND_OPTIONS,
   type LegendInfo,
+  type CompareLegendInfo,
   type LegendOptions,
   type LegendDrawInfo,
   type LegendStudyValues,

@@ -7,6 +7,7 @@ import {
   Command,
   FileCode2,
   FolderOpen,
+  GitCompareArrows,
   Maximize2,
   Moon,
   Play,
@@ -113,6 +114,23 @@ function SymbolButton({ instrument }: { instrument: Instrument | null }) {
   );
 }
 
+/** 对比品种按钮（P2-D）：开关叠加品种选择浮层；已有对比时常亮，标题显示当前对比品种 */
+function CompareButton() {
+  const compare = useChartConfigStore((s) => s.compareSymbol);
+  const pickerOpen = useChartConfigStore((s) => s.comparePickerOpen);
+  const setPickerOpen = useChartConfigStore((s) => s.setComparePickerOpen);
+  return (
+    <IconButton
+      active={pickerOpen || compare !== null}
+      onClick={() => setPickerOpen(!pickerOpen)}
+      title={compare ? `对比品种：${compare.symbol}（点击更换或移除）` : '叠加对比品种'}
+      aria-label="叠加对比品种"
+    >
+      <GitCompareArrows size={16} />
+    </IconButton>
+  );
+}
+
 export function TopBar({
   rendererRef,
   series,
@@ -153,6 +171,7 @@ export function TopBar({
     <div style={topBarStyle}>
       <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 4 }}>TradingPA</strong>
       <SymbolButton instrument={activeInstrument} />
+      {layout === 1 && <CompareButton />}
       {layout === 1 && (
         <>
           <ToolbarSelect

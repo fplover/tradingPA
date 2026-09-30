@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { Chart } from '@/components/Chart';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
@@ -12,6 +12,8 @@ import { usePineStore } from '@/store/pineStore';
 import { useQuoteStore } from '@/store/quoteStore';
 import { useReplayStore } from '@/store/replayStore';
 import type { ChartSeries } from '@/features/market/useChartSeries';
+import { buildCompareLegend, CompareSymbolPicker, useCompareSeries } from '@/features/market/useCompareSeries';
+import { notifyDrawingsChanged, setDrawingsGetter } from '@/features/alerts/useAlertWatcher';
 import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IndicatorSettingsDialog } from '@/features/indicators/IndicatorSettingsDialog';
 import { DrawingToolbar } from '@/features/drawings/DrawingToolbar';
@@ -63,6 +65,12 @@ export function ChartWorkspace({
   const toggleAutoScale = useChartConfigStore((s) => s.toggleAutoScale);
   const tf = getTimeframe(timeframe);
 
+  // 对比序列（P2-D①）：独立订阅 + 按 time 对齐主 series；图例数据组装后经 setLegend 下发
+  const compareSymbol = useChartConfigStore((s) => s.compareSymbol);
+  const comparePickerOpen = useChartConfigStore((s) => s.comparePickerOpen);
+  const compare = useCompareSeries(compareSymbol, timeframe, bars);
+  const compareLegend = useMemo(() => buildCompareLegend(compareSymbol?.symbol ?? '', compare.aligned), [compareSymbol, compare.aligned]);
+
   const panelOpen = useIndicatorStore((s) => s.panelOpen);
   const settingsFor = useIndicatorStore((s) => s.settingsFor);
   const replayActive = useReplayStore((s) => s.index !== null || s.selectMode);
@@ -95,6 +103,24 @@ export function ChartWorkspace({
   useEffect(() => {
     renderer?.setLegendOptions(legendOpts);
   }, [renderer, legendOpts]);
+
+  // 对比序列 → renderer（P2-D①）：经 setLegend 既有公开通道下发，帧内随 legend 进
+  // PaneRenderer（归一化叠加）与 drawLegendBlock（图例第二行）；无对比时显式清空。
+  useEffect(() => {
+    renderer?.setLegend({ compare: compareLegend ?? undefined });
+  }, [renderer, compareLegend]);
+
+  // 画线数据桥（P2-D②）：登记 exportDrawings getter，useAlertWatcher 的水平线采样
+  // 与 AlertPanel 源列表共用同一读数入口；renderer 重建/卸载时重新登记或清空。
+  useEffect(() => {
+    if (!renderer) return;
+    setDrawingsGetter(() => rendererRef.current?.exportDrawings() ?? null);
+    const off = renderer.onDrawingsChanged(() => notifyDrawingsChanged());
+    return () => {
+      off();
+      setDrawingsGetter(null);
+    };
+  }, [renderer, rendererRef]);
 
   /** 选择日期：二分查找第一个 >= 目标时间的 bar */
   const handleSeekToTime = (time: number) => {
@@ -145,6 +171,8 @@ export function ChartWorkspace({
             onDrawingMenu={(id, x, y) => setDrawingMenu({ id, x, y })}
             onPriceLineDblClick={() => setChartSettingsOpen(true)}
           />
+          {/* 对比品种选择浮层（P2-D）：顶栏 Compare 按钮经 chartConfigStore 开合 */}
+          {comparePickerOpen && <CompareSymbolPicker />}
           {panelOpen && <IndicatorPanel />}
           {settingsFor && <IndicatorSettingsDialog id={settingsFor} />}
           <DrawingSettingsDialog renderer={renderer} />

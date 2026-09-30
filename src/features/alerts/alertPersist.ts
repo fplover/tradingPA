@@ -2,9 +2,10 @@ import { DEFAULT_COOLDOWN_MS, clampCooldown } from './alertLogic';
 import type { AlertCondition, AlertSource, PriceAlert } from './alertLogic';
 
 /**
- * 警报表持久化解析（自 alertLogic.ts 拆出，P2-A③：pine 条件源扩展）。
- * v1 顶层数组 {price, direction} → v2 {version:2, soundEnabled, alerts}；
- * v2 条目 source 支持 price / indicator / pine（Pine alertcondition 条件）。
+ * 警报表持久化解析（自 alertLogic.ts 拆出，P2-A③：pine 条件源扩展；
+ * P2-D②：line 画线水平线源扩展）。v1 顶层数组 {price, direction} →
+ * v2 {version:2, soundEnabled, alerts}；v2 条目 source 支持
+ * price / indicator / pine / line。
  */
 
 export interface AlertsPayload {
@@ -39,9 +40,10 @@ function normalizeAlert(raw: Record<string, unknown>): PriceAlert | null {
   if (typeof raw.id !== 'string' || typeof raw.symbol !== 'string') return null;
   if (typeof raw.threshold !== 'number' || !Number.isFinite(raw.threshold)) return null;
   const src = raw.source as AlertSource | undefined;
-  if (!src || (src.type !== 'price' && src.type !== 'indicator' && src.type !== 'pine')) return null;
+  if (!src || (src.type !== 'price' && src.type !== 'indicator' && src.type !== 'pine' && src.type !== 'line')) return null;
   if (src.type === 'indicator' && (typeof src.indicatorId !== 'string' || typeof src.plotKey !== 'string')) return null;
   if (src.type === 'pine' && (typeof src.indicatorId !== 'string' || typeof src.key !== 'string')) return null;
+  if (src.type === 'line' && typeof src.drawingId !== 'string') return null;
   const condition = raw.condition;
   if (condition !== 'greater' && condition !== 'less' && condition !== 'crossUp' && condition !== 'crossDown') return null;
   return {

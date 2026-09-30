@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useSyncExternalStore, useState } from 'react';
 import { Bell, Pause, Pencil, Play, Plus, X } from 'lucide-react';
 import { useAlertStore, type PriceAlert } from '@/store/alertStore';
 import { useIndicatorStore } from '@/store/indicatorStore';
@@ -16,6 +16,7 @@ import {
 } from './alertLogic';
 import { AlertEditDialog } from './AlertEditDialog';
 import { PineConditionSection } from './PineConditionSection';
+import { currentHlines, subscribeDrawings } from './useAlertWatcher';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { btnStyle, inputStyle, miniBtn, panelStyle, rowStyle } from './ui';
 
@@ -165,6 +166,9 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
       {/* Pine 条件分区（P2-A③）：激活的自定义 Pine 指标注册的 alertcondition 条件 */}
       <PineConditionSection symbol={symbol} frequency={frequency} cooldownIdx={cooldownIdx} expiryIdx={expiryIdx} />
 
+      {/* 画线水平线分区（P2-D②）：当前图表水平线一键建「价格触及」警报 */}
+      <HlineAlertSection symbol={symbol} frequency={frequency} cooldownIdx={cooldownIdx} expiryIdx={expiryIdx} />
+
       {alerts.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无警报</div>}
       {alerts.map((a) => (
         <AlertRow
@@ -184,6 +188,50 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
         alert={alerts.find((a) => a.id === editingId) ?? null}
         onClose={() => setEditingId(null)}
       />
+    </div>
+  );
+}
+
+/** 画线水平线分区（P2-D②）：列出当前图表水平线及其价格，单选建警报。
+ *  清单经画线数据桥（useAlertWatcher 的 currentHlines）实时读取；
+ *  默认 crossUp——价格穿越水平线才触发，避免 greater 在「价格已在线上方」时立即触发。
+ *  frequency / cooldownIdx / expiryIdx 跟随主表单当前选择（与价格/指标/Pine 警报一致）。 */
+function HlineAlertSection({ symbol, frequency, cooldownIdx, expiryIdx }: { symbol: string; frequency: AlertFrequency; cooldownIdx: number; expiryIdx: number }) {
+  const add = useAlertStore((s) => s.add);
+  const hlines = useSyncExternalStore(subscribeDrawings, currentHlines);
+  if (hlines.length === 0) return null;
+  const expiryMs = Number(EXPIRY_OPTIONS[expiryIdx]?.value ?? 0);
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ color: 'var(--text-faint)', fontSize: 10, margin: '2px 0' }}>画线水平线</div>
+      {hlines.map((h) => (
+        <div key={h.id} style={rowStyle}>
+          <span
+            style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            title={`水平线 ${h.price}`}
+          >
+            水平线 {h.price.toFixed(2)}
+          </span>
+          <button
+            style={miniBtn}
+            title="添加为警报"
+            aria-label="添加为警报"
+            onClick={() =>
+              add({
+                symbol,
+                source: { type: 'line', drawingId: h.id },
+                threshold: h.price,
+                condition: 'crossUp',
+                frequency,
+                cooldownMs: Number(COOLDOWN_OPTIONS[cooldownIdx]?.value ?? 0) || undefined,
+                expiresAt: expiryMs > 0 ? Date.now() + expiryMs : undefined,
+              })
+            }
+          >
+            <Plus size={12} />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

@@ -3,11 +3,12 @@ import { pineAlertsOf } from '@/indicators/pine/alerts';
 
 // ---------- 类型 ----------
 
-/** 警报作用对象：价格 / 指标某条 plot 的值 / Pine alertcondition 条件（P2-A③） */
+/** 警报作用对象：价格 / 指标某条 plot 的值 / Pine alertcondition 条件（P2-A③）/ 画线水平线（P2-D②） */
 export type AlertSource =
   | { type: 'price' }
   | { type: 'indicator'; indicatorId: string; plotKey: string }
-  | { type: 'pine'; indicatorId: string; key: string };
+  | { type: 'pine'; indicatorId: string; key: string }
+  | { type: 'line'; drawingId: string };
 
 export type AlertCondition = 'greater' | 'less' | 'crossUp' | 'crossDown';
 export type AlertFrequency = 'once' | 'every';
@@ -97,6 +98,7 @@ export function clampCooldown(ms: number): number {
 export function sourceKeyOf(src: AlertSource): string {
   if (src.type === 'price') return 'price';
   if (src.type === 'pine') return `pine:${src.indicatorId}:${src.key}`;
+  if (src.type === 'line') return `line:${src.drawingId}`;
   return `ind:${src.indicatorId}:${src.plotKey}`;
 }
 
@@ -104,9 +106,10 @@ export function sampleKey(symbol: string, src: AlertSource): string {
   return `${symbol}:${sourceKeyOf(src)}`;
 }
 
-/** 作用对象可读名：`价格` / `RSI·RSI`（指标名·plot 名）/ `指标名·条件标题`（Pine 条件） */
+/** 作用对象可读名：`价格` / `RSI·RSI`（指标名·plot 名）/ `指标名·条件标题`（Pine 条件）/ `画线水平线`（P2-D②） */
 export function describeSource(src: AlertSource): string {
   if (src.type === 'price') return '价格';
+  if (src.type === 'line') return '画线水平线';
   if (src.type === 'pine') {
     const entry = pineAlertsOf(src.indicatorId).find((e) => e.key === src.key);
     const def = getIndicatorDef(src.indicatorId);
@@ -131,7 +134,8 @@ export function describeCondition(condition: AlertCondition, threshold: number):
 }
 
 export function describeAlert(a: PriceAlert): string {
-  // Pine 条件为布尔触发（阈值固定 1），描述走「条件为真」而非数值阈值
+  // Pine 条件为布尔触发（阈值固定 1），描述走「条件为真」而非数值阈值；
+  // line 源（P2-D②）阈值 = 水平线当前价，走下方数值路径（与 price 同构）
   const trig =
     a.source.type === 'pine'
       ? `${describeSource(a.source)} 条件为真`

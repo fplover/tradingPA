@@ -106,8 +106,20 @@ export function drawLegendBlock(
   let collapsed = 0;
   const rows = indicatorValues ?? [];
   const maxY = geo ? geo.chartH - 4 : Infinity;
+  // 对比序列第二行（P2-D）：符号 + 末点归一化百分比；存在时指标行整体下移 16px
+  if (legend.compare) {
+    const cmp = legend.compare;
+    ctx.font = `13px ${TV_FONT}`;
+    ctx.fillStyle = theme.legendText;
+    ctx.fillText(cmp.symbol, 8, 28);
+    const cx = 8 + ctx.measureText(cmp.symbol).width + 8;
+    const pct = `${cmp.lastPct >= 0 ? '+' : ''}${cmp.lastPct.toFixed(2)}%`;
+    ctx.fillStyle = cmp.lastPct >= 0 ? theme.up : theme.down;
+    ctx.fillText(pct, cx, 28);
+  }
+  const studyRowY = legend.compare ? 44 : 28;
   if ((options.showStudyNames || options.showStudyArgs || options.showStudyValues) && rows.length > 0) {
-    let iy = 28;
+    let iy = studyRowY;
     ctx.font = `13px ${TV_FONT}`;
     for (const ind of rows) {
       if (ind.values.length === 0) continue;

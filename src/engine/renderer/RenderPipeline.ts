@@ -79,7 +79,9 @@ export class RenderPipeline {
     const autoscaleOpts: AutoscaleOptions = { autoScaleOn: st.autoScaleOn, logScale: st.logScale, timeframeId: legend.timeframeId };
     const countdownText = this.host.countdownText(now);
     for (const pane of st.panes) {
-      this.panes.draw(ctx, pane, from, to, autoscaleOpts, countdownText);
+      // compare 随 legend 每帧下发（P2-D）：PaneRenderer 主价格面板绘归一化叠加，
+      // 图例第二行由下方 drawLegendBlock 读同一 legend.compare 渲染
+      this.panes.draw(ctx, pane, from, to, autoscaleOpts, countdownText, legend.compare);
     }
 
     // 面板分隔线：各副图面板顶边（贯穿含数值轴的全宽，TV 风格）
