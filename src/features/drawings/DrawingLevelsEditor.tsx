@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { control, fontSize, icon, radius, space } from '@/ui/tokens';
 
-/** 分割线档位编辑器（TV fib 设置 levels 列表形态）：每行数值（%）+ 删除按钮 + 「添加档位」，改动实时生效。
+/** 分割线档位编辑器（TV fib 设置 levels 列表形态）：档位双列网格展示（行优先填充），
+ *  每格数值（%）+ 删除按钮 + 「添加档位」，改动实时生效。
  *  数据口径：档位存百分比小数——输入框显示 ×100，提交时 ÷100；
  *  校验规则：非法值（非数字/NaN）不写入；重复值跳过并保持原档顺序；至少保留 1 档。
  *  外部变更（撤销/重做、切换设置对象）经 levels prop 内容比对同步本地编辑态，自身提交不回流。 */
@@ -30,39 +31,49 @@ export function DrawingLevelsEditor({ levels, onChange }: { levels: number[]; on
   return (
     <div style={{ marginBottom: space.sm }}>
       <div style={{ color: 'var(--text-dim)', fontSize: fontSize.md, marginBottom: space.xs }}>分割线</div>
-      {texts.map((t, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: space.xs, marginBottom: space.xs }}>
-          <input
-            type="number"
-            step={0.1}
-            value={t}
-            autoFocus={i === focusIndex}
-            aria-label={`第 ${i + 1} 条分割线百分比`}
-            onChange={(e) => {
-              const next = [...texts];
-              next[i] = e.target.value;
-              setTexts(next);
-              commit(next);
-            }}
-            style={inputStyle}
-          />
-          <span style={{ color: 'var(--text-dim)', fontSize: fontSize.md }}>%</span>
-          <button
-            type="button"
-            aria-label={`删除第 ${i + 1} 条分割线`}
-            title={texts.length <= 1 ? '至少保留 1 档' : '删除该档'}
-            disabled={texts.length <= 1}
-            onClick={() => {
-              const next = texts.filter((_, j) => j !== i);
-              setTexts(next);
-              commit(next);
-            }}
-            style={{ ...delBtnStyle, opacity: texts.length <= 1 ? 0.4 : 1, cursor: texts.length <= 1 ? 'not-allowed' : 'pointer' }}
-          >
-            <Trash2 size={icon.md} />
-          </button>
-        </div>
-      ))}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          columnGap: space.sm,
+          rowGap: space.xs,
+          marginBottom: space.xs,
+        }}
+      >
+        {texts.map((t, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: space.xs, minWidth: 0 }}>
+            <input
+              type="number"
+              step={0.1}
+              value={t}
+              autoFocus={i === focusIndex}
+              aria-label={`第 ${i + 1} 条分割线百分比`}
+              onChange={(e) => {
+                const next = [...texts];
+                next[i] = e.target.value;
+                setTexts(next);
+                commit(next);
+              }}
+              style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+            />
+            <span style={{ color: 'var(--text-dim)', fontSize: fontSize.md }}>%</span>
+            <button
+              type="button"
+              aria-label={`删除第 ${i + 1} 条分割线`}
+              title={texts.length <= 1 ? '至少保留 1 档' : '删除该档'}
+              disabled={texts.length <= 1}
+              onClick={() => {
+                const next = texts.filter((_, j) => j !== i);
+                setTexts(next);
+                commit(next);
+              }}
+              style={{ ...delBtnStyle, opacity: texts.length <= 1 ? 0.4 : 1, cursor: texts.length <= 1 ? 'not-allowed' : 'pointer' }}
+            >
+              <Trash2 size={icon.md} />
+            </button>
+          </div>
+        ))}
+      </div>
       <button
         type="button"
         onClick={() => {
