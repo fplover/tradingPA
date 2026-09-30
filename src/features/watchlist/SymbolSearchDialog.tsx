@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { LoaderCircle, Search, X } from 'lucide-react';
-import type { AssetClass, MarketId } from '@/types/instrument';
+import { LoaderCircle, Search, Star, X } from 'lucide-react';
+import type { AssetClass, Instrument, MarketId } from '@/types/instrument';
 import { MARKETS } from '@/types/instrument';
 import type { SearchHit } from '@/data/sources/types';
 import { dataRegistry } from '@/data/sources/registry';
@@ -32,6 +32,12 @@ const TABS: TabDef[] = [
 const DEBOUNCE_MS = 250;
 const RESULT_MAX = 40;
 
+/** 结果分组：label = 分组标题（null = 搜索结果无分组）；items 展平后即键盘导航的行序列 */
+interface ResultSection {
+  label: string | null;
+  items: SearchHit[];
+}
+
 /** 品种搜索弹窗：TradingView 的顶部锚定样式，不是垂直居中的普通模态 */
 export function SymbolSearchDialog() {
   const open = useSymbolSearchStore((s) => s.open);
@@ -39,6 +45,8 @@ export function SymbolSearchDialog() {
   const initialQuery = useSymbolSearchStore((s) => s.initialQuery);
   const close = useSymbolSearchStore((s) => s.close);
   const recent = useWatchlistStore((s) => s.recent);
+  const flagged = useWatchlistStore((s) => s.flagged);
+  const lists = useWatchlistStore((s) => s.lists);
   const { setActive, add, activeListId } = useWatchlistStore.getState();
 
   const [query, setQuery] = useState('');
@@ -92,13 +100,27 @@ export function SymbolSearchDialog() {
   }, [query, tabId, open, tab.asset]);
 
   const showingRecent = query.trim() === '';
-  const rows: SearchHit[] = useMemo(() => {
-    if (!showingRecent) return hits;
-    return recent
-      .filter((i) => !tab.markets || tab.markets.includes(i.market))
-      .filter((i) => !tab.asset || i.asset === tab.asset)
-      .map((instrument) => ({ instrument, source: '最近访问' }));
-  }, [showingRecent, hits, recent, tab]);
+  // 分组行：空查询 = 收藏置顶 + 最近访问；有查询 = 搜索结果。展平后的 rows 是键盘
+  // 导航（↑/↓/Enter）的唯一行序列，分组标题不占行索引（rowLabels 与 rows 对齐）。
+  const sections: ResultSection[] = useMemo(() => {
+    if (!showingRecent) return hits.length > 0 ? [{ label: null, items: hits }] : [];
+    const inTab = (i: Instrument) => (!tab.markets || tab.markets.includes(i.market)) && (!tab.asset || i.asset === tab.asset);
+    // 收藏（flagged 存 id）：经全部列表 + 最近访问解析回品种；被移除的 id 静默跳过
+    const byId = new Map<string, Instrument>();
+    for (const l of lists) for (const i of l.items) byId.set(i.id, i);
+    for (const i of recent) byId.set(i.id, i);
+    const fav = flagged.map((id) => byId.get(id)).filter((i): i is Instrument => !!i).filter(inTab);
+    const favIds = new Set(fav.map((i) => i.id));
+    // 最近访问剔除已在收藏分组的品种，避免同一行在两个分组重复出现
+    const rec = recent.filter(inTab).filter((i) => !favIds.has(i.id));
+    const out: ResultSection[] = [];
+    if (fav.length > 0) out.push({ label: '收藏', items: fav.map((i): SearchHit => ({ instrument: i, source: '收藏' })) });
+    if (rec.length > 0) out.push({ label: '最近访问', items: rec.map((i): SearchHit => ({ instrument: i, source: '最近访问' })) });
+    return out;
+  }, [showingRecent, hits, recent, flagged, lists, tab]);
+  const rows: SearchHit[] = useMemo(() => sections.flatMap((s) => s.items), [sections]);
+  /** 每个行索引上方的分组标题（null = 无标题；搜索结果分组整段无标题） */
+  const rowLabels = useMemo(() => sections.flatMap((s) => [s.label, ...s.items.map(() => null)]), [sections]);
 
   useEffect(() => {
     setSelected(0);
@@ -185,21 +207,26 @@ export function SymbolSearchDialog() {
             role="listbox"
             aria-label="搜索结果"
           >
-            {showingRecent && rows.length > 0 && <div style={sectionLabelStyle}>最近访问</div>}
-
             {rows.map((hit, i) => (
-              <ResultRow
-                key={hit.instrument.id}
-                hit={hit}
-                query={showingRecent ? '' : query.trim()}
-                selected={i === selected}
-                addMode={mode === 'add'}
-                rowRef={(el) => {
-                  rowRefs.current[i] = el;
-                }}
-                onHover={() => setSelected(i)}
-                onChoose={() => choose(hit)}
-              />
+              <Fragment key={hit.instrument.id}>
+                {rowLabels[i] && (
+                  <div style={sectionLabelStyle}>
+                    {rowLabels[i] === '收藏' && <Star size={12} style={{ marginRight: 3, verticalAlign: -2 }} />}
+                    {rowLabels[i]}
+                  </div>
+                )}
+                <ResultRow
+                  hit={hit}
+                  query={showingRecent ? '' : query.trim()}
+                  selected={i === selected}
+                  addMode={mode === 'add'}
+                  rowRef={(el) => {
+                    rowRefs.current[i] = el;
+                  }}
+                  onHover={() => setSelected(i)}
+                  onChoose={() => choose(hit)}
+                />
+              </Fragment>
             ))}
 
             {!showingRecent && !loading && rows.length === 0 && (

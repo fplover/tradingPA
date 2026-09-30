@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { TimeframeId } from '@/types/market';
 import { useDrawingStore } from '@/store/drawingStore';
 import { useLayoutStore } from '@/store/layoutStore';
+import { useUiStore } from '@/store/uiStore';
 import { useSymbolSearchStore } from '@/features/watchlist/searchStore';
 import { useRightDockStore } from '@/features/rightbar/rightPanelStore';
 
@@ -46,14 +47,14 @@ export interface TvShortcutsOptions {
 /** TV 默认快捷键统一注册（图表级）。输入框 / 菜单 / 对话框内不劫持。
  *  覆盖：缩放 / 平移 / 首尾 K 线 / 最大化 / 单元格切换 / 周期 / 品种 / 布局存取 /
  *  警报 / 自选 / 前往日期等（映射均经 tradingview.com 官方快捷键页核实）。
- *  Shift+滚轮平移在 Chart.tsx（wheel 捕获阶段）处理，不在此列。 */
+ *  Shift+滚轮平移在 Chart.tsx（wheel 捕获阶段）处理，不在此列。
+ *  P2-C：周期浮层开合状态从本地 useState 收敛到 uiStore（对话框开关统一收口）；
+ *  Alt+Enter 在多图表布局下 = 最大化/还原聚焦单元格（TV 行为），单图保持全屏切换。 */
 export function useTvShortcuts(options: TvShortcutsOptions) {
   const optsRef = useRef(options);
   optsRef.current = options;
   /** 打开周期浮层时暂存的焦点图表（多图表下周期作用于聚焦单元格） */
   const chartFocusRef = useRef<Element | null>(null);
-  const [intervalOpen, setIntervalOpen] = useState(false);
-  const [intervalInitial, setIntervalInitial] = useState('');
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -140,7 +141,19 @@ export function useTvShortcuts(options: TvShortcutsOptions) {
           o.onOpenGoToDate();
         } else if (k === 'Enter') {
           e.preventDefault();
-          o.onToggleFullscreen();
+          // 多图表：Alt+Enter 最大化聚焦单元格 / 还原（TV 行为）；单图布局保持全屏切换
+          const st = useLayoutStore.getState();
+          if (st.layout > 1) {
+            if (st.maximizedCell !== null) {
+              st.exitMaximize();
+            } else {
+              const list = [...document.querySelectorAll<HTMLCanvasElement>('canvas[data-tv-chart]')];
+              const i = document.activeElement instanceof HTMLCanvasElement ? list.indexOf(document.activeElement) : -1;
+              st.toggleMaximizeCell(i >= 0 ? i : 0);
+            }
+          } else {
+            optsRef.current.onToggleFullscreen();
+          }
         } else if (e.shiftKey && k === 'ArrowLeft') {
           e.preventDefault();
           eachChartRenderer((r) => r.showRange(0));
@@ -205,8 +218,7 @@ export function useTvShortcuts(options: TvShortcutsOptions) {
       } else if (/^[0-9]$/.test(k) || k === ',') {
         e.preventDefault();
         chartFocusRef.current = document.activeElement;
-        setIntervalInitial(k === ',' ? '' : k);
-        setIntervalOpen(true);
+        useUiStore.getState().openInterval(k === ',' ? '' : k);
       } else if (/^[a-zA-Z]$/.test(k) && !e.repeat) {
         e.preventDefault();
         useSymbolSearchStore.getState().openSearch('switch', lower);
@@ -227,5 +239,6 @@ export function useTvShortcuts(options: TvShortcutsOptions) {
     useLayoutStore.getState().setCell(i >= 0 ? i : 0, { timeframe: tf });
   };
 
-  return { intervalOpen, intervalInitial, setIntervalOpen, applyInterval };
+  // 周期浮层开合/预填状态收敛在 uiStore（对话框开关统一收口），此处只返回应用逻辑
+  return { applyInterval };
 }

@@ -5,21 +5,27 @@ import { create } from 'zustand';
 // customInterval 不导入本模块，无循环依赖。
 import '@/features/market/customInterval';
 import { useIndicatorStore } from '@/store/indicatorStore';
-import { migrateSnapshot, type LayoutCellSnapshot, type SavedLayout } from '@/types/layout';
+import { migrateSnapshot, type LayoutCellSnapshot } from '@/types/layout';
 import {
   applySnapshot,
   applyTheme,
   autoName,
+  captureMeta,
   captureSnapshot,
+  commitMeta,
+  defaultMeta,
+  equalRatios,
   getLayoutBridges,
+  MIN_TRACK_RATIO,
   newLayoutId,
   persist,
   readFile,
 } from '@/store/layoutSnapshot';
+import type { SavedLayoutEx, SyncChannel } from '@/store/layoutSnapshot';
 
 // 公开导出面不变：桥接注册入口在 layoutSnapshot 实现，此处再导出（既有调用点 diff = 0）
 export { setLayoutBridges } from '@/store/layoutSnapshot';
-export type { LayoutBridges } from '@/store/layoutSnapshot';
+export type { LayoutBridges, LayoutMeta, SavedLayoutEx, SyncChannel } from '@/store/layoutSnapshot';
 
 export type LayoutId = 1 | 2 | 4 | 6 | 8;
 
@@ -62,8 +68,24 @@ interface LayoutStore {
   /** 多图表单元格状态（提升自 ChartCell 本地 state，布局快照的组成部分） */
   cells: LayoutCellSnapshot[];
   setCell: (index: number, patch: Partial<LayoutCellSnapshot>) => void;
+  /** 最大化的单元格索引（Alt+Enter / 双击窗格标题区切换）；null = 无最大化。进快照 */
+  maximizedCell: number | null;
+  toggleMaximizeCell: (index: number) => void;
+  exitMaximize: () => void;
+  /** grid 列 / 行比例（fr 权重，长度随布局档位；拖拽边缘调整，进快照刷新后持久） */
+  colRatios: number[];
+  rowRatios: number[];
+  /** 拖拽分隔条：原子调整相邻两条轨道比例（before/after 为调整后的权重） */
+  resizeTrack: (axis: 'col' | 'row', index: number, before: number, after: number) => void;
+  /** 比例 / 开关变更落盘（拖拽 pointerup、联动开关切换时调用） */
+  commitMeta: () => void;
+  /** 多图表联动开关（syncBus 品种/周期/画线 channel 的发布侧裁决；进快照） */
+  syncSymbol: boolean;
+  syncInterval: boolean;
+  syncDrawings: boolean;
+  setSyncChannel: (channel: SyncChannel, on: boolean) => void;
   /** 已保存的命名布局（最新在前） */
-  savedLayouts: SavedLayout[];
+  savedLayouts: SavedLayoutEx[];
   /** 当前激活布局 id：Ctrl+S 快速保存覆盖它，刷新后自动恢复它 */
   activeLayoutId: string | null;
   /** 布局菜单开合（'.' 快捷键经此打开） */
@@ -86,7 +108,11 @@ interface LayoutStore {
 
 export const useLayoutStore = create<LayoutStore>((set, get) => ({
   layout: 1,
-  setLayout: (layout) => set({ layout }),
+  // 布局档位切换：比例数组按新档行列数重置为等分，并退出最大化（最大化索引随单元格集合失效）
+  setLayout: (layout) => {
+    const def = LAYOUTS.find((l) => l.id === layout) ?? LAYOUTS[0];
+    set({ layout, maximizedCell: null, colRatios: equalRatios(def.cols), rowRatios: equalRatios(def.rows) });
+  },
 
   cells: defaultCells(1),
   setCell: (index, patch) =>
@@ -97,6 +123,46 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
       cells[index] = { ...cells[index], ...patch };
       return { cells };
     }),
+
+  maximizedCell: null,
+  toggleMaximizeCell: (index) =>
+    set((s) => {
+      if (index < 0 || index >= s.layout) return {}; // 越界索引（布局已切）忽略
+      return { maximizedCell: s.maximizedCell === index ? null : index };
+    }),
+  exitMaximize: () => set({ maximizedCell: null }),
+
+  colRatios: equalRatios(1),
+  rowRatios: equalRatios(1),
+  resizeTrack: (axis, index, before, after) =>
+    set((s) => {
+      const clamp = (v: number) => (Number.isFinite(v) && v >= MIN_TRACK_RATIO ? v : MIN_TRACK_RATIO);
+      if (axis === 'col') {
+        const colRatios = [...s.colRatios];
+        if (index < 0 || index + 1 >= colRatios.length) return {};
+        colRatios[index] = clamp(before);
+        colRatios[index + 1] = clamp(after);
+        return { colRatios };
+      }
+      const rowRatios = [...s.rowRatios];
+      if (index < 0 || index + 1 >= rowRatios.length) return {};
+      rowRatios[index] = clamp(before);
+      rowRatios[index + 1] = clamp(after);
+      return { rowRatios };
+    }),
+  commitMeta,
+
+  syncSymbol: true,
+  syncInterval: true,
+  syncDrawings: false,
+  setSyncChannel: (channel, on) =>
+    set(
+      channel === 'symbol'
+        ? { syncSymbol: on }
+        : channel === 'interval'
+          ? { syncInterval: on }
+          : { syncDrawings: on },
+    ),
 
   savedLayouts: initialFile.items,
   activeLayoutId: initialFile.activeId,
@@ -109,16 +175,17 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
     const existing = s.activeLayoutId ? s.savedLayouts.find((l) => l.id === s.activeLayoutId) : undefined;
     const finalName = name?.trim() || existing?.name || autoName();
     const snapshot = captureSnapshot(finalName);
+    const meta = captureMeta();
     let activeId: string;
-    let items: SavedLayout[];
+    let items: SavedLayoutEx[];
     if (existing) {
       activeId = existing.id;
       items = s.savedLayouts.map((l) =>
-        l.id === existing.id ? { ...l, name: finalName, savedAt: snapshot.savedAt, snapshot } : l,
+        l.id === existing.id ? { ...l, name: finalName, savedAt: snapshot.savedAt, snapshot, meta } : l,
       );
     } else {
       activeId = newLayoutId();
-      items = [{ id: activeId, name: finalName, savedAt: snapshot.savedAt, snapshot }, ...s.savedLayouts].slice(
+      items = [{ id: activeId, name: finalName, savedAt: snapshot.savedAt, snapshot, meta }, ...s.savedLayouts].slice(
         0,
         MAX_SAVED_LAYOUTS,
       );
@@ -132,7 +199,8 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
     const finalName = name.trim();
     if (!finalName) return null;
     const snapshot = captureSnapshot(finalName);
-    const entry: SavedLayout = { id: newLayoutId(), name: finalName, savedAt: snapshot.savedAt, snapshot };
+    const meta = captureMeta();
+    const entry: SavedLayoutEx = { id: newLayoutId(), name: finalName, savedAt: snapshot.savedAt, snapshot, meta };
     set((s) => ({
       savedLayouts: [entry, ...s.savedLayouts].slice(0, MAX_SAVED_LAYOUTS),
       activeLayoutId: entry.id,
@@ -148,7 +216,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
     // 存档读档时已过 migrate，这里复检一次防内存态被异常写入
     const snap = migrateSnapshot(item.snapshot);
     if (!snap) return false;
-    applySnapshot(snap, id);
+    applySnapshot(snap, id, item.meta);
     set({ lastSavedAt: null });
     return true;
   },
@@ -182,7 +250,19 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
   },
 
   resetToDefault: () => {
-    useLayoutStore.setState({ layout: 1, cells: defaultCells(1), activeLayoutId: null });
+    // 元数据同步回落默认（单图 1x1、无最大化、等分比例、默认联动开关）
+    const meta = defaultMeta(1, 1);
+    useLayoutStore.setState({
+      layout: 1,
+      cells: defaultCells(1),
+      activeLayoutId: null,
+      maximizedCell: meta.maximizedCell,
+      colRatios: meta.colRatios,
+      rowRatios: meta.rowRatios,
+      syncSymbol: meta.syncSymbol,
+      syncInterval: meta.syncInterval,
+      syncDrawings: meta.syncDrawings,
+    });
     // 与 indicatorStore 初始态保持一致（默认挂 VOL）
     useIndicatorStore.getState().replaceAll([{ id: 'vol', params: {} }]);
     applyTheme('dark');

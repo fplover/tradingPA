@@ -259,3 +259,120 @@ describe('syncBus 统一限频（30Hz：leading 即时 + trailing 末态）', ()
     off();
   });
 });
+
+/**
+ * P2-C 三 channel（品种 / 周期 / 画线，AC-C1）。契约与上述既有 channel 完全同构：
+ * sourceId 显式防环、30Hz leading+trailing、分发异常隔离、退订即时生效。
+ */
+describe('syncBus 品种同步 channel', () => {
+  it('A 发布 → B 收到品种；A 自己的订阅者被 sourceId 过滤（防环，无回声）', () => {
+    const seenB: string[] = [];
+    let selfEmits = 0;
+    const offASelf = syncBus.onSymbol(() => selfEmits++, SRC_A);
+    const offB = syncBus.onSymbol((s) => seenB.push(s), SRC_B);
+    syncBus.emitSymbol('ETHUSDT', SRC_A);
+    expect(seenB).toEqual(['ETHUSDT']); // leading：即时送达
+    tick();
+    syncBus.emitSymbol('SOLUSDT', SRC_A);
+    expect(seenB).toEqual(['ETHUSDT', 'SOLUSDT']);
+    expect(selfEmits).toBe(0);
+    offASelf();
+    offB();
+  });
+
+  it('退订后不再收到；连续高频发布只留末态（trailing）', () => {
+    const seen: string[] = [];
+    const off = syncBus.onSymbol((s) => seen.push(s), SRC_B);
+    syncBus.emitSymbol('AAA', SRC_A); // leading
+    for (let i = 0; i < 100; i++) syncBus.emitSymbol(`S${i}`, SRC_A);
+    tick(); // trailing 末态
+    expect(seen).toEqual(['AAA', 'S99']);
+    off();
+    syncBus.emitSymbol('ZZZ', SRC_A);
+    tick();
+    expect(seen).toEqual(['AAA', 'S99']); // 退订生效
+  });
+});
+
+describe('syncBus 周期同步 channel', () => {
+  it('A 发布 → B 收到周期 id；sourceId 相同即忽略', () => {
+    const seenB: Array<string> = [];
+    let selfEmits = 0;
+    const offASelf = syncBus.onInterval(() => selfEmits++, SRC_A);
+    const offB = syncBus.onInterval((t) => seenB.push(t), SRC_B);
+    syncBus.emitInterval('15m', SRC_A);
+    tick();
+    syncBus.emitInterval('1H', SRC_A);
+    expect(seenB).toEqual(['15m', '1H']);
+    expect(selfEmits).toBe(0);
+    offASelf();
+    offB();
+  });
+
+  it('异常隔离：一个 handler 抛错不影响其余订阅者', () => {
+    const after = vi.fn();
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const offBad = syncBus.onInterval(() => {
+      throw new Error('boom');
+    }, SRC_A);
+    const offAfter = syncBus.onInterval(after, SRC_A);
+    expect(() => syncBus.emitInterval('5m', SRC_B)).not.toThrow();
+    expect(after).toHaveBeenCalledTimes(1);
+    expect(errSpy).toHaveBeenCalled();
+    offBad();
+    offAfter();
+    errSpy.mockRestore();
+  });
+});
+
+describe('syncBus 画线同步 channel', () => {
+  it('A 发布 → B 收到序列化画线（整量替换载荷）', () => {
+    const raw = JSON.stringify([{ id: 'd1', type: 'trendLine', points: [] }]);
+    const seenB: string[] = [];
+    const offB = syncBus.onDrawings((r) => seenB.push(r), SRC_B);
+    syncBus.emitDrawings(raw, SRC_A);
+    expect(seenB).toEqual([raw]);
+    offB();
+  });
+
+  it('五通道互相隔离：品种/周期/画线发布不触发 crosshair/viewport 订阅者，反之亦然', () => {
+    const onCross = vi.fn();
+    const onVp = vi.fn();
+    const onSym = vi.fn();
+    const onIv = vi.fn();
+    const onDr = vi.fn();
+    const offC = syncBus.onCrosshair(onCross, SRC_A);
+    const offV = syncBus.onViewport(onVp, SRC_A);
+    const offS = syncBus.onSymbol(onSym, SRC_A);
+    const offI = syncBus.onInterval(onIv, SRC_A);
+    const offD = syncBus.onDrawings(onDr, SRC_A);
+    syncBus.emitSymbol('ETHUSDT', SRC_B);
+    tick();
+    syncBus.emitInterval('1H', SRC_B);
+    tick();
+    syncBus.emitDrawings('[]', SRC_B);
+    expect(onSym).toHaveBeenCalledTimes(1);
+    expect(onIv).toHaveBeenCalledTimes(1);
+    expect(onDr).toHaveBeenCalledTimes(1);
+    expect(onCross).not.toHaveBeenCalled();
+    expect(onVp).not.toHaveBeenCalled();
+    offC();
+    offV();
+    offS();
+    offI();
+    offD();
+  });
+
+  it('防环回归：B 收到 A 的画线后导入（onDrawingsChanged 同步回发被 sourceId 过滤），无乒乓', () => {
+    // 模拟 ChartCell 装配：导入路径的回发与发布者同源时才被过滤；
+    // 跨单元格时接收方以「导入抑制标志」不再回发（ChartCell 侧保证），此处验总线层语义
+    const received: string[] = [];
+    const offA = syncBus.onDrawings((r) => received.push(`A收到:${r}`), SRC_A);
+    const offB = syncBus.onDrawings((r) => received.push(`B收到:${r}`), SRC_B);
+    syncBus.emitDrawings('state-1', SRC_A); // A 发布：A 自己被过滤，只有 B 收到
+    tick();
+    expect(received).toEqual(['B收到:state-1']);
+    offA();
+    offB();
+  });
+});

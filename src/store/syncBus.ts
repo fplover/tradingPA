@@ -10,7 +10,14 @@
  * 3. 限频上移进总线：统一 30Hz（rAF 合帧；无 rAF 环境退化为 setTimeout），
  *    leading 即时分发 + 间隔内合并为 trailing（末态不丢）；
  * 4. 分发逐个 try/catch：单个 handler 抛错不中断其余订阅者（记 console.error，不静默吞）。
+ *
+ * P2-C 扩展（AC-C1）：新增品种 / 周期 / 画线三个联动 channel，沿用同一范式——
+ * sourceId 显式防环 + 30Hz 合帧限频 + 单 handler 异常隔离。三者均为「状态」类载荷
+ * （末态不可丢），画线同步额外在装配侧（ChartCell）用导入抑制标志兜底防环：
+ * importDrawings 会同步触发 onDrawingsChanged，若无抑制会形成 A→B→A 乒乓。
  */
+
+import type { TimeframeId } from '@/types/market';
 
 /** 视口联动载荷（时间空间）：可见时间范围 [fromTime, toTime]（纪元毫秒） */
 export interface ViewportTimeRange {
@@ -20,12 +27,18 @@ export interface ViewportTimeRange {
 
 type CrosshairHandler = (time: number | null, sourceId: symbol) => void;
 type ViewportHandler = (range: ViewportTimeRange, sourceId: symbol) => void;
+type SymbolHandler = (symbol: string, sourceId: symbol) => void;
+type IntervalHandler = (timeframe: TimeframeId, sourceId: symbol) => void;
+type DrawingsHandler = (raw: string, sourceId: symbol) => void;
 
 /** 统一限频间隔：30Hz（33.3ms）。原 Chart.tsx 每实例 32ms 硬编码闭包上移至此 */
 const EMIT_INTERVAL_MS = 1000 / 30;
 
 const crosshairSubs = new Map<CrosshairHandler, symbol>();
 const viewportSubs = new Map<ViewportHandler, symbol>();
+const symbolSubs = new Map<SymbolHandler, symbol>();
+const intervalSubs = new Map<IntervalHandler, symbol>();
+const drawingsSubs = new Map<DrawingsHandler, symbol>();
 
 /**
  * 30Hz 限频器：leading 立即分发；间隔内的调用只保留末态，到点后 trailing 补发
@@ -91,6 +104,15 @@ const emitCrosshairThrottled = createThrottler(({ time, sourceId }: { time: numb
 const emitViewportThrottled = createThrottler(({ range, sourceId }: { range: ViewportTimeRange; sourceId: symbol }) => {
   dispatch(viewportSubs, sourceId, (h) => h(range, sourceId));
 });
+const emitSymbolThrottled = createThrottler(({ symbol, sourceId }: { symbol: string; sourceId: symbol }) => {
+  dispatch(symbolSubs, sourceId, (h) => h(symbol, sourceId));
+});
+const emitIntervalThrottled = createThrottler(({ timeframe, sourceId }: { timeframe: TimeframeId; sourceId: symbol }) => {
+  dispatch(intervalSubs, sourceId, (h) => h(timeframe, sourceId));
+});
+const emitDrawingsThrottled = createThrottler(({ raw, sourceId }: { raw: string; sourceId: symbol }) => {
+  dispatch(drawingsSubs, sourceId, (h) => h(raw, sourceId));
+});
 
 export const syncBus = {
   /** 订阅十字光标时间。sourceId 为本图表标识：自己发出的事件不回送给自己 */
@@ -108,5 +130,29 @@ export const syncBus = {
   },
   emitViewport(range: ViewportTimeRange, sourceId: symbol): void {
     emitViewportThrottled({ range, sourceId });
+  },
+  /** 订阅品种同步：任一单元格切品种，其余单元格跟随（布局 store 的开关在发布侧裁决） */
+  onSymbol(handler: SymbolHandler, sourceId: symbol): () => void {
+    symbolSubs.set(handler, sourceId);
+    return () => symbolSubs.delete(handler);
+  },
+  emitSymbol(symbol: string, sourceId: symbol): void {
+    emitSymbolThrottled({ symbol, sourceId });
+  },
+  /** 订阅周期同步：任一单元格切周期，其余单元格跟随 */
+  onInterval(handler: IntervalHandler, sourceId: symbol): () => void {
+    intervalSubs.set(handler, sourceId);
+    return () => intervalSubs.delete(handler);
+  },
+  emitInterval(timeframe: TimeframeId, sourceId: symbol): void {
+    emitIntervalThrottled({ timeframe, sourceId });
+  },
+  /** 订阅画线同步：任一单元格增删改画线，其余单元格整量替换（序列化 JSON 载荷） */
+  onDrawings(handler: DrawingsHandler, sourceId: symbol): () => void {
+    drawingsSubs.set(handler, sourceId);
+    return () => drawingsSubs.delete(handler);
+  },
+  emitDrawings(raw: string, sourceId: symbol): void {
+    emitDrawingsThrottled({ raw, sourceId });
   },
 };

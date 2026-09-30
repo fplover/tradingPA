@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Settings2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, EyeOff, RotateCcw, Settings2, ZoomIn, ZoomOut } from 'lucide-react';
 import { fontSize, space } from '@/ui/tokens';
 
 interface StatusBarProps {
@@ -20,6 +20,12 @@ interface StatusBarProps {
   onOpenSettings: () => void;
   /** 时间范围预设：fromTime 毫秒时间戳；0 = 全部 */
   onShowRange: (fromTime: number) => void;
+  /** control_bar 导航组（P2-C）：缩放 / 平移 / 重置视图，作用于 renderer 既有 API */
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onPanLeft: () => void;
+  onPanRight: () => void;
+  onResetView: () => void;
 }
 
 /** 底部时间范围预设（TV 时间轴下方预设条）：天数 → 按钮 */
@@ -43,7 +49,8 @@ function timeZoneLabel(): string {
 
 /**
  * 图表底部控制栏（TV 39px = 38 内容 + 1 顶边框）：
- * 左 UTC 时区与数据状态 + 时间范围预设 + 齿轮，右 % / log / auto 坐标开关。
+ * 左 UTC 时区与数据状态 + control_bar 导航组（缩放/平移/重置）+ 时间范围预设 + 齿轮，
+ * 右 % / log / auto 坐标开关。
  * 磁吸/锁定/隐藏画线按 TV 归左画线工具栏底部，不在这里。
  */
 export function StatusBar({
@@ -61,6 +68,11 @@ export function StatusBar({
   onToggleHideStudies,
   onOpenSettings,
   onShowRange,
+  onZoomIn,
+  onZoomOut,
+  onPanLeft,
+  onPanRight,
+  onResetView,
 }: StatusBarProps) {
   return (
     <div
@@ -114,6 +126,25 @@ export function StatusBar({
             {r.label}
           </button>
         ))}
+      </span>
+
+      {/* control_bar 导航组（P2-C）：缩放 / 左右平移 / 重置视图——TV 底部控制条落点 */}
+      <span style={{ display: 'flex', alignItems: 'center', gap: 1, padding: `0 ${space.xs}px` }}>
+        <NavBtn label="放大" onClick={onZoomIn}>
+          <ZoomIn size={14} />
+        </NavBtn>
+        <NavBtn label="缩小" onClick={onZoomOut}>
+          <ZoomOut size={14} />
+        </NavBtn>
+        <NavBtn label="向左平移" onClick={onPanLeft}>
+          <ChevronLeft size={14} />
+        </NavBtn>
+        <NavBtn label="向右平移" onClick={onPanRight}>
+          <ChevronRight size={14} />
+        </NavBtn>
+        <NavBtn label="重置视图" onClick={onResetView}>
+          <RotateCcw size={14} />
+        </NavBtn>
       </span>
 
       <button
@@ -182,6 +213,32 @@ const rangeBtnStyle: React.CSSProperties = {
   borderRadius: 3,
   flexShrink: 0,
 };
+
+/** control_bar 导航按钮（缩放/平移/重置）：无持久激活态，图标随 hover 提亮 */
+function NavBtn({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 22,
+        height: 22,
+        background: 'transparent',
+        color: 'var(--text-faint)',
+        border: 'none',
+        borderRadius: 3,
+        cursor: 'pointer',
+        flexShrink: 0,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 function Toggle({
   label,
