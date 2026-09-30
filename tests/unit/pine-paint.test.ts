@@ -66,10 +66,10 @@ describe('P2-A① computeExtra 旁路（窗口对齐）', () => {
     const bg = paints.find((p) => p.kind === 'bgcolor')!;
     expect(bg.color).toBe('#f44336');
     // 奇 bar 阳线生效：cond 与 BARS 逐根对齐
-    expect(bg.cond).toEqual(BARS.map((b, i) => (b.close > b.open ? 1 : 0)));
+    expect(bg.cond).toEqual(BARS.map((b) => (b.close > b.open ? 1 : 0)));
     const bar = paints.find((p) => p.kind === 'barcolor')!;
     expect(bar.color).toBe('#4caf50');
-    expect(bar.cond).toEqual(BARS.map((b, i) => (b.close < b.open ? 1 : 0)));
+    expect(bar.cond).toEqual(BARS.map((b) => (b.close < b.open ? 1 : 0)));
   });
 
   it('纯 color 常量指令 cond=null（恒生效）', () => {

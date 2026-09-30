@@ -25,8 +25,6 @@ const T0 = new Date(2024, 0, 8, 9, 30, 0).getTime();
 const IV = 60_000;
 const CHART_W = 1216;
 const CHART_H = 776;
-const AXIS_W = 64;
-const AXIS_H = 24;
 
 function makeBars(n = 300): Bar[] {
   const out: Bar[] = [];

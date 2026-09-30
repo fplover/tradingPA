@@ -10,7 +10,7 @@ import { ELLIOTT_LABELS, ELLIOTT_POINTS, elliottLabelAt } from '@/engine/drawing
 import { drawElliott, hitTestElliott } from '@/engine/drawing/elliottRender';
 import { createMockCtx, asCtx, callsOf, fillTexts, hasCall, hasPair, type MockCtx } from './helpers/mock-ctx';
 import type { Bar } from '@/types/market';
-import type { Drawing, DrawingPoint } from '@/engine/drawing/types';
+import type { DrawingPoint } from '@/engine/drawing/types';
 
 /**
  * P2-B 艾略特波浪单测：5-3 标注组（5 上 + 3 下 = 8 锚点）。

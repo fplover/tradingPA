@@ -27,7 +27,6 @@ import {
   hasCall,
   hasPair,
   fillTexts,
-  type MockCtx,
 } from './helpers/mock-ctx';
 
 /** drawGrid 读 window.devicePixelRatio；node 环境下打桩（1 = 与视觉回归锁定的 DPR 一致） */
@@ -57,7 +56,7 @@ function manyBars(n: number): Bar[] {
   for (let i = 0; i < n; i++) {
     const open = 100 + (i % 5);
     const close = 100 + ((i + 2) % 5);
-    out.push({ time: T0 + i * IV, open, high: Math.max(open, close) + 2, low: Math.min(open, close) - 2, volume: 500 + i });
+    out.push({ time: T0 + i * IV, open, close, high: Math.max(open, close) + 2, low: Math.min(open, close) - 2, volume: 500 + i });
   }
   return out;
 }
@@ -261,7 +260,7 @@ describe('drawCrosshair', () => {
   const legend = { symbol: 'BTC/USDT', interval: '1m', decimals: 2, exchange: 'Binance' };
 
   it('可见：水平虚线限面板内 + 垂直虚线吸附 bar 中心，轴标签齐全', () => {
-    const { ctx, series, viewport, priceScale, geo } = fixture();
+    const { ctx, viewport, priceScale, geo } = fixture();
     const ch = new Crosshair();
     ch.set(200, 150, 3, BARS[3].time, 100);
     drawCrosshair(asCtx(ctx), ch, viewport, priceScale, geo, legend);

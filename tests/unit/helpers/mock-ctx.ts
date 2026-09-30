@@ -137,7 +137,7 @@ export function sameArgs(actual: unknown[], expected: unknown[]): boolean {
   return true;
 }
 
-/** 转成 CanvasRenderingContext2D 供被测函数使用 */
-export function asCtx(mock: MockCtx & Record<string, unknown>): CanvasRenderingContext2D {
+/** 转成 CanvasRenderingContext2D 供被测函数使用（运行期对象即完整 mock，窄签名即可） */
+export function asCtx(mock: MockCtx): CanvasRenderingContext2D {
   return mock as unknown as CanvasRenderingContext2D;
 }

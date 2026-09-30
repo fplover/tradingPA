@@ -1,8 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
-import { BarSeries } from '@/data/BarSeries';
-import { Viewport } from '@/engine/viewport/Viewport';
-import { PriceScale } from '@/engine/scale/PriceScale';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { DrawingLayer } from '@/engine/drawing/DrawingLayer';
 import { serializeDrawings, deserializeDrawings, getToolDef, DRAWING_TOOLS } from '@/engine/drawing/types';
@@ -18,7 +15,7 @@ import {
   type Pix,
 } from '@/engine/drawing/shapeMath';
 import { drawShapes, hitTestShapes } from '@/engine/drawing/shapeRender';
-import { createMockCtx, asCtx, callsOf, hasCall, hasPair, type MockCtx } from './helpers/mock-ctx';
+import { createMockCtx, asCtx, callsOf, hasCall, hasPair } from './helpers/mock-ctx';
 import type { Bar } from '@/types/market';
 import type { Drawing, DrawingPoint } from '@/engine/drawing/types';
 
@@ -196,37 +193,8 @@ describe('P2-B 几何工具注册', () => {
 const T0 = new Date(2024, 0, 8, 9, 30, 0).getTime();
 const IV = 60_000;
 
-const BARS: Bar[] = [
-  { time: T0, open: 100, high: 106, low: 98, close: 104, volume: 1200 },
-  { time: T0 + IV, open: 104, high: 108, low: 103, close: 101, volume: 900 },
-  { time: T0 + 2 * IV, open: 101, high: 105, low: 100, close: 103, volume: 1500 },
-  { time: T0 + 3 * IV, open: 103, high: 104, low: 99, close: 100, volume: 700 },
-  { time: T0 + 4 * IV, open: 100, high: 107, low: 97, close: 105, volume: 2000 },
-  { time: T0 + 5 * IV, open: 105, high: 106, low: 102, close: 102, volume: 800 },
-];
-
-function makeDctx() {
-  const series = new BarSeries();
-  series.replace(BARS);
-  const viewport = new Viewport(460);
-  viewport.setBarCount(series.length);
-  viewport.setBarSpacing(8);
-  viewport.scrollToRealtime();
-  const priceScale = new PriceScale();
-  priceScale.setSize(300);
-  priceScale.autoScale(97, 108);
-  return { series, viewport, priceScale };
-}
-
 function drawing(d: Partial<Drawing> & { type: Drawing['type']; points: DrawingPoint[] }): Drawing {
   return { id: 'd1', locked: false, visible: true, style: { color: '#2962ff', lineWidth: 1 }, ...d } as Drawing;
-}
-
-function toPix(p: DrawingPoint, dctx: ReturnType<typeof makeDctx>): { x: number; y: number } {
-  return {
-    x: dctx.viewport.indexToX(dctx.series.fractionalIndexAt(p.time)),
-    y: dctx.priceScale.priceToY(p.price),
-  };
 }
 
 describe('drawShapes：多边形', () => {

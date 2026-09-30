@@ -6,7 +6,6 @@ import { formatTime } from '@/engine/renderer/drawAxes';
 // 2024-03-05 14:30 本地时间
 const T = new Date(2024, 2, 5, 14, 30).getTime();
 // 2024-12-31 与 2025-01-02（跨年相邻）
-const YEAR_END = new Date(2024, 11, 31, 15, 0).getTime();
 const YEAR_START = new Date(2025, 0, 2, 9, 30).getTime();
 // 2024-01-15（周/月视图的 1 月）
 const JANUARY = new Date(2024, 0, 15, 10, 0).getTime();

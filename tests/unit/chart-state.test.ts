@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Viewport } from '@/engine/viewport/Viewport';
 import { Crosshair } from '@/engine/crosshair/Crosshair';
 import { CloseCountdown } from '@/engine/countdown';
-import { BarSeries } from '@/data/BarSeries';
 import type { Bar } from '@/types/market';
 import { ChartState } from '@/engine/renderer/ChartState';
 

@@ -155,7 +155,7 @@ describe('DrawingLayer 多选与克隆', () => {
     layer.add('fib-fan', [P(1, 100), P(2, 120)]);
     layer.add('fib-arc', [P(1, 90), P(2, 130)]);
     const raw = JSON.stringify(layer.list());
-    const restored = JSON.parse(raw) as typeof layer.list;
+    const restored = JSON.parse(raw) as ReturnType<typeof layer.list>;
     const target = new DrawingLayer();
     target.replaceAll([...restored]);
     expect(target.list().length).toBe(2);

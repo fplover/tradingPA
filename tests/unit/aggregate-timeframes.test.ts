@@ -243,9 +243,9 @@ describe('自定义间隔：解析 → 注册 → 聚合链路', () => {
     expect(tf.seconds).toBe(420);
     // 注册后既有取用路径全部认得它（useChartSeries / ChartCell / 顶栏下拉同源）
     expect(getTimeframe('custom:7' as TimeframeId).seconds).toBe(420);
-    expect(TIMEFRAMES.filter((t) => t.id === 'custom:7').length).toBe(1);
+    expect(TIMEFRAMES.filter((t) => (t.id as string) === 'custom:7').length).toBe(1);
     resolveCustomInterval(7, 'm'); // 再次解析不重复注册
-    expect(TIMEFRAMES.filter((t) => t.id === 'custom:7').length).toBe(1);
+    expect(TIMEFRAMES.filter((t) => (t.id as string) === 'custom:7').length).toBe(1);
   });
 
   it('自定义 7 分钟：聚合 + 尾部 + OHLC', () => {

@@ -133,7 +133,7 @@ describe('drawGann：扇形', () => {
   });
 
   it('射线末端价随比率单调（1x8 < 1x1 < 8x1）', () => {
-    const { dctx, ppb, barsToEdge } = makeDctx();
+    const { ppb, barsToEdge } = makeDctx();
     const prices = GANN_FAN_RATIOS.map((r) => gannFanEdgePrice(100, ppb, barsToEdge, r));
     for (let i = 1; i < prices.length; i++) {
       expect(prices[i]).toBeGreaterThan(prices[i - 1]);

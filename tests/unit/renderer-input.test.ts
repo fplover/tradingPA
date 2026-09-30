@@ -16,7 +16,6 @@ const IV = 60_000;
 const CANVAS_W = 1280;
 const CANVAS_H = 800;
 const AXIS_W = 64;
-const AXIS_H = 24;
 
 /** 600 根确定性 K 线（与视觉回归 harness 同构的固定序列） */
 function makeBars(n = 600): Bar[] {
@@ -176,7 +175,6 @@ describe('ChartRenderer 输入：画线工具落点', () => {
     const idx0 = 200 / 8 + first;
     const round0 = Math.round(idx0);
     expect(ds[0].points[0].time).toBeCloseTo(BARS[round0].time + (idx0 - round0) * IV, 6);
-    const idx1 = 400 / 8 + first;
     expect(ds[0].points[1].time).toBeGreaterThan(ds[0].points[0].time);
     // 价格落在数据价格区间内
     const lo = Math.min(...BARS.map((b) => b.low));

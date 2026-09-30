@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { BarSeries } from '@/data/BarSeries';
 import { Viewport } from '@/engine/viewport/Viewport';
 import { PriceScale } from '@/engine/scale/PriceScale';
-import type { Bar } from '@/types/market';
 import { IndicatorInstance } from '@/indicators/core/instance';
 import type { IndicatorDef } from '@/indicators/core/types';
 import { drawPineShapes } from '@/engine/renderer/drawPineShapes';

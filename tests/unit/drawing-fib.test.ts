@@ -351,7 +351,6 @@ describe('drawFibArc（弧线）', () => {
     const { ctx, dctx } = makeDctx();
     const p0 = { time: T0 + IV, price: 100 };
     const p1 = { time: T0 + 3 * IV, price: 104 };
-    const d = drawing({ type: 'fib-arc', points: [p0, p1] });
     const a = toPix(p0, dctx);
     const b = toPix(p1, dctx);
     drawFibArc(asCtx(ctx), [a, b]);

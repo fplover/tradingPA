@@ -5,7 +5,7 @@ import type { Bar } from '@/types/market';
 import { BarSeries } from '@/data/BarSeries';
 import { PriceScale } from '@/engine/scale/PriceScale';
 import { Viewport } from '@/engine/viewport/Viewport';
-import { drawIndicator, indicatorRange, indicatorValuesAt } from '@/engine/renderer/drawIndicator';
+import { drawIndicator, indicatorValuesAt } from '@/engine/renderer/drawIndicator';
 import { autoscaleIndicators, type AutoscaleOptions, type ScalablePane } from '@/engine/renderer/autoscale';
 import { asCtx, createMockCtx } from './helpers/mock-ctx';
 

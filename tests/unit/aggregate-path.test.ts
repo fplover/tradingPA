@@ -22,7 +22,7 @@ type FetchOpts = { endTime?: number; startTime?: number; limit?: number };
 type FetchCall = { symbol: string; interval: string; opts: FetchOpts };
 
 /** 确定性 1m K 线：价格游走 + 固定成交量 */
-function minuteBars(count: number, startMs: number, volume = 10): Bar[] {
+function minuteBars(count: number, startMs = Date.UTC(2024, 0, 1), volume = 10): Bar[] {
   const bars: Bar[] = [];
   let price = 100;
   for (let i = 0; i < count; i++) {

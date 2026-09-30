@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compilePine } from '@/indicators/pine/compile';
-import { BARS, CLOSES, compileOk, plotValues, trendBars } from './helpers/pine-fixture';
+import { BARS, compileOk, plotValues, trendBars } from './helpers/pine-fixture';
 
 /**
  * Pine ta.* 扩容 golden 用例（21 个新增函数，固定输入 → 手算参考输出）。
