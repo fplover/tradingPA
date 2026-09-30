@@ -4,6 +4,8 @@ import { aggregateBars } from '@/data/aggregate';
 import { getTimeframe, type Bar, type ChartTypeId, type TimeframeId } from '@/types/market';
 import { nextCloseTime } from '@/engine/countdown';
 import type { DrawingTypeId } from '@/engine/drawing/types';
+import { compilePine } from '@/indicators/pine/compile';
+import { registerCustomDef } from '@/indicators/registry';
 
 /**
  * 视觉回归 harness（A3-1）：以确定性数据直接挂载真实 ChartRenderer，
@@ -163,6 +165,14 @@ const main = (): ChartRenderer => renderers[0];
   },
   addIndicator(id: string): string | null {
     return main().addIndicator(id);
+  },
+  /** P2-A：编译 Pine 脚本挂主图（bgcolor/barcolor/plotshape 渲染表面）。
+   *  与 App 的 PineEditorPanel 同路径：compilePine → registerCustomDef → addIndicator。 */
+  addPine(source: string): string | null {
+    const r = compilePine(source, 'vh-pine');
+    if (!r.def) return null;
+    registerCustomDef(r.def);
+    return main().addIndicator('vh-pine');
   },
   clearIndicators(): void {
     for (const l of main().listIndicators()) main().removeIndicator(l.uid);

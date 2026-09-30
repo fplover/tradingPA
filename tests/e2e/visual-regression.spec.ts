@@ -26,6 +26,7 @@ import type { ChartTypeId, TimeframeId } from '@/types/market';
  *   ⑱ timeframe-2m            B5 2 分钟档位（1m 种子聚合渲染）
  *   ⑲ timeframe-45m           B5 45 分钟档位（1m 种子聚合渲染）
  *   ⑳ timeframe-1H            Wave5 项7 时间 zh 化视觉覆盖（M月D日 日级标签 + 1H 聚合）
+ *   ㉑ pine-paint             P2-A Pine 绘图指令（bgcolor/barcolor/plotshape）
  *
  * 稳定性约定（防 flaky）：
  *   - deviceScaleFactor 锁 1（见 test.use）
@@ -72,6 +73,7 @@ declare global {
       setChartType(t: ChartTypeId): void;
       setTimeframe(id: TimeframeId): void;
       addIndicator(id: string): string | null;
+      addPine(source: string): string | null;
       clearIndicators(): void;
       setLayout(n: number): void;
       setTool(t: string | null): void;
@@ -380,5 +382,30 @@ test.describe('A3-1 扩容（B4 六类型 + B3 倒计时 + B5 新档位）', () 
     for (let i = 0; i < 25; i++) await page.mouse.wheel(0, 120); // deltaY>0 = 放大 1.1×/档
     await settle(page, 3);
     await golden(page, 'timeframe-1H');
+  });
+
+  /**
+   * ㉑ P2-A Pine 绘图指令（bgcolor/barcolor/plotshape）：harness 编译脚本挂主图
+   * （compilePine → registerCustomDef → addIndicator，与 App PineEditorPanel 同路径），
+   * 黄金截图一表面覆盖三类绘制——阳线列绿色背景色带（drawPinePaint bg 相位）/
+   * 阴线蜡烛体红色覆绘（bar 相位）/ 阳线下方蓝色三角（drawPineShapes belowbar）。
+   * 条件序列经 computeExtra 窗口旁路（与 compute 同脏缓存），确定性种子数据驱动。
+   */
+  test('㉑ P2-A Pine 绘图指令（bgcolor/barcolor/plotshape）', async ({ page }) => {
+    await openHarness(page);
+    const uid = await page.evaluate(() =>
+      window.__vh.addPine(
+        [
+          'indicator("P2-A 绘图指令", overlay=true)',
+          'plot(close, "收盘")',
+          'bgcolor(close > open, color=color.green)',
+          'barcolor(close < open, color=color.red)',
+          'plotshape(close > open, style=shape.triangleup, location=location.belowbar, color=color.blue)',
+        ].join('\n'),
+      ),
+    );
+    expect(uid, 'Pine 脚本应编译并挂载').not.toBeNull();
+    await settle(page, 3);
+    await golden(page, 'pine-paint');
   });
 });
