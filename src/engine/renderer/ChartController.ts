@@ -3,9 +3,10 @@ import { Viewport } from '../viewport/Viewport';
 import { Crosshair } from '../crosshair/Crosshair';
 import { TIMEFRAMES, type Bar, type ChartTypeId, type Timeframe } from '@/types/market';
 import { CloseCountdown } from '../countdown';
-import type { IndicatorInstance, IndicatorOptions } from '@/indicators/core/instance';
+import type { IndicatorOptions } from '@/indicators/core/instance';
 import { serializeDrawings, deserializeDrawings, type Drawing, type DrawingTypeId } from '../drawing/types';
-import { AnchorDropState } from '../drawing/anchorDrop';
+import { AvwapAnchorDrop, type AvwapAnchorHost } from './avwapAnchor';
+import { earlyFinishMinPoints } from '../drawing/placingRules';
 import { pixelToPoint, type DrawContext } from '../drawing/drawDrawings';
 import type { TradeVisual } from './drawTrading';
 import type { LegendInfo, LegendOptions } from './drawCrosshair';
@@ -26,7 +27,7 @@ import { RenderPipeline } from './RenderPipeline';
 /**
  * 图表控制器（D 批次拆分④；架构映射：ChartRenderer 门面化）。
  * 公开 API 全量委托：状态迁移给 ChartState，输入给 InputController + 三手势，
- * 帧绘制给 RenderPipeline + PaneRenderer，联动给 SyncBridge；
+ * 帧绘制给 RenderPipeline + PaneRenderer，联动给 SyncBridge，AVWAP 锚定落点给 AvwapAnchorDrop；
  * 本类只做装配、生命周期（rAF/dispose）与少量跨模块编排（画线上下文/倒计时）。
  */
 
@@ -61,8 +62,8 @@ export class ChartController {
   private contextMenuCb: ((price: number, time: number, clientX: number, clientY: number) => void) | null = null;
   private paneActionCb: ((action: 'settings' | 'remove', indicatorId: string) => void) | null = null;
   private barSelectCb: ((index: number) => void) | null = null;
-  /** AVWAP 锚定落点状态机（P2-B：active = 选 bar 模式由 AVWAP 持有） */
-  private anchorDrop = new AnchorDropState();
+  /** AVWAP 锚定落点编排（P2-B 红线拆分：选 bar 模式状态机与落点写回，实现见 avwapAnchor.ts） */
+  private avwapAnchor: AvwapAnchorDrop;
 
   constructor(canvas: HTMLCanvasElement, bars: Bar[] = [], legend?: Partial<LegendInfo>) {
     this.manager = new CanvasManager(canvas);
@@ -126,6 +127,21 @@ export class ChartController {
     this.trade = new TradeGesture(inputHost);
     this.hover = new HoverController(inputHost, this.drawing, this.trade);
     this.input = new InputController(inputHost, this.panzoom, this.drawing, this.trade, this.hover);
+    // AVWAP 锚定落点装配（P2-B 红线拆分）：host 注入指标查询/选 bar 模式/落点解析与写回
+    const avwapHost: AvwapAnchorHost = {
+      lookupIndicator: (uid) => {
+        for (const pane of this.state.panes) {
+          const inst = pane.indicators.find((i) => i.uid === uid);
+          if (inst) return inst;
+        }
+        return undefined;
+      },
+      setBarSelectMode: (on, cb) => this.setBarSelectMode(on, cb),
+      barTimeAt: (idx) => this.state.displaySeries.barAt(idx)?.time ?? null,
+      onAnchored: (uid, barTime) => this.updateIndicator(uid, { params: { anchorTime: barTime } }),
+      invalidate: () => this.invalidate(),
+    };
+    this.avwapAnchor = new AvwapAnchorDrop(avwapHost);
     // 渲染层装配：单面板渲染 + 帧编排
     const paneHost: PaneRenderHost = {
       viewport: this.viewport,
@@ -228,54 +244,23 @@ export class ChartController {
 
   addIndicator(id: string, options?: IndicatorOptions): string | null {
     const uid = this.state.indicators.add(id, options);
-    // AVWAP（P2-B）：无锚点参数添加 → 进入选 bar 模式，图表点击落点即为锚定 bar
-    // （复用画线锚定落点交互：与 fib-auto 同款的「单击图表解析 bar」模式）
-    if (id === 'avwap' && uid && options?.params?.anchorTime === undefined) {
-      this.beginAvwapAnchor(uid);
-    }
+    this.avwapAnchor.maybeBegin(id, uid, options); // avwap 无锚点添加 → 进入选 bar 模式（P2-B）
     return uid;
   }
 
   removeIndicator(uid: string): void {
-    // 被锚定的实例被移除：退出选 bar 模式（回调目标已不存在）
-    if (this.anchorDrop.target === uid) {
-      this.anchorDrop.cancel();
-      this.setBarSelectMode(false, null);
-    }
+    this.avwapAnchor.maybeCancel(uid); // 被锚定实例移除 → 退出选 bar 模式
     this.state.indicators.remove(uid);
   }
 
   updateIndicator(uid: string, options: IndicatorOptions): void {
-    // AVWAP 锚点保持：store 侧参数不含 anchorTime 时沿用实例当前值（UI 改色不丢锚）
-    const inst = this.findIndicator(uid);
-    if (inst?.id === 'avwap' && options.params && options.params.anchorTime === undefined) {
-      options = { ...options, params: { ...options.params, anchorTime: inst.params.anchorTime } };
-    }
+    options = this.avwapAnchor.mergeAnchorParam(uid, options); // avwap 锚点保持（改色不丢锚）
     this.state.indicators.update(uid, options);
   }
 
   listIndicators(): IndicatorInfo[] { return this.state.indicators.list(); }
   exportIndicatorTemplate(): Array<{ id: string; params: Record<string, string | number | boolean> }> { return this.state.indicators.exportTemplate(); }
   importIndicatorTemplate(list: Array<{ id: string; params?: Record<string, string | number | boolean> }>): void { this.state.indicators.importTemplate(list); }
-
-  /** 按 uid 找指标实例（AVWAP 锚点保持用；不建索引，面板数量极小） */
-  private findIndicator(uid: string): IndicatorInstance | undefined {
-    for (const pane of this.state.panes) {
-      const inst = pane.indicators.find((i) => i.uid === uid);
-      if (inst) return inst;
-    }
-    return undefined;
-  }
-
-  /** AVWAP 锚定落点（P2-B）：选 bar 模式开启后，单击图表即把该 bar 时间写为实例锚点 */
-  private beginAvwapAnchor(uid: string): void {
-    this.anchorDrop.begin(uid, (u, barTime) => this.updateIndicator(u, { params: { anchorTime: barTime } }));
-    this.setBarSelectMode(true, (idx) => {
-      const bar = this.state.displaySeries.barAt(idx);
-      if (bar) this.anchorDrop.drop(bar.time);
-    });
-    this.invalidate();
-  }
 
   // ---------- 生命周期 ----------
 
@@ -462,11 +447,7 @@ export class ChartController {
 
   /** 设置当前工具（null = 光标模式） */
   setActiveTool(tool: DrawingTypeId | null): void {
-    // AVWAP 锚定落点进行中切换工具 = 放弃锚定（退出选 bar 模式）
-    if (this.anchorDrop.active) {
-      this.anchorDrop.cancel();
-      this.setBarSelectMode(false, null);
-    }
+    this.avwapAnchor.cancelIfActive(); // 锚定落点进行中切换工具 = 放弃（退出选 bar 模式）
     this.drawing.setTool(tool);
   }
   setMagnet(on: boolean): void { this.drawing.layer.setMagnet(on); }
@@ -537,10 +518,10 @@ export class ChartController {
   importDrawings(raw: string): void { this.drawing.layer.replaceAll(deserializeDrawings(raw)); this.notifyDrawings(); this.invalidate(); }
 
   /** 完成路径类画线（双击/回车）：path 既有语义 +
-   *  P2-B 多边形（≥3 顶点）/ 艾略特波浪（≥2 锚点）支持提前收尾（不足则继续累积） */
+   *  P2-B 多边形（≥3 顶点）/ 艾略特波浪（≥2 锚点）支持提前收尾（最小落点数见 placingRules） */
   finishPlacing(): void {
     const tool = this.drawing.tool;
-    const minPoints = tool === 'polygon' ? 3 : tool === 'elliott-wave' ? 2 : 0;
+    const minPoints = earlyFinishMinPoints(tool);
     if (tool && minPoints > 0 && this.drawing.placingPoints.length >= minPoints) {
       this.drawing.layer.add(tool, this.drawing.placingPoints);
       this.drawing.setTool(tool); // 重置放置态并保持工具激活（可连续放置下一条）
@@ -559,10 +540,7 @@ export class ChartController {
       this.drawing.layer.remove(selected.id);
       this.notifyDrawings();
     }
-    if (this.anchorDrop.active) {
-      this.anchorDrop.cancel();
-      this.setBarSelectMode(false, null);
-    }
+    this.avwapAnchor.cancelIfActive(); // AVWAP 锚定落点进行中 → 退出选 bar 模式
     this.drawing.cancelPlacing();
   }
 
