@@ -2,8 +2,9 @@ import { useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronDown, History, Pencil, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useLayoutStore } from '@/store/layoutStore';
-import { fontSize, icon, shadow, space, zIndex } from '@/ui/tokens';
+import { icon, space } from '@/ui/tokens';
 import { Modal } from '@/ui/primitives';
+import { btnStyle, checkSlot, footerStyle, groupLabelStyle, inputStyle, itemStyle, menuStyle, nameLineStyle, rowBtnStyle, sepStyle, timeLineStyle, triggerStyle } from './layoutSaveMenuStyles';
 
 /** 存档时间格式化：本地时区 YYYY-MM-DD HH:mm（不用 toLocaleString，避免各环境格式漂移） */
 function formatTime(ts: number): string {
@@ -201,119 +202,3 @@ export function LayoutSaveMenu() {
     </>
   );
 }
-
-// ---------- 样式（与 ToolbarSelect / primitives 同源，颜色全部走 CSS 变量） ----------
-
-const triggerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 5,
-  height: 26,
-  padding: `0 ${space.sm}px`,
-  border: 'none',
-  borderRadius: 4,
-  fontSize: fontSize.md,
-  color: 'var(--text-dim)',
-  cursor: 'pointer',
-  flexShrink: 0,
-};
-
-const menuStyle: React.CSSProperties = {
-  minWidth: 240,
-  maxHeight: 420,
-  overflowY: 'auto',
-  background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
-  padding: '4px 0',
-  zIndex: zIndex.dropdown,
-  boxShadow: shadow.menu,
-};
-
-const itemStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: space.sm,
-  width: '100%',
-  padding: '5px 8px',
-  border: 'none',
-  color: 'var(--text)',
-  fontSize: fontSize.md,
-  cursor: 'pointer',
-  textAlign: 'left',
-  outline: 'none',
-  whiteSpace: 'nowrap',
-};
-
-const checkSlot: React.CSSProperties = { width: icon.md, flexShrink: 0, display: 'flex', alignItems: 'center' };
-
-const rowBtnStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 22,
-  height: 22,
-  flexShrink: 0,
-  border: 'none',
-  borderRadius: 4,
-  background: 'transparent',
-  color: 'var(--text-faint)',
-  cursor: 'pointer',
-  padding: 0,
-};
-
-const nameLineStyle: React.CSSProperties = {
-  display: 'block',
-  maxWidth: 200,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-};
-
-const timeLineStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: fontSize.sm,
-  color: 'var(--text-faint)',
-};
-
-const groupLabelStyle: React.CSSProperties = {
-  padding: '4px 8px 2px',
-  fontSize: fontSize.sm,
-  color: 'var(--text-faint)',
-};
-
-const sepStyle: React.CSSProperties = {
-  height: 1,
-  background: 'var(--border)',
-  margin: `${space.xs}px 0`,
-};
-
-const footerStyle: React.CSSProperties = {
-  padding: '4px 8px 2px',
-  fontSize: fontSize.sm,
-  color: 'var(--text-faint)',
-};
-
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  boxSizing: 'border-box',
-  height: 28,
-  padding: `0 ${space.sm}px`,
-  background: 'var(--panel-2)',
-  color: 'var(--text)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
-  fontSize: fontSize.md,
-  outline: 'none',
-};
-
-const btnStyle: React.CSSProperties = {
-  height: 26,
-  padding: `0 ${space.md}px`,
-  background: 'var(--panel-2)',
-  color: 'var(--text)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
-  fontSize: fontSize.md,
-  cursor: 'pointer',
-};
