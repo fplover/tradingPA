@@ -165,8 +165,9 @@ export class RenderPipeline {
     // 主图叠加指标在悬停 bar 上的值（图例展示）
     const legendIndicators: LegendStudyValues[] = [];
     const mainPane = st.panes[0];
-    const legendIndex =
-      this.host.crosshair.visible && hoveredBar ? this.host.crosshair.barIndex : st.displaySeries.length - 1;
+    // 回放中图例与最新价都必须跟随回放游标（st.currentIndex / st.currentBar），
+    // 取真实末柱会泄露「未来」价格——见 ChartState.currentIndex 注释。
+    const legendIndex = this.host.crosshair.visible && hoveredBar ? this.host.crosshair.barIndex : st.currentIndex;
     if (!st.hideStudies && mainPane.indicators.length > 0 && legendIndex >= 0) {
       const bars = st.bars();
       for (const inst of mainPane.indicators) {
@@ -194,7 +195,7 @@ export class RenderPipeline {
     const legendInfo: LegendDrawInfo = { collapsed: 0 };
     drawLegendBlock(
       ctx,
-      hoveredBar ?? st.displaySeries.last,
+      hoveredBar ?? st.currentBar,
       { ...legend, marketOpen: legend.market ? isMarketOpen(legend.market) : undefined },
       legendIndicators,
       st.legendOptions,

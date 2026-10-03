@@ -1,6 +1,6 @@
 import type { Viewport } from '../viewport/Viewport';
 import type { BarSeries } from '@/data/BarSeries';
-import type { ChartTypeId } from '@/types/market';
+import type { Bar, ChartTypeId } from '@/types/market';
 import type { IndicatorInstance } from '@/indicators/core/instance';
 import type { PaneState } from './ChartState';
 import { AXIS_WIDTH } from './ChartState';
@@ -42,6 +42,10 @@ export interface PaneRenderHost {
   readonly viewport: Viewport;
   /** 当前渲染序列（砖块/HA 为变换结果） */
   series(): BarSeries;
+  /** 「当前」bar 与下标：非回放 = 真实末柱，回放中 = 回放游标处
+   *  （最新价线/轴徽章必须取它，否则回放会显示未来价格） */
+  currentBar(): Bar | undefined;
+  currentIndex(): number;
   /** 画布宽（选中高亮贯穿含数值轴的全宽） */
   canvasW(): number;
   chartW(): number;
@@ -139,12 +143,14 @@ export class PaneRenderer {
     }
     drawPriceAxis(ctx, pane.priceScale, this.host.decimals(), geo, pane.kind !== 'price');
 
-    // 主图最新价：点线 + 右轴方向着色徽章（徽章旁附带收盘倒计时）
+    // 主图最新价：点线 + 右轴方向着色徽章（徽章旁附带收盘倒计时）。
+    // 取「当前 bar」而非真实末柱：回放中必须跟随回放游标，否则泄露未来价格。
     if (pane.kind === 'price') {
-      const bs = this.host.series().raw();
-      if (bs.length > 0) {
-        const lastBar = bs[bs.length - 1];
-        const prevClose = bs.length > 1 ? bs[bs.length - 2].close : lastBar.open;
+      const lastBar = this.host.currentBar();
+      if (lastBar) {
+        const i = this.host.currentIndex();
+        const bs = this.host.series().raw();
+        const prevClose = i > 0 ? bs[i - 1].close : lastBar.open;
         drawLastPrice(ctx, pane.priceScale, lastBar, prevClose, this.host.decimals(), geo, countdownText);
       }
     }

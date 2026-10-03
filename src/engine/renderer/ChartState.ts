@@ -149,6 +149,24 @@ export class ChartState {
     return this.baseSeries.last?.time ?? 0;
   }
 
+  /**
+   * 「当前」bar 的下标：非回放 = 真实末柱；回放中 = 回放游标（并截到序列长度内）。
+   *
+   * 最新价线、价格轴徽章、图例、倒计时都必须取它。第四轮审查发现它们此前一律取
+   * 真实末柱——`visibleRange()` 已按 replayIndex 截断，但这条路径没有，
+   * 于是回放中会直接显示「未来」的价格（倒计时反而是关掉的，更显不一致）。
+   */
+  get currentIndex(): number {
+    const n = this.displaySeries.length;
+    if (n === 0) return -1;
+    return this.replayIndex === null ? n - 1 : Math.min(this.replayIndex, n - 1);
+  }
+
+  /** 回放游标处的 bar（非回放 = 真实末柱）；空序列返回 undefined */
+  get currentBar(): Bar | undefined {
+    return this.currentIndex < 0 ? undefined : this.displaySeries.raw()[this.currentIndex];
+  }
+
   /** 指标计算/绘制用的只读 bar 数组（零拷贝） */
   bars(): readonly Bar[] {
     return this.displaySeries.raw();

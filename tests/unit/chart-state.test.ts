@@ -105,6 +105,35 @@ describe('ChartState：复盘与可视区间', () => {
     expect(replayed.from).toBeLessThanOrEqual(replayed.to);
     expect(full.to).toBeGreaterThan(150);
   });
+
+  /**
+   * 第四轮审查修复：最新价线 / 价格轴徽章 / 图例此前一律取**真实末柱**，
+   * 而 visibleRange 已按 replayIndex 截断——回放中于是直接显示「未来」价格。
+   * 单一事实源是 ChartState.currentIndex / currentBar。
+   */
+  it('currentIndex/currentBar：回放中跟随游标，非回放为真实末柱（防泄露未来价）', () => {
+    const { state } = makeState();
+    state.applyData(true);
+
+    // 非回放：真实末柱
+    expect(state.currentIndex).toBe(BARS.length - 1);
+    expect(state.currentBar?.time).toBe(BARS[BARS.length - 1].time);
+
+    // 回放中：必须落在游标处，而不是真实末柱
+    state.replayIndex = 150;
+    expect(state.currentIndex).toBe(150);
+    expect(state.currentBar?.time).toBe(BARS[150].time);
+    expect(state.currentBar?.time).not.toBe(BARS[BARS.length - 1].time);
+
+    // 越界游标钳到序列内
+    state.replayIndex = BARS.length + 99;
+    expect(state.currentIndex).toBe(BARS.length - 1);
+
+    // 退出回放恢复真实末柱
+    state.replayIndex = null;
+    expect(state.currentIndex).toBe(BARS.length - 1);
+    expect(state.currentBar?.time).toBe(BARS[BARS.length - 1].time);
+  });
 });
 
 describe('ChartState：面板布局与配置', () => {

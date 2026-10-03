@@ -183,6 +183,8 @@ export class ChartController {
     const paneHost: PaneRenderHost = {
       viewport: this.viewport,
       series: () => this.state.displaySeries,
+      currentBar: () => this.state.currentBar,
+      currentIndex: () => this.state.currentIndex,
       canvasW: () => this.manager.width,
       chartW: () => this.manager.width - AXIS_WIDTH,
       chartType: () => this.state.chartType,
