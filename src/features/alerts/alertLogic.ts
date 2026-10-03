@@ -165,9 +165,11 @@ export function evaluateCondition(
     case 'less':
       return value <= threshold;
     case 'crossUp':
-      return prev !== undefined && prev < threshold && value >= threshold;
+      // 与本仓 Pine crossover 同式（x[1] <= y[1] and x > y）：prev == threshold 也算穿越，
+      // 整数报价场景下旧式（prev < threshold）可复现漏报
+      return prev !== undefined && prev <= threshold && value > threshold;
     case 'crossDown':
-      return prev !== undefined && prev > threshold && value <= threshold;
+      return prev !== undefined && prev >= threshold && value < threshold;
     default:
       return false;
   }

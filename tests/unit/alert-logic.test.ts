@@ -48,6 +48,13 @@ describe('evaluateCondition', () => {
     expect(evaluateCondition('crossDown', 100, 99, undefined)).toBe(false);
     expect(evaluateCondition('crossDown', 100, 101, 102)).toBe(false); // 值仍在阈值上方，未下穿
   });
+
+  it('crossUp/crossDown：prev == threshold 也算穿越（与 Pine ta.crossover 同式，整数报价不漏报）', () => {
+    expect(evaluateCondition('crossUp', 100, 101, 100)).toBe(true);
+    expect(evaluateCondition('crossUp', 100, 100, 100)).toBe(false); // 值未离开阈值，不算穿离
+    expect(evaluateCondition('crossDown', 100, 99, 100)).toBe(true);
+    expect(evaluateCondition('crossDown', 100, 100, 100)).toBe(false);
+  });
 });
 
 describe('runAlertCheck', () => {
