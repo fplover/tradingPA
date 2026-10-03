@@ -12,7 +12,8 @@ import { useDrawingStore } from '@/store/drawingStore';
 import { useToast } from '@/features/ui/Toast';
 import { Modal } from '@/ui/primitives';
 import { decimalsFor } from '@/data/format';
-import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
+import { space } from '@/ui/tokens';
+import { menuStyle, itemStyle, iconSlot, hintStyle, sepStyle, fieldStyle, fieldLabelStyle, inputStyle, ghostBtnStyle, primaryBtnStyle } from './chartContextMenuStyles';
 
 export interface ChartMenuState {
   price: number;
@@ -279,83 +280,3 @@ function ChartAlertDialog({
     </Modal>
   );
 }
-
-const menuStyle: React.CSSProperties = {
-  minWidth: 210,
-  background: 'var(--panel)',
-  border: '1px solid var(--border)',
-  borderRadius: radius.md,
-  padding: '4px 0',
-  zIndex: zIndex.dropdown,
-  boxShadow: shadow.menu,
-};
-
-const itemStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: space.sm,
-  width: '100%',
-  padding: `6px ${space.sm + 2}px`,
-  border: 'none',
-  color: 'var(--text)',
-  fontSize: fontSize.md,
-  cursor: 'pointer',
-  textAlign: 'left',
-  outline: 'none',
-  whiteSpace: 'nowrap',
-};
-
-const iconSlot: React.CSSProperties = { width: 16, flexShrink: 0, display: 'flex', alignItems: 'center' };
-
-const hintStyle: React.CSSProperties = {
-  marginLeft: 'auto',
-  paddingLeft: space.md,
-  color: 'var(--text-faint)',
-  fontSize: fontSize.sm,
-};
-
-const sepStyle: React.CSSProperties = {
-  height: 1,
-  background: 'var(--border)',
-  margin: `${space.xs}px 0`,
-};
-
-const fieldStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: space.sm,
-  marginBottom: space.sm,
-};
-
-const fieldLabelStyle: React.CSSProperties = { color: 'var(--text)', fontSize: fontSize.md };
-
-const inputStyle: React.CSSProperties = {
-  width: 140,
-  background: 'var(--input-bg)',
-  border: '1px solid var(--border)',
-  borderRadius: radius.sm,
-  color: 'var(--text)',
-  padding: '4px 8px',
-  fontSize: fontSize.md,
-};
-
-const ghostBtnStyle: React.CSSProperties = {
-  background: 'transparent',
-  border: 'none',
-  color: 'var(--text-dim)',
-  fontSize: fontSize.md,
-  cursor: 'pointer',
-  padding: `${space.xs}px ${space.sm}px`,
-  borderRadius: radius.sm,
-};
-
-const primaryBtnStyle: React.CSSProperties = {
-  background: 'var(--accent)',
-  border: 'none',
-  color: 'var(--text-on-accent)',
-  fontSize: fontSize.md,
-  cursor: 'pointer',
-  padding: `${space.xs}px ${space.md}px`,
-  borderRadius: radius.sm,
-};
