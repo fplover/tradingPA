@@ -38,20 +38,21 @@ export default defineConfig({
          * 代码分割（存量债务：单 chunk >500kB 警告从未处理）。
          * 只按「第三方库 / 应用代码」切分，不引入任何动态 import——切割边界不改变
          * 模块求值顺序与副作用，因此对渲染与既有黄金截图是结构中性的。
-         * 依 vite 官方建议把体积大且更新频率低的依赖单独成块，借浏览器缓存。
          *
-         * 用函数式而非对象式：对象式按「模块 id 精确值」匹配，React 实际经
-         * `react/jsx-runtime`（自动 JSX 运行时）与 `react-dom/client` 进入图，
-         * 列 `'react'`/`'react-dom'` 会得到一个 0.03kB 的空壳块（实测）。
-         * 函数式按解析后的 node_modules 路径归类，稳定命中。
+         * Vite 8 起底层换为 Rolldown，`manualChunks` 虽仍接受但分组不稳定
+         * （实测：函数式规则下 React 仍被并入 radix 块，react 块只剩 0.18kB 空壳），
+         * 故改用 Rolldown 的 `codeSplitting.groups`（`advancedChunks` 是它的旧名，
+         * 用旧名会打弃用警告）：按 test 正则分组，groups 有序——先匹配者优先，
+         * 兜底的 vendor 必须放最后。
          */
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined;
-          if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return 'react';
-          if (id.includes('@radix-ui')) return 'radix';
-          if (id.includes('lucide-react')) return 'lucide';
-          if (id.includes('zustand')) return 'zustand';
-          return 'vendor';
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/ },
+            { name: 'radix', test: /[\\/]node_modules[\\/]@radix-ui[\\/]/ },
+            { name: 'lucide', test: /[\\/]node_modules[\\/]lucide-react[\\/]/ },
+            { name: 'zustand', test: /[\\/]node_modules[\\/]zustand[\\/]/ },
+            { name: 'vendor', test: /[\\/]node_modules[\\/]/ },
+          ],
         },
       },
     },
