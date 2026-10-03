@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { TvIcon, type TvIconProps } from './tvIcons';
 
 /** 线条族 8 种 + 测量/百分比线 + 几何族 6 种（TV 风自绘图标）。

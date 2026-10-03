@@ -1,4 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react';
+// React 19 移除了全局 JSX 命名空间，返回类型须显式从 react 引入该命名空间
+import type { CSSProperties, JSX, ReactNode } from 'react';
 
 /** TV 风格画线工具栏自绘图标集（替代 lucide 通用图标）：统一 viewBox 24×24、
  *  stroke=currentColor、stroke-width 1.5、fill=none、round linecap/linejoin

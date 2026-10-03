@@ -1,3 +1,5 @@
+import type { JSX } from 'react';
+
 import { TvIcon, type TvIconProps } from './tvIcons';
 
 /** 文本族 5 种 + Fib 家族 6 种 + 江恩 3 件 + 艾略特波浪（TV 风自绘图标）。
