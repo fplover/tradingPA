@@ -25,7 +25,7 @@ npm run dev          # http://localhost:5173
 | `npm run lint:fix` | ESLint 自动修复 |
 | `npm run format` / `format:check` | Prettier（**注意**：全仓尚未重排，见下「已知状态」） |
 | `npm test` | Vitest 单测（49 文件 / 959 例） |
-| `npm run test:e2e` | Playwright E2E（48 例，含 21 面黄金截图） |
+| `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 
 ## 目录结构
 
@@ -58,7 +58,7 @@ docs/           Spec 与差距分析（见下）
 
 批次出口标准：`npm run typecheck && npm run lint && npm test && npm run test:e2e` 全绿 + `npm run build` 通过。
 
-当前实测基线（2026-09-30）：typecheck 0 错 / lint 0 错（32 警告）/ 单测 959 全过 / E2E 48 全过（21 面黄金截图零 diff）/ 构建 732 kB raw · gzip 222.94 kB。
+当前实测基线（2026-09-30）：typecheck 0 错 / lint 0 错（32 警告）/ 单测 959 全过 / E2E 54 例全过（**27 面黄金截图零 diff**）/ 构建 8 chunk、最大应用块 445 kB（>500 kB 警告已消除），合计 gzip 224.31 kB。
 
 **E2E 在 Windows 上必须先自己起 dev server 再跑**：
 
@@ -72,19 +72,21 @@ npm run test:e2e
 ## 项目规则（施工红线）
 
 - 图标只用 `lucide-react` 或自绘 SVG，禁字符 emoji
-- 颜色一律走 CSS 变量/设计 token，渲染路径禁硬编码 hex
+- 颜色一律走 CSS 变量 / 设计 token。**canvas 渲染路径与 UI 层零 hex 字面量**，可机械审计：
+  默认色走 `src/engine/palette.ts`（TV 调色板数据，非硬编码）、主题色走 `src/engine/theme.ts`、
+  UI 走 `--text-on-accent` / `--on-updown` / `--on-warn` 等 CSS 变量
 - 渲染循环与 React 解耦：高频行情不触发 React 重渲染；跨图表联动走 `store/syncBus.ts`（sourceId 防环 + 限频）
 - 单文件 ≤ 300 行（唯一在卷例外：`src/engine/renderer/ChartController.ts`，纯委托门面，已裁决）
 - 引擎侧框架无关：不得 import React / zustand
-- 公开 API 签名冻结，重构保持调用点零改动（golden：21 面截图 + 959 单测 + 48 E2E）
+- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 959 单测 + 54 E2E）
 
 ## 已知状态与待办
 
 - **Prettier 尚未全仓应用**：配置与脚本已就位，但 288 个受检文件中 175 个未格式化；全仓 `--write` 会产生不可评审的巨 diff，需作为**独立提交**（配 `git blame` 忽略）择机执行。当前请对改动的文件单独 `npx prettier --write <file>`。
 - `npm run format:check` 在上述提交落地前会保持红色，这是已知且刻意的。
-- 单 chunk 732 kB（>500 kB 警告）为存量：尚未做 `manualChunks` / 路由级代码分割。
-- canvas 层仍有约 121 处 hex（Pine `color.*` 语言常量 16 + TV 调色板数据 ~96 + 渲染路径 token 化后残留 ~10 与 rgba 1），分属合理存量与待清理。
 - `jsdom@30` 声明要求 Node `^22.22.2`，当前环境 22.21.1 可用但会打 `EBADENGINE` 警告。
+
+已收口（2026-09-30）：单 chunk >500 kB → 已按 vendor 分块（最大应用块 445 kB）；canvas hex 无审计口径 → 已集中到 `palette.ts`，全仓 hex 259 → 100 且零违规；P2-B 画线家族无像素安全网 → 已补 6 面覆盖 25 个工具（黄金面 21 → 27）。
 
 ## 文档
 
