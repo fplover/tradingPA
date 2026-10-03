@@ -27,6 +27,13 @@ import type { ChartTypeId, TimeframeId } from '@/types/market';
  *   ⑲ timeframe-45m           B5 45 分钟档位（1m 种子聚合渲染）
  *   ⑳ timeframe-1H            Wave5 项7 时间 zh 化视觉覆盖（M月D日 日级标签 + 1H 聚合）
  *   ㉑ pine-paint             P2-A Pine 绘图指令（bgcolor/barcolor/plotshape）
+ *   ㉒ drawings-line-family   P2-B 线类家族（趋势线/射线/水平线/垂直线/箭头/信息线）
+ *   ㉓ drawings-shape-family  P2-B 通道与形状（平行通道/矩形/椭圆/路径）
+ *   ㉔ drawings-text-family   P2-B 文字类（文本/便签/价格标签/锚定文本/箭头标记）
+ *   ㉕ drawings-geometry-family P2-B 几何进阶（多边形/圆弧/曲线）
+ *   ㉖ drawings-gann-elliott  P2-B 江恩与艾略特（扇形/江恩线/江恩箱/艾略特波浪）
+ *   ㉗ drawings-measure-fib   P2-B 测量与斐波那契（测量/百分比线/斐波那契回撤/扩展）
+ *   （㉒–㉗ 补 P2-B 画线家族的覆盖空档：此前 11 个新工具「结构性不可见」，见文件末说明）
  *
  * 稳定性约定（防 flaky）：
  *   - deviceScaleFactor 锁 1（见 test.use）
@@ -78,6 +85,9 @@ declare global {
       setLayout(n: number): void;
       setTool(t: string | null): void;
       clearDrawings(): void;
+      importDrawings(raw: string): void;
+      barAnchor(i: number, price: 'open' | 'high' | 'low' | 'close'): { time: number; price: number } | null;
+      toolDefaultStyle(t: string): Record<string, unknown> | null;
       setFrozenNow(ts: number): void;
       countdownProbe(): { lastBarTime: number; closeTime: number };
       axisTextRgb(): [number, number, number];
@@ -407,5 +417,128 @@ test.describe('A3-1 扩容（B4 六类型 + B3 倒计时 + B5 新档位）', () 
     expect(uid, 'Pine 脚本应编译并挂载').not.toBeNull();
     await settle(page, 3);
     await golden(page, 'pine-paint');
+  });
+});
+
+/**
+ * P2-B 画线家族黄金面（补覆盖空档）。
+ *
+ * 背景：既有 21 面中画线只有 ⑧ 覆盖「趋势线 + 水平线」两条，且 §12 自述 P2-B 新增的 11 个
+ * 画线工具走 harness 路径「结构性不可见」——即新工具家族此前没有像素级安全网。本组把画线
+ * 按族拆成 6 面覆盖 25 个工具：用 harness 的 importDrawings 走**对象树同款序列化通道**
+ * （serializeDrawings → deserializeDrawings，不绕过几何/命中/渲染链路）；锚点由 barAnchor
+ * 从真实种子 bar 取，钉在可见区内，避免写死世界坐标后随视口变化跑出屏；样式取
+ * DRAWING_TOOLS 默认值（单一数据源）→ 这些面同时是调色板默认色的回归网。
+ *
+ * 采集：UPDATE_SNAPSHOTS=1 npx playwright test visual-regression --grep "画线家族"
+ * （限定本组，绝不重产既有 21 面——反作弊门禁：基线变更须单独评审）
+ */
+type VhAnchor = [number, 'open' | 'high' | 'low' | 'close'];
+interface VhDrawSpec {
+  id: string;
+  type: string;
+  anchors: VhAnchor[];
+}
+
+async function importDrawings(page: Page, specs: VhDrawSpec[]): Promise<void> {
+  await page.evaluate((list) => {
+    const vh = window.__vh;
+    const drawings = list.map((s) => ({
+      id: s.id,
+      type: s.type,
+      points: s.anchors.map(([i, w]) => vh.barAnchor(i, w)),
+      style: vh.toolDefaultStyle(s.type),
+      locked: false,
+      visible: true,
+    }));
+    vh.importDrawings(JSON.stringify(drawings));
+  }, specs);
+}
+
+test.describe('P2-B 画线家族（黄金面）', () => {
+  test('㉒ 线类家族（趋势线/射线/水平线/垂直线/箭头/信息线）', async ({ page }) => {
+    await openHarness(page);
+    await importDrawings(page, [
+      { id: 'l1', type: 'trendline', anchors: [[480, 'low'], [540, 'high']] },
+      { id: 'l2', type: 'ray', anchors: [[500, 'high'], [560, 'low']] },
+      { id: 'l3', type: 'hline', anchors: [[520, 'close']] },
+      { id: 'l4', type: 'vline', anchors: [[570, 'close']] },
+      { id: 'l5', type: 'arrow', anchors: [[490, 'close'], [525, 'close']] },
+      { id: 'l6', type: 'info-line', anchors: [[550, 'low'], [592, 'high']] },
+    ]);
+    await settle(page, 3);
+    await golden(page, 'drawings-line-family');
+  });
+
+  test('㉓ 通道与形状（平行通道/矩形/椭圆/路径）', async ({ page }) => {
+    await openHarness(page);
+    await importDrawings(page, [
+      { id: 's1', type: 'channel', anchors: [[475, 'low'], [510, 'high'], [555, 'low']] },
+      { id: 's2', type: 'rect', anchors: [[500, 'high'], [545, 'low']] },
+      { id: 's3', type: 'ellipse', anchors: [[520, 'high'], [565, 'low']] },
+      { id: 's4', type: 'path', anchors: [[485, 'low'], [515, 'high'], [550, 'low'], [585, 'high']] },
+    ]);
+    await settle(page, 3);
+    await golden(page, 'drawings-shape-family');
+  });
+
+  test('㉔ 文字类（文本/便签/价格标签/锚定文本/箭头标记）', async ({ page }) => {
+    await openHarness(page);
+    await importDrawings(page, [
+      { id: 't1', type: 'text', anchors: [[480, 'high']] },
+      { id: 't2', type: 'note', anchors: [[505, 'low']] },
+      { id: 't3', type: 'price-label', anchors: [[540, 'high']] },
+      { id: 't4', type: 'anchored-text', anchors: [[565, 'low']] },
+      { id: 't5', type: 'arrow-mark', anchors: [[590, 'high']] },
+    ]);
+    await settle(page, 3);
+    await golden(page, 'drawings-text-family');
+  });
+
+  test('㉕ 几何进阶（多边形/圆弧/曲线）', async ({ page }) => {
+    await openHarness(page);
+    await importDrawings(page, [
+      { id: 'g1', type: 'polygon', anchors: [[475, 'low'], [515, 'high'], [560, 'low'], [535, 'open']] },
+      { id: 'g2', type: 'arc', anchors: [[495, 'high'], [540, 'low'], [585, 'high']] },
+      { id: 'g3', type: 'curve', anchors: [[505, 'low'], [535, 'high'], [565, 'low'], [593, 'high']] },
+    ]);
+    await settle(page, 3);
+    await golden(page, 'drawings-geometry-family');
+  });
+
+  test('㉖ 江恩与艾略特（扇形/江恩线/江恩箱/艾略特波浪）', async ({ page }) => {
+    await openHarness(page);
+    await importDrawings(page, [
+      { id: 'w1', type: 'gann-fan', anchors: [[500, 'low']] },
+      { id: 'w2', type: 'gann-line', anchors: [[540, 'high']] },
+      { id: 'w3', type: 'gann-box', anchors: [[555, 'low'], [590, 'high']] },
+      {
+        id: 'w4',
+        type: 'elliott-wave',
+        anchors: [
+          [470, 'low'],
+          [492, 'high'],
+          [512, 'low'],
+          [532, 'high'],
+          [552, 'low'],
+          [572, 'high'],
+          [592, 'low'],
+        ],
+      },
+    ]);
+    await settle(page, 3);
+    await golden(page, 'drawings-gann-elliott');
+  });
+
+  test('㉗ 测量与斐波那契（测量/百分比线/斐波那契回撤/扩展）', async ({ page }) => {
+    await openHarness(page);
+    await importDrawings(page, [
+      { id: 'm1', type: 'measure', anchors: [[480, 'low'], [525, 'high']] },
+      { id: 'm2', type: 'percent-line', anchors: [[505, 'high'], [560, 'low']] },
+      { id: 'm3', type: 'fib', anchors: [[520, 'low'], [580, 'high']] },
+      { id: 'm4', type: 'fib-extension', anchors: [[495, 'high'], [535, 'low'], [575, 'high']] },
+    ]);
+    await settle(page, 3);
+    await golden(page, 'drawings-measure-fib');
   });
 });

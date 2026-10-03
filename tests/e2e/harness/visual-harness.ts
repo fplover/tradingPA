@@ -3,7 +3,7 @@ import { setTheme, theme, type ThemeName } from '@/engine/theme';
 import { aggregateBars } from '@/data/aggregate';
 import { getTimeframe, type Bar, type ChartTypeId, type TimeframeId } from '@/types/market';
 import { nextCloseTime } from '@/engine/countdown';
-import type { DrawingTypeId } from '@/engine/drawing/types';
+import { DRAWING_TOOLS, type DrawingStyle, type DrawingTypeId } from '@/engine/drawing/types';
 import { compilePine } from '@/indicators/pine/compile';
 import { registerCustomDef } from '@/indicators/registry';
 
@@ -186,5 +186,24 @@ const main = (): ChartRenderer => renderers[0];
   },
   clearDrawings(): void {
     main().clearDrawings();
+  },
+  /**
+   * 导入画线（P2-B 画线家族黄金面用）：与对象树「导画线」走同一序列化通道
+   * （serializeDrawings/deserializeDrawings），不绕过几何与命中链路。
+   */
+  importDrawings(raw: string): void {
+    main().importDrawings(raw);
+  },
+  /**
+   * 第 i 根 bar 的确定性锚点（time + 指定价位）。spec 用它把画线钉在**可见区**内，
+   * 避免写死世界坐标后随着视口/种子数据变化跑到屏外。
+   */
+  barAnchor(i: number, price: 'open' | 'high' | 'low' | 'close'): { time: number; price: number } | null {
+    const b = main().getBars()[i];
+    return b ? { time: b.time, price: b[price] } : null;
+  },
+  /** 工具默认样式（DRAWING_TOOLS 单一数据源）：黄金面用真实默认色，spec 不另写字面量 */
+  toolDefaultStyle(t: DrawingTypeId): DrawingStyle | null {
+    return DRAWING_TOOLS.find((d) => d.id === t)?.defaultStyle ?? null;
   },
 };
