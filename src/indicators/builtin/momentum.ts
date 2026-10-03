@@ -1,6 +1,6 @@
 import type { Bar } from '@/types/market';
 import type { IndicatorDef } from '../core/types';
-import { sma, ema, closes, combine, wilder } from '../core/math';
+import { ema, closes, combine, wilder } from '../core/math';
 import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
@@ -43,7 +43,12 @@ export const MACD: IndicatorDef = {
     const c = closes(bars);
     const macd = combine(ema(c, f), ema(c, s), (a, b) => a - b);
     const macdFilled = macd.map((v) => v ?? 0);
-    const signal = sma(macdFilled, sig);
+    // 信号线 = EMA(MACD) —— TradingView 内置 MACD 与标准定义均为 EMA，
+    // 且同仓 Pine `ta.macd`（pine/taFunctions.ts）也是 `dea = EMA(dif, signal)`。
+    // 此前误用 SMA：同一平台两套数值。金标准用例见 tests/unit/indicators.test.ts 的
+    // 「MACD 信号线用 EMA 而非 SMA」——原用例用单调 ramp，SMA/EMA 都会收敛到同一值，
+    // 结构上钉不住这一点，故另加非收敛数据的对照断言。
+    const signal = ema(macdFilled, sig);
     const hist = combine(macd, signal, (a, b) => a - b);
     return { macd, signal: macd.map((v, i) => (v === undefined ? undefined : signal[i])), hist };
   },
