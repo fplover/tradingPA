@@ -24,8 +24,9 @@ npm run dev          # http://localhost:5173
 | `npm run lint` | ESLint 扁平配置（0 错误；32 条 `react-hooks/exhaustive-deps`、`react-refresh/only-export-components` 警告为存量基线） |
 | `npm run lint:fix` | ESLint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（49 文件 / 959 例） |
+| `npm test` | Vitest 单测（51 文件 / 993 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
+| `npm run audit` | 依赖漏洞审计（**必须走官方 registry**：本机配置的 npmmirror 镜像不实现 `/-/npm/v1/security/*`，直接 `npm audit` 会报 NOT_IMPLEMENTED） |
 
 ## 目录结构
 
@@ -82,6 +83,10 @@ npm run test:e2e
 
 ## 已知状态与待办
 
+- **依赖漏洞 4 项**（3 moderate + 1 high；均落在 dev 工具链 vite / esbuild / vitest / launch-editor，不进生产包）。
+  其中 high 为 `vite: server.fs.deny bypass on Windows alternate paths`——本项目正是 Windows + dev server，
+  **缓解措施：dev server 只监听 localhost，不要暴露到局域网**。修复需大版本升级（vite 5→8、vitest 3→5），
+  属破坏性变更，需单独排期。复查用 `npm run audit`。
 - `jsdom@30` 声明要求 Node `^22.22.2`，当前环境 22.21.1 可用但会打 `EBADENGINE` 警告。
 - `git blame` 建议启用忽略清单：`git config blame.ignoreRevsFile .git-blame-ignore-revs`（跳过纯格式化提交）。
 
