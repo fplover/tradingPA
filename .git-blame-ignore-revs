@@ -1,0 +1,13 @@
+# git blame 忽略清单：只登记「纯格式化 / 重排」提交——语义与渲染零变化，
+# 但会让 blame 指向格式化提交而非真正的作者改动。
+#
+# 启用方式（本地一次即可）：
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# GitHub 会自动识别该文件名并在 blame 页面跳过这些提交。
+#
+# 收录判据：该提交必须已用黄金截图 + 全量单测证明「零行为变化」。
+#
+# 26ccd52  style: Prettier 全仓格式化（176 文件触及，162 处内容变更）
+#          验证：typecheck 0 错 / lint 0 错 / 单测 959 全过 / E2E 54 全过
+#                （27 面黄金截图零 diff = 像素级中性）
+26ccd527c22bb4524c1fdf98e8f58ac5dae78dbd

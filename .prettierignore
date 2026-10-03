@@ -6,7 +6,11 @@ playwright-report
 .workbuddy
 .shots
 
-# 文档与登记册：§12 等长表格单元格是刻意排版，不接受 Prettier 重排
+# markdown 与 docs/ 不纳入格式化——理由是量化的，不是偏好：
+# Prettier 的表格对齐会把每个单元格填充到该表最长行的宽度，而 §12 登记表的单元格
+# 是长约 2500 字符的单行。实测 SPEC-TV-ALIGNMENT.md 44KB → 123KB（2.79 倍）、
+# OPEN-DECISIONS.md 1930 → 4069 字节，登记册将不可读。
+# 因此代码/配置全量格式化（format:check 覆盖），文档保持人工排版。
 docs/
 *.md
 

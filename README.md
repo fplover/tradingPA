@@ -23,7 +23,7 @@ npm run dev          # http://localhost:5173
 | `npm run typecheck` | 类型检查（含 `src` 与 `tests/unit`，开着 `noUnusedLocals`） |
 | `npm run lint` | ESLint 扁平配置（0 错误；32 条 `react-hooks/exhaustive-deps`、`react-refresh/only-export-components` 警告为存量基线） |
 | `npm run lint:fix` | ESLint 自动修复 |
-| `npm run format` / `format:check` | Prettier（**注意**：全仓尚未重排，见下「已知状态」） |
+| `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
 | `npm test` | Vitest 单测（49 文件 / 959 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 
@@ -82,11 +82,10 @@ npm run test:e2e
 
 ## 已知状态与待办
 
-- **Prettier 尚未全仓应用**：配置与脚本已就位，但 288 个受检文件中 175 个未格式化；全仓 `--write` 会产生不可评审的巨 diff，需作为**独立提交**（配 `git blame` 忽略）择机执行。当前请对改动的文件单独 `npx prettier --write <file>`。
-- `npm run format:check` 在上述提交落地前会保持红色，这是已知且刻意的。
 - `jsdom@30` 声明要求 Node `^22.22.2`，当前环境 22.21.1 可用但会打 `EBADENGINE` 警告。
+- `git blame` 建议启用忽略清单：`git config blame.ignoreRevsFile .git-blame-ignore-revs`（跳过纯格式化提交）。
 
-已收口（2026-09-30）：单 chunk >500 kB → 已按 vendor 分块（最大应用块 445 kB）；canvas hex 无审计口径 → 已集中到 `palette.ts`，`.ts/.tsx` 中的 hex 259 → 90 且**使用点零字面量**（剩余全为 token/调色板定义、Pine 语言常量表与注释）；P2-B 画线家族无像素安全网 → 已补 6 面覆盖 25 个工具（黄金面 21 → 27）。
+已收口（2026-09-30）：无 lint 门禁 → 已引入 ESLint + `.editorconfig` + `.gitattributes`；单 chunk >500 kB → 已按 vendor 分块（最大应用块 445 kB）；canvas hex 无审计口径 → 已集中到 `palette.ts`，`.ts/.tsx` 中的 hex 259 → 90 且**使用点零字面量**（剩余全为 token/调色板定义、Pine 语言常量表与注释）；P2-B 画线家族无像素安全网 → 已补 6 面覆盖 25 个工具（黄金面 21 → 27）；Prettier 未全仓应用 → 已单批格式化（162 处内容变更，`format:check` 转绿，行为中性经 27 面黄金截图零 diff 证明）。
 
 ## 文档
 
