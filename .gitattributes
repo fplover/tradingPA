@@ -1,0 +1,17 @@
+# 行尾统一为 LF。
+# 背景：仓库 index 已全为 LF，但 Windows 上 core.autocrlf=true 让工作区呈混合行尾
+# （2026-09-30 实测：index 306 文件全 LF / 工作区 268 LF + 38 CRLF），历史上造成过
+# 「幽灵 M」与拆分提交的假 diff（见 .workbuddy/memory/2026-09-29.md）。
+# 本文件把行尾策略固化进仓库，不再依赖各人本机的 git config。
+
+* text=auto eol=lf
+
+# 图片等二进制不做文本转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary

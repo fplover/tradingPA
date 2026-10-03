@@ -41,8 +41,8 @@ describe('周期聚合', () => {
   it('日/周/月按日历分桶', () => {
     // 跨越一周与一月
     const bars: Bar[] = [];
-    let t = Date.UTC(2024, 0, 29); // 周一
-    let price = 100;
+    const t = Date.UTC(2024, 0, 29); // 周一
+    const price = 100;
     for (let i = 0; i < 24 * 60; i++) {
       bars.push({ time: t + i * 3_600_000, open: price, high: price + 1, low: price - 1, close: price, volume: 1 });
     }

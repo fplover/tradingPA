@@ -166,7 +166,13 @@ describe('registry / def：profile 标记与参数 schema（蓝图 §5）', () =
 describe('IndicatorManager：profile 专用分支', () => {
   function makeHost(panes: PaneState[]): IndicatorHost {
     return {
-      panes: { get: () => panes, set: (p) => (panes.length = 0) || panes.push(...p) },
+      panes: {
+        get: () => panes,
+        set: (p) => {
+          panes.length = 0;
+          panes.push(...p);
+        },
+      },
       selectedPaneId: { get: () => panes[0]?.id ?? 'main', set: () => {} },
       invalidate: () => {},
       vp: {

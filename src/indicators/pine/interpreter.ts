@@ -18,12 +18,10 @@ class Scope {
   vars = new Map<string, S>();
   constructor(public parent: Scope | null) {}
   lookup(name: string): S | undefined {
-    let s: Scope | null = this;
-    while (s) {
-      if (s.vars.has(name)) return s.vars.get(name);
-      s = s.parent;
-    }
-    return undefined;
+    const own = this.vars.get(name);
+    if (own !== undefined) return own;
+    // 沿父作用域链上溯（等价于原先的 while 走链，且不再把 this 别名给局部变量）
+    return this.parent ? this.parent.lookup(name) : undefined;
   }
 }
 

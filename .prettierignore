@@ -1,0 +1,15 @@
+node_modules
+dist
+test-results
+playwright-report
+.playwright-browsers
+.workbuddy
+.shots
+
+# 文档与登记册：§12 等长表格单元格是刻意排版，不接受 Prettier 重排
+docs/
+*.md
+
+# 生成物 / 锁文件
+package-lock.json
+*.tsbuildinfo
