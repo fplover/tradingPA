@@ -123,7 +123,7 @@
 - 仅桌面浏览器（Chrome/Edge/Firefox/Safari 最新版），触控交互不做
 - 响应式：固定布局档位 1/2/4/6/8，不做 16 格（TV 付费卖点）
 - 性能红线：10 万 K 线 3-9ms/帧；常规视图 <1ms；拆分后不得回退
-- 每批次完成必须 `npm run typecheck && npm run test && npm run test:e2e` 全绿才能进下一批
+- 每批次完成必须 `npm run typecheck && npm run lint && npm test && npm run test:e2e` 全绿才能进下一批
 - 提交纪律：一批一提交，信息含批次号（如 `feat(tv-align/B1): ...`）
 
 ## 10. 内嵌已知坑（从三份调研拉取）
@@ -142,12 +142,12 @@
 ## 11. 端到端验证步骤（每批次出口）
 
 ```bash
-# 1. 类型检查 + 单测 + E2E（全绿才算批次完成）
-npm run typecheck && npm run test && npm run test:e2e
+# 1. 类型检查 + lint + 单测 + E2E（全绿才算批次完成）
+npm run typecheck && npm run lint && npm test && npm run test:e2e
 
-# 2. 生产构建（产物预算基线：172KB gzip——2026-09-28 实测，M7 时 49KB，
-#    差距为 A/B/C 批次功能累积属正常；单 chunk >500KB 警告为存量无 code-split，
-#    架构师在 D 批次拆分时评估是否顺带做路由级分割）
+# 2. 生产构建（产物预算基线：**222.94KB gzip / 732.26KB raw / 2197 模块——2026-09-30 复核实测**。
+#    历史：09-28 记 172KB、09-29 记 197.8KB、09-30 前次 197.82KB——预算随 P1/P2 功能累积上移；
+#    体积只认同日同环境对照，跨日漂移不作回归判据。单 chunk >500KB 警告为存量无 code-split）
 npm run build
 
 # 3. B1 快捷键抽验（E2E 覆盖）
@@ -196,3 +196,4 @@ npm run build
 | 2026-09-30 | **档位编辑器双列布局**（ae28860）：DrawingLevelsEditor 的分割线档位列表由单列改 `grid` 双列（`1fr 1fr`，columnGap sm / rowGap xs，单元格 minWidth 0 + input flex:1），删除按钮与 % 后缀随行；「添加档位」按钮保持通栏。aria-label／校验规则（非法值不写、重复跳过、≥1 档保护）／实时生效语义零变化。门禁：typecheck + 单测 959/959 + 浏览器实测（fib 7 档双列渲染） | 用户反馈精修（布局） | src/features/drawings/DrawingLevelsEditor.tsx |
 | 2026-09-30 | **共享 DialogHeader 抽取**（5902f68）：Modal（11 处调用）与 ChartSettings/IndicatorSettings/Shortcuts 三个手写对话框各自复制的 44px 标题栏（左标题 + 右关闭）收敛为 `ui/primitives.tsx` 的 `DialogHeader`；Modal 主体内边距改由 `modalBodyStyle` 承担，消除「容器 padding + 头部 margin」两处叠加；删除三处重复的 headerStyle/titleStyle/closeStyle 与 lucide X 导入。CommandPalette / SymbolSearchDialog 保留自绘标题（输入框即标题，无标准头部）。净 -82 行；IndicatorSettingsDialog 401→370 行（向 300 行红线收敛） | 重复代码收敛（对话框标题栏四处→一处） | src/ui/primitives.tsx、src/features/indicators/IndicatorSettingsDialog.tsx、src/features/settings/{ChartSettingsDialog,ShortcutsDialog}.tsx |
 | 2026-09-30 | **文档复核同步**（本轮查阅产出，零代码改动）：① 本表修复——合并重复的「日历桶时区分裂修复」条目（原两处为同一条）、把「图表交互精修四迭」行按提交时间（bbc1ab6/c1bc430 15:09）移至「在案项处置轮」之后（单测数 876→902→902→931→959→959 恢复时间单调，此前表序错位造成「959 回落到 902」的误读）、补记 ae28860 与 5902f68；② DEVELOPMENT_PLAN v1.2→v1.3——P2 行由「待启动／未入 git」改为四批已交付，§3.5/§3.6 按代码现状重新勾选，指标口径 63→64；③ OPEN-DECISIONS 关闭 Anchored VWAP（补 Resolution 列，按登记册「就地关闭」规则）。注：本表历史条目中的行号引用随本次增删失效，追溯请以提交时间为准 | 文档与代码/仓库事实不一致（P2 交付状态、AVWAP 状态、单测口径、重复条目） | docs/**、DEVELOPMENT_PLAN.md |
+| 2026-09-30 | **工具链补全 + 红线拆分（四文件）**（本轮查阅产出）：① 首次引入 lint/format 工具链——`.gitattributes`（`* text=auto eol=lf`，把行尾策略固化进仓库，摆脱对 core.autocrlf 的依赖；index 本就全 LF，`git add --renormalize` 实测零改动）、`.editorconfig`、ESLint 9 扁平配置（`eslint.config.js`：定位只补 typecheck 与测试都管不到的一类——hooks 调用/依赖规则与 import 卫生，**刻意不启风格规则**，避免与既有 3 万行形成噪声对抗）、Prettier 配置与 `lint`/`lint:fix`/`format`/`format:check` 脚本；新门禁一次跑出 4 个错误并全部真修（`pine/interpreter.ts` 的 `this` 别名改父链递归、`volumeProfile.test.ts` 的 `(panes.length=0)||push` 常量真值表达式改块体、`data.test.ts` 两处 `let`→`const`）。② 红线拆分：IndicatorSettingsDialog 401→287（+indicatorSettingsStyles 89）、ChartContextMenu 361→282（+chartContextMenuStyles 85）、ReplayBar 341→228（+replayBarStyles 117）、watchlistStore 304→170（+watchlistModel 52 / watchlistPersist 117——模型→落盘→store 单向依赖，避免「persist 要 DEFAULT_COLUMNS、store 要 load/save」的运行时循环）；四文件全部降至 300 行以下，调用点零改动（类型/列定义按原路径再导出，13 处 import 未动）。③ 新增 README（项目入口，此前缺失）。门禁：typecheck 0 错 + lint 0 错（32 条 exhaustive-deps/only-export-components 为存量警告基线）+ 单测 959/959 + E2E 48/48（21 面黄金截图零 diff = 拆分像素中性）+ build 222.94KB gzip。**红线未裁决违背清零**（余 ChartController 637 = 已裁决门面，行数由 622 修正记为 637） | 300 行红线违背清零 + 项目缺 lint 门禁/README | eslint.config.js、.gitattributes、.editorconfig、.prettierrc.json、.prettierignore、README.md、package.json、src/indicators/pine/interpreter.ts、src/features/{indicators,market,replay}/*、src/store/watchlist*、tests/unit/{volumeProfile,data}.test.ts |
