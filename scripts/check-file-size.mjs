@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { readdirSync, statSync, readFileSync, existsSync } from 'node:fs';
 import { join, relative } from 'node:path';
-import { parse as babelParse } from '@babel/parser';
+import { parseSync } from 'oxc-parser';
 
 /**
  * 文件规模检查（第四轮审查后改度量口径）。
@@ -19,21 +19,20 @@ import { parse as babelParse } from '@babel/parser';
  * 语句、类型/函数/枚举声明、类成员、对象字面量成员。该计数与排版完全无关
  * （折行、缩进、空行、注释都不影响），因此是稳定红线。
  *
- * ## 解析器（TS 7 迁移，2026-10-03）
- * 原实现用 `typescript` 包的 JS API（ts.createSourceFile + SyntaxKind）。
- * TypeScript 7.0（原生编译器）不再附带 JS API，故改用 @babel/parser（内置
- * typescript/jsx 语法插件）。计数语义与 TS 版保持等价：
- * - TS isStatement 面 → Babel 中以 Statement/Declaration 结尾的节点
- *   （排除 BlockStatement / EmptyStatement）；
- * - TS 对 FunctionDeclaration/ClassDeclaration 语句+声明各计一次 → 显式补 +1；
- * - `export const x` 在 TS 是带修饰符的 VariableStatement（计 1），Babel 是
+ * ## 解析器（Vite 8 / oxc 生态统一，2026-10-03）
+ * 解析器两迁：原 `typescript` 包 JS API → @babel/parser（TS 7 迁移）→ **oxc-parser**
+ * （当前）。Vite 8 内置 Rolldown（oxc 生态），lint 已切 oxlint（同解析器栈），
+ * 规模度量随之统一到 oxc，工具链零 babel / 零 eslint 依赖，原生 Rust 解析更快。
+ * 计数语义与前两版保持等价（oxc 为 ESTree 命名）：
+ * - 语句/声明面：以 Statement/Declaration 结尾的节点（排除 BlockStatement/EmptyStatement）；
+ * - FunctionDeclaration/ClassDeclaration 语句+声明各计一次（与 TS 口径平价）；
+ * - `export const x` 在 TS 是带修饰符的 VariableStatement（计 1），oxc 是
  *   ExportNamedDeclaration 包 VariableDeclaration（会计 2）→ 带 declaration 的
  *   export 包装节点不计，由内层声明计入，保持平价；
- * - isMember 面（PropertyAssignment/Shorthand/Spread/Method/Property/
- *   Get/SetAccessor/Constructor）→ ObjectProperty/ObjectMethod/ClassMethod/
- *   PropertyDefinition(ClassProperty)/ClassPrivate*；对象内的 SpreadElement
- *   仅在父为 ObjectExpression 时计（数组/调用展开不计，同 TS SpreadAssignment 口径）。
- * 切换解析器属度量口径的实现层迁移，例外清单数值已按新口径重新校准（见 allowlist）。
+ * - 成员面：对象字面量成员 = Property（限父为 ObjectExpression，解构模式不计，
+ *   同 TS PropertyAssignment 口径）+ SpreadElement（限对象内，同 SpreadAssignment）；
+ *   类成员 = MethodDefinition（方法/getter/constructor 各一）/PropertyDefinition。
+ * 切换解析器属实现层迁移，例外清单数值已按新口径重新校准（见 allowlist）。
  *
  * ## 例外清单
  * 与 ESLint 警告基线同理：把存量超标项**枚举化**（每项带理由与登记编号），
@@ -89,25 +88,24 @@ function childNodes(node, fn) {
   }
 }
 
-/** 语法树中的「逻辑单元」：语句 + 声明 + 类成员 + 对象字面量成员（Babel AST 口径） */
+/** 语法树中的「逻辑单元」：语句 + 声明 + 类成员 + 对象字面量成员（oxc AST 口径，ESTree 命名） */
 function countLogicalUnits(fileName, text) {
-  const ast = babelParse(text, {
-    sourceType: 'module',
-    sourceFilename: fileName,
-    errorRecovery: true,
-    plugins: ['typescript', 'jsx'],
-  });
+  const ret = parseSync(fileName, text);
+  if (ret.errors && ret.errors.length > 0) {
+    throw new Error(`oxc parse failed: ${fileName}: ${ret.errors[0]?.message ?? 'unknown'}`);
+  }
+  const ast = ret.program;
   let n = 0;
   const isMember = (t, parent) =>
-    t === 'ObjectProperty' ||
-    t === 'ObjectMethod' ||
-    t === 'ClassMethod' ||
-    t === 'ClassProperty' ||
+    // 对象字面量成员（ESTree 的 Property 同时用于解构模式，须限父为 ObjectExpression）
+    (t === 'Property' && parent?.type === 'ObjectExpression') ||
+    // 对象内展开（同 TS SpreadAssignment；数组/调用展开不计）
+    (t === 'SpreadElement' && parent?.type === 'ObjectExpression') ||
+    // 类成员：方法/getter/setter/constructor 各计一
+    t === 'MethodDefinition' ||
+    // 类字段（oxc/ESTree 命名；ClassProperty 为兼容别名）
     t === 'PropertyDefinition' ||
-    t === 'ClassPrivateProperty' ||
-    t === 'ClassPrivateMethod' ||
-    // TS SpreadAssignment 只存在于对象字面量；数组/调用的展开不计
-    (t === 'SpreadElement' && parent?.type === 'ObjectExpression');
+    t === 'ClassProperty';
 
   (function visit(node, parent) {
     const t = node.type;
@@ -116,9 +114,9 @@ function countLogicalUnits(fileName, text) {
       t !== 'BlockStatement' &&
       t !== 'EmptyStatement'
     ) {
-      // TS isStatement 面（含函数/类/变量/导入导出等声明语句）+1
+      // isStatement 面（含函数/类/变量/导入导出等声明语句）+1
       // `export const x` 的 TS 形态是带修饰符的 VariableStatement（计 1）；
-      // Babel 的 export 包装节点不再计，由内层声明计入，保持平价
+      // export 包装节点不再计，由内层声明计入，保持平价
       const isWrappedDecl =
         (t === 'ExportNamedDeclaration' || t === 'ExportDefaultDeclaration') &&
         node.declaration != null;
@@ -128,7 +126,7 @@ function countLogicalUnits(fileName, text) {
     if (t === 'FunctionDeclaration' || t === 'ClassDeclaration') n++;
     if (isMember(t, parent)) n++;
     childNodes(node, (c) => visit(c, node));
-  })(ast.program, null);
+  })(ast, null);
   return n;
 }
 
@@ -151,7 +149,7 @@ const overLines = rows.filter((r) => r.physical > HARD_LINE_CEILING);
 const totalUnits = rows.reduce((s, r) => s + r.units, 0);
 const totalLines = rows.reduce((s, r) => s + r.physical, 0);
 
-console.log('文件规模检查（逻辑单元口径，格式无关；解析器 @babel/parser）');
+console.log('文件规模检查（逻辑单元口径，格式无关；解析器 oxc-parser）');
 console.log(`  扫描 ${rows.length} 个 .ts/.tsx；合计 ${totalUnits} 逻辑单元 / ${totalLines} 物理行`);
 console.log(
   `  逻辑单元分布：中位 ${pct(unitsSorted, 0.5)} / p90 ${pct(unitsSorted, 0.9)} / p95 ${pct(unitsSorted, 0.95)} / p99 ${pct(unitsSorted, 0.99)} / 最大 ${unitsSorted[unitsSorted.length - 1]}`,

@@ -1,9 +1,9 @@
 {
-  "$comment": "文件规模例外清单（逻辑单元口径，上限 300；解析器 @babel/parser，2026-10-03 随 TS 7 迁移重新校准）。每项必须写明理由与登记出处；新增超限会被门禁拦下，条目不再超限时门禁会提示移除。",
+  "$comment": "文件规模例外清单（逻辑单元口径，上限 300；解析器 oxc-parser，2026-10-03 随 Vite8/oxc 工具链统一重新校准）。每项必须写明理由与登记出处；新增超限会被门禁拦下，条目不再超限时门禁会提示移除。",
   "exceptions": [
     {
       "file": "src/engine/renderer/ChartController.ts",
-      "units": 548,
+      "units": 546,
       "reason": "图表控制器门面：公开 API 面 + host 装配字面量 + 视口编排，纯扁平委托无逻辑；已两次裁决「接受并记录」（§12 2026-09-29 门面裁决 / 09-30 拆分至 599 行下限）",
       "registeredIn": "SPEC-TV-ALIGNMENT §12 + OPEN-DECISIONS 红线口径条目"
     },
