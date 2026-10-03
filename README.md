@@ -21,7 +21,7 @@ npm run dev          # http://localhost:5173
 | `npm run build` | `tsc -b` + Vite 生产构建 |
 | `npm run preview` | 预览生产构建 |
 | `npm run typecheck` | 类型检查（含 `src` 与 `tests/unit`，开着 `noUnusedLocals`） |
-| `npm run check:size` | 文件规模检查（**逻辑单元**口径，AST 计数、与排版无关；含存量例外清单） |
+| `npm run check:size` | 文件规模检查（**逻辑单元**口径，Babel AST 计数、与排版无关；含存量例外清单） |
 | `npm run lint` | ESLint 扁平配置（0 错误；68 条警告为存量基线：32 条 `react-hooks/exhaustive-deps`、`react-refresh/only-export-components` + 36 条 react-hooks 7 编译器规则 `refs`/`set-state-in-effect`/`purity`/`use-memo`，理由见 `eslint.config.js`） |
 | `npm run lint:fix` | ESLint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
@@ -60,9 +60,12 @@ docs/           Spec 与差距分析（见下）
 
 批次出口标准：`npm run typecheck && npm run lint && npm run check:size && npm test && npm run test:e2e` 全绿 + `npm run build` 通过。
 
-当前实测基线（2026-10-03）：typecheck 0 错（**TS 7 原生编译器**，`typescript` 为 TS6/TS7 side-by-side 别名，见下）/ lint 0 错（68 警告 = 32 旧基线 + 36 条 react-hooks 7 编译器新规则，`4ead4bf` 基线化）/ 单测 999 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 448.75 kB（>500 kB 警告已消除）。
+当前实测基线（2026-10-03）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**）/ lint 0 错（68 警告 = 32 旧基线 + 36 条 react-hooks 7 编译器新规则，`4ead4bf` 基线化）/ 单测 999 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 448.75 kB（>500 kB 警告已消除）。
 
-**TS 6/7 side-by-side 说明**：TS 7.0 不附带 JS API（官方预期形态），故 `typescript` 依赖是 `npm:@typescript/typescript6` 别名（提供 TS 6 API + `tsc6`，供 typescript-eslint 与 `check:size` 消费），另由 `@typescript/native` 别名提供原生 `tsc`（TS 7）——`typecheck` / `build` 走 TS 7，工具链走 TS 6 API，等 TS 7.1 发布新 API 后可收敛。
+**TS 7 工具链说明（2026-10-03 迁移）**：`typescript` 即原生 7.0（8–12x 提速），但 TS 7.0 **不附带 JS API**（官方预期，7.1 起才有新 API）。原依赖 TS JS API 的两处工具链已迁移到 **@babel/parser 语法栈**（与 `typescript` 包版本彻底解耦）：
+- **lint**：typescript-eslint → `@babel/eslint-parser`（TS/TSX 语法解析）；react-hooks 全家族 + react-refresh 规则与 68 条警告基线原样保留；`no-undef`/`no-unused-vars` 对 TS 文件关闭（由 tsc 把关，与 typescript-eslint 官方推荐一致）。
+- **check:size**：`check-file-size.mjs` 计数器在 Babel AST 上等价重写（语句+声明+类成员+对象成员口径不变），例外清单数值已按新口径重新校准（漂移仅 +1~+6）。
+- 若未来 typescript-eslint 支持 TS ≥7.1（issue #10940）可评估回归 TS 原生解析。
 
 **E2E 在 Windows 上必须先自己起 dev server 再跑**：
 
