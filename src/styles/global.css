@@ -107,6 +107,7 @@ body.theme-dark {
   --down: #f23645;
   /* 预警/已触发态：TV 用橙色区分「进行中的警报」与涨跌语义 */
   --warn: #ff9800;
+  --on-warn: #ffffff;
   /* 交易色：买卖按钮语义（TV 买=蓝 / 卖=红），与涨跌色各司其职 */
   --buy: #2962ff;
   --sell: #f23645;
@@ -134,6 +135,7 @@ body.theme-light {
   --up: #089981;
   --down: #f23645;
   --warn: #ff9800;
+  --on-warn: #ffffff;
   /* 交易色：买卖按钮语义（TV 买=蓝 / 卖=红），与涨跌色各司其职 */
   --buy: #2962ff;
   --sell: #f23645;

@@ -1,5 +1,6 @@
 import { FIB_EXTENSION_LEVELS, FIB_RETRACEMENT_LEVELS } from './fibMath';
 import { PERCENT_LEVELS } from './percentMath';
+import { PALETTE } from '@/engine/palette';
 
 /** 画线锚点：世界坐标（时间 + 价格），与缩放平移无关 */
 export interface DrawingPoint {
@@ -80,44 +81,44 @@ export interface DrawingToolDef {
 }
 
 export const DRAWING_TOOLS: DrawingToolDef[] = [
-  { id: 'trendline', label: '趋势线', points: 2, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
-  { id: 'ray', label: '射线', points: 2, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
-  { id: 'hline', label: '水平线', points: 1, defaultStyle: { color: '#ef5350', lineWidth: 1 } },
-  { id: 'vline', label: '垂直线', points: 1, defaultStyle: { color: '#ef5350', lineWidth: 1 } },
-  { id: 'arrow', label: '箭头', points: 2, defaultStyle: { color: '#26a69a', lineWidth: 2 } },
-  { id: 'info-line', label: '信息线', points: 2, defaultStyle: { color: '#ff9800', lineWidth: 1 } },
-  { id: 'channel', label: '平行通道', points: 3, defaultStyle: { color: '#2962ff', lineWidth: 1, fillColor: '#2962ff22' } },
-  { id: 'rect', label: '矩形', points: 2, defaultStyle: { color: '#2962ff', lineWidth: 1, fillColor: '#2962ff22' } },
-  { id: 'ellipse', label: '椭圆', points: 2, defaultStyle: { color: '#2962ff', lineWidth: 1, fillColor: '#2962ff22' } },
-  { id: 'path', label: '路径', points: 0, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
-  { id: 'text', label: '文本', points: 1, defaultStyle: { color: '#d1d4dc', lineWidth: 1, text: '文本', fontSize: 12 } },
-  { id: 'fib', label: '斐波那契回撤', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'trendline', label: '趋势线', points: 2, defaultStyle: { color: PALETTE.blue, lineWidth: 2 } },
+  { id: 'ray', label: '射线', points: 2, defaultStyle: { color: PALETTE.blue, lineWidth: 2 } },
+  { id: 'hline', label: '水平线', points: 1, defaultStyle: { color: PALETTE.red, lineWidth: 1 } },
+  { id: 'vline', label: '垂直线', points: 1, defaultStyle: { color: PALETTE.red, lineWidth: 1 } },
+  { id: 'arrow', label: '箭头', points: 2, defaultStyle: { color: PALETTE.green, lineWidth: 2 } },
+  { id: 'info-line', label: '信息线', points: 2, defaultStyle: { color: PALETTE.orange, lineWidth: 1 } },
+  { id: 'channel', label: '平行通道', points: 3, defaultStyle: { color: PALETTE.blue, lineWidth: 1, fillColor: PALETTE.blue22 } },
+  { id: 'rect', label: '矩形', points: 2, defaultStyle: { color: PALETTE.blue, lineWidth: 1, fillColor: PALETTE.blue22 } },
+  { id: 'ellipse', label: '椭圆', points: 2, defaultStyle: { color: PALETTE.blue, lineWidth: 1, fillColor: PALETTE.blue22 } },
+  { id: 'path', label: '路径', points: 0, defaultStyle: { color: PALETTE.blue, lineWidth: 2 } },
+  { id: 'text', label: '文本', points: 1, defaultStyle: { color: PALETTE.lightGray, lineWidth: 1, text: '文本', fontSize: 12 } },
+  { id: 'fib', label: '斐波那契回撤', points: 2, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
   // 斐波那契家族（B6）：样式与既有 fib 同源（TV 默认灰 #787B86）
-  { id: 'fib-extension', label: '斐波那契扩展', points: 3, defaultStyle: { color: '#787b86', lineWidth: 1 } },
-  { id: 'fib-fan', label: '斐波那契扇形', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
-  { id: 'fib-arc', label: '斐波那契弧线', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
-  { id: 'fib-timezone', label: '斐波那契时区', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'fib-extension', label: '斐波那契扩展', points: 3, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'fib-fan', label: '斐波那契扇形', points: 2, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'fib-arc', label: '斐波那契弧线', points: 2, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'fib-timezone', label: '斐波那契时区', points: 1, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
   // Auto Fib：放置时无锚点点击，由 ChartRenderer 按可见区间 swing 一次生成 2 点对象
-  { id: 'fib-auto', label: 'Auto Fib（自动回撤）', points: 0, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'fib-auto', label: 'Auto Fib（自动回撤）', points: 0, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
   // P2-B 文字类 4 种（TV 文本工具组）：便签底色为语义黄，文本色深灰
-  { id: 'note', label: '便签', points: 1, defaultStyle: { color: '#131722', lineWidth: 1, fillColor: '#fff9c4', text: '便签', fontSize: 12 } },
-  { id: 'price-label', label: '价格标签', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1, text: '', fontSize: 11 } },
-  { id: 'anchored-text', label: '锚定文本', points: 1, defaultStyle: { color: '#d1d4dc', lineWidth: 1, text: '锚定文本', fontSize: 12 } },
-  { id: 'arrow-mark', label: '箭头标记', points: 1, defaultStyle: { color: '#787b86', lineWidth: 2, text: '标记', fontSize: 12 } },
+  { id: 'note', label: '便签', points: 1, defaultStyle: { color: PALETTE.darkNavy, lineWidth: 1, fillColor: PALETTE.paleYellow, text: '便签', fontSize: 12 } },
+  { id: 'price-label', label: '价格标签', points: 1, defaultStyle: { color: PALETTE.gray, lineWidth: 1, text: '', fontSize: 11 } },
+  { id: 'anchored-text', label: '锚定文本', points: 1, defaultStyle: { color: PALETTE.lightGray, lineWidth: 1, text: '锚定文本', fontSize: 12 } },
+  { id: 'arrow-mark', label: '箭头标记', points: 1, defaultStyle: { color: PALETTE.gray, lineWidth: 2, text: '标记', fontSize: 12 } },
   // P2-B 测量（TV Measure）：Shift+点击两点锁轴，浮层 bar 数/价差/百分比
-  { id: 'measure', label: '测量', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1, dash: true } },
+  { id: 'measure', label: '测量', points: 2, defaultStyle: { color: PALETTE.gray, lineWidth: 1, dash: true } },
   // 百分比线（默认 0% / 50% / 100% 三条分割线，档位可自定义）：两点按价格区间画水平线组，默认色同 fib 家族灰
-  { id: 'percent-line', label: '百分比线', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'percent-line', label: '百分比线', points: 2, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
   // P2-B 几何 3 种：多边形 points:0 = 任意顶点数，双击/回车结束（path 同范式）
-  { id: 'polygon', label: '多边形', points: 0, defaultStyle: { color: '#2962ff', lineWidth: 1, fillColor: '#2962ff22' } },
-  { id: 'arc', label: '圆弧', points: 3, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
-  { id: 'curve', label: '曲线', points: 4, defaultStyle: { color: '#2962ff', lineWidth: 2 } },
+  { id: 'polygon', label: '多边形', points: 0, defaultStyle: { color: PALETTE.blue, lineWidth: 1, fillColor: PALETTE.blue22 } },
+  { id: 'arc', label: '圆弧', points: 3, defaultStyle: { color: PALETTE.blue, lineWidth: 2 } },
+  { id: 'curve', label: '曲线', points: 4, defaultStyle: { color: PALETTE.blue, lineWidth: 2 } },
   // P2-B 江恩 3 件：扇形/江恩线同 TV 默认灰，箱体带淡填充
-  { id: 'gann-fan', label: '江恩扇形', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1 } },
-  { id: 'gann-line', label: '江恩线', points: 1, defaultStyle: { color: '#787b86', lineWidth: 1 } },
-  { id: 'gann-box', label: '江恩箱', points: 2, defaultStyle: { color: '#787b86', lineWidth: 1, fillColor: '#787b8622' } },
+  { id: 'gann-fan', label: '江恩扇形', points: 1, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'gann-line', label: '江恩线', points: 1, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'gann-box', label: '江恩箱', points: 2, defaultStyle: { color: PALETTE.gray, lineWidth: 1, fillColor: PALETTE.gray22 } },
   // P2-B 艾略特波浪：5-3 标注组 = 8 锚点（5 上 + 3 下）
-  { id: 'elliott-wave', label: '艾略特波浪', points: 8, defaultStyle: { color: '#787b86', lineWidth: 1 } },
+  { id: 'elliott-wave', label: '艾略特波浪', points: 8, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
 ];
 
 export function getToolDef(id: DrawingTypeId): DrawingToolDef {

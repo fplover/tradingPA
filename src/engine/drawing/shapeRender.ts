@@ -4,6 +4,7 @@
 import type { Drawing } from './types';
 import { distToSegment } from './geom';
 import { arcThroughThreePoints, pointInPolygon, sampleArc, sampleCubicBezier, type Pix } from './shapeMath';
+import { PALETTE } from '@/engine/palette';
 
 /** 折线描边（放置中预览/共线退化用） */
 function strokePolyline(ctx: CanvasRenderingContext2D, pts: readonly Pix[]): void {
@@ -23,7 +24,7 @@ export function drawShapes(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[]
       for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       if (pts.length >= 3) {
         ctx.closePath();
-        ctx.fillStyle = d.style.fillColor ?? '#2962ff22';
+        ctx.fillStyle = d.style.fillColor ?? PALETTE.blue22;
         ctx.fill();
       }
       ctx.stroke();

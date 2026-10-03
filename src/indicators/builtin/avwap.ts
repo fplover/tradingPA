@@ -1,4 +1,5 @@
 import type { IndicatorDef } from '../core/types';
+import { PALETTE } from '@/engine/palette';
 
 /**
  * AVWAP 回看上限（bar 数）：指标计算走实例窗口化管线（computeWindow 按可见区间
@@ -27,9 +28,9 @@ export const AVWAP: IndicatorDef = {
   lookback: AVWAP_LOOKBACK,
   params: [
     { key: 'anchorTime', label: '锚定 bar 时间（纪元 ms）', type: 'number', default: 0 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ff9800' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.orange },
   ],
-  plots: [{ key: 'avwap', label: 'AVWAP', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } }],
+  plots: [{ key: 'avwap', label: 'AVWAP', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } }],
   compute: (bars, params) => {
     const anchorTime = Number(params.anchorTime ?? 0);
     const out: Array<number | undefined> = [];

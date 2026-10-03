@@ -1,5 +1,6 @@
 import type { IndicatorDef } from '../core/types';
 import { sma, ema, wma, closes, combine, mapValues } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 
@@ -12,9 +13,9 @@ export const SMA: IndicatorDef = {
   lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ff9800' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.orange },
   ],
-  plots: [{ key: 'sma', label: 'MA', style: { kind: 'line', color: '#ff9800', lineWidth: 2 } }],
+  plots: [{ key: 'sma', label: 'MA', style: { kind: 'line', color: PALETTE.orange, lineWidth: 2 } }],
   compute: (bars, params) => ({ sma: sma(closes(bars), num(params.length)) }),
 };
 
@@ -27,9 +28,9 @@ export const EMA: IndicatorDef = {
   lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
-    { key: 'color', label: '颜色', type: 'color', default: '#2962ff' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.blue },
   ],
-  plots: [{ key: 'ema', label: 'EMA', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } }],
+  plots: [{ key: 'ema', label: 'EMA', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } }],
   compute: (bars, params) => ({ ema: ema(closes(bars), num(params.length)) }),
 };
 
@@ -42,9 +43,9 @@ export const WMA: IndicatorDef = {
   lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
-    { key: 'color', label: '颜色', type: 'color', default: '#e91e63' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.pink },
   ],
-  plots: [{ key: 'wma', label: 'WMA', style: { kind: 'line', color: '#e91e63', lineWidth: 2 } }],
+  plots: [{ key: 'wma', label: 'WMA', style: { kind: 'line', color: PALETTE.pink, lineWidth: 2 } }],
   compute: (bars, params) => ({ wma: wma(closes(bars), num(params.length)) }),
 };
 
@@ -57,9 +58,9 @@ export const DEMA: IndicatorDef = {
   lookback: 400,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
-    { key: 'color', label: '颜色', type: 'color', default: '#9c27b0' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.magenta },
   ],
-  plots: [{ key: 'dema', label: 'DEMA', style: { kind: 'line', color: '#9c27b0', lineWidth: 2 } }],
+  plots: [{ key: 'dema', label: 'DEMA', style: { kind: 'line', color: PALETTE.magenta, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const e1 = ema(closes(bars), p).map((v) => v ?? 0);
@@ -78,9 +79,9 @@ export const TEMA: IndicatorDef = {
   lookback: 600,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
-    { key: 'color', label: '颜色', type: 'color', default: '#00bcd4' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.cyan },
   ],
-  plots: [{ key: 'tema', label: 'TEMA', style: { kind: 'line', color: '#00bcd4', lineWidth: 2 } }],
+  plots: [{ key: 'tema', label: 'TEMA', style: { kind: 'line', color: PALETTE.cyan, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const c = closes(bars);
@@ -109,9 +110,9 @@ export const HMA: IndicatorDef = {
   lookback: 300,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 16, min: 1, max: 500 },
-    { key: 'color', label: '颜色', type: 'color', default: '#8bc34a' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.lightGreen },
   ],
-  plots: [{ key: 'hma', label: 'HMA', style: { kind: 'line', color: '#8bc34a', lineWidth: 2 } }],
+  plots: [{ key: 'hma', label: 'HMA', style: { kind: 'line', color: PALETTE.lightGreen, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = Math.max(1, Math.round(num(params.length)));
     const half = Math.max(1, Math.floor(p / 2));
@@ -132,9 +133,9 @@ export const VWMA: IndicatorDef = {
   lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ffc107' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.amber },
   ],
-  plots: [{ key: 'vwma', label: 'VWMA', style: { kind: 'line', color: '#ffc107', lineWidth: 2 } }],
+  plots: [{ key: 'vwma', label: 'VWMA', style: { kind: 'line', color: PALETTE.amber, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const out: Array<number | undefined> = [];
@@ -168,10 +169,10 @@ export const Ichimoku: IndicatorDef = {
     { key: 'senkou', label: '先行带B', type: 'number', default: 52, min: 1, max: 400 },
   ],
   plots: [
-    { key: 'tenkan', label: '转换线', style: { kind: 'line', color: '#e91e63', lineWidth: 1.5 } },
-    { key: 'kijun', label: '基准线', style: { kind: 'line', color: '#4caf50', lineWidth: 1.5 } },
-    { key: 'senkouA', label: '先行带A', style: { kind: 'line', color: '#26a69a55', lineWidth: 1 } },
-    { key: 'senkouB', label: '先行带B', style: { kind: 'line', color: '#ef535055', lineWidth: 1 } },
+    { key: 'tenkan', label: '转换线', style: { kind: 'line', color: PALETTE.pink, lineWidth: 1.5 } },
+    { key: 'kijun', label: '基准线', style: { kind: 'line', color: PALETTE.midGreen, lineWidth: 1.5 } },
+    { key: 'senkouA', label: '先行带A', style: { kind: 'line', color: PALETTE.green55, lineWidth: 1 } },
+    { key: 'senkouB', label: '先行带B', style: { kind: 'line', color: PALETTE.red55, lineWidth: 1 } },
   ],
   compute: (bars, params) => {
     const t = num(params.tenkan);
@@ -209,7 +210,7 @@ export const Supertrend: IndicatorDef = {
     { key: 'period', label: 'ATR 周期', type: 'number', default: 10, min: 1, max: 100 },
     { key: 'multiplier', label: '倍数', type: 'number', default: 3, min: 0.5, max: 10, step: 0.5 },
   ],
-  plots: [{ key: 'supertrend', label: 'ST', style: { kind: 'line', color: '#26a69a', lineWidth: 2 } }],
+  plots: [{ key: 'supertrend', label: 'ST', style: { kind: 'line', color: PALETTE.green, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.period);
     const m = num(params.multiplier);

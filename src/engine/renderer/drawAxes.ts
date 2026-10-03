@@ -5,6 +5,7 @@ import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
 import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
+import { PALETTE } from '@/engine/palette';
 
 /** 网格模式：TV 图表设置「画布」页四态 */
 export type GridMode = 'none' | 'horizontal' | 'vertical' | 'both';
@@ -178,7 +179,7 @@ export function drawLastPrice(
   ctx.beginPath();
   ctx.roundRect(geo.chartW + 2, by, w, h, 3);
   ctx.fill();
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = PALETTE.white;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, geo.chartW + 2 + w / 2, by + h / 2 + 0.5);

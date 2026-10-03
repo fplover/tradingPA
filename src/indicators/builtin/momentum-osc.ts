@@ -1,5 +1,6 @@
 import type { IndicatorDef } from '../core/types';
 import { sma, ema, wma, closes, combine, highest, lowest, wilder } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 const clamp = (v: number) => (v > 0.999 ? 0.999 : v < -0.999 ? -0.999 : v);
@@ -17,8 +18,8 @@ export const TRIX: IndicatorDef = {
     { key: 'signal', label: '信号', type: 'number', default: 9, min: 1, max: 100 },
   ],
   plots: [
-    { key: 'trix', label: 'TRIX', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'signal', label: '信号', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } },
+    { key: 'trix', label: 'TRIX', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'signal', label: '信号', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);
@@ -44,7 +45,7 @@ export const TSI: IndicatorDef = {
     { key: 'long', label: '长周期', type: 'number', default: 25, min: 1, max: 200 },
     { key: 'short', label: '短周期', type: 'number', default: 13, min: 1, max: 100 },
   ],
-  plots: [{ key: 'tsi', label: 'TSI', style: { kind: 'line', color: '#3f51b5', lineWidth: 2 } }],
+  plots: [{ key: 'tsi', label: 'TSI', style: { kind: 'line', color: PALETTE.indigo, lineWidth: 2 } }],
   compute: (bars, params) => {
     const lp = num(params.long);
     const sp = num(params.short);
@@ -71,8 +72,8 @@ export const Fisher: IndicatorDef = {
   lookback: 30,
   params: [{ key: 'length', label: '周期', type: 'number', default: 9, min: 1, max: 100 }],
   plots: [
-    { key: 'fisher', label: 'Fisher', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'trigger', label: 'Trigger', style: { kind: 'line', color: '#ef5350', lineWidth: 1.5 } },
+    { key: 'fisher', label: 'Fisher', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'trigger', label: 'Trigger', style: { kind: 'line', color: PALETTE.red, lineWidth: 1.5 } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);
@@ -118,8 +119,8 @@ export const KST: IndicatorDef = {
     { key: 'signal', label: '信号', type: 'number', default: 9, min: 1, max: 100 },
   ],
   plots: [
-    { key: 'kst', label: 'KST', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'signal', label: '信号', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } },
+    { key: 'kst', label: 'KST', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'signal', label: '信号', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
   ],
   compute: (bars, params) => {
     const c = closes(bars);
@@ -153,7 +154,7 @@ export const Coppock: IndicatorDef = {
     { key: 'slow', label: '长 ROC', type: 'number', default: 14, min: 1, max: 100 },
     { key: 'length', label: 'WMA 平滑', type: 'number', default: 10, min: 1, max: 100 },
   ],
-  plots: [{ key: 'coppock', label: 'Coppock', style: { kind: 'line', color: '#e91e63', lineWidth: 2 } }],
+  plots: [{ key: 'coppock', label: 'Coppock', style: { kind: 'line', color: PALETTE.pink, lineWidth: 2 } }],
   compute: (bars, params) => {
     const c = closes(bars);
     const rocOf = (p: number) => c.map((v, i) => (i < p || c[i - p] === 0 ? undefined : ((v - c[i - p]) / c[i - p]) * 100));
@@ -176,9 +177,9 @@ export const PPO: IndicatorDef = {
     { key: 'signal', label: '信号', type: 'number', default: 9, min: 1, max: 100 },
   ],
   plots: [
-    { key: 'ppo', label: 'PPO', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'signal', label: '信号', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } },
-    { key: 'hist', label: '柱', style: { kind: 'histogram', color: '#26a69a', upColor: '#26a69a', downColor: '#ef5350' } },
+    { key: 'ppo', label: 'PPO', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'signal', label: '信号', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
+    { key: 'hist', label: '柱', style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red } },
   ],
   compute: (bars, params) => {
     const f = num(params.fast);

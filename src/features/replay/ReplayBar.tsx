@@ -210,7 +210,7 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
             买入
           </button>
           <button
-            style={{ ...orderBtn, background: position ? 'var(--warn)' : 'var(--panel-2)', color: position ? '#fff' : 'var(--text-faint)' }}
+            style={{ ...orderBtn, background: position ? 'var(--warn)' : 'var(--panel-2)', color: position ? 'var(--on-warn)' : 'var(--text-faint)' }}
             onClick={() => position && closePosition(price, time)}
             title="市价平仓"
             disabled={!position}

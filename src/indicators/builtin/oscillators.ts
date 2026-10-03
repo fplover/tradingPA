@@ -1,5 +1,6 @@
 import type { IndicatorDef } from '../core/types';
 import { sma, closes, typical, combine, mapValues, highest, lowest, wilder } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 
@@ -12,9 +13,9 @@ export const RSI: IndicatorDef = {
   lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 100 },
-    { key: 'color', label: '颜色', type: 'color', default: '#7e57c2' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.purple },
   ],
-  plots: [{ key: 'rsi', label: 'RSI', style: { kind: 'line', color: '#7e57c2', lineWidth: 2 } }],
+  plots: [{ key: 'rsi', label: 'RSI', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const c = closes(bars);
@@ -52,8 +53,8 @@ export const Stoch: IndicatorDef = {
     { key: 'smooth', label: '%K 平滑', type: 'number', default: 3, min: 1, max: 50 },
   ],
   plots: [
-    { key: 'k', label: '%K', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'd', label: '%D', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } },
+    { key: 'k', label: '%K', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'd', label: '%D', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
   ],
   compute: (bars, params) => {
     const p = num(params.k);
@@ -88,8 +89,8 @@ export const StochRSI: IndicatorDef = {
     { key: 'd', label: '%D', type: 'number', default: 3, min: 1, max: 50 },
   ],
   plots: [
-    { key: 'k', label: '%K', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'd', label: '%D', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } },
+    { key: 'k', label: '%K', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'd', label: '%D', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
   ],
   compute: (bars, params) => {
     const rp = num(params.rsiLength);
@@ -120,9 +121,9 @@ export const CCI: IndicatorDef = {
   lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 200 },
-    { key: 'color', label: '颜色', type: 'color', default: '#00bcd4' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.cyan },
   ],
-  plots: [{ key: 'cci', label: 'CCI', style: { kind: 'line', color: '#00bcd4', lineWidth: 2 } }],
+  plots: [{ key: 'cci', label: 'CCI', style: { kind: 'line', color: PALETTE.cyan, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const tp = typical(bars);
@@ -148,9 +149,9 @@ export const WilliamsR: IndicatorDef = {
   lookback: 50,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 100 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ff5722' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.deepOrange },
   ],
-  plots: [{ key: 'wr', label: '%R', style: { kind: 'line', color: '#ff5722', lineWidth: 2 } }],
+  plots: [{ key: 'wr', label: '%R', style: { kind: 'line', color: PALETTE.deepOrange, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const c = closes(bars);
@@ -176,9 +177,9 @@ export const MFI: IndicatorDef = {
   lookback: 50,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 100 },
-    { key: 'color', label: '颜色', type: 'color', default: '#795548' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.brown },
   ],
-  plots: [{ key: 'mfi', label: 'MFI', style: { kind: 'line', color: '#795548', lineWidth: 2 } }],
+  plots: [{ key: 'mfi', label: 'MFI', style: { kind: 'line', color: PALETTE.brown, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const tp = typical(bars);
@@ -210,8 +211,8 @@ export const AwesomeOscillator: IndicatorDef = {
   lookback: 60,
   params: [],
   plots: [
-    { key: 'ao', label: 'AO', style: { kind: 'histogram', color: '#26a69a', upColor: '#26a69a', downColor: '#ef5350' } },
-    { key: 'ac', label: 'AC', style: { kind: 'histogram', color: '#ef5350', upColor: '#26a69a', downColor: '#ef5350' } },
+    { key: 'ao', label: 'AO', style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red } },
+    { key: 'ac', label: 'AC', style: { kind: 'histogram', color: PALETTE.red, upColor: PALETTE.green, downColor: PALETTE.red } },
   ],
   compute: (bars) => {
     const median = bars.map((b) => (b.high + b.low) / 2);
@@ -234,7 +235,7 @@ export const UltimateOscillator: IndicatorDef = {
     { key: 'mid', label: '中周期', type: 'number', default: 14, min: 1, max: 100 },
     { key: 'slow', label: '长周期', type: 'number', default: 28, min: 1, max: 200 },
   ],
-  plots: [{ key: 'uo', label: 'UO', style: { kind: 'line', color: '#3f51b5', lineWidth: 2 } }],
+  plots: [{ key: 'uo', label: 'UO', style: { kind: 'line', color: PALETTE.indigo, lineWidth: 2 } }],
   compute: (bars, params) => {
     const f = num(params.fast);
     const m = num(params.mid);

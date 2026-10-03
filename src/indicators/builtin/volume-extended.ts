@@ -1,6 +1,7 @@
 import type { Bar } from '@/types/market';
 import type { IndicatorDef } from '../core/types';
 import { sma, ema, closes, combine } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 
@@ -24,8 +25,8 @@ export const ADL: IndicatorDef = {
   category: '成交量',
   overlay: false,
   lookback: 1,
-  params: [{ key: 'color', label: '颜色', type: 'color', default: '#26a69a' }],
-  plots: [{ key: 'adl', label: 'A/D', style: { kind: 'line', color: '#26a69a', lineWidth: 2 } }],
+  params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.green }],
+  plots: [{ key: 'adl', label: 'A/D', style: { kind: 'line', color: PALETTE.green, lineWidth: 2 } }],
   compute: (bars) => ({ adl: adlValues(bars) }),
 };
 
@@ -40,7 +41,7 @@ export const ChaikinOsc: IndicatorDef = {
     { key: 'fast', label: '快线', type: 'number', default: 3, min: 1, max: 50 },
     { key: 'slow', label: '慢线', type: 'number', default: 10, min: 1, max: 100 },
   ],
-  plots: [{ key: 'osc', label: 'Chaikin', style: { kind: 'line', color: '#ff9800', lineWidth: 2 } }],
+  plots: [{ key: 'osc', label: 'Chaikin', style: { kind: 'line', color: PALETTE.orange, lineWidth: 2 } }],
   compute: (bars, params) => {
     const adl = adlValues(bars);
     return { osc: combine(ema(adl, num(params.fast)), ema(adl, num(params.slow)), (a, b) => a - b) };
@@ -56,8 +57,8 @@ export const ElderRay: IndicatorDef = {
   lookback: 50,
   params: [{ key: 'length', label: 'EMA 周期', type: 'number', default: 13, min: 1, max: 100 }],
   plots: [
-    { key: 'bull', label: '牛力', style: { kind: 'histogram', color: '#26a69a', upColor: '#26a69a', downColor: '#ef5350' } },
-    { key: 'bear', label: '熊力', style: { kind: 'histogram', color: '#ef5350', upColor: '#26a69a', downColor: '#ef5350' } },
+    { key: 'bull', label: '牛力', style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red } },
+    { key: 'bear', label: '熊力', style: { kind: 'histogram', color: PALETTE.red, upColor: PALETTE.green, downColor: PALETTE.red } },
   ],
   compute: (bars, params) => {
     const emaC = ema(closes(bars), num(params.length));
@@ -81,8 +82,8 @@ export const Klinger: IndicatorDef = {
     { key: 'signal', label: '信号', type: 'number', default: 13, min: 1, max: 100 },
   ],
   plots: [
-    { key: 'kvo', label: 'KVO', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'signal', label: '信号', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } },
+    { key: 'kvo', label: 'KVO', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'signal', label: '信号', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
   ],
   compute: (bars, params) => {
     const vf: number[] = [];
@@ -113,7 +114,7 @@ export const VolumeOsc: IndicatorDef = {
     { key: 'fast', label: '短周期', type: 'number', default: 5, min: 1, max: 100 },
     { key: 'slow', label: '长周期', type: 'number', default: 20, min: 1, max: 200 },
   ],
-  plots: [{ key: 'vo', label: 'VO', style: { kind: 'line', color: '#7e57c2', lineWidth: 2 } }],
+  plots: [{ key: 'vo', label: 'VO', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } }],
   compute: (bars, params) => {
     const vol = bars.map((b) => b.volume);
     const fast = sma(vol, num(params.fast));
@@ -139,7 +140,7 @@ export const NetVolume: IndicatorDef = {
     {
       key: 'nv',
       label: 'Net Vol',
-      style: { kind: 'histogram', color: '#26a69a', upColor: '#26a69a', downColor: '#ef5350' },
+      style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red },
     },
   ],
   compute: (bars) => ({
@@ -156,9 +157,9 @@ export const CorrCoeff: IndicatorDef = {
   lookback: 50,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 200 },
-    { key: 'color', label: '颜色', type: 'color', default: '#787b86' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.gray },
   ],
-  plots: [{ key: 'corr', label: 'Corr', style: { kind: 'line', color: '#787b86', lineWidth: 2 } }],
+  plots: [{ key: 'corr', label: 'Corr', style: { kind: 'line', color: PALETTE.gray, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const x = closes(bars);

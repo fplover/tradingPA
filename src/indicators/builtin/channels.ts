@@ -1,5 +1,6 @@
 import type { IndicatorDef } from '../core/types';
 import { sma, ema, closes, combine, mapValues, stdev, wilder } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 
@@ -15,10 +16,10 @@ export const BollingerBands: IndicatorDef = {
     { key: 'mult', label: '倍数', type: 'number', default: 2, min: 0.5, max: 5, step: 0.5 },
   ],
   plots: [
-    { key: 'upper', label: '上轨', style: { kind: 'line', color: '#2962ff88', lineWidth: 1 } },
-    { key: 'basis', label: '中轨', style: { kind: 'line', color: '#2962ff', lineWidth: 1.5 } },
-    { key: 'lower', label: '下轨', style: { kind: 'line', color: '#2962ff88', lineWidth: 1 } },
-    { key: 'band', label: '带', style: { kind: 'band', color: '#2962ff22', bandWith: 'lower' } },
+    { key: 'upper', label: '上轨', style: { kind: 'line', color: PALETTE.blue88, lineWidth: 1 } },
+    { key: 'basis', label: '中轨', style: { kind: 'line', color: PALETTE.blue, lineWidth: 1.5 } },
+    { key: 'lower', label: '下轨', style: { kind: 'line', color: PALETTE.blue88, lineWidth: 1 } },
+    { key: 'band', label: '带', style: { kind: 'band', color: PALETTE.blue22, bandWith: 'lower' } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);
@@ -48,9 +49,9 @@ export const KeltnerChannels: IndicatorDef = {
     { key: 'mult', label: '倍数', type: 'number', default: 2, min: 0.5, max: 5, step: 0.5 },
   ],
   plots: [
-    { key: 'upper', label: '上轨', style: { kind: 'line', color: '#ff980088', lineWidth: 1 } },
-    { key: 'basis', label: '中轨', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } },
-    { key: 'lower', label: '下轨', style: { kind: 'line', color: '#ff980088', lineWidth: 1 } },
+    { key: 'upper', label: '上轨', style: { kind: 'line', color: PALETTE.orange88, lineWidth: 1 } },
+    { key: 'basis', label: '中轨', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
+    { key: 'lower', label: '下轨', style: { kind: 'line', color: PALETTE.orange88, lineWidth: 1 } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);
@@ -82,9 +83,9 @@ export const DonchianChannels: IndicatorDef = {
   lookback: 100,
   params: [{ key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 300 }],
   plots: [
-    { key: 'upper', label: '上轨', style: { kind: 'line', color: '#26a69a88', lineWidth: 1 } },
-    { key: 'basis', label: '中轨', style: { kind: 'line', color: '#26a69a', lineWidth: 1.5 } },
-    { key: 'lower', label: '下轨', style: { kind: 'line', color: '#26a69a88', lineWidth: 1 } },
+    { key: 'upper', label: '上轨', style: { kind: 'line', color: PALETTE.green88, lineWidth: 1 } },
+    { key: 'basis', label: '中轨', style: { kind: 'line', color: PALETTE.green, lineWidth: 1.5 } },
+    { key: 'lower', label: '下轨', style: { kind: 'line', color: PALETTE.green88, lineWidth: 1 } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);
@@ -124,9 +125,9 @@ export const Envelopes: IndicatorDef = {
     { key: 'percent', label: '偏离%', type: 'number', default: 5, min: 0.1, max: 30, step: 0.1 },
   ],
   plots: [
-    { key: 'upper', label: '上轨', style: { kind: 'line', color: '#e91e6388', lineWidth: 1 } },
-    { key: 'basis', label: '中轨', style: { kind: 'line', color: '#e91e63', lineWidth: 1.5 } },
-    { key: 'lower', label: '下轨', style: { kind: 'line', color: '#e91e6388', lineWidth: 1 } },
+    { key: 'upper', label: '上轨', style: { kind: 'line', color: PALETTE.pink88, lineWidth: 1 } },
+    { key: 'basis', label: '中轨', style: { kind: 'line', color: PALETTE.pink, lineWidth: 1.5 } },
+    { key: 'lower', label: '下轨', style: { kind: 'line', color: PALETTE.pink88, lineWidth: 1 } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);

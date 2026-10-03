@@ -3,6 +3,7 @@
 import type { Drawing } from './types';
 import { theme, TV_FONT } from '../theme';
 import { pointToPixel, type DrawContext } from './coords';
+import { PALETTE } from '@/engine/palette';
 
 /** 线段（调用方已设置 strokeStyle/lineWidth/setLineDash） */
 export function strokeLine(ctx: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number): void {
@@ -26,7 +27,7 @@ export function drawHandles(ctx: CanvasRenderingContext2D, d: Drawing, dctx: Dra
     const { x, y } = pointToPixel(p, dctx);
     ctx.beginPath();
     ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = PALETTE.white;
     ctx.fill();
     ctx.strokeStyle = d.style.color;
     ctx.lineWidth = 1.5;

@@ -46,6 +46,7 @@ export {
   fibZoneOffsets,
   fibZoneTimes,
 } from './fibMath';
+import { PALETTE } from '@/engine/palette';
 // 百分比线（默认 0% / 50% / 100%，支持自定义档位）：档位常量与纯几何同样在独立数学模块，渲染/命中在 percentRender。
 export { PERCENT_LEVELS, percentLevelLabel, percentPrice } from './percentMath';
 
@@ -193,7 +194,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
       if (pts.length < 3) break;
       const ox = pts[2].x - pts[0].x;
       const oy = pts[2].y - pts[0].y;
-      ctx.fillStyle = d.style.fillColor ?? '#2962ff22';
+      ctx.fillStyle = d.style.fillColor ?? PALETTE.blue22;
       ctx.beginPath();
       ctx.moveTo(pts[0].x, pts[0].y);
       ctx.lineTo(pts[1].x, pts[1].y);
@@ -211,7 +212,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
       const y = Math.min(pts[0].y, pts[1].y);
       const w = Math.abs(pts[1].x - pts[0].x);
       const h = Math.abs(pts[1].y - pts[0].y);
-      ctx.fillStyle = d.style.fillColor ?? '#2962ff22';
+      ctx.fillStyle = d.style.fillColor ?? PALETTE.blue22;
       ctx.fillRect(x, y, w, h);
       ctx.strokeRect(x, y, w, h);
       break;
@@ -224,7 +225,7 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
       const ry = Math.abs(pts[1].y - pts[0].y) / 2;
       ctx.beginPath();
       ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-      ctx.fillStyle = d.style.fillColor ?? '#2962ff22';
+      ctx.fillStyle = d.style.fillColor ?? PALETTE.blue22;
       ctx.fill();
       ctx.stroke();
       break;

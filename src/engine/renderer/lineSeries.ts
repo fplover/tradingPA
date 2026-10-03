@@ -4,6 +4,7 @@ import type { PriceScale } from '../scale/PriceScale';
 import { theme } from '../theme';
 import type { DrawGeometry } from './drawSeries';
 import { seriesLineColor } from './seriesTheme';
+import { PALETTE } from '@/engine/palette';
 
 /** 线形图：收盘价折线 */
 export function drawLine(
@@ -14,7 +15,7 @@ export function drawLine(
   viewport: Viewport,
   priceScale: PriceScale,
   geo: DrawGeometry,
-  color = '#2962ff',
+  color: string = PALETTE.blue,
 ): void {
   ctx.save();
   ctx.beginPath();

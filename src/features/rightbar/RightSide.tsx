@@ -138,7 +138,7 @@ const badgeStyle: React.CSSProperties = {
   padding: '0 3px',
   borderRadius: 7,
   background: 'var(--down)',
-  color: '#fff',
+  color: 'var(--on-updown)',
   fontSize: 9,
   lineHeight: '13px',
   fontWeight: 600,

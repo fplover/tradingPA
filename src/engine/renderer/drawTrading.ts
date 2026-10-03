@@ -3,6 +3,7 @@ import type { Viewport } from '../viewport/Viewport';
 import type { BarSeries } from '@/data/BarSeries';
 import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
+import { PALETTE } from '@/engine/palette';
 
 export interface OrderVisual {
   id: string;
@@ -203,7 +204,7 @@ function drawTag(
   ctx.beginPath();
   ctx.roundRect(x, y - h / 2, w, h, 4);
   ctx.fill();
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = PALETTE.white;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(label, x + 6, y);

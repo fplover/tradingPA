@@ -1,5 +1,6 @@
 import type { IndicatorDef } from '../core/types';
 import { sma, closes, rollingSum } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 
@@ -12,9 +13,9 @@ export const ROC: IndicatorDef = {
   lookback: 30,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 9, min: 1, max: 200 },
-    { key: 'color', label: '颜色', type: 'color', default: '#26a69a' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.green },
   ],
-  plots: [{ key: 'roc', label: 'ROC', style: { kind: 'line', color: '#26a69a', lineWidth: 2 } }],
+  plots: [{ key: 'roc', label: 'ROC', style: { kind: 'line', color: PALETTE.green, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const c = closes(bars);
@@ -31,9 +32,9 @@ export const Momentum: IndicatorDef = {
   lookback: 30,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 10, min: 1, max: 200 },
-    { key: 'color', label: '颜色', type: 'color', default: '#2962ff' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.blue },
   ],
-  plots: [{ key: 'mom', label: 'MOM', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } }],
+  plots: [{ key: 'mom', label: 'MOM', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const c = closes(bars);
@@ -50,9 +51,9 @@ export const CMO: IndicatorDef = {
   lookback: 50,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 200 },
-    { key: 'color', label: '颜色', type: 'color', default: '#7e57c2' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.purple },
   ],
-  plots: [{ key: 'cmo', label: 'CMO', style: { kind: 'line', color: '#7e57c2', lineWidth: 2 } }],
+  plots: [{ key: 'cmo', label: 'CMO', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const c = closes(bars);
@@ -84,9 +85,9 @@ export const DPO: IndicatorDef = {
   lookback: 60,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 200 },
-    { key: 'color', label: '颜色', type: 'color', default: '#00bcd4' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.cyan },
   ],
-  plots: [{ key: 'dpo', label: 'DPO', style: { kind: 'line', color: '#00bcd4', lineWidth: 2 } }],
+  plots: [{ key: 'dpo', label: 'DPO', style: { kind: 'line', color: PALETTE.cyan, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const sc = Math.floor(p / 2) + 1;
@@ -110,9 +111,9 @@ export const BOP: IndicatorDef = {
   lookback: 30,
   params: [
     { key: 'length', label: '平滑周期', type: 'number', default: 14, min: 1, max: 100 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ff5722' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.deepOrange },
   ],
-  plots: [{ key: 'bop', label: 'BOP', style: { kind: 'line', color: '#ff5722', lineWidth: 2 } }],
+  plots: [{ key: 'bop', label: 'BOP', style: { kind: 'line', color: PALETTE.deepOrange, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const raw = bars.map((b) => (b.high === b.low ? 0 : (b.close - b.open) / (b.high - b.low)));

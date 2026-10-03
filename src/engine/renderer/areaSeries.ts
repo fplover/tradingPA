@@ -3,6 +3,7 @@ import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
 import type { DrawGeometry } from './drawSeries';
 import { seriesLineColor } from './seriesTheme';
+import { PALETTE } from '@/engine/palette';
 
 /** 面积图：收盘价折线 + 向下渐变填充 */
 export function drawArea(
@@ -13,7 +14,7 @@ export function drawArea(
   viewport: Viewport,
   priceScale: PriceScale,
   geo: DrawGeometry,
-  color = '#2962ff',
+  color: string = PALETTE.blue,
 ): void {
   ctx.save();
   ctx.beginPath();

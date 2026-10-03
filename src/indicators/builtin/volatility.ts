@@ -1,5 +1,6 @@
 import type { IndicatorDef } from '../core/types';
 import { sma, ema, stdev, wilder, closes, trueRange, rollingSum, logReturns, highest, lowest, combine, mapValues } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 
@@ -12,9 +13,9 @@ export const NATR: IndicatorDef = {
   lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 100 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ff5722' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.deepOrange },
   ],
-  plots: [{ key: 'natr', label: 'NATR', style: { kind: 'line', color: '#ff5722', lineWidth: 2 } }],
+  plots: [{ key: 'natr', label: 'NATR', style: { kind: 'line', color: PALETTE.deepOrange, lineWidth: 2 } }],
   compute: (bars, params) => {
     const atr = wilder(trueRange(bars), num(params.length));
     const c = closes(bars);
@@ -31,9 +32,9 @@ export const StdDev: IndicatorDef = {
   lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 300 },
-    { key: 'color', label: '颜色', type: 'color', default: '#7e57c2' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.purple },
   ],
-  plots: [{ key: 'sd', label: 'Stdev', style: { kind: 'line', color: '#7e57c2', lineWidth: 2 } }],
+  plots: [{ key: 'sd', label: 'Stdev', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } }],
   compute: (bars, params) => ({ sd: stdev(closes(bars), num(params.length)) }),
 };
 
@@ -48,7 +49,7 @@ export const BBWidth: IndicatorDef = {
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 300 },
     { key: 'mult', label: '倍数', type: 'number', default: 2, min: 0.5, max: 5, step: 0.5 },
   ],
-  plots: [{ key: 'bbw', label: 'BBW', style: { kind: 'line', color: '#00bcd4', lineWidth: 2 } }],
+  plots: [{ key: 'bbw', label: 'BBW', style: { kind: 'line', color: PALETTE.cyan, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const m = num(params.mult);
@@ -75,7 +76,7 @@ export const PercentB: IndicatorDef = {
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 300 },
     { key: 'mult', label: '倍数', type: 'number', default: 2, min: 0.5, max: 5, step: 0.5 },
   ],
-  plots: [{ key: 'pb', label: '%B', style: { kind: 'line', color: '#3f51b5', lineWidth: 2 } }],
+  plots: [{ key: 'pb', label: '%B', style: { kind: 'line', color: PALETTE.indigo, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const m = num(params.mult);
@@ -103,9 +104,9 @@ export const Choppiness: IndicatorDef = {
   lookback: 50,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 2, max: 100 },
-    { key: 'color', label: '颜色', type: 'color', default: '#9c27b0' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.magenta },
   ],
-  plots: [{ key: 'chop', label: 'CHOP', style: { kind: 'line', color: '#9c27b0', lineWidth: 2 } }],
+  plots: [{ key: 'chop', label: 'CHOP', style: { kind: 'line', color: PALETTE.magenta, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const sumTr = rollingSum(trueRange(bars), p);
@@ -133,7 +134,7 @@ export const MassIndex: IndicatorDef = {
     { key: 'length', label: '求和周期', type: 'number', default: 25, min: 1, max: 100 },
     { key: 'emaLength', label: 'EMA 周期', type: 'number', default: 9, min: 1, max: 50 },
   ],
-  plots: [{ key: 'mi', label: 'Mass', style: { kind: 'line', color: '#ff9800', lineWidth: 2 } }],
+  plots: [{ key: 'mi', label: 'Mass', style: { kind: 'line', color: PALETTE.orange, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const ep = num(params.emaLength);
@@ -156,7 +157,7 @@ export const HistVol: IndicatorDef = {
     { key: 'length', label: '周期', type: 'number', default: 10, min: 2, max: 200 },
     { key: 'annual', label: '年化因子', type: 'number', default: 1, min: 1, max: 100000 },
   ],
-  plots: [{ key: 'hv', label: 'HV', style: { kind: 'line', color: '#ef5350', lineWidth: 2 } }],
+  plots: [{ key: 'hv', label: 'HV', style: { kind: 'line', color: PALETTE.red, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
     const ann = Math.sqrt(num(params.annual));

@@ -49,7 +49,7 @@ export const orderBtn: React.CSSProperties = {
   padding: '0 12px',
   border: 'none',
   borderRadius: 4,
-  color: '#fff',
+  color: 'var(--on-warn)',
   fontSize: 12,
   cursor: 'pointer',
 };

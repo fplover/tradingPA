@@ -1,6 +1,7 @@
 import type { IndicatorDef } from '../core/types';
 import { wilder, closes, trueRange, rollingSum, linreg, combine } from '../core/math';
 import { Aroon } from './momentum';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 const hl2 = (bars: readonly { high: number; low: number }[]) => bars.map((b) => (b.high + b.low) / 2);
@@ -18,9 +19,9 @@ export const Alligator: IndicatorDef = {
     { key: 'lipsLength', label: '唇线周期', type: 'number', default: 5, min: 1, max: 200 },
   ],
   plots: [
-    { key: 'jaw', label: '颚线', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'teeth', label: '齿线', style: { kind: 'line', color: '#ef5350', lineWidth: 1.5 } },
-    { key: 'lips', label: '唇线', style: { kind: 'line', color: '#26a69a', lineWidth: 1.5 } },
+    { key: 'jaw', label: '颚线', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'teeth', label: '齿线', style: { kind: 'line', color: PALETTE.red, lineWidth: 1.5 } },
+    { key: 'lips', label: '唇线', style: { kind: 'line', color: PALETTE.green, lineWidth: 1.5 } },
   ],
   compute: (bars, params) => {
     const src = hl2(bars);
@@ -41,9 +42,9 @@ export const McGinley: IndicatorDef = {
   lookback: 30,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 200 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ff9800' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.orange },
   ],
-  plots: [{ key: 'md', label: 'MD', style: { kind: 'line', color: '#ff9800', lineWidth: 2 } }],
+  plots: [{ key: 'md', label: 'MD', style: { kind: 'line', color: PALETTE.orange, lineWidth: 2 } }],
   compute: (bars, params) => {
     const k = num(params.length);
     const c = closes(bars);
@@ -70,8 +71,8 @@ export const Vortex: IndicatorDef = {
   lookback: 50,
   params: [{ key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 200 }],
   plots: [
-    { key: 'vip', label: 'VI+', style: { kind: 'line', color: '#26a69a', lineWidth: 2 } },
-    { key: 'vim', label: 'VI-', style: { kind: 'line', color: '#ef5350', lineWidth: 2 } },
+    { key: 'vip', label: 'VI+', style: { kind: 'line', color: PALETTE.green, lineWidth: 2 } },
+    { key: 'vim', label: 'VI-', style: { kind: 'line', color: PALETTE.red, lineWidth: 2 } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);
@@ -106,7 +107,7 @@ export const AroonOscillator: IndicatorDef = {
   overlay: false,
   lookback: 50,
   params: [{ key: 'length', label: '周期', type: 'number', default: 25, min: 1, max: 200 }],
-  plots: [{ key: 'osc', label: 'Aroon Osc', style: { kind: 'line', color: '#7e57c2', lineWidth: 2 } }],
+  plots: [{ key: 'osc', label: 'Aroon Osc', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } }],
   compute: (bars, params) => {
     const { up, down } = Aroon.compute(bars, params);
     return { osc: combine(up, down, (a, b) => a - b) };
@@ -122,9 +123,9 @@ export const LinearRegression: IndicatorDef = {
   lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 50, min: 2, max: 500 },
-    { key: 'color', label: '颜色', type: 'color', default: '#9c27b0' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.magenta },
   ],
-  plots: [{ key: 'linreg', label: 'LinReg', style: { kind: 'line', color: '#9c27b0', lineWidth: 2 } }],
+  plots: [{ key: 'linreg', label: 'LinReg', style: { kind: 'line', color: PALETTE.magenta, lineWidth: 2 } }],
   compute: (bars, params) => ({ linreg: linreg(closes(bars), num(params.length)) }),
 };
 

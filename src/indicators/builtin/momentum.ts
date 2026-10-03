@@ -1,6 +1,7 @@
 import type { Bar } from '@/types/market';
 import type { IndicatorDef } from '../core/types';
 import { sma, ema, closes, combine, wilder } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 
@@ -27,9 +28,9 @@ export const MACD: IndicatorDef = {
     { key: 'signal', label: '信号', type: 'number', default: 9, min: 1, max: 100 },
   ],
   plots: [
-    { key: 'macd', label: 'MACD', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } },
-    { key: 'signal', label: '信号', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } },
-    { key: 'hist', label: '柱', style: { kind: 'histogram', color: '#26a69a', upColor: '#26a69a', downColor: '#ef5350' } },
+    { key: 'macd', label: 'MACD', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
+    { key: 'signal', label: '信号', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
+    { key: 'hist', label: '柱', style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red } },
   ],
   compute: (bars, params) => {
     const f = num(params.fast);
@@ -56,9 +57,9 @@ export const ADX: IndicatorDef = {
     { key: 'smoothing', label: '平滑', type: 'number', default: 14, min: 1, max: 100 },
   ],
   plots: [
-    { key: 'adx', label: 'ADX', style: { kind: 'line', color: '#7e57c2', lineWidth: 2 } },
-    { key: 'plusDI', label: '+DI', style: { kind: 'line', color: '#26a69a', lineWidth: 1.5 } },
-    { key: 'minusDI', label: '-DI', style: { kind: 'line', color: '#ef5350', lineWidth: 1.5 } },
+    { key: 'adx', label: 'ADX', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } },
+    { key: 'plusDI', label: '+DI', style: { kind: 'line', color: PALETTE.green, lineWidth: 1.5 } },
+    { key: 'minusDI', label: '-DI', style: { kind: 'line', color: PALETTE.red, lineWidth: 1.5 } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);
@@ -106,8 +107,8 @@ export const Aroon: IndicatorDef = {
   lookback: 50,
   params: [{ key: 'length', label: '周期', type: 'number', default: 25, min: 1, max: 200 }],
   plots: [
-    { key: 'up', label: 'Aroon Up', style: { kind: 'line', color: '#26a69a', lineWidth: 2 } },
-    { key: 'down', label: 'Aroon Down', style: { kind: 'line', color: '#ef5350', lineWidth: 2 } },
+    { key: 'up', label: 'Aroon Up', style: { kind: 'line', color: PALETTE.green, lineWidth: 2 } },
+    { key: 'down', label: 'Aroon Down', style: { kind: 'line', color: PALETTE.red, lineWidth: 2 } },
   ],
   compute: (bars, params) => {
     const p = num(params.length);
@@ -147,7 +148,7 @@ export const PSAR: IndicatorDef = {
     { key: 'step', label: '步长', type: 'number', default: 0.02, min: 0.001, max: 0.2, step: 0.001 },
     { key: 'max', label: '上限', type: 'number', default: 0.2, min: 0.05, max: 1, step: 0.01 },
   ],
-  plots: [{ key: 'psar', label: 'PSAR', style: { kind: 'line', color: '#ff9800', lineWidth: 2 } }],
+  plots: [{ key: 'psar', label: 'PSAR', style: { kind: 'line', color: PALETTE.orange, lineWidth: 2 } }],
   compute: (bars, params) => {
     const step = num(params.step);
     const max = num(params.max);
@@ -197,13 +198,13 @@ export const PivotPoints: IndicatorDef = {
   category: '趋势',
   overlay: true,
   lookback: 2,
-  params: [{ key: 'color', label: '颜色', type: 'color', default: '#787b86' }],
+  params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.gray }],
   plots: [
-    { key: 'pivot', label: '枢轴', style: { kind: 'level', color: '#ff9800', lineWidth: 1.5 } },
-    { key: 'r1', label: 'R1', style: { kind: 'level', color: '#ef5350', lineWidth: 1 } },
-    { key: 's1', label: 'S1', style: { kind: 'level', color: '#26a69a', lineWidth: 1 } },
-    { key: 'r2', label: 'R2', style: { kind: 'level', color: '#ef535080', lineWidth: 1 } },
-    { key: 's2', label: 'S2', style: { kind: 'level', color: '#26a69a80', lineWidth: 1 } },
+    { key: 'pivot', label: '枢轴', style: { kind: 'level', color: PALETTE.orange, lineWidth: 1.5 } },
+    { key: 'r1', label: 'R1', style: { kind: 'level', color: PALETTE.red, lineWidth: 1 } },
+    { key: 's1', label: 'S1', style: { kind: 'level', color: PALETTE.green, lineWidth: 1 } },
+    { key: 'r2', label: 'R2', style: { kind: 'level', color: PALETTE.red80, lineWidth: 1 } },
+    { key: 's2', label: 'S2', style: { kind: 'level', color: PALETTE.green80, lineWidth: 1 } },
   ],
   compute: (bars) => {
     const p: Array<number | undefined> = [];
@@ -237,9 +238,9 @@ export const ATR: IndicatorDef = {
   lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 100 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ff5722' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.deepOrange },
   ],
-  plots: [{ key: 'atr', label: 'ATR', style: { kind: 'line', color: '#ff5722', lineWidth: 2 } }],
+  plots: [{ key: 'atr', label: 'ATR', style: { kind: 'line', color: PALETTE.deepOrange, lineWidth: 2 } }],
   compute: (bars, params) => ({ atr: atrValues(bars, num(params.length)) }),
 };
 

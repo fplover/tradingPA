@@ -6,6 +6,7 @@ import { distToSegment } from './geom';
 import { theme, TV_FONT } from '../theme';
 import { GANN_BOX_FRACTIONS, GANN_FAN_RATIOS, gannFanEdgePrice, gannFanLabel } from './gannMath';
 import type { DrawContext } from './coords';
+import { PALETTE } from '@/engine/palette';
 
 type Pix = { x: number; y: number };
 
@@ -70,7 +71,7 @@ export function drawGann(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[], 
     case 'gann-box': {
       if (pts.length < 2) return;
       const { minX, maxX, minY, maxY } = boxRect(pts);
-      ctx.fillStyle = d.style.fillColor ?? '#787b8622';
+      ctx.fillStyle = d.style.fillColor ?? PALETTE.gray22;
       ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
       ctx.strokeRect(minX + 0.5, minY + 0.5, maxX - minX - 1, maxY - minY - 1);
       for (const f of GANN_BOX_FRACTIONS) {

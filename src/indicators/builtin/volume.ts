@@ -1,5 +1,6 @@
 import type { IndicatorDef } from '../core/types';
 import { sma } from '../core/math';
+import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
 
@@ -10,8 +11,8 @@ export const OBV: IndicatorDef = {
   category: '成交量',
   overlay: false,
   lookback: 1,
-  params: [{ key: 'color', label: '颜色', type: 'color', default: '#2962ff' }],
-  plots: [{ key: 'obv', label: 'OBV', style: { kind: 'line', color: '#2962ff', lineWidth: 2 } }],
+  params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.blue }],
+  plots: [{ key: 'obv', label: 'OBV', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } }],
   compute: (bars) => {
     const out: number[] = [];
     let obv = 0;
@@ -33,8 +34,8 @@ export const VWAP: IndicatorDef = {
   category: '成交量',
   overlay: true,
   lookback: 1,
-  params: [{ key: 'color', label: '颜色', type: 'color', default: '#ff9800' }],
-  plots: [{ key: 'vwap', label: 'VWAP', style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 } }],
+  params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.orange }],
+  plots: [{ key: 'vwap', label: 'VWAP', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } }],
   compute: (bars) => {
     let pv = 0;
     let v = 0;
@@ -56,8 +57,8 @@ export const CVD: IndicatorDef = {
   category: '成交量',
   overlay: false,
   lookback: 1,
-  params: [{ key: 'color', label: '颜色', type: 'color', default: '#7e57c2' }],
-  plots: [{ key: 'cvd', label: 'CVD', style: { kind: 'line', color: '#7e57c2', lineWidth: 2 } }],
+  params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.purple }],
+  plots: [{ key: 'cvd', label: 'CVD', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } }],
   compute: (bars) => {
     let cvd = 0;
     return {
@@ -80,9 +81,9 @@ export const VolumeMA: IndicatorDef = {
   lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 200 },
-    { key: 'color', label: '颜色', type: 'color', default: '#ffc107' },
+    { key: 'color', label: '颜色', type: 'color', default: PALETTE.amber },
   ],
-  plots: [{ key: 'ma', label: 'VOL MA', style: { kind: 'line', color: '#ffc107', lineWidth: 1.5 } }],
+  plots: [{ key: 'ma', label: 'VOL MA', style: { kind: 'line', color: PALETTE.amber, lineWidth: 1.5 } }],
   compute: (bars, params) => ({
     ma: sma(bars.map((b) => b.volume), num(params.length)),
   }),
@@ -101,12 +102,12 @@ export const VOL: IndicatorDef = {
     {
       key: 'vol',
       label: 'VOL',
-      style: { kind: 'histogram', color: '#26a69a', upColor: '#26a69a80', downColor: '#ef535080', colorByBar: true },
+      style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green80, downColor: PALETTE.red80, colorByBar: true },
     },
     {
       key: 'vol_ma',
       label: 'MA',
-      style: { kind: 'line', color: '#ff9800', lineWidth: 1.5 },
+      style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 },
     },
   ],
   compute: (bars, params) => {

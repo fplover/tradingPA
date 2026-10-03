@@ -59,13 +59,13 @@ export function OrderDialog({
       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
         <button
           onClick={() => setSide('buy')}
-          style={{ ...chipStyle, flex: 1, background: side === 'buy' ? 'var(--buy)' : 'var(--panel-2)', color: side === 'buy' ? '#fff' : 'var(--text-dim)' }}
+          style={{ ...chipStyle, flex: 1, background: side === 'buy' ? 'var(--buy)' : 'var(--panel-2)', color: side === 'buy' ? 'var(--on-updown)' : 'var(--text-dim)' }}
         >
           买入
         </button>
         <button
           onClick={() => setSide('sell')}
-          style={{ ...chipStyle, flex: 1, background: side === 'sell' ? 'var(--sell)' : 'var(--panel-2)', color: side === 'sell' ? '#fff' : 'var(--text-dim)' }}
+          style={{ ...chipStyle, flex: 1, background: side === 'sell' ? 'var(--sell)' : 'var(--panel-2)', color: side === 'sell' ? 'var(--on-updown)' : 'var(--text-dim)' }}
         >
           卖出
         </button>

@@ -12,6 +12,7 @@ import {
   splitTextLines,
   textBoxSize,
 } from './textMath';
+import { PALETTE } from '@/engine/palette';
 
 type Pix = { x: number; y: number };
 
@@ -29,7 +30,7 @@ function drawNote(ctx: CanvasRenderingContext2D, d: Drawing, p: Pix): void {
   const lineHeight = Math.round(fs * 1.4);
   const w = Math.max(40, Math.max(...lines.map((l) => ctx.measureText(l).width)) + 16);
   const h = lines.length * lineHeight + 12;
-  ctx.fillStyle = d.style.fillColor ?? '#fff9c4';
+  ctx.fillStyle = d.style.fillColor ?? PALETTE.paleYellow;
   ctx.fillRect(p.x, p.y, w, h);
   ctx.fillStyle = d.style.color;
   ctx.textAlign = 'left';
