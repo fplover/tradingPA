@@ -80,7 +80,8 @@ function migrateLegacy(): IndicatorTemplate[] | null {
 
 /** 读档（store 初始化时调用一次）：新 key 缺失 → 尝试旧单槽迁移；其余走归一化兜底 */
 export function loadTemplates(): IndicatorTemplate[] {
-  let raw: string | null = null;
+  // 初值无意义：下面 try 内必赋值，catch 直接 return（eslint 10 的 no-useless-assignment）
+  let raw: string | null;
   try {
     raw = localStorage.getItem(TEMPLATES_KEY);
   } catch {

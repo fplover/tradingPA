@@ -38,6 +38,25 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
+      /*
+       * eslint-plugin-react-hooks 7（随 eslint 10 升级）带入了 **React Compiler 规则集**，
+       * 比 v5 严格得多。以下四条在本次升级中由 error 降为 warn（基线化管理，理由如下）：
+       *
+       * - react-hooks/refs（20 处）：命中的是「latest value ref」模式——本项目的核心
+       *   架构原则是渲染循环与 React 解耦（行情高频更新不进 React 重渲染），因此
+       *   useChartSeries / useAlertWatcher / quoteStore 等**有意**把最新 props/state
+       *   镜像到 ref 供回调与 rAF 读取。彻底修好需改成 effect 内同步或启用 React Compiler，
+       *   属独立批次（有真实回归风险），不在依赖升级范围内。
+       * - react-hooks/set-state-in-effect（12 处）：effect 内同步派生状态，同上。
+       * - react-hooks/purity（3 处）、react-hooks/use-memo（1 处）：编译器优化相关提示。
+       *
+       * 与既有的 exhaustive-deps / only-export-components 警告同一思路：0 错误门禁 +
+       * 显式警告基线，债务可见且可逐条清偿（已登记 OPEN-DECISIONS）。
+       */
+      'react-hooks/refs': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/purity': 'warn',
+      'react-hooks/use-memo': 'warn',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       // 类型层由 tsc 的 noUnusedLocals/noUnusedParameters 把关；此处只兜住 export 面
       '@typescript-eslint/no-unused-vars': [

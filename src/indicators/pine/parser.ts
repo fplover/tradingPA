@@ -65,7 +65,7 @@ class StmtParser {
         if (r.kind === 'stmt') this.prog.body.push(r.stmt);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        if (!msg.startsWith('第 ')) throw new Error(`第 ${ln.no} 行：${msg}`);
+        if (!msg.startsWith('第 ')) throw new Error(`第 ${ln.no} 行：${msg}`, { cause: e });
         throw e;
       }
     }
@@ -95,7 +95,7 @@ class StmtParser {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.startsWith('第 ')) throw e;
-      throw new Error(`第 ${line} 行：${msg}`);
+      throw new Error(`第 ${line} 行：${msg}`, { cause: e });
     }
   }
 
