@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { DialogHeader } from '@/ui/primitives';
 import { getIndicatorDef } from '@/indicators/registry';
 import type { ParamValue } from '@/indicators/core/types';
 import type { PlotStyleOverride } from '@/store/indicatorStore';
@@ -87,14 +87,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
       <Dialog.Portal>
         <Dialog.Overlay style={overlayStyle} />
         <Dialog.Content style={contentStyle} className="tv-dialog" aria-describedby={undefined}>
-          <div style={headerStyle}>
-            <Dialog.Title style={titleStyle}>{active.displayName || def.name} 设置</Dialog.Title>
-            <Dialog.Close asChild>
-              <button style={closeStyle} aria-label="关闭">
-                <X size={16} />
-              </button>
-            </Dialog.Close>
-          </div>
+          <DialogHeader title={`${active.displayName || def.name} 设置`} />
 
           <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
             {/* 左导航：TV 为 180px 全宽填充行，无强调条 */}
@@ -309,30 +302,6 @@ const contentStyle: React.CSSProperties = {
   boxShadow: shadow.modal,
   zIndex: zIndex.modal,
   outline: 'none',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  height: 44,
-  padding: `0 ${space.lg}px`,
-  flexShrink: 0,
-};
-
-const titleStyle: React.CSSProperties = { color: 'var(--text)', fontSize: 16, fontWeight: 600 };
-
-const closeStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 28,
-  height: 28,
-  background: 'transparent',
-  border: 'none',
-  borderRadius: 3,
-  color: 'var(--text-faint)',
-  cursor: 'pointer',
 };
 
 const navStyle: React.CSSProperties = {

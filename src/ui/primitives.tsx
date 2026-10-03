@@ -28,18 +28,26 @@ export function Modal({
       <Dialog.Portal>
         <Dialog.Overlay style={overlayStyle} />
         <Dialog.Content style={{ ...contentStyle, width }} className="tv-dialog" aria-label={title}>
-          <div style={headerStyle}>
-            <Dialog.Title style={titleStyle}>{title}</Dialog.Title>
-            <Dialog.Close asChild>
-              <button style={closeBtnStyle} aria-label="关闭">
-                <X size={16} />
-              </button>
-            </Dialog.Close>
-          </div>
-          {children}
+          <DialogHeader title={title} />
+          <div style={modalBodyStyle}>{children}</div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/** TV 对话框标题栏：44px 齐平条（标题左 + 关闭右）——Modal 与手写 Dialog 的对话框共用，
+ *  头部不吃主体 padding，避免「上 padding + 标题 padding」堆叠出的大片空白。 */
+export function DialogHeader({ title }: { title: React.ReactNode }) {
+  return (
+    <div style={dialogHeaderStyle}>
+      <Dialog.Title style={dialogTitleStyle}>{title}</Dialog.Title>
+      <Dialog.Close asChild>
+        <button style={dialogCloseStyle} aria-label="关闭">
+          <X size={16} />
+        </button>
+      </Dialog.Close>
+    </div>
   );
 }
 
@@ -180,33 +188,36 @@ const contentStyle: React.CSSProperties = {
   background: 'var(--panel)',
   border: '1px solid var(--border)',
   borderRadius: radius.lg,
-  padding: space.lg,
   zIndex: zIndex.modal,
   boxShadow: shadow.modal,
 };
 
-const headerStyle: React.CSSProperties = {
+/** 对话框主体内边距（头部为齐平 44px 条，不叠主体 padding） */
+const modalBodyStyle: React.CSSProperties = { padding: space.lg };
+
+/** TV 对话框标题栏：44px 齐平条（Modal/ChartSettings/IndicatorSettings/Shortcuts 共用） */
+const dialogHeaderStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginBottom: space.md,
+  height: 44,
+  padding: `0 ${space.lg}px`,
+  flexShrink: 0,
 };
 
-const titleStyle: React.CSSProperties = {
-  color: 'var(--text)',
-  fontSize: fontSize.lg,
-  fontWeight: 600,
-};
+const dialogTitleStyle: React.CSSProperties = { color: 'var(--text)', fontSize: 16, fontWeight: 600 };
 
-const closeBtnStyle: React.CSSProperties = {
+const dialogCloseStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  background: 'none',
+  justifyContent: 'center',
+  width: 28,
+  height: 28,
+  background: 'transparent',
   border: 'none',
+  borderRadius: radius.xs,
   color: 'var(--text-faint)',
   cursor: 'pointer',
-  borderRadius: radius.sm,
-  padding: 2,
 };
 
 const menuTriggerStyle: React.CSSProperties = {

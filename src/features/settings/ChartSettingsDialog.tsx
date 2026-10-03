@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { DialogHeader } from '@/ui/primitives';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { GridMode } from '@/engine/renderer/drawAxes';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
@@ -59,14 +59,7 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
       <Dialog.Portal>
         <Dialog.Overlay style={overlayStyle} />
         <Dialog.Content style={contentStyle} className="tv-dialog" aria-describedby={undefined}>
-          <div style={headerStyle}>
-            <Dialog.Title style={titleStyle}>图表设置</Dialog.Title>
-            <Dialog.Close asChild>
-              <button style={closeStyle} aria-label="关闭">
-                <X size={16} />
-              </button>
-            </Dialog.Close>
-          </div>
+          <DialogHeader title="图表设置" />
 
           <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
             <nav style={navStyle}>
@@ -167,30 +160,6 @@ const contentStyle: React.CSSProperties = {
   boxShadow: shadow.modal,
   zIndex: zIndex.modal,
   outline: 'none',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  height: 44,
-  padding: `0 ${space.lg}px`,
-  flexShrink: 0,
-};
-
-const titleStyle: React.CSSProperties = { color: 'var(--text)', fontSize: 16, fontWeight: 600 };
-
-const closeStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 28,
-  height: 28,
-  background: 'transparent',
-  border: 'none',
-  borderRadius: radius.xs,
-  color: 'var(--text-faint)',
-  cursor: 'pointer',
 };
 
 const navStyle: React.CSSProperties = { width: 180, flexShrink: 0, borderRight: '1px solid var(--border)', padding: `${space.sm}px 0` };

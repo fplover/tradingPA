@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog';
-import { X } from 'lucide-react';
+import { DialogHeader } from '@/ui/primitives';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 /** 快捷键分组：只收录本项目已实现的快捷键（与 useTvShortcuts / DrawingToolbar 实际绑定一致） */
@@ -73,14 +73,7 @@ export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () 
       <Dialog.Portal>
         <Dialog.Overlay style={overlayStyle} />
         <Dialog.Content style={contentStyle} aria-describedby={undefined}>
-          <div style={headerStyle}>
-            <Dialog.Title style={titleStyle}>键盘快捷键</Dialog.Title>
-            <Dialog.Close asChild>
-              <button style={closeStyle} aria-label="关闭">
-                <X size={16} />
-              </button>
-            </Dialog.Close>
-          </div>
+          <DialogHeader title="键盘快捷键" />
           <div className="tv-scroll" style={paneStyle}>
             {GROUPS.map((g) => (
               <section key={g.title} style={{ marginBottom: space.lg }}>
@@ -118,30 +111,6 @@ const contentStyle: React.CSSProperties = {
   boxShadow: shadow.modal,
   zIndex: zIndex.modal,
   outline: 'none',
-};
-
-const headerStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  height: 44,
-  padding: `0 ${space.lg}px`,
-  flexShrink: 0,
-};
-
-const titleStyle: React.CSSProperties = { color: 'var(--text)', fontSize: 16, fontWeight: 600 };
-
-const closeStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 28,
-  height: 28,
-  background: 'transparent',
-  border: 'none',
-  borderRadius: radius.xs,
-  color: 'var(--text-faint)',
-  cursor: 'pointer',
 };
 
 const paneStyle: React.CSSProperties = { flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space.md}px ${space.xl}px` };
