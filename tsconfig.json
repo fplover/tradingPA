@@ -15,9 +15,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
+    // 不设 baseUrl：TS 6 起 baseUrl 已弃用（TS 7 将失效），paths 直接以本文件为基准
+    // —— 去掉它同时为将来升级 TS 7 铺路
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src", "tests/unit"]
