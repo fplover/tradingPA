@@ -21,6 +21,7 @@ npm run dev          # http://localhost:5173
 | `npm run build` | `tsc -b` + Vite 生产构建 |
 | `npm run preview` | 预览生产构建 |
 | `npm run typecheck` | 类型检查（含 `src` 与 `tests/unit`，开着 `noUnusedLocals`） |
+| `npm run check:size` | 文件规模检查（**逻辑单元**口径，AST 计数、与排版无关；含存量例外清单） |
 | `npm run lint` | ESLint 扁平配置（0 错误；32 条 `react-hooks/exhaustive-deps`、`react-refresh/only-export-components` 警告为存量基线） |
 | `npm run lint:fix` | ESLint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
@@ -57,7 +58,7 @@ docs/           Spec 与差距分析（见下）
 
 ## 质量门禁
 
-批次出口标准：`npm run typecheck && npm run lint && npm test && npm run test:e2e` 全绿 + `npm run build` 通过。
+批次出口标准：`npm run typecheck && npm run lint && npm run check:size && npm test && npm run test:e2e` 全绿 + `npm run build` 通过。
 
 当前实测基线（2026-09-30）：typecheck 0 错 / lint 0 错（32 警告）/ 单测 959 全过 / E2E 54 例全过（**27 面黄金截图零 diff**）/ 构建 8 chunk、最大应用块 445 kB（>500 kB 警告已消除），合计 gzip 224.31 kB。
 
@@ -77,7 +78,9 @@ npm run test:e2e
   默认色走 `src/engine/palette.ts`（TV 调色板数据，非硬编码）、主题色走 `src/engine/theme.ts`、
   UI 走 `--text-on-accent` / `--on-updown` / `--on-warn` 等 CSS 变量
 - 渲染循环与 React 解耦：高频行情不触发 React 重渲染；跨图表联动走 `store/syncBus.ts`（sourceId 防环 + 限频）
-- 单文件 ≤ 300 行（唯一在卷例外：`src/engine/renderer/ChartController.ts`，纯委托门面，已裁决）
+- 单文件 ≤ **300 逻辑单元**（AST 计数，与排版无关；原「≤300 行」口径因 Prettier 折行使文件数凭空翻倍而废弃）。
+  另有物理行 ≤900 的宽松护栏。存量超标 6 项列于 `scripts/file-size-allowlist.json`（每项带理由与登记出处），
+  门禁只拦**新增**超标：`npm run check:size`
 - 引擎侧框架无关：不得 import React / zustand
 - 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 959 单测 + 54 E2E）
 

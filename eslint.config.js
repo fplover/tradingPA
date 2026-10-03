@@ -68,9 +68,9 @@ export default tseslint.config(
     },
   },
 
-  // 构建/测试配置脚本（node 环境）
+  // 构建/测试配置脚本与仓库脚本（node 环境）
   {
-    files: ['*.config.{js,ts,mjs,cjs}', '*.ts'],
+    files: ['*.config.{js,ts,mjs,cjs}', '*.ts', 'scripts/**/*.mjs'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: {
       ecmaVersion: 2022,
