@@ -10,7 +10,7 @@ export const ROC: IndicatorDef = {
   name: 'ROC 变动率',
   category: '震荡',
   overlay: false,
-  lookback: 30,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 9, min: 1, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.green },
@@ -29,7 +29,7 @@ export const Momentum: IndicatorDef = {
   name: 'MOM 动量',
   category: '震荡',
   overlay: false,
-  lookback: 30,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 10, min: 1, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.blue },
@@ -48,7 +48,7 @@ export const CMO: IndicatorDef = {
   name: 'CMO 钱德动量',
   category: '震荡',
   overlay: false,
-  lookback: 50,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.purple },
@@ -82,7 +82,7 @@ export const DPO: IndicatorDef = {
   name: 'DPO 去趋势振荡',
   category: '震荡',
   overlay: false,
-  lookback: 60,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.cyan },
@@ -108,7 +108,7 @@ export const BOP: IndicatorDef = {
   name: 'BOP 均衡成交量',
   category: '震荡',
   overlay: false,
-  lookback: 30,
+  lookback: 100,
   params: [
     { key: 'length', label: '平滑周期', type: 'number', default: 14, min: 1, max: 100 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.deepOrange },

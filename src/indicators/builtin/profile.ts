@@ -14,7 +14,7 @@ export const VOLUME_PROFILE: IndicatorDef = {
   category: '成交量',
   overlay: true,
   profile: true,
-  lookback: 1,
+  lookback: 195,
   params: [
     { key: 'rowCount', label: '行数', type: 'number', default: 24, min: 10, max: 100, step: 1 },
     { key: 'vaPercent', label: '价值区域 %', type: 'number', default: 70, min: 50, max: 95, step: 1 },

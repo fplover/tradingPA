@@ -81,7 +81,7 @@ export const VolumeMA: IndicatorDef = {
   name: '成交量均线',
   category: '成交量',
   overlay: false,
-  lookback: 100,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.amber },
@@ -101,7 +101,7 @@ export const VOL: IndicatorDef = {
   name: 'VOL 成交量',
   category: '成交量',
   overlay: false,
-  lookback: 1,
+  lookback: 500,
   // length 随 vol_ma 线隐藏而隐藏（TV Volume 的 hideWhenPlotsHidden）
   params: [
     {

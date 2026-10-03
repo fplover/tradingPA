@@ -10,7 +10,7 @@ export const SMA: IndicatorDef = {
   name: 'MA 移动平均',
   category: '趋势',
   overlay: true,
-  lookback: 200,
+  lookback: 500,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.orange },
@@ -25,7 +25,7 @@ export const EMA: IndicatorDef = {
   name: 'EMA 指数移动平均',
   category: '趋势',
   overlay: true,
-  lookback: 200,
+  lookback: 500,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.blue },
@@ -40,7 +40,7 @@ export const WMA: IndicatorDef = {
   name: 'WMA 加权移动平均',
   category: '趋势',
   overlay: true,
-  lookback: 200,
+  lookback: 500,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.pink },
@@ -55,7 +55,7 @@ export const DEMA: IndicatorDef = {
   name: 'DEMA 双指数均线',
   category: '趋势',
   overlay: true,
-  lookback: 400,
+  lookback: 500,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.magenta },
@@ -113,7 +113,7 @@ export const HMA: IndicatorDef = {
   name: 'HMA 船型移动平均',
   category: '趋势',
   overlay: true,
-  lookback: 300,
+  lookback: 500,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 16, min: 1, max: 500 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.lightGreen },
@@ -140,7 +140,7 @@ export const VWMA: IndicatorDef = {
   name: 'VWMA 量权移动平均',
   category: '趋势',
   overlay: true,
-  lookback: 200,
+  lookback: 500,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 500 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.amber },
@@ -172,7 +172,7 @@ export const Ichimoku: IndicatorDef = {
   name: 'Ichimoku 云',
   category: '趋势',
   overlay: true,
-  lookback: 120,
+  lookback: 700,
   params: [
     { key: 'tenkan', label: '转换线', type: 'number', default: 9, min: 1, max: 100 },
     { key: 'kijun', label: '基准线', type: 'number', default: 26, min: 1, max: 200 },
@@ -215,7 +215,7 @@ export const Supertrend: IndicatorDef = {
   name: 'Supertrend 超级趋势',
   category: '趋势',
   overlay: true,
-  lookback: 100,
+  lookback: 110,
   params: [
     { key: 'period', label: 'ATR 周期', type: 'number', default: 10, min: 1, max: 100 },
     { key: 'multiplier', label: '倍数', type: 'number', default: 3, min: 0.5, max: 10, step: 0.5 },

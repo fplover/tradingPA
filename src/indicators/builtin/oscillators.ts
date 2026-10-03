@@ -46,7 +46,7 @@ export const Stoch: IndicatorDef = {
   name: 'Stoch 随机指标',
   category: '震荡',
   overlay: false,
-  lookback: 50,
+  lookback: 200,
   params: [
     { key: 'k', label: '%K 周期', type: 'number', default: 14, min: 1, max: 100 },
     { key: 'd', label: '%D 平滑', type: 'number', default: 3, min: 1, max: 50 },
@@ -96,7 +96,7 @@ export const StochRSI: IndicatorDef = {
   name: 'Stoch RSI',
   category: '震荡',
   overlay: false,
-  lookback: 100,
+  lookback: 300,
   params: [
     { key: 'rsiLength', label: 'RSI 周期', type: 'number', default: 14, min: 1, max: 100 },
     { key: 'stochLength', label: 'Stoch 周期', type: 'number', default: 14, min: 1, max: 100 },
@@ -142,7 +142,7 @@ export const CCI: IndicatorDef = {
   name: 'CCI 顺势指标',
   category: '震荡',
   overlay: false,
-  lookback: 100,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.cyan },
@@ -170,7 +170,7 @@ export const WilliamsR: IndicatorDef = {
   name: 'Williams %R',
   category: '震荡',
   overlay: false,
-  lookback: 50,
+  lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 100 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.deepOrange },
@@ -204,7 +204,7 @@ export const MFI: IndicatorDef = {
   name: 'MFI 资金流量',
   category: '震荡',
   overlay: false,
-  lookback: 50,
+  lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 100 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.brown },
@@ -271,7 +271,7 @@ export const UltimateOscillator: IndicatorDef = {
   name: 'UO 终极波动',
   category: '震荡',
   overlay: false,
-  lookback: 60,
+  lookback: 350,
   params: [
     { key: 'fast', label: '短周期', type: 'number', default: 7, min: 1, max: 50 },
     { key: 'mid', label: '中周期', type: 'number', default: 14, min: 1, max: 100 },

@@ -42,7 +42,7 @@ export const StdDev: IndicatorDef = {
   name: 'Stdev 标准差',
   category: '波动',
   overlay: false,
-  lookback: 100,
+  lookback: 300,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 300 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.purple },
@@ -57,7 +57,7 @@ export const BBWidth: IndicatorDef = {
   name: 'BBWidth 布林带宽',
   category: '波动',
   overlay: false,
-  lookback: 100,
+  lookback: 305,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 300 },
     { key: 'mult', label: '倍数', type: 'number', default: 2, min: 0.5, max: 5, step: 0.5 },
@@ -84,7 +84,7 @@ export const PercentB: IndicatorDef = {
   name: 'BOLL %B',
   category: '波动',
   overlay: false,
-  lookback: 100,
+  lookback: 305,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 300 },
     { key: 'mult', label: '倍数', type: 'number', default: 2, min: 0.5, max: 5, step: 0.5 },
@@ -122,7 +122,7 @@ export const Choppiness: IndicatorDef = {
   name: 'Chop 盘整指数',
   category: '波动',
   overlay: false,
-  lookback: 50,
+  lookback: 100,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 2, max: 100 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.magenta },
@@ -156,7 +156,7 @@ export const MassIndex: IndicatorDef = {
   name: 'Mass 质量指标',
   category: '波动',
   overlay: false,
-  lookback: 100,
+  lookback: 150,
   params: [
     { key: 'length', label: '求和周期', type: 'number', default: 25, min: 1, max: 100 },
     { key: 'emaLength', label: 'EMA 周期', type: 'number', default: 9, min: 1, max: 50 },
@@ -179,7 +179,7 @@ export const HistVol: IndicatorDef = {
   name: 'HV 历史波动率',
   category: '波动',
   overlay: false,
-  lookback: 50,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 10, min: 2, max: 200 },
     { key: 'annual', label: '年化因子', type: 'number', default: 1, min: 1, max: 100000 },

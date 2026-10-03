@@ -12,7 +12,7 @@ export const TRIX: IndicatorDef = {
   name: 'TRIX 三重平滑',
   category: '震荡',
   overlay: false,
-  lookback: 100,
+  lookback: 300,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 15, min: 1, max: 200 },
     { key: 'signal', label: '信号', type: 'number', default: 9, min: 1, max: 100 },
@@ -52,7 +52,7 @@ export const TSI: IndicatorDef = {
   name: 'TSI 真实强度',
   category: '震荡',
   overlay: false,
-  lookback: 100,
+  lookback: 300,
   params: [
     { key: 'long', label: '长周期', type: 'number', default: 25, min: 1, max: 200 },
     { key: 'short', label: '短周期', type: 'number', default: 13, min: 1, max: 100 },
@@ -87,7 +87,7 @@ export const Fisher: IndicatorDef = {
   name: 'Fisher 费雪变换',
   category: '震荡',
   overlay: false,
-  lookback: 30,
+  lookback: 100,
   params: [{ key: 'length', label: '周期', type: 'number', default: 9, min: 1, max: 100 }],
   plots: [
     { key: 'fisher', label: 'Fisher', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
@@ -101,7 +101,7 @@ export const Fisher: IndicatorDef = {
     const fisher: Array<number | undefined> = [];
     const trigger: Array<number | undefined> = [];
     let value = 0;
-    let prevTrigger = 0;
+    let prevFisher = 0;
     for (let i = 0; i < bars.length; i++) {
       const h = hh[i];
       const l = ll[i];
@@ -112,11 +112,15 @@ export const Fisher: IndicatorDef = {
       }
       const ratio = h === l ? 0.5 : (src[i] - l) / (h - l);
       value = 0.66 * (ratio - 0.5) + 0.67 * value;
-      const f1 = atanh(clamp(value));
-      fisher.push(f1);
-      // trigger = 0.25·ln((1+v)/(1−v)) + 0.5·prev = 0.5·atanh(v) + 0.5·prev
-      prevTrigger = 0.5 * atanh(clamp(value)) + 0.5 * prevTrigger;
-      trigger.push(prevTrigger);
+      // Ehlers Fisher：f = atanh(x) + 0.5·f[1]（atanh(x) = 0.5·ln((1+x)/(1−x))）。
+      // 第四轮审查发现此前漏了 `+ 0.5·prevFisher` 递归项——数值与同仓 Pine
+      // `ta.fisher`（pine/taCore.ts:202 `0.5*log(…) + 0.5*prevF`）不一致。
+      const f = atanh(clamp(value)) + 0.5 * prevFisher;
+      fisher.push(f);
+      // Trigger = 上一根 Fisher（TradingView 内置 Fisher Transform 的 Trigger 定义）。
+      // 修正前 trigger 用的是「0.5·atanh + 0.5·prev」——那是半个 Fisher，与 fisher 语义重叠。
+      trigger.push(i > 0 ? fisher[i - 1] : undefined);
+      prevFisher = f;
     }
     return { fisher, trigger };
   },
@@ -128,7 +132,7 @@ export const KST: IndicatorDef = {
   name: 'KST 确知指标',
   category: '震荡',
   overlay: false,
-  lookback: 150,
+  lookback: 500,
   params: [
     { key: 'roc1', label: 'ROC1', type: 'number', default: 10, min: 1, max: 100 },
     { key: 'roc2', label: 'ROC2', type: 'number', default: 15, min: 1, max: 100 },
@@ -176,7 +180,7 @@ export const Coppock: IndicatorDef = {
   name: 'Coppock 考普卡',
   category: '震荡',
   overlay: false,
-  lookback: 60,
+  lookback: 300,
   params: [
     { key: 'fast', label: '短 ROC', type: 'number', default: 11, min: 1, max: 100 },
     { key: 'slow', label: '长 ROC', type: 'number', default: 14, min: 1, max: 100 },
@@ -199,7 +203,7 @@ export const PPO: IndicatorDef = {
   name: 'PPO 价格振荡%',
   category: '震荡',
   overlay: false,
-  lookback: 100,
+  lookback: 400,
   params: [
     { key: 'fast', label: '快线', type: 'number', default: 12, min: 1, max: 100 },
     { key: 'slow', label: '慢线', type: 'number', default: 26, min: 1, max: 200 },

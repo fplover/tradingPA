@@ -56,7 +56,7 @@ export const ElderRay: IndicatorDef = {
   name: 'Elder Ray 艾达透视',
   category: '成交量',
   overlay: false,
-  lookback: 50,
+  lookback: 100,
   params: [{ key: 'length', label: 'EMA 周期', type: 'number', default: 13, min: 1, max: 100 }],
   plots: [
     {
@@ -93,7 +93,7 @@ export const Klinger: IndicatorDef = {
   name: 'Klinger 克林格',
   category: '成交量',
   overlay: false,
-  lookback: 150,
+  lookback: 400,
   params: [
     { key: 'fast', label: '快线', type: 'number', default: 34, min: 1, max: 100 },
     { key: 'slow', label: '慢线', type: 'number', default: 55, min: 1, max: 200 },
@@ -130,7 +130,7 @@ export const VolumeOsc: IndicatorDef = {
   name: 'Vol Osc 量震荡',
   category: '成交量',
   overlay: false,
-  lookback: 50,
+  lookback: 300,
   params: [
     { key: 'fast', label: '短周期', type: 'number', default: 5, min: 1, max: 100 },
     { key: 'slow', label: '长周期', type: 'number', default: 20, min: 1, max: 200 },
@@ -177,7 +177,7 @@ export const CorrCoeff: IndicatorDef = {
   name: 'Corr 相关系数',
   category: '成交量',
   overlay: false,
-  lookback: 50,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.gray },

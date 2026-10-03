@@ -12,7 +12,7 @@ export const Alligator: IndicatorDef = {
   name: 'Alligator 鳄鱼线',
   category: '趋势',
   overlay: true,
-  lookback: 150,
+  lookback: 600,
   params: [
     { key: 'jawLength', label: '颚线周期', type: 'number', default: 13, min: 1, max: 200 },
     { key: 'teethLength', label: '齿线周期', type: 'number', default: 8, min: 1, max: 200 },
@@ -39,7 +39,7 @@ export const McGinley: IndicatorDef = {
   name: 'McGinley 动态均线',
   category: '趋势',
   overlay: true,
-  lookback: 30,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.orange },
@@ -68,7 +68,7 @@ export const Vortex: IndicatorDef = {
   name: 'Vortex 涡旋',
   category: '趋势',
   overlay: false,
-  lookback: 50,
+  lookback: 200,
   params: [{ key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 200 }],
   plots: [
     { key: 'vip', label: 'VI+', style: { kind: 'line', color: PALETTE.green, lineWidth: 2 } },
@@ -105,7 +105,7 @@ export const AroonOscillator: IndicatorDef = {
   name: 'Aroon 震荡',
   category: '趋势',
   overlay: false,
-  lookback: 50,
+  lookback: 200,
   params: [{ key: 'length', label: '周期', type: 'number', default: 25, min: 1, max: 200 }],
   plots: [{ key: 'osc', label: 'Aroon Osc', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } }],
   compute: (bars, params) => {
@@ -120,7 +120,7 @@ export const LinearRegression: IndicatorDef = {
   name: 'Linear Regression 线性回归',
   category: '趋势',
   overlay: true,
-  lookback: 100,
+  lookback: 500,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 50, min: 2, max: 500 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.magenta },

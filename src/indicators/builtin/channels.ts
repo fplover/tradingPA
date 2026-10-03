@@ -10,7 +10,7 @@ export const BollingerBands: IndicatorDef = {
   name: 'BOLL 布林带',
   category: '通道',
   overlay: true,
-  lookback: 100,
+  lookback: 305,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 300 },
     { key: 'mult', label: '倍数', type: 'number', default: 2, min: 0.5, max: 5, step: 0.5 },
@@ -50,7 +50,7 @@ export const KeltnerChannels: IndicatorDef = {
   name: 'Keltner 肯特纳通道',
   category: '通道',
   overlay: true,
-  lookback: 100,
+  lookback: 305,
   params: [
     { key: 'length', label: 'EMA 周期', type: 'number', default: 20, min: 1, max: 200 },
     { key: 'atrLength', label: 'ATR 周期', type: 'number', default: 10, min: 1, max: 100 },
@@ -96,7 +96,7 @@ export const DonchianChannels: IndicatorDef = {
   name: 'Donchian 唐奇安通道',
   category: '通道',
   overlay: true,
-  lookback: 100,
+  lookback: 300,
   params: [{ key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 300 }],
   plots: [
     { key: 'upper', label: '上轨', style: { kind: 'line', color: PALETTE.green88, lineWidth: 1 } },
@@ -137,7 +137,7 @@ export const Envelopes: IndicatorDef = {
   name: 'Envelopes 包络线',
   category: '通道',
   overlay: true,
-  lookback: 100,
+  lookback: 330,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 1, max: 300 },
     { key: 'percent', label: '偏离%', type: 'number', default: 5, min: 0.1, max: 30, step: 0.1 },

@@ -128,13 +128,35 @@ describe('P1-A 动量扩充金标准', () => {
       [10, 9, 7, 8, 100],
     ]);
     const out = compute('fisher', barsF, { length: 2 });
-    // p=2 时 i=0 无窗口 → undefined；value: 0.33, −0.1089 → fisher = 0.5·ln((1+v)/(1−v))
+    // p=2 时 i=0 无窗口 → undefined；value: 0.33, −0.1089
+    // fisher = atanh(v) + 0.5·fisher[1]（Ehlers；第四轮审查修正，此前漏了递归项）
     expect(out.fisher![0]).toBeUndefined();
-    expect(out.fisher![1]).toBeCloseTo(0.3428283, 5);
-    expect(out.fisher![2]).toBeCloseTo(-0.1093336, 5);
-    // trigger = 0.25·atanh(v) + 0.5·prev
-    expect(out.trigger![1]).toBeCloseTo(0.1714142, 5);
-    expect(out.trigger![2]).toBeCloseTo(0.0310403, 5);
+    expect(out.fisher![1]).toBeCloseTo(0.3428283, 5); // 首个点 prevFisher=0 → 与 atanh(v1) 相同
+    expect(out.fisher![2]).toBeCloseTo(0.0620806, 5); // atanh(−0.1089) + 0.5·0.3428283
+    // trigger = 上一根 fisher（TradingView 定义）：i=1 尚无前值 → undefined
+    expect(out.trigger![1]).toBeUndefined();
+    expect(out.trigger![2]).toBeCloseTo(0.3428283, 5);
+  });
+
+  /**
+   * ADX 专项（第四轮审查发现）：此前把 DX 的未就绪段补 0 再 Wilder 平滑，
+   * 种子被摊薄到真值的 1/smoothing（smoothing=5 时首个 ADX ≈ 20 而非 100）。
+   * 单边上涨时 plusDI>0 且 minusDI=0 → **DX 恒为 100**，故 ADX 从首个有值点
+   * 起就必须是 100——这条判据不依赖实现细节，只依赖 DX 的定义。
+   * 注：修复前 ADX 在此前没有任何金标准用例（`-t ADX` 零匹配），缺陷因此长期存活。
+   */
+  it('ADX：单边上涨时从首个有值点起即为 100（未被未就绪段零填充摊薄）', () => {
+    const up: Bar[] = [];
+    for (let i = 0; i < 40; i++) {
+      const base = 100 + i * 2;
+      up.push({ time: i * 60_000, open: base, high: base + 1, low: base - 1, close: base + 0.5, volume: 100 });
+    }
+    const out = compute('adx', up, { length: 5, smoothing: 5 });
+    const defined = out.adx!.filter((v): v is number => v !== undefined);
+    expect(defined.length).toBeGreaterThan(5);
+    for (const v of defined) expect(v).toBeCloseTo(100, 6);
+    // 判别力自检：旧实现（补 0 后平滑）的首值约为 100/smoothing = 20
+    expect(defined[0]!).toBeGreaterThan(95);
   });
 
   it('KST：四段 ROC 加权和（等长 ROC=2 解析值）', () => {

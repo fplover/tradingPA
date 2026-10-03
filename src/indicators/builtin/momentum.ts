@@ -21,7 +21,7 @@ export const MACD: IndicatorDef = {
   name: 'MACD',
   category: '震荡',
   overlay: false,
-  lookback: 100,
+  lookback: 400,
   params: [
     { key: 'fast', label: '快线', type: 'number', default: 12, min: 1, max: 100 },
     { key: 'slow', label: '慢线', type: 'number', default: 26, min: 1, max: 200 },
@@ -60,7 +60,7 @@ export const ADX: IndicatorDef = {
   name: 'ADX 趋势强度',
   category: '趋势',
   overlay: false,
-  lookback: 100,
+  lookback: 200,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 14, min: 1, max: 100 },
     { key: 'smoothing', label: '平滑', type: 'number', default: 14, min: 1, max: 100 },
@@ -102,10 +102,20 @@ export const ADX: IndicatorDef = {
       if (v === undefined || m === undefined || v + m === 0) return undefined;
       return (Math.abs(v - m) / (v + m)) * 100;
     });
-    const adx = wilder(
-      dx.map((v) => v ?? 0),
-      sm,
-    ).map((v, i) => (dx[i] === undefined ? undefined : v));
+    // ADX = Wilder 平滑 DX。**只能对 DX 的稠密尾段平滑**：DX 前 p-1 项未就绪，
+    // 若用 0 填充再平滑，种子会被摊薄到真值的 1/sm（14 周期时首值约为真值的 1/14），
+    // 且偏差随递推长期残留。同仓 Pine taCore.adxSeries 正是取稠密尾段（dx.slice(start)），
+    // 第四轮审查按同一口径统一。段内残留的 undefined 来自「双侧 DI 均为 0」的真实 bar
+    // （Pine 同位置记 0），此处同样按 0 计入。
+    const adx: Array<number | undefined> = new Array(dx.length).fill(undefined);
+    const start = dx.findIndex((v) => v !== undefined);
+    if (start >= 0) {
+      const smooth = wilder(
+        dx.slice(start).map((v) => v ?? 0),
+        sm,
+      );
+      for (let i = 0; i < smooth.length; i++) adx[start + i] = smooth[i];
+    }
     return { adx, plusDI, minusDI };
   },
 };
@@ -116,7 +126,7 @@ export const Aroon: IndicatorDef = {
   name: 'Aroon 阿隆',
   category: '趋势',
   overlay: false,
-  lookback: 50,
+  lookback: 200,
   params: [{ key: 'length', label: '周期', type: 'number', default: 25, min: 1, max: 200 }],
   plots: [
     { key: 'up', label: 'Aroon Up', style: { kind: 'line', color: PALETTE.green, lineWidth: 2 } },
