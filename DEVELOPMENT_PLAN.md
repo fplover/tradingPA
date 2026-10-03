@@ -1,8 +1,9 @@
 # TradingView 图表平台 1:1 复刻 — 开发计划
 
-> 版本：v1.2 ｜ 日期：2026-09-30
+> 版本：v1.3 ｜ 日期：2026-09-30
 > 目标：以完整平台形态，1:1 复刻 TradingView 的图表功能（图表类型 / 周期 / 指标 / 画线工具 / 实时行情 / 平台能力）。
-> v1.2 回填说明（2026-09-30）：§3 清单按代码现状勾选——M0-M7 之后，TV-ALIGNMENT v2.0（P0 八项）与 P1 六个批次（A–F）已交付：指标 63 个、图表类型 18 种、周期 22 档 + 自定义间隔、Pine 迁 `src/indicators/pine/`（12 模块）。剩余缺口见 docs/SPEC-P2.md（2026-09-30 创建，待启动）。
+> v1.2 回填说明（2026-09-30）：§3 清单按代码现状勾选——M0-M7 之后，TV-ALIGNMENT v2.0（P0 八项）与 P1 六个批次（A–F）已交付：指标 63 个、图表类型 18 种、周期 22 档 + 自定义间隔、Pine 迁 `src/indicators/pine/`（12 模块）。
+> v1.3 回填说明（2026-09-30 复核）：**P2 收官批次（A/B/C/D）已全部交付并入版本库**（6056eb4+1e194fc ／ d77b8b7 ／ 5cd9f5e ／ 23294a8），详见 docs/SPEC-P2.md §7 与 docs/SPEC-TV-ALIGNMENT.md §12；§3 清单据此重新勾选。本版复核实测：内置指标 64 个、门禁 typecheck 0 错 + 单测 959 + E2E 48 + 构建 gzip 222.94KB。
 
 ## 进度
 
@@ -53,9 +54,14 @@
   - 性能：10 万 K 线同屏 3–9ms、常规视图 <1ms、4 面板+4 指标 1–5ms
 - [x] **TV-ALIGNMENT v2.0 + P1 六个批次已完成（2026-09-28 ~ 09-30；本条 2026-09-30 回填）**
   - TV 对齐（P0 八项）：快捷键全映射（`hooks/useTvShortcuts.ts`，Alt+A/W/N/R/L/P/S、Ctrl+Alt+H、Ctrl+P 等）／ 前往日期（`features/market/GoToDateDialog.tsx`）／ 收盘倒计时（`engine/countdown.ts`，51 条单测）／ 6 种图表类型补齐（CHART_TYPES 18 种）／ 2m·3m·45m·3H + 自定义间隔（`features/market/CustomIntervalDialog.tsx`、`IntervalInputDialog.tsx`、`registerTimeframe`）／ 斐波那契家族 6 变体（fib/fib-extension/fib-fan/fib-arc/fib-timezone/fib-auto）／ 画线克隆·多选·Shift 锁轴（`engine/drawing/DrawingLayer.ts`）／ 布局保存加载（`store/layoutStore.ts` + `features/layout/LayoutSaveMenu.tsx`）
-  - P1：指标 33→63（P1-A 净增 30，Anchored VWAP 挂起 OPEN-DECISIONS）；Pine 迁 `src/indicators/pine/`（12 模块，if/for/while 控制流 + 32 个 ta 函数）；警报 4 条件/指标值触发/编辑/声音（P1-C）；模拟交易 limit/stop/stop-limit 挂单（`features/trading/paperEngine.ts` + `orderTrigger.ts`，P1-D）；命令面板 Ctrl+P（P1-E）；Volume Profile 按 ADR-001 kline 近似交付（`engine/profile/volumeProfile.ts`，P1-F）
+  - P1：指标 33→63（P1-A 净增 30；Anchored VWAP 当时挂起 OPEN-DECISIONS，已由 P2-B 交付并关闭该条）；Pine 迁 `src/indicators/pine/`（12 模块，if/for/while 控制流 + 32 个 ta 函数）；警报 4 条件/指标值触发/编辑/声音（P1-C）；模拟交易 limit/stop/stop-limit 挂单（`features/trading/paperEngine.ts` + `orderTrigger.ts`，P1-D）；命令面板 Ctrl+P（P1-E）；Volume Profile 按 ADR-001 kline 近似交付（`engine/profile/volumeProfile.ts`，P1-F）
   - 门禁：`npm run typecheck` 0 错误；单测 544/544；E2E 47/47（详见 docs/SPEC-TV-ALIGNMENT.md / docs/SPEC-P1.md 变更记录）
-- [ ] **P2 收官批次待启动**（docs/SPEC-P2.md，2026-09-30 创建，未入 git）：P2-A Pine 绘图指令完整化 ／ P2-B 画线家族扩展（文字类/几何/江恩/艾略特/测量/Anchored VWAP）／ P2-C 平台补全（多图表联动扩展/单元格最大化/布局调比/控制条/搜索键盘导航）／ P2-D Compare 叠加 + 画线警报
+- [x] **P2 收官批次已完成（2026-09-30；本条 v1.3 回填）**（docs/SPEC-P2.md，已入版本库）
+  - P2-A Pine 绘图指令完整化（6056eb4 + 1e194fc）：bgcolor/barcolor 渲染接线（`computeExtra` 窗口旁路）+ plotshape/plotchar（7 shape × 3 location）+ alertcondition（警报面板「Pine 条件」分区）
+  - P2-B 画线家族扩展（d77b8b7）：文字 4（便签/价格标签/锚定文本/箭头标记）／测量／几何 3（多边形/圆弧/曲线）／江恩 3（扇形/江恩线/江恩箱）／艾略特波浪／Anchored VWAP
+  - P2-C 平台补全（5cd9f5e）：syncBus 三通道（品种/周期/画线同步）／单元格最大化（Alt+Enter、双击）／布局边缘拖拽调比／control_bar 五按钮／符号搜索键盘导航 + 收藏分组；App.tsx 650→237
+  - P2-D Compare 叠加 + 画线水平线警报（23294a8）
+  - 批次门禁：typecheck + 单测 830/830（P2-D 时点，其后增至 959）+ E2E 48/48 + build
 
 ---
 
@@ -128,35 +134,38 @@
 
 ### 3.4 指标体系
 - [x] 指标框架：声明式 schema（inputs / styles / plots / overlays），主图叠加 & 副图两种模式
-- [x] 内置指标（首批 ~60 个，实际 63 个：P1-A 净增 30；Anchored VWAP 未实装，见 docs/decisions/OPEN-DECISIONS.md）：
+- [x] 内置指标（实际 64 个：P1-A 净增 30 至 63，P2-B 补 Anchored VWAP 至 64；OPEN-DECISIONS 该条已 RESOLVED）：
   - 趋势：SMA / EMA / WMA / DEMA / TEMA / HMA / VWMA / Ichimoku / Supertrend / Parabolic SAR / Alligator
   - 震荡：MACD / RSI / Stoch / Stoch RSI / CCI / Williams %R / MFI / Awesome Oscillator / Accelerator
   - 通道：Bollinger Bands / Keltner Channels / Donchian Channels / Envelopes
   - 波动：ATR / NATR / Bollinger Width / Standard Deviation
-  - 量能：Volume / OBV / VWAP / Volume Profile / CVD（Anchored VWAP 除外，待画线交互批次补）
+  - 量能：Volume / OBV / VWAP / Volume Profile / CVD / Anchored VWAP（P2-B 实装，锚点经画线锚定落点写入 params.anchorTime）
   - 其他：ADX/DMI / Aroon / Ultimate Oscillator / Know Sure Thing / Coppock / Pivot Points 等
 - [x] 指标参数对话框 + 样式设置（颜色/线宽/填充）
 - [x] 指标值 tooltip（悬停显示各指标当前值）
 - [x] 指标模板：保存/加载整套指标组合
-- [x] 自定义指标 DSL（Pine Script 子集：input / ta.xxx（32 个）/ plot / if-for-while / 用户函数，解释执行；`security` 多周期引用未含，见 P2）
+- [x] 自定义指标 DSL（Pine Script 子集：input / ta.xxx（32 个）/ plot / plotshape / plotchar / bgcolor / barcolor / alertcondition / if-for-while / 用户函数，解释执行；`security` 多周期引用按 SPEC-P2 §3 明确不做）
 
 ### 3.5 画线工具（Drawing Tools）
 - [x] 线条：趋势线 / 射线 / 水平线 / 垂直线 / 箭头 / 信息线
 - [x] 通道：平行通道
 - [x] 斐波那契：回撤 / 扩展 / 扇形 / 弧线 / 时区 / Auto Fib（P0-6 补齐 6 变体；通道 / 螺旋未做）
-- [ ] 形态：XABCD 谐波 / 头肩顶底 / ABCD / 三角形态（P2-B）
-- [ ] 几何：矩形 / 圆形 / 椭圆 / 多边形 / 路径 / 曲线（已实现矩形 / 椭圆 / 路径；多边形 / 圆弧 / 曲线待 P2-B）
-- [ ] 文字：文本 / 便签 / 锚定文本 / 价格标签 / 价格注记 / 箭头标记（仅文本已实现，其余待 P2-B）
-- [ ] 图标与表情（P2）
-- [ ] 艾略特波浪 / 江恩线 / 预测形态（P2-B）
+- [x] 百分比线（非 TV 原生工具，取中文行情软件经典八分法语义；默认三档 0/50/100 可编辑；2acf0c2 + ae28860）
+- [ ] 形态：XABCD 谐波 / 头肩顶底 / ABCD / 三角形态（未做）
+- [x] 几何：矩形 / 椭圆 / 路径（既有）+ 多边形 / 圆弧 / 曲线（P2-B d77b8b7）；圆形未做
+- [x] 文字：文本（既有）+ 便签 / 锚定文本 / 价格标签 / 箭头标记（P2-B）；价格注记未做
+- [x] 测量：Shift+点击浮层（bar 数 / 价差 / 百分比），Esc 取消（P2-B）
+- [ ] 图标与表情（未做）
+- [x] 艾略特波浪 / 江恩扇形 / 江恩线 / 江恩箱（P2-B）；预测形态未做
 - [x] 交互能力：选中 / 拖拽移动 / 缩放手柄 / 顶点编辑 / 磁吸（弱磁吸/强磁吸 OHLC）/ 锁定 / 隐藏 / 克隆 / 删除（P0-7 补齐 Ctrl+拖动克隆、Ctrl+点击多选、Shift 锁轴、方向键微调）
 - [x] 对象树管理面板、撤销/重做命令栈、导入/导出（JSON）
 
 ### 3.6 平台功能
 - [x] 自选股列表 + 全局品种搜索
 - [x] 多图表布局：1 / 2 / 4 / 6 / 8 格（任意格数自定义未支持，P2-C 评估）
-- [x] 图表间联动：十字光标同步、时间范围同步（品种 / 周期 / 画线同步未做，P2-C）
-- [x] 价格警报：触发条件（价格 4 条件 greater/less/crossUp/crossDown + 指标值触发；画线触及明确不做），浏览器通知 + 声音 + 编辑 / 频率 / 过期（P1-C）
+- [x] 图表间联动：十字光标同步、时间范围同步（既有）+ 品种 / 周期 / 画线同步（P2-C，syncBus 三 channel + sourceId 防环 + 30Hz 限频）
+- [x] Compare 叠加对比：顶栏按钮叠加第二条价格序列（percent 同坐标系 / 独立订阅 + 30s 轮询 / 图例第二行 / 左缘翻页；仅单图布局、最近 500 根，P2-D）
+- [x] 价格警报：触发条件（价格 4 条件 greater/less/crossUp/crossDown + 指标值触发 + Pine alertcondition + 画线水平线触及（P2-D）），浏览器通知 + 声音 + 编辑 / 频率 / 过期（P1-C）
 - [x] 复盘模式（Bar Replay）：逐K线回放
 - [x] 图表模板 / 主题（深色 / 浅色）保存到 localStorage
 - [x] 截图导出（PNG）
