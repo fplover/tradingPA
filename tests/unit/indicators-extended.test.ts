@@ -87,11 +87,12 @@ describe('P1-A 动量扩充金标准', () => {
     expect(out.cmo![9]).toBe(100);
   });
 
-  it('DPO：close − SMA(p/2+1) 左移', () => {
+  it('DPO：close − SMA(close, p)[p/2+1]（TV 定义，窗口为全周期）', () => {
     const out = compute('dpo', bars, { length: 4 });
-    expect(out.dpo![4]).toBeUndefined();
-    expect(out.dpo![5]).toBeCloseTo(4, 10);
-    expect(out.dpo![9]).toBeCloseTo(4, 10);
+    // shift = 3，首个有效值在 i = shift + p - 1 = 6
+    expect(out.dpo![5]).toBeUndefined();
+    expect(out.dpo![6]).toBeCloseTo(7 - 2.5, 10); // 7 − SMA(close 1..4)
+    expect(out.dpo![9]).toBeCloseTo(10 - 5.5, 10); // 10 − SMA(close 3..6)
   });
 
   it('BOP：(close−open)/(high−low)', () => {
@@ -342,3 +343,26 @@ describe('P1-A 量能扩充金标准', () => {
     expect(flat.corr![2]).toBe(0); // 量恒定 → 方差 0 → 0
   });
 });
+
+describe('第四轮审查修复（指标数值）', () => {
+  it('UO：fast > slow 时预热取三周期最大值，不再输出 NaN', () => {
+    // fast=3 > slow=2 的非法倒挂参数：修复前 avg(fast) 取负索引 → bSum += undefined → 全 NaN
+    const out = compute('uo', ramp(10), { fast: 3, mid: 4, slow: 2 });
+    for (let i = 0; i < 10; i++) {
+      const v = out.uo![i];
+      if (v === undefined) continue; // 预热期（i < max(f,m,s) - 1 = 3）
+      expect(Number.isFinite(v)).toBe(true);
+    }
+    expect(out.uo![3]).toBeDefined();
+    // 首个有效值 i=3：bp/tr 全窗口有限，结果落在 0..100
+    expect(out.uo![3]!).toBeGreaterThanOrEqual(0);
+    expect(out.uo![3]!).toBeLessThanOrEqual(100);
+  });
+
+  it('UO：ramp 数据下 bp=1/tr=2 恒定 → 输出 50', () => {
+    // ramp bars：bp = close − min(low, prevClose) = 1，tr = maxHigh − minLow = 2 → avg 恒为 0.5
+    const out = compute('uo', ramp(10), { fast: 2, mid: 3, slow: 4 });
+    expect(out.uo![9]).toBeCloseTo(50, 10);
+  });
+});
+

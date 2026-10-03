@@ -303,7 +303,8 @@ export const UltimateOscillator: IndicatorDef = {
     };
     return {
       uo: bars.map((_, i) => {
-        if (i < s - 1) return undefined;
+        // 预热取三周期最大值：只按 slow 判定时 fast > slow 的参数组合会让 avg() 取负索引 → 全 NaN
+        if (i < Math.max(f, m, s) - 1) return undefined;
         return ((4 * avg(f, i) + 2 * avg(m, i) + avg(s, i)) / 7) * 100;
       }),
     };

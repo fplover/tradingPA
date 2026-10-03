@@ -76,13 +76,14 @@ export const CMO: IndicatorDef = {
   },
 };
 
-/** DPO 去趋势价格振荡（close − SMA(close, p/2+1) 左移 p/2+1） */
+/** DPO 去趋势价格振荡（TV 定义：close − SMA(close, length)[length/2+1]，窗口为全周期、位移 p/2+1） */
 export const DPO: IndicatorDef = {
   id: 'dpo',
   name: 'DPO 去趋势振荡',
   category: '震荡',
   overlay: false,
-  lookback: 200,
+  // 上下文需覆盖 位移 shift + SMA 窗口 p − 1（p 上限 200 时为 300）
+  lookback: 300,
   params: [
     { key: 'length', label: '周期', type: 'number', default: 20, min: 2, max: 200 },
     { key: 'color', label: '颜色', type: 'color', default: PALETTE.cyan },
@@ -90,12 +91,12 @@ export const DPO: IndicatorDef = {
   plots: [{ key: 'dpo', label: 'DPO', style: { kind: 'line', color: PALETTE.cyan, lineWidth: 2 } }],
   compute: (bars, params) => {
     const p = num(params.length);
-    const sc = Math.floor(p / 2) + 1;
+    const shift = Math.floor(p / 2) + 1;
     const c = closes(bars);
-    const sm = sma(c, sc);
+    const sm = sma(c, p);
     return {
       dpo: c.map((v, i) => {
-        const m = i - sc >= 0 ? sm[i - sc] : undefined;
+        const m = i - shift >= 0 ? sm[i - shift] : undefined;
         return m === undefined ? undefined : v - m;
       }),
     };
