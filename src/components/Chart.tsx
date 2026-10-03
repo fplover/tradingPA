@@ -16,6 +16,7 @@ import { useChartCommands } from '@/hooks/useChartCommands';
 import { useLazyLoad } from '@/hooks/useLazyLoad';
 import { useLiveTick } from '@/hooks/useLiveTick';
 import { BackToLatestButton, useBackToLatest } from '@/hooks/useBackToLatest';
+import { isPurePrepend, seriesKey } from './chartPrepend';
 
 interface ChartProps {
   bars: Bar[];
@@ -75,6 +76,8 @@ export function Chart({
   const lastBarRef = useRef<Bar | undefined>(bars[bars.length - 1]);
   const barsRef = useRef<Bar[]>(bars);
   const prevBarsRef = useRef<Bar[]>(bars);
+  /** 上一批数据所属的「标的|周期」——前插判定必须同标同周期，否则只能整序列替换 */
+  const prevKeyRef = useRef<string>(`${symbol ?? ''}|${interval ?? ''}`);
 
   useEffect(() => {
     lastBarRef.current = bars[bars.length - 1];
@@ -108,12 +111,21 @@ export function Chart({
     const renderer = rendererRef.current;
     if (!renderer) return;
     const prev = prevBarsRef.current;
+    const key = seriesKey(symbol, interval);
+    const prevKey = prevKeyRef.current;
+    prevKeyRef.current = key;
     prevBarsRef.current = bars;
-    // 左侧翻页：新数据全是更早的 K 线时走前插，保持视口不跳回右边缘
-    const at = prev.length > 0 ? bars.findIndex((b) => b.time === prev[0].time) : -1;
-    if (at > 0) renderer.prependBars(bars.slice(0, at));
-    else renderer.setData(bars);
-  }, [bars]);
+
+    // 左侧翻页判定见 chartPrepend.isPurePrepend 的注释（第四轮审查修复）：
+    // 必须同标的同周期 + 旧首柱出现在新数组 index>0 + 后缀逐根时间一致，三者同时成立
+    // 才前插；否则整序列替换。修复前只判第二条，换品种时会命中并把两个标的拼在一起。
+    if (isPurePrepend(prev, bars, prevKey, key)) {
+      const at = bars.findIndex((b) => b.time === prev[0].time);
+      renderer.prependBars(bars.slice(0, at));
+    } else {
+      renderer.setData(bars);
+    }
+  }, [bars, symbol, interval]);
 
   // Shift+滚轮：图表左右平移（TV 官方映射）。渲染器自身的 wheel 监听挂在 canvas 上，
   // 这里在 window 捕获阶段抢先处理并阻断传播，避免与「普通滚轮缩放」叠加。

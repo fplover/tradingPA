@@ -1,5 +1,33 @@
 import type { Bar } from '@/types/market';
 
+/**
+ * 砖块/箱体循环的两道护栏（第四轮审查修复）。
+ *
+ * 问题：renko/pnf 的 `while (|close − last| >= brickSize)` 在两个条件下失控——
+ *   ① brickSize = 0 时条件恒真（`>= 0` 永成立）→ **死循环**；
+ *   ② 单个离群价（如 1e9 vs 0.001 价区）配小砖 → 迭代次数上亿 → 卡死/OOM。
+ * 触发路径真实存在：ChartState 用 `atr(bars.slice(-200)) || close*0.001` 推导砖块尺寸，
+ * 末 200 根全为 0 价（数据源垃圾字段被归 0）时该表达式恰为 0；
+ * 而 `opts.brickSize ?? 1` 只兜 null/undefined，**不拦 0**。
+ *
+ * 护栏：尺寸先规整为正有限值（非法则按价格跨度兜底），再给输出总量设上限。
+ */
+const MIN_BOX = 1e-9;
+const MAX_OUTPUT_BARS = 20_000;
+
+/** 把砖块尺寸规整为「正且有限」；非法/非正时按数据价格跨度兜底，保证循环必然收敛 */
+function safeBox(bars: readonly Bar[], size: number): number {
+  if (Number.isFinite(size) && size > MIN_BOX) return size;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const b of bars) {
+    if (b.low < min) min = b.low;
+    if (b.high > max) max = b.high;
+  }
+  const span = max - min;
+  return Number.isFinite(span) && span > 0 ? span / 50 : 1;
+}
+
 /** Heikin Ashi：平滑蜡烛，open=(前open+前close)/2, close=(o+h+l+c)/4 */
 export function heikinAshi(bars: Bar[]): Bar[] {
   const out: Bar[] = [];
@@ -36,11 +64,12 @@ export interface BrickOptions {
 export function renko(bars: Bar[], brickSize: number): Bar[] {
   const out: Bar[] = [];
   if (bars.length === 0) return out;
+  const size = safeBox(bars, brickSize);
   let lastClose = bars[0].close;
   for (const b of bars) {
-    while (Math.abs(b.close - lastClose) >= brickSize) {
+    while (Math.abs(b.close - lastClose) >= size && out.length < MAX_OUTPUT_BARS) {
       const up = b.close > lastClose;
-      const newClose = up ? lastClose + brickSize : lastClose - brickSize;
+      const newClose = up ? lastClose + size : lastClose - size;
       out.push({
         time: b.time,
         open: lastClose,
@@ -128,7 +157,8 @@ export function lineBreak(bars: Bar[], lineCount = 3): Bar[] {
 export function pointAndFigure(bars: Bar[], boxSize: number, reversalBoxes = 3): Bar[] {
   const out: Bar[] = [];
   if (bars.length === 0) return out;
-  const reversal = boxSize * reversalBoxes;
+  const box = safeBox(bars, boxSize);
+  const reversal = box * reversalBoxes;
   let dir: 0 | 1 | -1 = 0;
   let col = bars[0].close;
   const push = (time: number, close: number, volume: number) => {
@@ -139,26 +169,26 @@ export function pointAndFigure(bars: Bar[], boxSize: number, reversalBoxes = 3):
     if (dir === 0) {
       if (b.close >= col + boxSize) {
         dir = 1;
-        while (col + boxSize <= b.close) push(b.time, col + boxSize, b.volume);
+        while (col + box <= b.close && out.length < MAX_OUTPUT_BARS) push(b.time, col + box, b.volume);
       } else if (b.close <= col - boxSize) {
         dir = -1;
-        while (col - boxSize >= b.close) push(b.time, col - boxSize, b.volume);
+        while (col - box >= b.close && out.length < MAX_OUTPUT_BARS) push(b.time, col - box, b.volume);
       }
       continue;
     }
     if (dir === 1) {
       if (b.close >= col + boxSize) {
-        while (col + boxSize <= b.close) push(b.time, col + boxSize, b.volume);
+        while (col + box <= b.close && out.length < MAX_OUTPUT_BARS) push(b.time, col + box, b.volume);
       } else if (b.close <= col - reversal) {
         dir = -1;
-        while (col - boxSize >= b.close) push(b.time, col - boxSize, b.volume);
+        while (col - box >= b.close && out.length < MAX_OUTPUT_BARS) push(b.time, col - box, b.volume);
       }
     } else {
       if (b.close <= col - boxSize) {
-        while (col - boxSize >= b.close) push(b.time, col - boxSize, b.volume);
+        while (col - box >= b.close && out.length < MAX_OUTPUT_BARS) push(b.time, col - box, b.volume);
       } else if (b.close >= col + reversal) {
         dir = 1;
-        while (col + boxSize <= b.close) push(b.time, col + boxSize, b.volume);
+        while (col + box <= b.close && out.length < MAX_OUTPUT_BARS) push(b.time, col + box, b.volume);
       }
     }
   }
@@ -167,6 +197,7 @@ export function pointAndFigure(bars: Bar[], boxSize: number, reversalBoxes = 3):
 
 /** Range：固定价格区间成 bar（日内区间突破） */
 export function rangeBars(bars: Bar[], rangeSize: number): Bar[] {
+  const size = safeBox(bars, rangeSize);
   const out: Bar[] = [];
   if (bars.length === 0) return out;
   let cur: Bar | null = null;
@@ -179,7 +210,7 @@ export function rangeBars(bars: Bar[], rangeSize: number): Bar[] {
     cur.low = Math.min(cur.low, b.low);
     cur.close = b.close;
     cur.volume += b.volume;
-    if (cur.high - cur.low >= rangeSize) {
+    if (cur.high - cur.low >= size) {
       out.push(cur);
       cur = null;
     }
