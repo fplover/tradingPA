@@ -34,7 +34,13 @@ function collectDeclared(stmts: Stmt[], known: Set<string>): void {
   }
 }
 
-function validateExpr(e: Expr, known: Set<string>, funcs: PineProgram['funcs'], errors: PineError[], line: number): void {
+function validateExpr(
+  e: Expr,
+  known: Set<string>,
+  funcs: PineProgram['funcs'],
+  errors: PineError[],
+  line: number,
+): void {
   if (e.t === 'call') {
     const fundef = funcs.get(e.fn);
     if (fundef) {

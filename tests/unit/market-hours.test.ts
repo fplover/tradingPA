@@ -61,7 +61,19 @@ describe('isMarketOpen', () => {
   });
 
   it('全部市场均有定义', () => {
-    const markets: MarketId[] = ['cn-sh', 'cn-sz', 'cn-bj', 'hk', 'us-nasdaq', 'us-nyse', 'us-amex', 'cn-index', 'cn-fut', 'global-fut', 'crypto'];
+    const markets: MarketId[] = [
+      'cn-sh',
+      'cn-sz',
+      'cn-bj',
+      'hk',
+      'us-nasdaq',
+      'us-nyse',
+      'us-amex',
+      'cn-index',
+      'cn-fut',
+      'global-fut',
+      'crypto',
+    ];
     for (const m of markets) {
       expect(typeof isMarketOpen(m, tue(10, 0))).toBe('boolean');
     }

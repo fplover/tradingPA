@@ -4,7 +4,12 @@ import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
  *  自 IndicatorSettingsDialog.tsx 外提（该文件曾超 300 行红线）。
  *  纯样式常量外提，零行为变化；取值与迁移前逐字符一致。 */
 
-export const overlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: zIndex.modal };
+export const overlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'var(--overlay)',
+  zIndex: zIndex.modal,
+};
 
 export const contentStyle: React.CSSProperties = {
   position: 'fixed',
@@ -41,7 +46,12 @@ export const navItemStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-export const paneStyle: React.CSSProperties = { flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space.xl}px ${space.xl}px` };
+export const paneStyle: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  overflowY: 'auto',
+  padding: `${space.xl}px ${space.xl}px`,
+};
 
 export const rowStyle: React.CSSProperties = {
   display: 'flex',
@@ -60,9 +70,24 @@ export const inputStyle: React.CSSProperties = {
   fontSize: fontSize.md,
 };
 
-export const swatchStyle: React.CSSProperties = { width: 22, height: 22, padding: 0, border: '1px solid var(--border)', borderRadius: 3, background: 'none', cursor: 'pointer' };
+export const swatchStyle: React.CSSProperties = {
+  width: 22,
+  height: 22,
+  padding: 0,
+  border: '1px solid var(--border)',
+  borderRadius: 3,
+  background: 'none',
+  cursor: 'pointer',
+};
 
-export const checkLabelStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text)', fontSize: fontSize.md, cursor: 'pointer' };
+export const checkLabelStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  color: 'var(--text)',
+  fontSize: fontSize.md,
+  cursor: 'pointer',
+};
 
 export const groupLabelStyle: React.CSSProperties = { marginBottom: space.xs };
 

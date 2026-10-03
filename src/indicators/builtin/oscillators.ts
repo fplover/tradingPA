@@ -61,17 +61,32 @@ export const Stoch: IndicatorDef = {
     const d = num(params.d);
     const s = num(params.smooth);
     const c = closes(bars);
-    const hh = highest(bars.map((b) => b.high), p);
-    const ll = lowest(bars.map((b) => b.low), p);
+    const hh = highest(
+      bars.map((b) => b.high),
+      p,
+    );
+    const ll = lowest(
+      bars.map((b) => b.low),
+      p,
+    );
     const rawK = c.map((v, i) => {
       const h = hh[i];
       const l = ll[i];
       if (h === undefined || l === undefined || h === l) return undefined;
       return ((v - l) / (h - l)) * 100;
     });
-    const k = sma(rawK.map((v) => v ?? 0), s);
+    const k = sma(
+      rawK.map((v) => v ?? 0),
+      s,
+    );
     const kClean = rawK.map((v, i) => (v === undefined ? undefined : k[i]));
-    return { k: kClean, d: sma(kClean.map((v) => v ?? 0), d).map((v, i) => (kClean[i] === undefined ? undefined : v)) };
+    return {
+      k: kClean,
+      d: sma(
+        kClean.map((v) => v ?? 0),
+        d,
+      ).map((v, i) => (kClean[i] === undefined ? undefined : v)),
+    };
   },
 };
 
@@ -106,9 +121,18 @@ export const StochRSI: IndicatorDef = {
       if (h === undefined || l === undefined || h === l) return undefined;
       return ((v - l) / (h - l)) * 100;
     });
-    const k = sma(raw.map((v) => v ?? 0), kp);
+    const k = sma(
+      raw.map((v) => v ?? 0),
+      kp,
+    );
     const kClean = raw.map((v, i) => (v === undefined ? undefined : k[i]));
-    return { k: kClean, d: sma(kClean.map((v) => v ?? 0), dp).map((v, i) => (kClean[i] === undefined ? undefined : v)) };
+    return {
+      k: kClean,
+      d: sma(
+        kClean.map((v) => v ?? 0),
+        dp,
+      ).map((v, i) => (kClean[i] === undefined ? undefined : v)),
+    };
   },
 };
 
@@ -155,8 +179,14 @@ export const WilliamsR: IndicatorDef = {
   compute: (bars, params) => {
     const p = num(params.length);
     const c = closes(bars);
-    const hh = highest(bars.map((b) => b.high), p);
-    const ll = lowest(bars.map((b) => b.low), p);
+    const hh = highest(
+      bars.map((b) => b.high),
+      p,
+    );
+    const ll = lowest(
+      bars.map((b) => b.low),
+      p,
+    );
     return {
       wr: c.map((v, i) => {
         const h = hh[i];
@@ -211,14 +241,26 @@ export const AwesomeOscillator: IndicatorDef = {
   lookback: 60,
   params: [],
   plots: [
-    { key: 'ao', label: 'AO', style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red } },
-    { key: 'ac', label: 'AC', style: { kind: 'histogram', color: PALETTE.red, upColor: PALETTE.green, downColor: PALETTE.red } },
+    {
+      key: 'ao',
+      label: 'AO',
+      style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red },
+    },
+    {
+      key: 'ac',
+      label: 'AC',
+      style: { kind: 'histogram', color: PALETTE.red, upColor: PALETTE.green, downColor: PALETTE.red },
+    },
   ],
   compute: (bars) => {
     const median = bars.map((b) => (b.high + b.low) / 2);
     const ao = combine(sma(median, 5), sma(median, 34), (a, b) => a - b);
     const aoFilled = ao.map((v) => v ?? 0);
-    const ac = combine(mapValues(sma(aoFilled, 5), (v) => v), ao, (a, b) => b - a);
+    const ac = combine(
+      mapValues(sma(aoFilled, 5), (v) => v),
+      ao,
+      (a, b) => b - a,
+    );
     return { ao, ac };
   },
 };
@@ -262,7 +304,7 @@ export const UltimateOscillator: IndicatorDef = {
     return {
       uo: bars.map((_, i) => {
         if (i < s - 1) return undefined;
-        return (4 * avg(f, i) + 2 * avg(m, i) + avg(s, i)) / 7 * 100;
+        return ((4 * avg(f, i) + 2 * avg(m, i) + avg(s, i)) / 7) * 100;
       }),
     };
   },

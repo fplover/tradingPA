@@ -41,18 +41,24 @@ export function buildResultSections(
   tab: TabDef,
 ): ResultSection[] {
   if (!showingRecent) return hits.length > 0 ? [{ label: null, items: hits }] : [];
-  const inTab = (i: Instrument) => (!tab.markets || tab.markets.includes(i.market)) && (!tab.asset || i.asset === tab.asset);
+  const inTab = (i: Instrument) =>
+    (!tab.markets || tab.markets.includes(i.market)) && (!tab.asset || i.asset === tab.asset);
   // 收藏（flagged 存 id）：经全部列表 + 最近访问解析回品种；被移除的 id 静默跳过
   const byId = new Map<string, Instrument>();
   for (const l of lists) for (const i of l.items) byId.set(i.id, i);
   for (const i of recent) byId.set(i.id, i);
-  const fav = flagged.map((id) => byId.get(id)).filter((i): i is Instrument => !!i).filter(inTab);
+  const fav = flagged
+    .map((id) => byId.get(id))
+    .filter((i): i is Instrument => !!i)
+    .filter(inTab);
   const favIds = new Set(fav.map((i) => i.id));
   // 最近访问剔除已在收藏分组的品种，避免同一行在两个分组重复出现
   const rec = recent.filter(inTab).filter((i) => !favIds.has(i.id));
   const out: ResultSection[] = [];
-  if (fav.length > 0) out.push({ label: '收藏', items: fav.map((i): SearchHit => ({ instrument: i, source: '收藏' })) });
-  if (rec.length > 0) out.push({ label: '最近访问', items: rec.map((i): SearchHit => ({ instrument: i, source: '最近访问' })) });
+  if (fav.length > 0)
+    out.push({ label: '收藏', items: fav.map((i): SearchHit => ({ instrument: i, source: '收藏' })) });
+  if (rec.length > 0)
+    out.push({ label: '最近访问', items: rec.map((i): SearchHit => ({ instrument: i, source: '最近访问' })) });
   return out;
 }
 

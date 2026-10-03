@@ -67,7 +67,11 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  style={{ ...navItemStyle, background: t === tab ? 'var(--panel-2)' : 'transparent', color: t === tab ? 'var(--text)' : 'var(--text-dim)' }}
+                  style={{
+                    ...navItemStyle,
+                    background: t === tab ? 'var(--panel-2)' : 'transparent',
+                    color: t === tab ? 'var(--text)' : 'var(--text-dim)',
+                  }}
                 >
                   {t}
                 </button>
@@ -103,13 +107,37 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
 
               {tab === '状态栏' && (
                 <>
-                  <CheckRow label="商品行" checked={p.legend.showSeriesTitle} onChange={(v) => p.onLegend({ showSeriesTitle: v })} />
+                  <CheckRow
+                    label="商品行"
+                    checked={p.legend.showSeriesTitle}
+                    onChange={(v) => p.onLegend({ showSeriesTitle: v })}
+                  />
                   <CheckRow label="OHLC 值" checked={p.legend.showOHLC} onChange={(v) => p.onLegend({ showOHLC: v })} />
-                  <CheckRow label="涨跌与涨跌幅" checked={p.legend.showChange} onChange={(v) => p.onLegend({ showChange: v })} />
-                  <CheckRow label="成交量" checked={p.legend.showVolume} onChange={(v) => p.onLegend({ showVolume: v })} />
-                  <CheckRow label="指标名称" checked={p.legend.showStudyNames} onChange={(v) => p.onLegend({ showStudyNames: v })} />
-                  <CheckRow label="指标参数" checked={p.legend.showStudyArgs} onChange={(v) => p.onLegend({ showStudyArgs: v })} />
-                  <CheckRow label="指标数值" checked={p.legend.showStudyValues} onChange={(v) => p.onLegend({ showStudyValues: v })} />
+                  <CheckRow
+                    label="涨跌与涨跌幅"
+                    checked={p.legend.showChange}
+                    onChange={(v) => p.onLegend({ showChange: v })}
+                  />
+                  <CheckRow
+                    label="成交量"
+                    checked={p.legend.showVolume}
+                    onChange={(v) => p.onLegend({ showVolume: v })}
+                  />
+                  <CheckRow
+                    label="指标名称"
+                    checked={p.legend.showStudyNames}
+                    onChange={(v) => p.onLegend({ showStudyNames: v })}
+                  />
+                  <CheckRow
+                    label="指标参数"
+                    checked={p.legend.showStudyArgs}
+                    onChange={(v) => p.onLegend({ showStudyArgs: v })}
+                  />
+                  <CheckRow
+                    label="指标数值"
+                    checked={p.legend.showStudyValues}
+                    onChange={(v) => p.onLegend({ showStudyValues: v })}
+                  />
                 </>
               )}
 
@@ -136,14 +164,21 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
 
 function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md, minHeight: 32 }}>
+    <div
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md, minHeight: 32 }}
+    >
       <span style={{ color: 'var(--text)', fontSize: fontSize.lg }}>{label}</span>
       {children}
     </div>
   );
 }
 
-const overlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: zIndex.modal };
+const overlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'var(--overlay)',
+  zIndex: zIndex.modal,
+};
 
 const contentStyle: React.CSSProperties = {
   position: 'fixed',
@@ -162,7 +197,12 @@ const contentStyle: React.CSSProperties = {
   outline: 'none',
 };
 
-const navStyle: React.CSSProperties = { width: 180, flexShrink: 0, borderRight: '1px solid var(--border)', padding: `${space.sm}px 0` };
+const navStyle: React.CSSProperties = {
+  width: 180,
+  flexShrink: 0,
+  borderRight: '1px solid var(--border)',
+  padding: `${space.sm}px 0`,
+};
 
 const navItemStyle: React.CSSProperties = {
   display: 'block',
@@ -175,6 +215,19 @@ const navItemStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const paneStyle: React.CSSProperties = { flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space.xl}px`, display: 'flex', flexDirection: 'column', gap: space.xs };
+const paneStyle: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  overflowY: 'auto',
+  padding: `${space.xl}px`,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: space.xs,
+};
 
-const hintStyle: React.CSSProperties = { color: 'var(--text-faint)', fontSize: fontSize.sm, lineHeight: 1.7, margin: `${space.xs}px 0 0` };
+const hintStyle: React.CSSProperties = {
+  color: 'var(--text-faint)',
+  fontSize: fontSize.sm,
+  lineHeight: 1.7,
+  margin: `${space.xs}px 0 0`,
+};

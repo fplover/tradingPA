@@ -168,7 +168,12 @@ export const FNS: Record<string, FnDef> = {
   'ta.stdev': { min: 2, max: 2, tuple: false, fn: (a) => baseTa.stdev(a[0], intArg(a, 'ta.stdev', 1)) },
   'ta.highest': { min: 2, max: 2, tuple: false, fn: (a) => baseTa.highest(a[0], intArg(a, 'ta.highest', 1)) },
   'ta.lowest': { min: 2, max: 2, tuple: false, fn: (a) => baseTa.lowest(a[0], intArg(a, 'ta.lowest', 1)) },
-  'ta.change': { min: 1, max: 2, tuple: false, fn: (a) => baseTa.change(a[0], a.length > 1 ? intArg(a, 'ta.change', 1) : 1) },
+  'ta.change': {
+    min: 1,
+    max: 2,
+    tuple: false,
+    fn: (a) => baseTa.change(a[0], a.length > 1 ? intArg(a, 'ta.change', 1) : 1),
+  },
   'ta.crossover': { min: 2, max: 2, tuple: false, fn: (a) => baseTa.crossover(a[0], a[1]) },
   'ta.crossunder': { min: 2, max: 2, tuple: false, fn: (a) => baseTa.crossunder(a[0], a[1]) },
   'ta.nz': { min: 1, max: 2, tuple: false, fn: (a) => baseTa.nz(a[0], a.length > 1 ? scalar(a, 'ta.nz', 1) : 0) },
@@ -196,13 +201,28 @@ export const FNS: Record<string, FnDef> = {
   'ta.dema': { min: 2, max: 2, tuple: false, fn: (a) => demaS(a[0], intArg(a, 'ta.dema', 1)) },
   'ta.tema': { min: 2, max: 2, tuple: false, fn: (a) => temaS(a[0], intArg(a, 'ta.tema', 1)) },
   'ta.rma': { min: 2, max: 2, tuple: false, fn: (a) => rmaS(a[0], intArg(a, 'ta.rma', 1)) },
-  'ta.linreg': { min: 2, max: 3, tuple: false, fn: (a) => linregS(a[0], intArg(a, 'ta.linreg', 1), a.length > 2 ? scalar(a, 'ta.linreg', 2) : 0) },
-  'ta.tsi': { min: 1, max: 3, tuple: false, fn: (a) => tsiS(a[0], a.length > 1 ? intArg(a, 'ta.tsi', 1) : 13, a.length > 2 ? intArg(a, 'ta.tsi', 2) : 25) },
+  'ta.linreg': {
+    min: 2,
+    max: 3,
+    tuple: false,
+    fn: (a) => linregS(a[0], intArg(a, 'ta.linreg', 1), a.length > 2 ? scalar(a, 'ta.linreg', 2) : 0),
+  },
+  'ta.tsi': {
+    min: 1,
+    max: 3,
+    tuple: false,
+    fn: (a) => tsiS(a[0], a.length > 1 ? intArg(a, 'ta.tsi', 1) : 13, a.length > 2 ? intArg(a, 'ta.tsi', 2) : 25),
+  },
   'ta.fisher': { min: 2, max: 2, tuple: false, fn: (a) => barsTa.fisherSeries(a[0], intArg(a, 'ta.fisher', 1)) },
   // 新增：K 线依赖
   'ta.tr': { min: 0, max: 1, tuple: false, fn: (_a, c) => barsTa.trueRange(c.bars) },
   'ta.atr': { min: 1, max: 1, tuple: false, fn: (a, c) => barsTa.atrSeries(c.bars, intArg(a, 'ta.atr', 0)) },
-  'ta.adx': { min: 2, max: 2, tuple: false, fn: (a, c) => barsTa.adxSeries(c.bars, intArg(a, 'ta.adx', 0), intArg(a, 'ta.adx', 1)) },
+  'ta.adx': {
+    min: 2,
+    max: 2,
+    tuple: false,
+    fn: (a, c) => barsTa.adxSeries(c.bars, intArg(a, 'ta.adx', 0), intArg(a, 'ta.adx', 1)),
+  },
   'ta.cci': { min: 1, max: 1, tuple: false, fn: (a, c) => barsTa.cciSeries(c.bars, intArg(a, 'ta.cci', 0)) },
   'ta.mfi': { min: 1, max: 1, tuple: false, fn: (a, c) => barsTa.mfiSeries(c.bars, intArg(a, 'ta.mfi', 0)) },
   'ta.wpr': { min: 1, max: 1, tuple: false, fn: (a, c) => barsTa.wprSeries(c.bars, intArg(a, 'ta.wpr', 0)) },
@@ -223,10 +243,21 @@ export const FNS: Record<string, FnDef> = {
     min: 3,
     max: 4,
     tuple: true,
-    fn: (a) => macdT(a[0], intArg(a, 'ta.macd', 1), intArg(a, 'ta.macd', 2), a.length > 3 ? intArg(a, 'ta.macd', 3) : 9),
+    fn: (a) =>
+      macdT(a[0], intArg(a, 'ta.macd', 1), intArg(a, 'ta.macd', 2), a.length > 3 ? intArg(a, 'ta.macd', 3) : 9),
   },
-  'ta.bb': { min: 2, max: 3, tuple: true, fn: (a) => bbT(a[0], intArg(a, 'ta.bb', 1), a.length > 2 ? scalar(a, 'ta.bb', 2) : 2) },
-  'ta.bbands': { min: 2, max: 3, tuple: true, fn: (a) => bbT(a[0], intArg(a, 'ta.bbands', 1), a.length > 2 ? scalar(a, 'ta.bbands', 2) : 2) },
+  'ta.bb': {
+    min: 2,
+    max: 3,
+    tuple: true,
+    fn: (a) => bbT(a[0], intArg(a, 'ta.bb', 1), a.length > 2 ? scalar(a, 'ta.bb', 2) : 2),
+  },
+  'ta.bbands': {
+    min: 2,
+    max: 3,
+    tuple: true,
+    fn: (a) => bbT(a[0], intArg(a, 'ta.bbands', 1), a.length > 2 ? scalar(a, 'ta.bbands', 2) : 2),
+  },
   'ta.kc': {
     min: 2,
     max: 3,
@@ -268,13 +299,43 @@ export const FNS: Record<string, FnDef> = {
   'math.abs': { min: 1, max: 1, tuple: false, fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.abs(v))) },
   'math.max': { min: 2, max: 2, tuple: false, fn: (a) => baseMathBin(a[0], a[1], Math.max) },
   'math.min': { min: 2, max: 2, tuple: false, fn: (a) => baseMathBin(a[0], a[1], Math.min) },
-  'math.round': { min: 1, max: 1, tuple: false, fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.round(v))) },
-  'math.floor': { min: 1, max: 1, tuple: false, fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.floor(v))) },
-  'math.ceil': { min: 1, max: 1, tuple: false, fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.ceil(v))) },
-  'math.sqrt': { min: 1, max: 1, tuple: false, fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.sqrt(v))) },
+  'math.round': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.round(v))),
+  },
+  'math.floor': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.floor(v))),
+  },
+  'math.ceil': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.ceil(v))),
+  },
+  'math.sqrt': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.sqrt(v))),
+  },
   'math.log': { min: 1, max: 1, tuple: false, fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.log(v))) },
-  'math.log10': { min: 1, max: 1, tuple: false, fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.log10(v))) },
-  'math.sign': { min: 1, max: 1, tuple: false, fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.sign(v))) },
+  'math.log10': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.log10(v))),
+  },
+  'math.sign': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    fn: (a) => a[0].map((v) => (v === undefined ? undefined : Math.sign(v))),
+  },
 };
 
 function baseMathBin(a: S, b: S, f: (x: number, y: number) => number): S {
@@ -294,7 +355,9 @@ export function callFunction(name: string, args: S[], ctx: TaCtx): S | S[] {
   const def = FNS[name];
   if (!def) throw new Error(`不支持的函数「${name}」`);
   if (args.length < def.min || args.length > def.max) {
-    throw new Error(`「${name}」参数数量应为 ${def.min}${def.max !== def.min ? `-${def.max}` : ''}，实际 ${args.length}`);
+    throw new Error(
+      `「${name}」参数数量应为 ${def.min}${def.max !== def.min ? `-${def.max}` : ''}，实际 ${args.length}`,
+    );
   }
   return def.fn(args, ctx);
 }

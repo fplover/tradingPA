@@ -94,7 +94,12 @@ export function ShortcutsDialog({ open, onClose }: { open: boolean; onClose: () 
   );
 }
 
-const overlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, background: 'var(--overlay)', zIndex: zIndex.modal };
+const overlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'var(--overlay)',
+  zIndex: zIndex.modal,
+};
 
 const contentStyle: React.CSSProperties = {
   position: 'fixed',
@@ -113,7 +118,12 @@ const contentStyle: React.CSSProperties = {
   outline: 'none',
 };
 
-const paneStyle: React.CSSProperties = { flex: 1, minHeight: 0, overflowY: 'auto', padding: `${space.md}px ${space.xl}px` };
+const paneStyle: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  overflowY: 'auto',
+  padding: `${space.md}px ${space.xl}px`,
+};
 
 const groupTitleStyle: React.CSSProperties = {
   margin: `0 0 ${space.xs}px`,

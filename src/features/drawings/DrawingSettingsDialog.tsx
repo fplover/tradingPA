@@ -89,11 +89,27 @@ export function DrawingSettingsDialog({ renderer }: { renderer: ChartRenderer | 
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 32, marginBottom: space.xs }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        minHeight: 32,
+        marginBottom: space.xs,
+      }}
+    >
       <span style={{ color: 'var(--text)', fontSize: fontSize.lg }}>{label}</span>
       {children}
     </div>
   );
 }
 
-const swatchStyle: React.CSSProperties = { width: 22, height: 22, padding: 0, border: '1px solid var(--border)', borderRadius: radius.xs, background: 'none', cursor: 'pointer' };
+const swatchStyle: React.CSSProperties = {
+  width: 22,
+  height: 22,
+  padding: 0,
+  border: '1px solid var(--border)',
+  borderRadius: radius.xs,
+  background: 'none',
+  cursor: 'pointer',
+};

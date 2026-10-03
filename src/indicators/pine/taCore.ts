@@ -16,7 +16,11 @@ export function trueRange(bars: readonly Bar[]): number[] {
   const out: number[] = [];
   for (let i = 0; i < bars.length; i++) {
     const b = bars[i];
-    out.push(i === 0 ? b.high - b.low : Math.max(b.high - b.low, Math.abs(b.high - bars[i - 1].close), Math.abs(b.low - bars[i - 1].close)));
+    out.push(
+      i === 0
+        ? b.high - b.low
+        : Math.max(b.high - b.low, Math.abs(b.high - bars[i - 1].close), Math.abs(b.low - bars[i - 1].close)),
+    );
   }
   return out;
 }
@@ -168,18 +172,7 @@ export function supertrendSeries(bars: readonly Bar[], factor: number, atrLen: n
     const prevClose = i > 0 ? bars[i - 1].close : c;
     const finUp = prevUp === undefined || up < prevUp || prevClose > prevUp ? up : prevUp;
     const finDn = prevDn === undefined || dn > prevDn || prevClose < prevDn ? dn : prevDn;
-    const d =
-      prevDir === undefined
-        ? c >= hl2
-          ? -1
-          : 1
-        : prevDir === 1
-          ? c > finUp
-            ? -1
-            : 1
-          : c < finDn
-            ? 1
-            : -1;
+    const d = prevDir === undefined ? (c >= hl2 ? -1 : 1) : prevDir === 1 ? (c > finUp ? -1 : 1) : c < finDn ? 1 : -1;
     st[i] = d === -1 ? finDn : finUp;
     dir[i] = d;
     prevUp = finUp;

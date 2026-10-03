@@ -5,12 +5,7 @@ import { Viewport } from '@/engine/viewport/Viewport';
 import { PriceScale } from '@/engine/scale/PriceScale';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { DrawingGesture, type DrawingHost } from '@/engine/renderer/DrawingGesture';
-import {
-  POLY_EDGE_HIT_PX,
-  POLY_VERTEX_HIT_PX,
-  applyPolygonEdit,
-  polygonEditHit,
-} from '@/engine/drawing/polygonEdit';
+import { POLY_EDGE_HIT_PX, POLY_VERTEX_HIT_PX, applyPolygonEdit, polygonEditHit } from '@/engine/drawing/polygonEdit';
 import type { DrawingPoint } from '@/engine/drawing/types';
 import { createMockCtx, asCtx, type MockCtx } from './helpers/mock-ctx';
 import type { Bar } from '@/types/market';
@@ -39,9 +34,21 @@ const SQUARE_WORLD = SQUARE_PIX.map((p, i) => P(i, p.x * 10 + p.y));
 
 describe('polygonEditHit：命中判定', () => {
   it('边容差内 → insert（afterIndex = 边起点下标）', () => {
-    expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, 50, 0.5, P(9, 9))).toEqual({ kind: 'insert', afterIndex: 0, pt: P(9, 9) });
-    expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, 50, 100.5, P(9, 9))).toEqual({ kind: 'insert', afterIndex: 2, pt: P(9, 9) });
-    expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, -0.5, 50, P(9, 9))).toEqual({ kind: 'insert', afterIndex: 3, pt: P(9, 9) }); // 闭合边
+    expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, 50, 0.5, P(9, 9))).toEqual({
+      kind: 'insert',
+      afterIndex: 0,
+      pt: P(9, 9),
+    });
+    expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, 50, 100.5, P(9, 9))).toEqual({
+      kind: 'insert',
+      afterIndex: 2,
+      pt: P(9, 9),
+    });
+    expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, -0.5, 50, P(9, 9))).toEqual({
+      kind: 'insert',
+      afterIndex: 3,
+      pt: P(9, 9),
+    }); // 闭合边
   });
 
   it('边容差外 → null（未命中，照常放置）', () => {
@@ -51,7 +58,10 @@ describe('polygonEditHit：命中判定', () => {
 
   it('顶点半径内 → remove（4 顶点）', () => {
     expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, 100.5, 0.5, P(9, 9))).toEqual({ kind: 'remove', index: 1 });
-    expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, 0, POLY_VERTEX_HIT_PX, P(9, 9))).toEqual({ kind: 'remove', index: 0 });
+    expect(polygonEditHit(SQUARE_WORLD, SQUARE_PIX, 0, POLY_VERTEX_HIT_PX, P(9, 9))).toEqual({
+      kind: 'remove',
+      index: 0,
+    });
   });
 
   it('顶点数 ≤3 → reject（拒绝删除，保持原状）', () => {
@@ -75,7 +85,11 @@ describe('applyPolygonEdit：几何应用', () => {
   });
 
   it('remove：按下标删除', () => {
-    expect(applyPolygonEdit(SQUARE_WORLD, { kind: 'remove', index: 1 })).toEqual([SQUARE_WORLD[0], SQUARE_WORLD[2], SQUARE_WORLD[3]]);
+    expect(applyPolygonEdit(SQUARE_WORLD, { kind: 'remove', index: 1 })).toEqual([
+      SQUARE_WORLD[0],
+      SQUARE_WORLD[2],
+      SQUARE_WORLD[3],
+    ]);
   });
 });
 
@@ -316,7 +330,9 @@ let canvas: HTMLCanvasElement;
 beforeEach(() => {
   document.body.innerHTML = '';
   const mock: MockCtx = createMockCtx();
-  HTMLCanvasElement.prototype.getContext = vi.fn(() => asCtx(mock)) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = vi.fn(() =>
+    asCtx(mock),
+  ) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.setPointerCapture = vi.fn();
   HTMLCanvasElement.prototype.hasPointerCapture = vi.fn(() => false);
   HTMLCanvasElement.prototype.releasePointerCapture = vi.fn();
@@ -331,7 +347,17 @@ beforeEach(() => {
   canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   canvas.getBoundingClientRect = () =>
-    ({ left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H, width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    ({
+      left: 0,
+      top: 0,
+      right: CANVAS_W,
+      bottom: CANVAS_H,
+      width: CANVAS_W,
+      height: CANVAS_H,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
 });
 
 afterEach(() => {
@@ -346,7 +372,9 @@ function makeRenderer(): ChartRenderer {
 }
 
 function ptr(type: string, x: number, y: number): void {
-  canvas.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }));
+  canvas.dispatchEvent(
+    new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }),
+  );
 }
 
 function click(x: number, y: number): void {
@@ -396,7 +424,9 @@ describe('ChartRenderer：多边形顶点增删端到端', () => {
     const r2 = makeRenderer();
     r2.importDrawings(raw);
     expect(r2.listDrawings()[0].points).toHaveLength(4);
-    expect(r2.listDrawings()[0].points.map((p) => ({ ...p }))).toEqual(r.listDrawings()[0].points.map((p) => ({ ...p })));
+    expect(r2.listDrawings()[0].points.map((p) => ({ ...p }))).toEqual(
+      r.listDrawings()[0].points.map((p) => ({ ...p })),
+    );
   });
 
   it('工具态外（光标模式）点边不编辑，仅命中选中', () => {

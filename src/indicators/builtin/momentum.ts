@@ -30,7 +30,11 @@ export const MACD: IndicatorDef = {
   plots: [
     { key: 'macd', label: 'MACD', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
     { key: 'signal', label: '信号', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
-    { key: 'hist', label: '柱', style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red } },
+    {
+      key: 'hist',
+      label: '柱',
+      style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red },
+    },
   ],
   compute: (bars, params) => {
     const f = num(params.fast);
@@ -93,7 +97,10 @@ export const ADX: IndicatorDef = {
       if (v === undefined || m === undefined || v + m === 0) return undefined;
       return (Math.abs(v - m) / (v + m)) * 100;
     });
-    const adx = wilder(dx.map((v) => v ?? 0), sm).map((v, i) => (dx[i] === undefined ? undefined : v));
+    const adx = wilder(
+      dx.map((v) => v ?? 0),
+      sm,
+    ).map((v, i) => (dx[i] === undefined ? undefined : v));
     return { adx, plusDI, minusDI };
   },
 };
@@ -120,7 +127,10 @@ export const Aroon: IndicatorDef = {
         let hiIdx = 0;
         let hh = -Infinity;
         for (let k = i - p + 1; k <= i; k++) {
-          if (highs[k] >= hh) { hh = highs[k]; hiIdx = k; }
+          if (highs[k] >= hh) {
+            hh = highs[k];
+            hiIdx = k;
+          }
         }
         return ((p - (i - hiIdx)) / p) * 100;
       }),
@@ -129,7 +139,10 @@ export const Aroon: IndicatorDef = {
         let loIdx = 0;
         let ll = Infinity;
         for (let k = i - p + 1; k <= i; k++) {
-          if (lows[k] <= ll) { ll = lows[k]; loIdx = k; }
+          if (lows[k] <= ll) {
+            ll = lows[k];
+            loIdx = k;
+          }
         }
         return ((p - (i - loIdx)) / p) * 100;
       }),
@@ -214,7 +227,11 @@ export const PivotPoints: IndicatorDef = {
     const s2: Array<number | undefined> = [];
     for (let i = 0; i < bars.length; i++) {
       if (i === 0) {
-        p.push(undefined); r1.push(undefined); s1.push(undefined); r2.push(undefined); s2.push(undefined);
+        p.push(undefined);
+        r1.push(undefined);
+        s1.push(undefined);
+        r2.push(undefined);
+        s2.push(undefined);
         continue;
       }
       const prev = bars[i - 1];

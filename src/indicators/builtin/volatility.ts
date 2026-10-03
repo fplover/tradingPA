@@ -1,5 +1,18 @@
 import type { IndicatorDef } from '../core/types';
-import { sma, ema, stdev, wilder, closes, trueRange, rollingSum, logReturns, highest, lowest, combine, mapValues } from '../core/math';
+import {
+  sma,
+  ema,
+  stdev,
+  wilder,
+  closes,
+  trueRange,
+  rollingSum,
+  logReturns,
+  highest,
+  lowest,
+  combine,
+  mapValues,
+} from '../core/math';
 import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);
@@ -83,8 +96,16 @@ export const PercentB: IndicatorDef = {
     const c = closes(bars);
     const basis = sma(c, p);
     const sd = stdev(c, p);
-    const upper = combine(basis, mapValues(sd, (v) => m * v), (a, b) => a + b);
-    const lower = combine(basis, mapValues(sd, (v) => m * v), (a, b) => a - b);
+    const upper = combine(
+      basis,
+      mapValues(sd, (v) => m * v),
+      (a, b) => a + b,
+    );
+    const lower = combine(
+      basis,
+      mapValues(sd, (v) => m * v),
+      (a, b) => a - b,
+    );
     return {
       pb: c.map((v, i) => {
         const u = upper[i];
@@ -110,8 +131,14 @@ export const Choppiness: IndicatorDef = {
   compute: (bars, params) => {
     const p = num(params.length);
     const sumTr = rollingSum(trueRange(bars), p);
-    const hh = highest(bars.map((b) => b.high), p);
-    const ll = lowest(bars.map((b) => b.low), p);
+    const hh = highest(
+      bars.map((b) => b.high),
+      p,
+    );
+    const ll = lowest(
+      bars.map((b) => b.low),
+      p,
+    );
     return {
       chop: sumTr.map((s, i) => {
         const h = hh[i];
@@ -162,7 +189,10 @@ export const HistVol: IndicatorDef = {
     const p = num(params.length);
     const ann = Math.sqrt(num(params.annual));
     const lr = logReturns(closes(bars));
-    const sd = stdev(lr.map((v) => v ?? 0), p);
+    const sd = stdev(
+      lr.map((v) => v ?? 0),
+      p,
+    );
     return { hv: sd.map((s, i) => (s === undefined || i < p || lr[i] === undefined ? undefined : 100 * s * ann)) };
   },
 };

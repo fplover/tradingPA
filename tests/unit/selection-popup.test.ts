@@ -119,7 +119,13 @@ describe('SelectionPopupTracker', () => {
     const mk = (id: string, points: Array<{ x: number; y: number }>): Drawing =>
       ({ id, points: points.map((p) => ({ time: p.x, price: p.y })) }) as unknown as Drawing;
     const layer = {
-      list: () => [mk('a', [{ x: 10, y: 20 }, { x: 30, y: 5 }]), mk('b', [{ x: 15, y: 40 }])],
+      list: () => [
+        mk('a', [
+          { x: 10, y: 20 },
+          { x: 30, y: 5 },
+        ]),
+        mk('b', [{ x: 15, y: 40 }]),
+      ],
       selectedIdList: ['a'],
     };
     const toPixel = (p: { time: number; price: number }) => ({ x: p.time * 2, y: p.price });
@@ -237,7 +243,12 @@ describe('indicatorPixelBBox / hitTestIndicatorAt', () => {
   it('bbox = 可见 defined 值 min/max y 与首末可见 index 的 x 范围', () => {
     const inst = new IndicatorInstance(lineDef);
     // close: 104/101/103/100/105/102 → y = (110 - close) × 15；min y = close 105 → 75，max y = close 100 → 150
-    expect(indicatorPixelBBox(inst, series.raw(), 0, 5, viewport, priceScale)).toEqual({ x0: 284, y0: 75, x1: 364, y1: 150 });
+    expect(indicatorPixelBBox(inst, series.raw(), 0, 5, viewport, priceScale)).toEqual({
+      x0: 284,
+      y0: 75,
+      x1: 364,
+      y1: 150,
+    });
   });
 
   it('仅主面板内命中；返回 uid + bbox', () => {
@@ -282,7 +293,9 @@ let canvas: HTMLCanvasElement;
 
 beforeEach(() => {
   ctx = createMockCtx();
-  HTMLCanvasElement.prototype.getContext = vi.fn(() => asCtx(ctx)) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = vi.fn(() =>
+    asCtx(ctx),
+  ) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.setPointerCapture = vi.fn();
   HTMLCanvasElement.prototype.hasPointerCapture = vi.fn(() => false);
   HTMLCanvasElement.prototype.releasePointerCapture = vi.fn();
@@ -297,7 +310,17 @@ beforeEach(() => {
   canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   canvas.getBoundingClientRect = () =>
-    ({ left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H, width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    ({
+      left: 0,
+      top: 0,
+      right: CANVAS_W,
+      bottom: CANVAS_H,
+      width: CANVAS_W,
+      height: CANVAS_H,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
 });
 
 afterEach(() => {
@@ -313,7 +336,9 @@ function makeRenderer(): ChartRenderer {
 }
 
 function pointer(type: string, x: number, y: number): void {
-  canvas.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }));
+  canvas.dispatchEvent(
+    new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }),
+  );
 }
 
 /** 从 mock ctx 抓某描色折线的顶点（moveTo/lineTo 序列，遇 stroke 收尾） */

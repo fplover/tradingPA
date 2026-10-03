@@ -74,7 +74,10 @@ export class TradeGesture {
 
   /** 命中测试（悬停/右键守卫/按下分发共用） */
   hitAt(x: number, y: number, pane: TradePane): TradeHit {
-    return hitTestTrading(this.visual, x, y - pane.y, pane.priceScale, { chartW: this.host.chartW(), chartH: pane.height });
+    return hitTestTrading(this.visual, x, y - pane.y, pane.priceScale, {
+      chartW: this.host.chartW(),
+      chartH: pane.height,
+    });
   }
 
   /**

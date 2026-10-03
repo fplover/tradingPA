@@ -15,7 +15,12 @@ import { WatchlistSettingsMenu } from './WatchlistSettingsMenu';
 import { QUOTE_FIELD, iconBtnStyle } from './watchlistShared';
 import { control, fontSize, space } from '@/ui/tokens';
 
-function sortItems(items: Instrument[], key: SortKey, dir: 'asc' | 'desc', quotes: Record<string, Quote>): Instrument[] {
+function sortItems(
+  items: Instrument[],
+  key: SortKey,
+  dir: 'asc' | 'desc',
+  quotes: Record<string, Quote>,
+): Instrument[] {
   const mul = dir === 'asc' ? 1 : -1;
   return [...items].sort((a, b) => {
     if (key === 'symbol') return mul * a.symbol.localeCompare(b.symbol, 'zh-Hans-CN');
@@ -40,8 +45,18 @@ export function WatchlistPanel() {
   const quoteError = useQuoteStore((s) => s.lastError);
   const openSearch = useSymbolSearchStore((s) => s.openSearch);
 
-  const { setActive, remove, toggleFlag, reorder, switchList, createList, duplicateList, deleteList, toggleColumn, cycleSort } =
-    useWatchlistStore.getState();
+  const {
+    setActive,
+    remove,
+    toggleFlag,
+    reorder,
+    switchList,
+    createList,
+    duplicateList,
+    deleteList,
+    toggleColumn,
+    cycleSort,
+  } = useWatchlistStore.getState();
 
   const list = lists.find((l) => l.id === activeListId) ?? lists[0];
   const items = list?.items ?? [];
@@ -62,7 +77,13 @@ export function WatchlistPanel() {
   const draggable = sort.dir === 'manual' && !flagFilter;
 
   const exportCsv = () => {
-    const header = ['代码', '名称', '市场', '交易所', ...columns.map((c) => COLUMNS.find((x) => x.id === c)?.label ?? c)];
+    const header = [
+      '代码',
+      '名称',
+      '市场',
+      '交易所',
+      ...columns.map((c) => COLUMNS.find((x) => x.id === c)?.label ?? c),
+    ];
     const lines = items.map((i) => {
       const q = quotes[i.id];
       const cells = columns.map((c) => (q ? String(q[QUOTE_FIELD[c]]) : ''));
@@ -83,14 +104,24 @@ export function WatchlistPanel() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
       {/* ---------- 头部：列表选择器 + 添加 + 标记筛选 + 设置 ---------- */}
       <div style={headerStyle}>
-        <WatchlistListMenu lists={lists} activeListId={activeListId} activeName={list?.name} onSwitch={switchList} onCreate={() => createList()} />
+        <WatchlistListMenu
+          lists={lists}
+          activeListId={activeListId}
+          activeName={list?.name}
+          onSwitch={switchList}
+          onCreate={() => createList()}
+        />
 
         <span style={{ flex: 1 }} />
 
         <HeaderButton label="添加品种" onClick={() => openSearch('add')}>
           <Plus size={16} />
         </HeaderButton>
-        <HeaderButton label={flagFilter ? '显示全部品种' : '只看标记品种'} active={flagFilter} onClick={() => setFlagFilter((v) => !v)}>
+        <HeaderButton
+          label={flagFilter ? '显示全部品种' : '只看标记品种'}
+          active={flagFilter}
+          onClick={() => setFlagFilter((v) => !v)}
+        >
           <Flag size={14} />
         </HeaderButton>
 
@@ -106,7 +137,15 @@ export function WatchlistPanel() {
       </div>
 
       {quoteError && (
-        <div style={{ padding: `${space.xs}px ${space.md}px`, fontSize: fontSize.sm, color: 'var(--text-faint)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+        <div
+          style={{
+            padding: `${space.xs}px ${space.md}px`,
+            fontSize: fontSize.sm,
+            color: 'var(--text-faint)',
+            borderBottom: '1px solid var(--border)',
+            flexShrink: 0,
+          }}
+        >
           {quoteError}
         </div>
       )}
@@ -114,7 +153,15 @@ export function WatchlistPanel() {
       {/* ---------- 行：列太多时整体横向滚动，绝不把代码列挤没 ---------- */}
       <div className="tv-scroll" style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         {visible.length === 0 ? (
-          <div style={{ padding: `${space.xl}px ${space.lg}px`, textAlign: 'center', color: 'var(--text-faint)', fontSize: fontSize.md, lineHeight: 1.8 }}>
+          <div
+            style={{
+              padding: `${space.xl}px ${space.lg}px`,
+              textAlign: 'center',
+              color: 'var(--text-faint)',
+              fontSize: fontSize.md,
+              lineHeight: 1.8,
+            }}
+          >
             {items.length === 0 ? (
               <>
                 列表是空的
@@ -176,7 +223,9 @@ export function WatchlistPanel() {
         onRemove={(id) => remove(id, activeListId)}
       />
 
-      {renaming && list && <RenameListDialog listId={list.id} initialName={list.name} onClose={() => setRenaming(false)} />}
+      {renaming && list && (
+        <RenameListDialog listId={list.id} initialName={list.name} onClose={() => setRenaming(false)} />
+      )}
     </div>
   );
 }
@@ -193,7 +242,15 @@ function HeaderButton({
   children: React.ReactNode;
 }) {
   return (
-    <button onClick={onClick} title={label} aria-label={label} aria-pressed={active} className="tv-icon-btn" data-active={active} style={iconBtnStyle}>
+    <button
+      onClick={onClick}
+      title={label}
+      aria-label={label}
+      aria-pressed={active}
+      className="tv-icon-btn"
+      data-active={active}
+      style={iconBtnStyle}
+    >
       {children}
     </button>
   );

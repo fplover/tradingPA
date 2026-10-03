@@ -9,7 +9,14 @@ export function heikinAshi(bars: Bar[]): Bar[] {
     const b = bars[i];
     const close = (b.open + b.high + b.low + b.close) / 4;
     const open = i === 0 ? (b.open + b.close) / 2 : (prevOpen + prevClose) / 2;
-    out.push({ time: b.time, open, high: Math.max(b.high, open, close), low: Math.min(b.low, open, close), close, volume: b.volume });
+    out.push({
+      time: b.time,
+      open,
+      high: Math.max(b.high, open, close),
+      low: Math.min(b.low, open, close),
+      close,
+      volume: b.volume,
+    });
     prevOpen = open;
     prevClose = close;
   }
@@ -34,7 +41,14 @@ export function renko(bars: Bar[], brickSize: number): Bar[] {
     while (Math.abs(b.close - lastClose) >= brickSize) {
       const up = b.close > lastClose;
       const newClose = up ? lastClose + brickSize : lastClose - brickSize;
-      out.push({ time: b.time, open: lastClose, high: Math.max(lastClose, newClose), low: Math.min(lastClose, newClose), close: newClose, volume: b.volume });
+      out.push({
+        time: b.time,
+        open: lastClose,
+        high: Math.max(lastClose, newClose),
+        low: Math.min(lastClose, newClose),
+        close: newClose,
+        volume: b.volume,
+      });
       lastClose = newClose;
     }
   }
@@ -50,7 +64,14 @@ export function kagi(bars: Bar[], reversal: number): Bar[] {
   for (const b of bars) {
     if (dir === 0) {
       dir = b.close >= extremum ? 1 : -1;
-      out.push({ time: b.time, open: extremum, high: Math.max(extremum, b.close), low: Math.min(extremum, b.close), close: b.close, volume: b.volume });
+      out.push({
+        time: b.time,
+        open: extremum,
+        high: Math.max(extremum, b.close),
+        low: Math.min(extremum, b.close),
+        close: b.close,
+        volume: b.volume,
+      });
       extremum = b.close;
       continue;
     }
@@ -89,7 +110,14 @@ export function lineBreak(bars: Bar[], lineCount = 3): Bar[] {
     const allLower = window.every((c) => c < last);
     if (allHigher || allLower) {
       const c = bars[i].close;
-      out.push({ time: bars[i].time, open: last, high: Math.max(last, c), low: Math.min(last, c), close: c, volume: bars[i].volume });
+      out.push({
+        time: bars[i].time,
+        open: last,
+        high: Math.max(last, c),
+        low: Math.min(last, c),
+        close: c,
+        volume: bars[i].volume,
+      });
       last = c;
     }
   }

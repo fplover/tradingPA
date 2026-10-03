@@ -7,7 +7,8 @@ let ctx: AudioContext | null = null;
  */
 export function playAlertBeep(): boolean {
   try {
-    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    const AC =
+      window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return false;
     ctx ??= new AC();
     if (ctx.state === 'suspended') void ctx.resume();

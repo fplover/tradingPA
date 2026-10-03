@@ -1,6 +1,19 @@
 import { useRef, useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { BarChart3, BellRing, CalendarSearch, Copy, ListTree, Moon, RotateCcw, Settings, Star, Sun, Trash2, Type } from 'lucide-react';
+import {
+  BarChart3,
+  BellRing,
+  CalendarSearch,
+  Copy,
+  ListTree,
+  Moon,
+  RotateCcw,
+  Settings,
+  Star,
+  Sun,
+  Trash2,
+  Type,
+} from 'lucide-react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Instrument } from '@/types/instrument';
 import { useAlertStore } from '@/store/alertStore';
@@ -13,7 +26,18 @@ import { useToast } from '@/features/ui/Toast';
 import { Modal } from '@/ui/primitives';
 import { decimalsFor } from '@/data/format';
 import { space } from '@/ui/tokens';
-import { menuStyle, itemStyle, iconSlot, hintStyle, sepStyle, fieldStyle, fieldLabelStyle, inputStyle, ghostBtnStyle, primaryBtnStyle } from './chartContextMenuStyles';
+import {
+  menuStyle,
+  itemStyle,
+  iconSlot,
+  hintStyle,
+  sepStyle,
+  fieldStyle,
+  fieldLabelStyle,
+  inputStyle,
+  ghostBtnStyle,
+  primaryBtnStyle,
+} from './chartContextMenuStyles';
 
 export interface ChartMenuState {
   price: number;
@@ -32,7 +56,14 @@ interface ChartContextMenuProps {
 }
 
 /** 图表右键菜单：对齐 TradingView 图表空白区菜单（重置/复制价格/警报/自选/注释/对象树/主题/移除/设置） */
-export function ChartContextMenu({ state, instrument, renderer, onOpenSettings, onGoToDate, onClose }: ChartContextMenuProps) {
+export function ChartContextMenu({
+  state,
+  instrument,
+  renderer,
+  onOpenSettings,
+  onGoToDate,
+  onClose,
+}: ChartContextMenuProps) {
   const [alertOpen, setAlertOpen] = useState(false);
   const themeName = useThemeStore((s) => s.name);
   const toast = useToast();
@@ -65,7 +96,14 @@ export function ChartContextMenu({ state, instrument, renderer, onOpenSettings, 
         <DropdownMenu.Trigger asChild>
           <span
             aria-hidden
-            style={{ position: 'fixed', left: state?.x ?? 0, top: state?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }}
+            style={{
+              position: 'fixed',
+              left: state?.x ?? 0,
+              top: state?.y ?? 0,
+              width: 1,
+              height: 1,
+              pointerEvents: 'none',
+            }}
           />
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
@@ -238,14 +276,25 @@ function ChartAlertDialog({
   const submit = () => {
     const p = Number(text);
     if (!instrument || !Number.isFinite(p) || p <= 0) return;
-    add({ symbol: instrument.symbol, source: { type: 'price' }, threshold: p, condition: direction, frequency: 'once' });
+    add({
+      symbol: instrument.symbol,
+      source: { type: 'price' },
+      threshold: p,
+      condition: direction,
+      frequency: 'once',
+    });
     useRightDockStore.getState().open('alerts');
     toast(`已创建 ${instrument.symbol} ${direction === 'crossUp' ? '上穿' : '下穿'} ${p} 警报`);
     onClose();
   };
 
   return (
-    <Modal open={open} onOpenChange={(o) => !o && onClose()} title={`添加警报${instrument ? ` · ${instrument.symbol}` : ''}`} width={320}>
+    <Modal
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      title={`添加警报${instrument ? ` · ${instrument.symbol}` : ''}`}
+      width={320}
+    >
       <label style={fieldStyle}>
         <span style={fieldLabelStyle}>价格</span>
         <input

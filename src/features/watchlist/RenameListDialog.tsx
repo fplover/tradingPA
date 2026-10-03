@@ -4,7 +4,15 @@ import { useWatchlistStore } from '@/store/watchlistStore';
 import { control, fontSize, space } from '@/ui/tokens';
 
 /** 重命名当前自选股列表 */
-export function RenameListDialog({ listId, initialName, onClose }: { listId: string; initialName: string; onClose: () => void }) {
+export function RenameListDialog({
+  listId,
+  initialName,
+  onClose,
+}: {
+  listId: string;
+  initialName: string;
+  onClose: () => void;
+}) {
   const [name, setName] = useState(initialName);
   const renameList = useWatchlistStore((s) => s.renameList);
 

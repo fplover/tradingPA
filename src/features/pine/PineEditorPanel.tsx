@@ -29,7 +29,16 @@ export function PineEditorPanel() {
         height: collapsed ? 34 : 240,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: space.sm, height: 34, padding: `0 ${space.sm}px`, flexShrink: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: space.sm,
+          height: 34,
+          padding: `0 ${space.sm}px`,
+          flexShrink: 0,
+        }}
+      >
         <span style={{ color: 'var(--text)', fontSize: fontSize.md, fontWeight: 600 }}>Pine 编辑器</span>
         {draftName && <span style={{ color: 'var(--text-faint)', fontSize: fontSize.sm }}>· {draftName}</span>}
         <span style={{ flex: 1 }} />
@@ -73,10 +82,19 @@ export function PineEditorPanel() {
         <button style={btnStyle} onClick={() => save()} title="保存脚本">
           <Save size={14} /> 保存
         </button>
-        <button style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={() => addDraftToChart()} title="添加到图表">
+        <button
+          style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }}
+          onClick={() => addDraftToChart()}
+          title="添加到图表"
+        >
           <Plus size={14} /> 添加到图表
         </button>
-        <button style={iconBtnStyle} onClick={() => setCollapsed(!collapsed)} title={collapsed ? '展开编辑器' : '收起编辑器'} aria-label={collapsed ? '展开编辑器' : '收起编辑器'}>
+        <button
+          style={iconBtnStyle}
+          onClick={() => setCollapsed(!collapsed)}
+          title={collapsed ? '展开编辑器' : '收起编辑器'}
+          aria-label={collapsed ? '展开编辑器' : '收起编辑器'}
+        >
           {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
         <button style={iconBtnStyle} onClick={() => setPanelOpen(false)} title="关闭" aria-label="关闭 Pine 编辑器">
@@ -109,7 +127,15 @@ export function PineEditorPanel() {
             }}
           />
           {errors.length > 0 && (
-            <div className="tv-scroll" style={{ maxHeight: 96, overflowY: 'auto', borderTop: '1px solid var(--border)', padding: `${space.xs}px ${space.sm}px` }}>
+            <div
+              className="tv-scroll"
+              style={{
+                maxHeight: 96,
+                overflowY: 'auto',
+                borderTop: '1px solid var(--border)',
+                padding: `${space.xs}px ${space.sm}px`,
+              }}
+            >
               {errors.map((e, i) => (
                 <div key={i} style={{ color: 'var(--down)', fontSize: fontSize.sm, lineHeight: 1.7 }}>
                   第 {e.line} 行：{e.message}

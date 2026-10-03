@@ -16,7 +16,13 @@ type Pix = { x: number; y: number };
 
 /** 百分比水平组：水平分割线 + 右端「百分比 价格」标签（末端与 fib 回撤同规则）。
  *  档位优先取对象自定义 d.levels（设置对话框「分割线」），undefined 时回退工具默认 PERCENT_LEVELS。 */
-export function drawPercentLine(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[], dctx: DrawContext, decimals: number): void {
+export function drawPercentLine(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  pts: Pix[],
+  dctx: DrawContext,
+  decimals: number,
+): void {
   if (pts.length < 2) return;
   const [p0, p1] = d.points;
   const x0 = Math.min(pts[0].x, pts[1].x);

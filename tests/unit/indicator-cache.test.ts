@@ -33,7 +33,13 @@ function countingInstance(id = 'sma', params?: Record<string, string | number | 
 }
 
 /** 全新未缓存实例（金标准对照） */
-function freshOutputs(id: string, bars: readonly Bar[], from: number, to: number, params?: Record<string, string | number | boolean>) {
+function freshOutputs(
+  id: string,
+  bars: readonly Bar[],
+  from: number,
+  to: number,
+  params?: Record<string, string | number | boolean>,
+) {
   return new IndicatorInstance(getIndicatorDef(id)!, { params }).computeWindow(bars, from, to).outputs;
 }
 

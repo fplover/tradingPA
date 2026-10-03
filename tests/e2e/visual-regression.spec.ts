@@ -303,11 +303,7 @@ test.describe('A3-1 扩容（B4 六类型 + B3 倒计时 + B5 新档位）', () 
             hash = Math.imul(hash ^ d[i + 1], 16777619) >>> 0;
             hash = Math.imul(hash ^ d[i + 2], 16777619) >>> 0;
             hash = Math.imul(hash ^ d[i + 3], 16777619) >>> 0;
-            if (
-              Math.abs(d[i] - tr) < 32 &&
-              Math.abs(d[i + 1] - tg) < 32 &&
-              Math.abs(d[i + 2] - tb) < 32
-            ) {
+            if (Math.abs(d[i] - tr) < 32 && Math.abs(d[i + 1] - tg) < 32 && Math.abs(d[i + 2] - tb) < 32) {
               axisText++;
             }
           }
@@ -318,8 +314,7 @@ test.describe('A3-1 扩容（B4 六类型 + B3 倒计时 + B5 新档位）', () 
           Promise.race([
             new Promise<void>((resolve) => {
               const start = window.__vh.frames;
-              const check = () =>
-                window.__vh.frames >= start + n ? resolve() : requestAnimationFrame(check);
+              const check = () => (window.__vh.frames >= start + n ? resolve() : requestAnimationFrame(check));
               check();
             }),
             new Promise<never>((_, reject) =>
@@ -459,12 +454,40 @@ test.describe('P2-B 画线家族（黄金面）', () => {
   test('㉒ 线类家族（趋势线/射线/水平线/垂直线/箭头/信息线）', async ({ page }) => {
     await openHarness(page);
     await importDrawings(page, [
-      { id: 'l1', type: 'trendline', anchors: [[480, 'low'], [540, 'high']] },
-      { id: 'l2', type: 'ray', anchors: [[500, 'high'], [560, 'low']] },
+      {
+        id: 'l1',
+        type: 'trendline',
+        anchors: [
+          [480, 'low'],
+          [540, 'high'],
+        ],
+      },
+      {
+        id: 'l2',
+        type: 'ray',
+        anchors: [
+          [500, 'high'],
+          [560, 'low'],
+        ],
+      },
       { id: 'l3', type: 'hline', anchors: [[520, 'close']] },
       { id: 'l4', type: 'vline', anchors: [[570, 'close']] },
-      { id: 'l5', type: 'arrow', anchors: [[490, 'close'], [525, 'close']] },
-      { id: 'l6', type: 'info-line', anchors: [[550, 'low'], [592, 'high']] },
+      {
+        id: 'l5',
+        type: 'arrow',
+        anchors: [
+          [490, 'close'],
+          [525, 'close'],
+        ],
+      },
+      {
+        id: 'l6',
+        type: 'info-line',
+        anchors: [
+          [550, 'low'],
+          [592, 'high'],
+        ],
+      },
     ]);
     await settle(page, 3);
     await golden(page, 'drawings-line-family');
@@ -473,10 +496,41 @@ test.describe('P2-B 画线家族（黄金面）', () => {
   test('㉓ 通道与形状（平行通道/矩形/椭圆/路径）', async ({ page }) => {
     await openHarness(page);
     await importDrawings(page, [
-      { id: 's1', type: 'channel', anchors: [[475, 'low'], [510, 'high'], [555, 'low']] },
-      { id: 's2', type: 'rect', anchors: [[500, 'high'], [545, 'low']] },
-      { id: 's3', type: 'ellipse', anchors: [[520, 'high'], [565, 'low']] },
-      { id: 's4', type: 'path', anchors: [[485, 'low'], [515, 'high'], [550, 'low'], [585, 'high']] },
+      {
+        id: 's1',
+        type: 'channel',
+        anchors: [
+          [475, 'low'],
+          [510, 'high'],
+          [555, 'low'],
+        ],
+      },
+      {
+        id: 's2',
+        type: 'rect',
+        anchors: [
+          [500, 'high'],
+          [545, 'low'],
+        ],
+      },
+      {
+        id: 's3',
+        type: 'ellipse',
+        anchors: [
+          [520, 'high'],
+          [565, 'low'],
+        ],
+      },
+      {
+        id: 's4',
+        type: 'path',
+        anchors: [
+          [485, 'low'],
+          [515, 'high'],
+          [550, 'low'],
+          [585, 'high'],
+        ],
+      },
     ]);
     await settle(page, 3);
     await golden(page, 'drawings-shape-family');
@@ -498,9 +552,35 @@ test.describe('P2-B 画线家族（黄金面）', () => {
   test('㉕ 几何进阶（多边形/圆弧/曲线）', async ({ page }) => {
     await openHarness(page);
     await importDrawings(page, [
-      { id: 'g1', type: 'polygon', anchors: [[475, 'low'], [515, 'high'], [560, 'low'], [535, 'open']] },
-      { id: 'g2', type: 'arc', anchors: [[495, 'high'], [540, 'low'], [585, 'high']] },
-      { id: 'g3', type: 'curve', anchors: [[505, 'low'], [535, 'high'], [565, 'low'], [593, 'high']] },
+      {
+        id: 'g1',
+        type: 'polygon',
+        anchors: [
+          [475, 'low'],
+          [515, 'high'],
+          [560, 'low'],
+          [535, 'open'],
+        ],
+      },
+      {
+        id: 'g2',
+        type: 'arc',
+        anchors: [
+          [495, 'high'],
+          [540, 'low'],
+          [585, 'high'],
+        ],
+      },
+      {
+        id: 'g3',
+        type: 'curve',
+        anchors: [
+          [505, 'low'],
+          [535, 'high'],
+          [565, 'low'],
+          [593, 'high'],
+        ],
+      },
     ]);
     await settle(page, 3);
     await golden(page, 'drawings-geometry-family');
@@ -511,7 +591,14 @@ test.describe('P2-B 画线家族（黄金面）', () => {
     await importDrawings(page, [
       { id: 'w1', type: 'gann-fan', anchors: [[500, 'low']] },
       { id: 'w2', type: 'gann-line', anchors: [[540, 'high']] },
-      { id: 'w3', type: 'gann-box', anchors: [[555, 'low'], [590, 'high']] },
+      {
+        id: 'w3',
+        type: 'gann-box',
+        anchors: [
+          [555, 'low'],
+          [590, 'high'],
+        ],
+      },
       {
         id: 'w4',
         type: 'elliott-wave',
@@ -533,10 +620,39 @@ test.describe('P2-B 画线家族（黄金面）', () => {
   test('㉗ 测量与斐波那契（测量/百分比线/斐波那契回撤/扩展）', async ({ page }) => {
     await openHarness(page);
     await importDrawings(page, [
-      { id: 'm1', type: 'measure', anchors: [[480, 'low'], [525, 'high']] },
-      { id: 'm2', type: 'percent-line', anchors: [[505, 'high'], [560, 'low']] },
-      { id: 'm3', type: 'fib', anchors: [[520, 'low'], [580, 'high']] },
-      { id: 'm4', type: 'fib-extension', anchors: [[495, 'high'], [535, 'low'], [575, 'high']] },
+      {
+        id: 'm1',
+        type: 'measure',
+        anchors: [
+          [480, 'low'],
+          [525, 'high'],
+        ],
+      },
+      {
+        id: 'm2',
+        type: 'percent-line',
+        anchors: [
+          [505, 'high'],
+          [560, 'low'],
+        ],
+      },
+      {
+        id: 'm3',
+        type: 'fib',
+        anchors: [
+          [520, 'low'],
+          [580, 'high'],
+        ],
+      },
+      {
+        id: 'm4',
+        type: 'fib-extension',
+        anchors: [
+          [495, 'high'],
+          [535, 'low'],
+          [575, 'high'],
+        ],
+      },
     ]);
     await settle(page, 3);
     await golden(page, 'drawings-measure-fib');

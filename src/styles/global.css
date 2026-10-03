@@ -15,8 +15,7 @@ body,
   overflow: hidden;
   background: #131722;
   /* TradingView 字体栈：Windows 落到 Trebuchet MS，而非 Segoe UI */
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, Arial, sans-serif;
   /* 交易界面：价格/盈亏/数量全部等宽数字，列对齐 */
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
@@ -146,7 +145,8 @@ body.theme-light {
 }
 
 /* 报价刷新闪烁：涨绿跌红底色淡出，密集列表里能一眼看到哪几只在动 */
-@keyframes tick-flash-up {  from {
+@keyframes tick-flash-up {
+  from {
     background-color: rgba(8, 153, 129, 0.28);
   }
   to {

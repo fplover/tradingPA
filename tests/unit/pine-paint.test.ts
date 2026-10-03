@@ -38,10 +38,7 @@ function fixture() {
   viewport.scrollToRealtime();
   const priceScale = new PriceScale();
   priceScale.setSize(H);
-  priceScale.autoScale(
-    Math.min(...BARS.map((b) => b.low)),
-    Math.max(...BARS.map((b) => b.high)),
-  );
+  priceScale.autoScale(Math.min(...BARS.map((b) => b.low)), Math.max(...BARS.map((b) => b.high)));
   const geo = { chartW: W, chartH: H };
   const ctx = createMockCtx();
   return { ctx, series, viewport, priceScale, geo };

@@ -19,9 +19,7 @@ describe('Pine if / else / else if（分支掩码语义：未命中保留前值�
   });
 
   it('else if 链：首个命中分支生效', () => {
-    const v = plotValues(
-      'x = 0\nif close > 13\n    x = 2\nelse if close > open\n    x = 1\nelse\n    x = -1\nplot(x)',
-    );
+    const v = plotValues('x = 0\nif close > 13\n    x = 2\nelse if close > open\n    x = 1\nelse\n    x = -1\nplot(x)');
     expect(v).toEqual([-1, 1, -1, 1, -1, 1, -1, 1, 2, 1, 2, 2]);
   });
 

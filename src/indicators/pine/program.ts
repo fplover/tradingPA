@@ -84,7 +84,13 @@ export function compilePine(source: string, id: string): CompileResult {
   const errors: import('./ast').PineError[] = [];
   validateProgram(prog, errors);
   // 纯警报/标记脚本（TV 合法）：alertcondition/plotshape 亦可替代 plot 作为输出
-  if (prog.plots.length === 0 && prog.hlines.length === 0 && prog.shapes.length === 0 && prog.alerts.length === 0 && errors.length === 0) {
+  if (
+    prog.plots.length === 0 &&
+    prog.hlines.length === 0 &&
+    prog.shapes.length === 0 &&
+    prog.alerts.length === 0 &&
+    errors.length === 0
+  ) {
     errors.push({ line: source.split(/\r?\n/).length, message: '脚本缺少 plot() 调用' });
   }
   if (errors.length > 0) return { def: null, errors, paint: [] };

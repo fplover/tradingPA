@@ -3,11 +3,7 @@ import { aggregateBars, needsAggregation } from '@/data/aggregate';
 import { getTimeframe, registerTimeframe, TIMEFRAMES } from '@/types/market';
 import type { Bar, Timeframe, TimeframeId } from '@/types/market';
 import { migrateSnapshot } from '@/types/layout';
-import {
-  BINANCE_LIMIT_MAX,
-  binanceIntervalString,
-  nativeBaseInterval,
-} from '@/data/feed/binance';
+import { BINANCE_LIMIT_MAX, binanceIntervalString, nativeBaseInterval } from '@/data/feed/binance';
 import { planFor as planForSina } from '@/data/sources/sina';
 import { planFor as planForTencent } from '@/data/sources/tencent';
 import {
@@ -306,13 +302,22 @@ describe('自定义间隔：序列化与持久化', () => {
     expect(parseCustomIntervals(JSON.stringify({ version: 1, items: 'nope' }))).toEqual([]);
     expect(
       parseCustomIntervals(
-        JSON.stringify({ version: 1, items: [{ minutes: 0 }, { minutes: -5 }, { minutes: 2.5 }, { minutes: '7' }, { minutes: 7 }] }),
+        JSON.stringify({
+          version: 1,
+          items: [{ minutes: 0 }, { minutes: -5 }, { minutes: 2.5 }, { minutes: '7' }, { minutes: 7 }],
+        }),
       ).map((t) => t.id),
     ).toEqual(['custom:7']);
   });
 
   it('parse 跳过与内置档位重复的分钟数（旧档位升级内置后不残留）', () => {
-    const raw = JSON.stringify({ version: 1, items: [{ id: 'custom:45', minutes: 45 }, { id: 'custom:7', minutes: 7 }] });
+    const raw = JSON.stringify({
+      version: 1,
+      items: [
+        { id: 'custom:45', minutes: 45 },
+        { id: 'custom:7', minutes: 7 },
+      ],
+    });
     expect(parseCustomIntervals(raw).map((t) => t.id)).toEqual(['custom:7']);
   });
 
@@ -396,10 +401,7 @@ describe('自定义间隔：localStorage 持久化（fake storage）', () => {
   });
 
   it('initCustomIntervals：预置存档 → 注册进 TIMEFRAMES（下次进入可复用）', () => {
-    mem.set(
-      CUSTOM_INTERVAL_STORAGE_KEY,
-      JSON.stringify({ version: 1, items: [{ id: 'custom:11', minutes: 11 }] }),
-    );
+    mem.set(CUSTOM_INTERVAL_STORAGE_KEY, JSON.stringify({ version: 1, items: [{ id: 'custom:11', minutes: 11 }] }));
     initCustomIntervals();
     expect(getTimeframe('custom:11' as TimeframeId).seconds).toBe(660);
     expect(getTimeframe('custom:11' as TimeframeId).label).toBe('11分');

@@ -142,7 +142,9 @@ export const useWatchlistStore = create<WatchlistStore>((set) => {
         // 至少保留一列，否则行右侧空白
         if (has && s.columns.length <= 1) return {};
         const columns = has ? s.columns.filter((c) => c !== col) : [...s.columns, col];
-        return { columns: columns.sort((a, b) => COLUMNS.findIndex((c) => c.id === a) - COLUMNS.findIndex((c) => c.id === b)) };
+        return {
+          columns: columns.sort((a, b) => COLUMNS.findIndex((c) => c.id === a) - COLUMNS.findIndex((c) => c.id === b)),
+        };
       }),
 
     cycleSort: (key) =>

@@ -94,7 +94,21 @@ export const GROUPS: ToolGroup[] = [
   { items: ['trendline', 'ray', 'info-line', 'hline', 'vline', 'arrow'], title: '趋势线工具' },
   { items: ['channel'], title: '通道工具' },
   // P2-B：江恩 3 件 + 百分比线并入「江恩和斐波那契工具」组（TV 同名合并组；percent-line 位于 fib-auto 之后、gann-fan 之前）
-  { items: ['fib', 'fib-extension', 'fib-fan', 'fib-arc', 'fib-timezone', 'fib-auto', 'percent-line', 'gann-fan', 'gann-line', 'gann-box'], title: '江恩和斐波那契工具' },
+  {
+    items: [
+      'fib',
+      'fib-extension',
+      'fib-fan',
+      'fib-arc',
+      'fib-timezone',
+      'fib-auto',
+      'percent-line',
+      'gann-fan',
+      'gann-line',
+      'gann-box',
+    ],
+    title: '江恩和斐波那契工具',
+  },
   { items: ['rect', 'ellipse', 'path', 'polygon', 'arc', 'curve'], title: '几何形状' },
   { items: ['text', 'anchored-text', 'note', 'price-label', 'arrow-mark'], title: '文本工具' },
   { items: ['measure'], title: '预测和测量工具' },

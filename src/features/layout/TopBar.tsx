@@ -59,12 +59,20 @@ function tfGroup(id: TimeframeId): string {
  *  + 已存自定义周期 + 「自定义间隔…」动作项。运行时增删自定义周期后经 customVer 刷新重算。 */
 function buildTfOptions(): ToolbarOption[] {
   return [
-    ...TIMEFRAMES.filter((t) => !isCustomIntervalId(t.id)).map((t) => ({ value: t.id, label: t.label, group: tfGroup(t.id) })),
+    ...TIMEFRAMES.filter((t) => !isCustomIntervalId(t.id)).map((t) => ({
+      value: t.id,
+      label: t.label,
+      group: tfGroup(t.id),
+    })),
     ...customIntervalOptions(),
     { value: CUSTOM_INTERVAL_ACTION, label: '自定义间隔…', group: '自定义' },
   ];
 }
-const CT_OPTIONS: ToolbarOption[] = CHART_TYPES.map((c) => ({ value: c.id, label: c.label, group: c.timeBased ? '常规' : '特殊' }));
+const CT_OPTIONS: ToolbarOption[] = CHART_TYPES.map((c) => ({
+  value: c.id,
+  label: c.label,
+  group: c.timeBased ? '常规' : '特殊',
+}));
 
 function ThemeButton() {
   const name = useThemeStore((s) => s.name);
@@ -87,7 +95,8 @@ function SymbolButton({ instrument }: { instrument: Instrument | null }) {
       </button>
     );
   }
-  const dir = (quote?.changePct ?? 0) > 0 ? 'var(--up)' : (quote?.changePct ?? 0) < 0 ? 'var(--down)' : 'var(--text-faint)';
+  const dir =
+    (quote?.changePct ?? 0) > 0 ? 'var(--up)' : (quote?.changePct ?? 0) < 0 ? 'var(--down)' : 'var(--text-faint)';
   return (
     <button
       className="tv-icon-btn"

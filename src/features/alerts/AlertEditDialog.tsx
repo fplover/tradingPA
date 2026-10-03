@@ -61,7 +61,10 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
       if (!Number.isFinite(t) || threshold.trim() === '') return;
     }
     const expiryMs = Number(EXPIRY_OPTIONS[expiryIdx]?.value ?? 0);
-    const cooldownMs = frequency === 'every' ? Number(COOLDOWN_OPTIONS[cooldownIdx]?.value ?? 0) || DEFAULT_COOLDOWN_MS : alert.cooldownMs;
+    const cooldownMs =
+      frequency === 'every'
+        ? Number(COOLDOWN_OPTIONS[cooldownIdx]?.value ?? 0) || DEFAULT_COOLDOWN_MS
+        : alert.cooldownMs;
     update(alert.id, {
       // Pine 条件源：触发方式固定「条件为真」（阈值 1 + greater），仅可改频率/冷却/过期
       ...(isPine ? {} : { threshold: Number(threshold), condition }),

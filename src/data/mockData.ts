@@ -22,12 +22,7 @@ function lcg(seed: number): () => number {
  * 生成随机游走 OHLCV 模拟数据。
  * 用途：实时数据不可用时的降级模式、多图表布局单元格。
  */
-export function generateMockBars(
-  count: number,
-  intervalMs = 60_000,
-  startPrice = 30_000,
-  volatility = 0.004,
-): Bar[] {
+export function generateMockBars(count: number, intervalMs = 60_000, startPrice = 30_000, volatility = 0.004): Bar[] {
   const bars: Bar[] = [];
   const now = Date.now();
   let price = startPrice;
@@ -46,12 +41,7 @@ export function generateMockBars(
 }
 
 /** 按符号生成确定性模拟数据（多图表布局用） */
-export function generateSeededMockBars(
-  symbol: string,
-  count: number,
-  intervalMs = 60_000,
-  basePrice = 30_000,
-): Bar[] {
+export function generateSeededMockBars(symbol: string, count: number, intervalMs = 60_000, basePrice = 30_000): Bar[] {
   const rand = lcg(seedFrom(symbol));
   const bars: Bar[] = [];
   const now = Date.now();

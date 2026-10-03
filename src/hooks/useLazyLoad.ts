@@ -2,10 +2,7 @@
 import { useEffect } from 'react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 
-export function useLazyLoad(
-  rendererRef: { current: ChartRenderer | null },
-  onNeedsMoreHistory?: () => void,
-): void {
+export function useLazyLoad(rendererRef: { current: ChartRenderer | null }, onNeedsMoreHistory?: () => void): void {
   useEffect(() => {
     if (!onNeedsMoreHistory) return;
     const id = setInterval(() => {

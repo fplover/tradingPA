@@ -14,7 +14,13 @@ export function strokeLine(ctx: CanvasRenderingContext2D, x1: number, y1: number
 }
 
 /** 10px 轴文字色标签（水平线价格 / 扇形比率标签等同款） */
-export function axisLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, align: CanvasTextAlign): void {
+export function axisLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  align: CanvasTextAlign,
+): void {
   ctx.font = `10px ${TV_FONT}`;
   ctx.textAlign = align;
   ctx.fillStyle = theme.axisText;

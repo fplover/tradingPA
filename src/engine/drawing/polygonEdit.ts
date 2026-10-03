@@ -12,9 +12,7 @@ export const POLY_EDGE_HIT_PX = 6;
 
 /** 顶点编辑动作：insert 插到边之后 / remove 删顶点 / reject 低于 3 顶点下限（保持原状） */
 export type PolygonEdit =
-  | { kind: 'insert'; afterIndex: number; pt: DrawingPoint }
-  | { kind: 'remove'; index: number }
-  | { kind: 'reject' };
+  { kind: 'insert'; afterIndex: number; pt: DrawingPoint } | { kind: 'remove'; index: number } | { kind: 'reject' };
 
 /**
  * 顶点编辑命中判定：先顶点（半径 POLY_VERTEX_HIT_PX）后边（容差 POLY_EDGE_HIT_PX）。
@@ -39,7 +37,10 @@ export function polygonEditHit(
 }
 
 /** 应用顶点编辑（insert/remove；reject 不产生新坐标，由调用方保持原状） */
-export function applyPolygonEdit(points: readonly DrawingPoint[], edit: Exclude<PolygonEdit, { kind: 'reject' }>): DrawingPoint[] {
+export function applyPolygonEdit(
+  points: readonly DrawingPoint[],
+  edit: Exclude<PolygonEdit, { kind: 'reject' }>,
+): DrawingPoint[] {
   return edit.kind === 'insert'
     ? insertPolygonVertex(points, edit.afterIndex, edit.pt)
     : removePolygonVertex(points, edit.index);

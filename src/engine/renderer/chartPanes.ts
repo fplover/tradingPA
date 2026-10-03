@@ -26,5 +26,16 @@ export interface PaneState {
 }
 
 export function createPane(id: string, kind: PaneKind, heightRatio: number): PaneState {
-  return { id, kind, heightRatio, priceScale: new PriceScale(), indicators: [], y: 0, height: 0, manual: false, autoBtn: null, headerBtns: null };
+  return {
+    id,
+    kind,
+    heightRatio,
+    priceScale: new PriceScale(),
+    indicators: [],
+    y: 0,
+    height: 0,
+    manual: false,
+    autoBtn: null,
+    headerBtns: null,
+  };
 }

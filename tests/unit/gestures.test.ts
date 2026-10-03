@@ -70,8 +70,22 @@ function makePriceScale(height = CHART_H): PriceScale {
 /** 双面板（主 + 副图），几何与 ChartRenderer.layout 产出同构 */
 function makePanes(): PanZoomPane[] {
   return [
-    { y: 0, height: CHART_H * 0.75, heightRatio: 3, priceScale: makePriceScale(CHART_H * 0.75), manual: false, autoBtn: null },
-    { y: CHART_H * 0.75, height: CHART_H * 0.25, heightRatio: 1, priceScale: makePriceScale(CHART_H * 0.25), manual: false, autoBtn: null },
+    {
+      y: 0,
+      height: CHART_H * 0.75,
+      heightRatio: 3,
+      priceScale: makePriceScale(CHART_H * 0.75),
+      manual: false,
+      autoBtn: null,
+    },
+    {
+      y: CHART_H * 0.75,
+      height: CHART_H * 0.25,
+      heightRatio: 1,
+      priceScale: makePriceScale(CHART_H * 0.25),
+      manual: false,
+      autoBtn: null,
+    },
   ];
 }
 
@@ -451,7 +465,12 @@ describe('HoverController：悬停态/十字光标/光标决策', () => {
       notifyDrawings: () => {},
       requestDrawingsNotify: () => {},
     });
-    const trade = new TradeGesture({ paneAt: () => ({ y: 0, height: CHART_H, priceScale }), mainPane: () => ({ y: 0, height: CHART_H, priceScale }), chartW: () => CHART_W, invalidate: () => {} });
+    const trade = new TradeGesture({
+      paneAt: () => ({ y: 0, height: CHART_H, priceScale }),
+      mainPane: () => ({ y: 0, height: CHART_H, priceScale }),
+      chartW: () => CHART_W,
+      invalidate: () => {},
+    });
     return { h: new HoverController(host, drawing, trade), crosshair, published, canvas, viewport };
   }
 
@@ -486,7 +505,17 @@ describe('InputController：事件路由到手势', () => {
     canvas = document.createElement('canvas');
     document.body.appendChild(canvas);
     canvas.getBoundingClientRect = () =>
-      ({ left: 0, top: 0, right: 1280, bottom: 800, width: 1280, height: 800, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+      ({
+        left: 0,
+        top: 0,
+        right: 1280,
+        bottom: 800,
+        width: 1280,
+        height: 800,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
     HTMLCanvasElement.prototype.setPointerCapture = vi.fn();
     HTMLCanvasElement.prototype.hasPointerCapture = vi.fn(() => false);
     HTMLCanvasElement.prototype.releasePointerCapture = vi.fn();
@@ -575,7 +604,9 @@ describe('InputController：事件路由到手势', () => {
   }
 
   function pointer(type: string, x: number, y: number, button = 0): void {
-    canvas.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button, pointerId: 1, bubbles: true, cancelable: true }));
+    canvas.dispatchEvent(
+      new PointerEvent(type, { clientX: x, clientY: y, button, pointerId: 1, bubbles: true, cancelable: true }),
+    );
   }
 
   it('价格轴 pointerdown+move → 价格域变化（路由到 PanZoomGesture）', () => {
@@ -602,9 +633,20 @@ describe('InputController：事件路由到手势', () => {
     const { viewport, priceScale } = setup();
     const spacing0 = viewport.spacing;
     const range0 = { ...priceScale.range };
-    canvas.dispatchEvent(new WheelEvent('wheel', { clientX: 400, clientY: 300, deltaY: -100, bubbles: true, cancelable: true }));
+    canvas.dispatchEvent(
+      new WheelEvent('wheel', { clientX: 400, clientY: 300, deltaY: -100, bubbles: true, cancelable: true }),
+    );
     expect(viewport.spacing).toBeCloseTo(spacing0 * 0.9, 6);
-    canvas.dispatchEvent(new WheelEvent('wheel', { clientX: 400, clientY: 300, deltaY: 100, ctrlKey: true, bubbles: true, cancelable: true }));
+    canvas.dispatchEvent(
+      new WheelEvent('wheel', {
+        clientX: 400,
+        clientY: 300,
+        deltaY: 100,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
     expect(priceScale.range.min).not.toBe(range0.min);
     expect(viewport.spacing).toBeCloseTo(spacing0 * 0.9, 6);
   });

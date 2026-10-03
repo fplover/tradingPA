@@ -33,12 +33,7 @@ export function DrawingToolButton({
   const active = isGroupActive(group, activeTool);
   const hasFlyout = group.items.length > 1;
   return (
-    <div
-      data-tool-control
-      style={controlStyle}
-      onMouseEnter={() => onHover(true)}
-      onMouseLeave={() => onHover(false)}
-    >
+    <div data-tool-control style={controlStyle} onMouseEnter={() => onHover(true)} onMouseLeave={() => onHover(false)}>
       <button
         style={mainBtnStyle}
         title={TOOL_LABELS[shown]}
@@ -95,7 +90,10 @@ export function DrawingToolButton({
         >
           <TvCaret
             size={12}
-            style={{ transform: open ? 'rotate(180deg)' : undefined, transition: 'transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275)' }}
+            style={{
+              transform: open ? 'rotate(180deg)' : undefined,
+              transition: 'transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            }}
           />
         </button>
       )}

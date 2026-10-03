@@ -25,9 +25,7 @@ export function nextCloseTime(intervalMs: number, lastBarTime: number): number {
 function weekBucketStart(time: number, tzOffsetMinutes: number): number {
   const d = new Date(time + tzOffsetMinutes * 60_000);
   const day = (d.getUTCDay() + 6) % 7; // 周一 = 0
-  return (
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day) - tzOffsetMinutes * 60_000
-  );
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day) - tzOffsetMinutes * 60_000;
 }
 
 /** 日历周期（周/月）的收盘时刻：下周周一 / 下月 1 日，按 tzOffsetMinutes 时区的 00:00 */

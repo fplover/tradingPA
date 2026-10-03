@@ -31,7 +31,14 @@ afterEach(() => {
 });
 
 function hline(id: string, price: number, visible = true): Drawing {
-  return { id, type: 'hline', points: [{ time: T0, price }], style: { color: '#ef5350', lineWidth: 1 }, locked: false, visible };
+  return {
+    id,
+    type: 'hline',
+    points: [{ time: T0, price }],
+    style: { color: '#ef5350', lineWidth: 1 },
+    locked: false,
+    visible,
+  };
 }
 
 function lineAlert(patch: Partial<PriceAlert> = {}): PriceAlert {

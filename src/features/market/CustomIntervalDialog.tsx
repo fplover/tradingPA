@@ -185,7 +185,11 @@ const errorStyle: React.CSSProperties = { color: 'var(--down)', fontSize: fontSi
 
 const savedBoxStyle: React.CSSProperties = { marginTop: space.md };
 
-const savedTitleStyle: React.CSSProperties = { color: 'var(--text-faint)', fontSize: fontSize.sm, marginBottom: space.xs };
+const savedTitleStyle: React.CSSProperties = {
+  color: 'var(--text-faint)',
+  fontSize: fontSize.sm,
+  marginBottom: space.xs,
+};
 
 const savedRowStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: space.xs };
 
@@ -220,7 +224,12 @@ const savedDelStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
-const btnRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', gap: space.sm, marginTop: space.md };
+const btnRowStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: space.sm,
+  marginTop: space.md,
+};
 
 const ghostBtnStyle: React.CSSProperties = {
   background: 'transparent',

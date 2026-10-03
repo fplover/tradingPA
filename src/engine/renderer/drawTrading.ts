@@ -216,20 +216,20 @@ function drawTag(
 
 function orderTypeLabel(type: OrderVisual['type']): string {
   switch (type) {
-    case 'limit': return '限价';
-    case 'stop': return '止损';
-    case 'stop-limit': return '止損限价';
-    default: return '市价';
+    case 'limit':
+      return '限价';
+    case 'stop':
+      return '止损';
+    case 'stop-limit':
+      return '止損限价';
+    default:
+      return '市价';
   }
 }
 
 /** 右端关闭/撤单按钮命中区（标签末尾 × 区域） */
 function isRightBtnHit(x: number, y: number, ly: number, geo: DrawGeometry): boolean {
-  return (
-    x >= geo.chartW - TAG_PAD - BTN_HIT_W &&
-    x <= geo.chartW - TAG_PAD + 4 &&
-    Math.abs(y - ly) <= 10
-  );
+  return x >= geo.chartW - TAG_PAD - BTN_HIT_W && x <= geo.chartW - TAG_PAD + 4 && Math.abs(y - ly) <= 10;
 }
 
 /** 命中测试：挂单线/持仓块/TP-SL 线的拖动区与右端关闭按钮（面板局部坐标） */

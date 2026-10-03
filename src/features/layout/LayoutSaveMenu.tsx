@@ -4,7 +4,20 @@ import { Check, ChevronDown, History, Pencil, RotateCcw, Save, Trash2 } from 'lu
 import { useLayoutStore } from '@/store/layoutStore';
 import { icon, space } from '@/ui/tokens';
 import { Modal } from '@/ui/primitives';
-import { btnStyle, checkSlot, footerStyle, groupLabelStyle, inputStyle, itemStyle, menuStyle, nameLineStyle, rowBtnStyle, sepStyle, timeLineStyle, triggerStyle } from './layoutSaveMenuStyles';
+import {
+  btnStyle,
+  checkSlot,
+  footerStyle,
+  groupLabelStyle,
+  inputStyle,
+  itemStyle,
+  menuStyle,
+  nameLineStyle,
+  rowBtnStyle,
+  sepStyle,
+  timeLineStyle,
+  triggerStyle,
+} from './layoutSaveMenuStyles';
 
 /** 存档时间格式化：本地时区 YYYY-MM-DD HH:mm（不用 toLocaleString，避免各环境格式漂移） */
 function formatTime(ts: number): string {

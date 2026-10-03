@@ -75,7 +75,11 @@ export function createCompareFeed(
 ): { start(): void; loadMore(): void; dispose(): void } {
   let disposed = false;
   let bars: Bar[] = [];
-  let paging = false, noMore = false, pageFails = 0, retryAt = 0, ready = false;
+  let paging = false,
+    noMore = false,
+    pageFails = 0,
+    retryAt = 0,
+    ready = false;
   let timer: ReturnType<typeof setInterval> | null = null;
 
   /** 翻页空页/失败：3s 退避，连续两次判定源无更多（单次抖动仍重试） */
@@ -151,7 +155,11 @@ export function createCompareFeed(
   };
 }
 
-export function useCompareSeries(instrument: Instrument | null, timeframe: TimeframeId, mainBars: readonly Bar[]): CompareSeries {
+export function useCompareSeries(
+  instrument: Instrument | null,
+  timeframe: TimeframeId,
+  mainBars: readonly Bar[],
+): CompareSeries {
   const [bars, setBars] = useState<Bar[]>([]);
   const [status, setStatus] = useState<CompareSeries['status']>('idle');
   const feedRef = useRef<ReturnType<typeof createCompareFeed> | null>(null);
@@ -160,7 +168,12 @@ export function useCompareSeries(instrument: Instrument | null, timeframe: Timef
 
   // 换品种/周期：旧 feed 就地 dispose（迟到响应作废、轮询即停），新 feed 重新订阅
   useEffect(() => {
-    const feed = createCompareFeed(instrument, timeframe, { onBars: setBars, onStatus: setStatus }, () => mainBarsRef.current[0]?.time ?? null);
+    const feed = createCompareFeed(
+      instrument,
+      timeframe,
+      { onBars: setBars, onStatus: setStatus },
+      () => mainBarsRef.current[0]?.time ?? null,
+    );
     feedRef.current = feed;
     feed.start();
     return () => {
@@ -225,7 +238,10 @@ export function CompareSymbolPicker() {
           移除当前对比（{compare.symbol}）
         </button>
       )}
-      <div className="tv-scroll" style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div
+        className="tv-scroll"
+        style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}
+      >
         {hits.map((hit) => (
           <button
             key={hit.instrument.id}
@@ -241,7 +257,16 @@ export function CompareSymbolPicker() {
           </button>
         ))}
         {query.trim() !== '' && hits.length === 0 && (
-          <div style={{ color: 'var(--text-faint)', fontSize: fontSize.sm, textAlign: 'center', padding: `${space.md}px 0` }}>未找到相关品种</div>
+          <div
+            style={{
+              color: 'var(--text-faint)',
+              fontSize: fontSize.sm,
+              textAlign: 'center',
+              padding: `${space.md}px 0`,
+            }}
+          >
+            未找到相关品种
+          </div>
         )}
       </div>
     </Modal>

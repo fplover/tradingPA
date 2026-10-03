@@ -50,7 +50,11 @@ function clamp(v: number, lo: number, hi: number): number {
 export function coerceVpParams(raw: Record<string, string | number | boolean> | undefined): VolumeProfileParams {
   const src = raw?.source;
   const source = src === 'delta' ? 'delta' : 'volume';
-  const rowCount = clamp(Math.round(Number(raw?.rowCount ?? DEFAULT_VP_PARAMS.rowCount)) || DEFAULT_VP_PARAMS.rowCount, 10, 100);
+  const rowCount = clamp(
+    Math.round(Number(raw?.rowCount ?? DEFAULT_VP_PARAMS.rowCount)) || DEFAULT_VP_PARAMS.rowCount,
+    10,
+    100,
+  );
   const vaPercent = Number(raw?.vaPercent ?? DEFAULT_VP_PARAMS.vaPercent) || DEFAULT_VP_PARAMS.vaPercent;
   const out: VolumeProfileParams = {
     rowCount,
@@ -71,7 +75,12 @@ export function coerceVpParams(raw: Record<string, string | number | boolean> | 
  * - POC = 最大量行（同量取更低价行）；VA 从 POC 起每次并入相邻较大行，累计 ≥ vaPercent%。
  * 无有效区间（空/零价差）返回 null。
  */
-export function computeProfile(bars: readonly Bar[], from: number, to: number, params: VolumeProfileParams): ProfileResult | null {
+export function computeProfile(
+  bars: readonly Bar[],
+  from: number,
+  to: number,
+  params: VolumeProfileParams,
+): ProfileResult | null {
   if (to < from) return null;
   let minLow = Infinity;
   let maxHigh = -Infinity;
@@ -86,7 +95,8 @@ export function computeProfile(bars: readonly Bar[], from: number, to: number, p
   const n = Math.max(1, Math.floor(params.rowCount));
   const rowH = (maxHigh - minLow) / n;
   const rows: ProfileRow[] = [];
-  for (let r = 0; r < n; r++) rows.push({ low: minLow + r * rowH, high: minLow + (r + 1) * rowH, up: 0, down: 0, total: 0 });
+  for (let r = 0; r < n; r++)
+    rows.push({ low: minLow + r * rowH, high: minLow + (r + 1) * rowH, up: 0, down: 0, total: 0 });
 
   const EPS = 1e-9;
   for (let i = from; i <= to; i++) {
@@ -99,7 +109,8 @@ export function computeProfile(bars: readonly Bar[], from: number, to: number, p
     const span = r1 - r0 + 1;
     const range = b.high - b.low;
     // volume 源按 K 线涨跌整笔归边；delta 源按买卖量差近似式拆分（与 CVD 同式）
-    const buyRatio = params.source === 'delta' ? (range === 0 ? 0.5 : (b.close - b.low) / range) : b.close >= b.open ? 1 : 0;
+    const buyRatio =
+      params.source === 'delta' ? (range === 0 ? 0.5 : (b.close - b.low) / range) : b.close >= b.open ? 1 : 0;
     const upPart = (b.volume * buyRatio) / span;
     const downPart = (b.volume - b.volume * buyRatio) / span;
     for (let r = r0; r <= r1; r++) {
@@ -153,7 +164,13 @@ export class VolumeProfileModel {
   private sig: VPSignature | null = null;
   private cache: ProfileResult | null = null;
 
-  getProfile(bars: readonly Bar[], from: number, to: number, params: VolumeProfileParams, dataEpoch: number): ProfileResult | null {
+  getProfile(
+    bars: readonly Bar[],
+    from: number,
+    to: number,
+    params: VolumeProfileParams,
+    dataEpoch: number,
+  ): ProfileResult | null {
     const s = this.sig;
     if (
       this.cache &&

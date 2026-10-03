@@ -41,7 +41,16 @@ export const LAYOUTS: Array<{ id: LayoutId; label: string; cols: number; rows: n
 export const MAX_SAVED_LAYOUTS = 50;
 
 /** 多图表单元格默认品种池（与 ChartCell 初始态同源，提升后由这里统一维护） */
-export const CELL_DEFAULT_SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'AVAXUSDT'];
+export const CELL_DEFAULT_SYMBOLS = [
+  'BTCUSDT',
+  'ETHUSDT',
+  'BNBUSDT',
+  'SOLUSDT',
+  'XRPUSDT',
+  'DOGEUSDT',
+  'ADAUSDT',
+  'AVAXUSDT',
+];
 
 /** 单元格默认态：与 ChartCell 提升前的 useState 初值一致（BTCUSDT / 5m / candles 起） */
 export function defaultCell(index: number): LayoutCellSnapshot {
@@ -157,11 +166,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
   syncDrawings: false,
   setSyncChannel: (channel, on) =>
     set(
-      channel === 'symbol'
-        ? { syncSymbol: on }
-        : channel === 'interval'
-          ? { syncInterval: on }
-          : { syncDrawings: on },
+      channel === 'symbol' ? { syncSymbol: on } : channel === 'interval' ? { syncInterval: on } : { syncDrawings: on },
     ),
 
   savedLayouts: initialFile.items,
@@ -241,9 +246,7 @@ export const useLayoutStore = create<LayoutStore>((set, get) => ({
     if (!finalName) return;
     set((s) => ({
       savedLayouts: s.savedLayouts.map((l) =>
-        l.id === id
-          ? { ...l, name: finalName, snapshot: { ...l.snapshot, name: finalName } }
-          : l,
+        l.id === id ? { ...l, name: finalName, snapshot: { ...l.snapshot, name: finalName } } : l,
       ),
     }));
     persist();

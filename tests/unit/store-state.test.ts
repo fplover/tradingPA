@@ -53,23 +53,10 @@ const { useLayoutStore } = await import('@/store/layoutStore');
 const { useChartConfigStore } = await import('@/store/chartConfigStore');
 const { useUiStore } = await import('@/store/uiStore');
 const { useIndicatorStore } = await import('@/store/indicatorStore');
-const {
-  LEGACY_KEY,
-  MAX_TEMPLATES,
-  TEMPLATES_KEY,
-  loadTemplates,
-  relativeTime,
-  resolveUniqueName,
-  sortTemplates,
-} = await import('@/store/indicatorTemplates');
-const {
-  normalizeMeta,
-  defaultMeta,
-  captureMeta,
-  applyMeta,
-  fitRatios,
-  MIN_TRACK_RATIO,
-} = await import('@/store/layoutSnapshot');
+const { LEGACY_KEY, MAX_TEMPLATES, TEMPLATES_KEY, loadTemplates, relativeTime, resolveUniqueName, sortTemplates } =
+  await import('@/store/indicatorTemplates');
+const { normalizeMeta, defaultMeta, captureMeta, applyMeta, fitRatios, MIN_TRACK_RATIO } =
+  await import('@/store/layoutSnapshot');
 
 describe('chartConfigStore：图表配置下沉契约', () => {
   it('setter 与 toggle 语义（原 App.tsx 本地 state 行为不变）', () => {
@@ -293,7 +280,10 @@ describe('indicatorStore：指标模板多命名 CRUD（TV Templates）', () => 
     expect(reloaded[0]).toMatchObject({ id, name: '我的模板', list: [{ id: 'rsi', params: { length: 14 } }] });
 
     // 应用：整量替换 active（先打乱再按模板还原）
-    st.replaceAll([{ id: 'vol', params: {} }, { id: 'ema', params: {} }]);
+    st.replaceAll([
+      { id: 'vol', params: {} },
+      { id: 'ema', params: {} },
+    ]);
     expect(st.loadTemplate(id)).toBe(true);
     expect(useIndicatorStore.getState().active).toEqual([{ id: 'rsi', params: { length: 14 } }]);
     // 未知 id 返回 false 且不动 active

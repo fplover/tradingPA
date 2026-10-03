@@ -18,7 +18,11 @@ export function WatchlistListMenu({ lists, activeListId, activeName, onSwitch, o
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button className="tv-icon-btn" style={{ ...listTriggerStyle, color: 'var(--text)' }} aria-label="切换自选股列表">
+        <button
+          className="tv-icon-btn"
+          style={{ ...listTriggerStyle, color: 'var(--text)' }}
+          aria-label="切换自选股列表"
+        >
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeName}</span>
           <ChevronDown size={14} style={{ flexShrink: 0, opacity: 0.7 }} />
         </button>
@@ -26,9 +30,16 @@ export function WatchlistListMenu({ lists, activeListId, activeName, onSwitch, o
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" sideOffset={4} style={menuStyle}>
           {lists.map((l) => (
-            <DropdownMenu.Item key={l.id} className="tv-menu-item" style={menuItemStyle} onSelect={() => onSwitch(l.id)}>
+            <DropdownMenu.Item
+              key={l.id}
+              className="tv-menu-item"
+              style={menuItemStyle}
+              onSelect={() => onSwitch(l.id)}
+            >
               <span style={leadingIconSlot}>{l.id === activeListId ? <Check size={14} /> : null}</span>
-              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+              <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {l.name}
+              </span>
               <span style={{ color: 'var(--text-faint)', fontSize: fontSize.xs }}>{l.items.length}</span>
             </DropdownMenu.Item>
           ))}

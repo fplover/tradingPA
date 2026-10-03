@@ -75,7 +75,15 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     retryAtRef.current = 0;
 
     const degradeToMock = createMockFallback(
-      { onReady: () => { readyRef.current = true; }, setMode, setStatus, setStatusDetail, setHistory },
+      {
+        onReady: () => {
+          readyRef.current = true;
+        },
+        setMode,
+        setStatus,
+        setStatusDetail,
+        setHistory,
+      },
       inst,
       tf,
     );

@@ -44,7 +44,9 @@ let canvas: HTMLCanvasElement;
 
 beforeEach(() => {
   ctx = createMockCtx();
-  HTMLCanvasElement.prototype.getContext = vi.fn(() => asCtx(ctx)) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = vi.fn(() =>
+    asCtx(ctx),
+  ) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   // jsdom 缺失的指针捕获 API：打桩为无害空实现（被测逻辑只调用不依赖其效果）
   HTMLCanvasElement.prototype.setPointerCapture = vi.fn();
   HTMLCanvasElement.prototype.hasPointerCapture = vi.fn(() => false);
@@ -61,7 +63,17 @@ beforeEach(() => {
   canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   canvas.getBoundingClientRect = () =>
-    ({ left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H, width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    ({
+      left: 0,
+      top: 0,
+      right: CANVAS_W,
+      bottom: CANVAS_H,
+      width: CANVAS_W,
+      height: CANVAS_H,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
 });
 
 afterEach(() => {
@@ -77,11 +89,20 @@ function makeRenderer(bars: Bar[] = BARS): ChartRenderer {
 }
 
 function pointer(type: string, x: number, y: number, button = 0): void {
-  canvas.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button, pointerId: 1, bubbles: true, cancelable: true }));
+  canvas.dispatchEvent(
+    new PointerEvent(type, { clientX: x, clientY: y, button, pointerId: 1, bubbles: true, cancelable: true }),
+  );
 }
 
 function wheel(x: number, y: number, deltaY: number, mods: { ctrl?: boolean } = {}): WheelEvent {
-  const ev = new WheelEvent('wheel', { clientX: x, clientY: y, deltaY, ctrlKey: mods.ctrl ?? false, bubbles: true, cancelable: true });
+  const ev = new WheelEvent('wheel', {
+    clientX: x,
+    clientY: y,
+    deltaY,
+    ctrlKey: mods.ctrl ?? false,
+    bubbles: true,
+    cancelable: true,
+  });
   canvas.dispatchEvent(ev);
   return ev;
 }

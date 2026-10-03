@@ -54,7 +54,15 @@ export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps)
             role="separator"
             aria-orientation="vertical"
             aria-label="拖拽调整面板宽度"
-            style={{ position: 'absolute', left: -2, top: 0, width: 5, height: '100%', cursor: 'col-resize', zIndex: 2 }}
+            style={{
+              position: 'absolute',
+              left: -2,
+              top: 0,
+              width: 5,
+              height: '100%',
+              cursor: 'col-resize',
+              zIndex: 2,
+            }}
           />
           <div
             className="tv-scroll"

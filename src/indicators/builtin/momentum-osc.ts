@@ -25,12 +25,24 @@ export const TRIX: IndicatorDef = {
     const p = num(params.length);
     const sig = num(params.signal);
     const c = closes(bars);
-    const e3 = ema(ema(ema(c, p).map((v) => v ?? 0), p).map((v) => v ?? 0), p);
+    const e3 = ema(
+      ema(
+        ema(c, p).map((v) => v ?? 0),
+        p,
+      ).map((v) => v ?? 0),
+      p,
+    );
     const trix = e3.map((v, i) => {
       const prev = i > 0 ? e3[i - 1] : undefined;
       return v === undefined || prev === undefined || prev === 0 ? undefined : ((v - prev) / prev) * 100;
     });
-    return { trix, signal: sma(trix.map((v) => v ?? 0), sig).map((v, i) => (trix[i] === undefined ? undefined : v)) };
+    return {
+      trix,
+      signal: sma(
+        trix.map((v) => v ?? 0),
+        sig,
+      ).map((v, i) => (trix[i] === undefined ? undefined : v)),
+    };
   },
 };
 
@@ -52,8 +64,14 @@ export const TSI: IndicatorDef = {
     const c = closes(bars);
     const mtm = c.map((v, i) => (i > 0 ? v - c[i - 1] : 0));
     const absMtm = mtm.map(Math.abs);
-    const num2 = wilder(wilder(mtm, lp).map((v) => v ?? 0), sp);
-    const den2 = wilder(wilder(absMtm, lp).map((v) => v ?? 0), sp);
+    const num2 = wilder(
+      wilder(mtm, lp).map((v) => v ?? 0),
+      sp,
+    );
+    const den2 = wilder(
+      wilder(absMtm, lp).map((v) => v ?? 0),
+      sp,
+    );
     return {
       tsi: num2.map((v, i) => {
         const d = den2[i];
@@ -124,9 +142,13 @@ export const KST: IndicatorDef = {
   ],
   compute: (bars, params) => {
     const c = closes(bars);
-    const rocOf = (p: number) => c.map((v, i) => (i < p || c[i - p] === 0 ? undefined : ((v - c[i - p]) / c[i - p]) * 100));
+    const rocOf = (p: number) =>
+      c.map((v, i) => (i < p || c[i - p] === 0 ? undefined : ((v - c[i - p]) / c[i - p]) * 100));
     const smooth = (roc: Array<number | undefined>, period: number) =>
-      sma(roc.map((v) => v ?? 0), period).map((v, i) => (roc[i] === undefined ? undefined : v));
+      sma(
+        roc.map((v) => v ?? 0),
+        period,
+      ).map((v, i) => (roc[i] === undefined ? undefined : v));
     const t1 = smooth(rocOf(num(params.roc1)), 10);
     const t2 = smooth(rocOf(num(params.roc2)), 10);
     const t3 = smooth(rocOf(num(params.roc3)), 10);
@@ -138,7 +160,13 @@ export const KST: IndicatorDef = {
       if (v === undefined || a === undefined || b === undefined || d === undefined) return undefined;
       return v + 2 * a + 3 * b + 4 * d;
     });
-    return { kst, signal: sma(kst.map((v) => v ?? 0), num(params.signal)).map((v, i) => (kst[i] === undefined ? undefined : v)) };
+    return {
+      kst,
+      signal: sma(
+        kst.map((v) => v ?? 0),
+        num(params.signal),
+      ).map((v, i) => (kst[i] === undefined ? undefined : v)),
+    };
   },
 };
 
@@ -157,7 +185,8 @@ export const Coppock: IndicatorDef = {
   plots: [{ key: 'coppock', label: 'Coppock', style: { kind: 'line', color: PALETTE.pink, lineWidth: 2 } }],
   compute: (bars, params) => {
     const c = closes(bars);
-    const rocOf = (p: number) => c.map((v, i) => (i < p || c[i - p] === 0 ? undefined : ((v - c[i - p]) / c[i - p]) * 100));
+    const rocOf = (p: number) =>
+      c.map((v, i) => (i < p || c[i - p] === 0 ? undefined : ((v - c[i - p]) / c[i - p]) * 100));
     const sum = combine(rocOf(num(params.slow)), rocOf(num(params.fast)), (a, b) => a + b);
     const filled = sum.map((v) => v ?? 0);
     return { coppock: wma(filled, num(params.length)).map((v, i) => (sum[i] === undefined ? undefined : v)) };
@@ -179,7 +208,11 @@ export const PPO: IndicatorDef = {
   plots: [
     { key: 'ppo', label: 'PPO', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } },
     { key: 'signal', label: '信号', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } },
-    { key: 'hist', label: '柱', style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red } },
+    {
+      key: 'hist',
+      label: '柱',
+      style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red },
+    },
   ],
   compute: (bars, params) => {
     const f = num(params.fast);
@@ -189,7 +222,10 @@ export const PPO: IndicatorDef = {
     const ef = ema(c, f);
     const es = ema(c, s);
     const ppo = combine(ef, es, (a, b) => (b === 0 ? 0 : (100 * (a - b)) / b));
-    const signal = sma(ppo.map((v) => v ?? 0), sig).map((v, i) => (ppo[i] === undefined ? undefined : v));
+    const signal = sma(
+      ppo.map((v) => v ?? 0),
+      sig,
+    ).map((v, i) => (ppo[i] === undefined ? undefined : v));
     return { ppo, signal, hist: combine(ppo, signal, (a, b) => a - b) };
   },
 };

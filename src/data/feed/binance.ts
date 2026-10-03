@@ -68,9 +68,18 @@ export class BinanceKlineWS {
     };
     this.ws.onmessage = (ev) => {
       try {
-        const msg = JSON.parse(ev.data as string) as { k: { t: number; o: string; h: string; l: string; c: string; v: string; x: boolean } };
+        const msg = JSON.parse(ev.data as string) as {
+          k: { t: number; o: string; h: string; l: string; c: string; v: string; x: boolean };
+        };
         this.onBar(
-          { time: msg.k.t, open: Number(msg.k.o), high: Number(msg.k.h), low: Number(msg.k.l), close: Number(msg.k.c), volume: Number(msg.k.v) },
+          {
+            time: msg.k.t,
+            open: Number(msg.k.o),
+            high: Number(msg.k.h),
+            low: Number(msg.k.l),
+            close: Number(msg.k.c),
+            volume: Number(msg.k.v),
+          },
           msg.k.x,
         );
       } catch {

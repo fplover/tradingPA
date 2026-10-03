@@ -85,7 +85,10 @@ export const VolumeMA: IndicatorDef = {
   ],
   plots: [{ key: 'ma', label: 'VOL MA', style: { kind: 'line', color: PALETTE.amber, lineWidth: 1.5 } }],
   compute: (bars, params) => ({
-    ma: sma(bars.map((b) => b.volume), num(params.length)),
+    ma: sma(
+      bars.map((b) => b.volume),
+      num(params.length),
+    ),
   }),
 };
 
@@ -97,12 +100,28 @@ export const VOL: IndicatorDef = {
   overlay: false,
   lookback: 1,
   // length 随 vol_ma 线隐藏而隐藏（TV Volume 的 hideWhenPlotsHidden）
-  params: [{ key: 'length', label: 'MA Length', type: 'number', default: 20, min: 1, max: 500, hideWhenPlotsHidden: ['vol_ma'] }],
+  params: [
+    {
+      key: 'length',
+      label: 'MA Length',
+      type: 'number',
+      default: 20,
+      min: 1,
+      max: 500,
+      hideWhenPlotsHidden: ['vol_ma'],
+    },
+  ],
   plots: [
     {
       key: 'vol',
       label: 'VOL',
-      style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green80, downColor: PALETTE.red80, colorByBar: true },
+      style: {
+        kind: 'histogram',
+        color: PALETTE.green,
+        upColor: PALETTE.green80,
+        downColor: PALETTE.red80,
+        colorByBar: true,
+      },
     },
     {
       key: 'vol_ma',

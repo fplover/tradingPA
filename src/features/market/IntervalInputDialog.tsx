@@ -110,7 +110,12 @@ const hintStyle: React.CSSProperties = { color: 'var(--text-faint)', fontSize: f
 
 const errorStyle: React.CSSProperties = { color: 'var(--down)', fontSize: fontSize.sm, marginTop: space.xs };
 
-const btnRowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', gap: space.sm, marginTop: space.md };
+const btnRowStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: space.sm,
+  marginTop: space.md,
+};
 
 const ghostBtnStyle: React.CSSProperties = {
   background: 'transparent',

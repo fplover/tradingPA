@@ -49,8 +49,9 @@ test('指标面板收藏与键盘操作', async ({ page }) => {
     .poll(() =>
       page.evaluate(
         () =>
-          (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer?.listIndicators().some((i) => i.name === 'RSI 相对强弱') ??
-          false,
+          (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer
+            ?.listIndicators()
+            .some((i) => i.name === 'RSI 相对强弱') ?? false,
       ),
     )
     .toBe(true);
@@ -133,14 +134,18 @@ test('研究图例中键删除与隐藏指标开关', async ({ page }) => {
   const hasPineStudy = () =>
     page.evaluate(
       () =>
-        (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer?.listIndicators().some((i) => i.name === '双均线交叉') ??
-        false,
+        (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer
+          ?.listIndicators()
+          .some((i) => i.name === '双均线交叉') ?? false,
     );
   await expect.poll(hasPineStudy).toBe(true);
 
   // 底栏：隐藏所有指标
   const studiesHidden = () =>
-    page.evaluate(() => (window as unknown as { __chartRenderer?: { studiesHidden: boolean } }).__chartRenderer?.studiesHidden ?? null);
+    page.evaluate(
+      () =>
+        (window as unknown as { __chartRenderer?: { studiesHidden: boolean } }).__chartRenderer?.studiesHidden ?? null,
+    );
   expect(await studiesHidden()).toBe(false);
   await page.getByRole('button', { name: '隐藏所有指标' }).click();
   expect(await studiesHidden()).toBe(true);
@@ -148,6 +153,9 @@ test('研究图例中键删除与隐藏指标开关', async ({ page }) => {
   expect(await studiesHidden()).toBe(false);
 
   // 中键点击研究图例行 → 删除该研究
-  await page.locator('canvas').first().click({ position: { x: 60, y: 40 }, button: 'middle' });
+  await page
+    .locator('canvas')
+    .first()
+    .click({ position: { x: 60, y: 40 }, button: 'middle' });
   await expect.poll(hasPineStudy).toBe(false);
 });

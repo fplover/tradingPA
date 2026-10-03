@@ -157,7 +157,11 @@ function toPix(p: DrawingPoint, dctx: DrawContext): { x: number; y: number } {
 describe('drawTextFamily：便签', () => {
   it('背景框 + 多行文本（mock 口径：宽 = max(40, 6×行宽)+16，高 = 行数×17+12）', () => {
     const { ctx, dctx } = makeDctx();
-    const d = drawing({ type: 'note', points: [P(T0, 100)], style: { color: '#131722', lineWidth: 1, fillColor: '#fff9c4', text: '便签', fontSize: 12 } });
+    const d = drawing({
+      type: 'note',
+      points: [P(T0, 100)],
+      style: { color: '#131722', lineWidth: 1, fillColor: '#fff9c4', text: '便签', fontSize: 12 },
+    });
     const p = toPix(d.points[0], dctx);
     drawTextFamily(asCtx(ctx), d, [p], 2);
     expect(propSets(ctx, 'fillStyle')).toEqual(['#fff9c4', '#131722']);
@@ -168,7 +172,11 @@ describe('drawTextFamily：便签', () => {
 
   it('多行：每行一条 fillText，行距 17px', () => {
     const { ctx, dctx } = makeDctx();
-    const d = drawing({ type: 'note', points: [P(T0, 100)], style: { color: '#131722', lineWidth: 1, fillColor: '#fff9c4', text: '第一行\n第二行', fontSize: 12 } });
+    const d = drawing({
+      type: 'note',
+      points: [P(T0, 100)],
+      style: { color: '#131722', lineWidth: 1, fillColor: '#fff9c4', text: '第一行\n第二行', fontSize: 12 },
+    });
     const p = toPix(d.points[0], dctx);
     drawTextFamily(asCtx(ctx), d, [p], 2);
     expect(fillTexts(ctx)).toEqual(['第一行', '第二行']);
@@ -180,7 +188,11 @@ describe('drawTextFamily：便签', () => {
 describe('drawTextFamily：价格标签', () => {
   it('色底白字方牌居中于锚点，内容 = 价格（无前缀）', () => {
     const { ctx, dctx } = makeDctx();
-    const d = drawing({ type: 'price-label', points: [P(T0, 100)], style: { color: '#787b86', lineWidth: 1, text: '', fontSize: 11 } });
+    const d = drawing({
+      type: 'price-label',
+      points: [P(T0, 100)],
+      style: { color: '#787b86', lineWidth: 1, text: '', fontSize: 11 },
+    });
     const p = toPix(d.points[0], dctx);
     drawTextFamily(asCtx(ctx), d, [p], 2);
     // '100.00' 6 字符 × 6（mock）+ 12 = 48；高 11+8 = 19
@@ -192,7 +204,11 @@ describe('drawTextFamily：价格标签', () => {
 
   it('style.text 非空时作为前缀', () => {
     const { ctx, dctx } = makeDctx();
-    const d = drawing({ type: 'price-label', points: [P(T0, 100)], style: { color: '#787b86', lineWidth: 1, text: '锚', fontSize: 11 } });
+    const d = drawing({
+      type: 'price-label',
+      points: [P(T0, 100)],
+      style: { color: '#787b86', lineWidth: 1, text: '锚', fontSize: 11 },
+    });
     const p = toPix(d.points[0], dctx);
     drawTextFamily(asCtx(ctx), d, [p], 2);
     expect(fillTexts(ctx)).toEqual(['锚 100.00']);
@@ -203,7 +219,11 @@ describe('drawTextFamily：价格标签', () => {
 describe('drawTextFamily：锚定文本', () => {
   it('文本 + 锚点小圆点（r=3）', () => {
     const { ctx, dctx } = makeDctx();
-    const d = drawing({ type: 'anchored-text', points: [P(T0, 100)], style: { color: '#d1d4dc', lineWidth: 1, text: '锚定文本', fontSize: 12 } });
+    const d = drawing({
+      type: 'anchored-text',
+      points: [P(T0, 100)],
+      style: { color: '#d1d4dc', lineWidth: 1, text: '锚定文本', fontSize: 12 },
+    });
     const p = toPix(d.points[0], dctx);
     drawTextFamily(asCtx(ctx), d, [p], 2);
     expect(hasCall(ctx, 'fillText', ['锚定文本', p.x, p.y])).toBe(true);
@@ -212,7 +232,11 @@ describe('drawTextFamily：锚定文本', () => {
 
   it('多行时以锚点为垂直中心', () => {
     const { ctx, dctx } = makeDctx();
-    const d = drawing({ type: 'anchored-text', points: [P(T0, 100)], style: { color: '#d1d4dc', lineWidth: 1, text: 'a\nb', fontSize: 12 } });
+    const d = drawing({
+      type: 'anchored-text',
+      points: [P(T0, 100)],
+      style: { color: '#d1d4dc', lineWidth: 1, text: 'a\nb', fontSize: 12 },
+    });
     const p = toPix(d.points[0], dctx);
     drawTextFamily(asCtx(ctx), d, [p], 2);
     expect(hasCall(ctx, 'fillText', ['a', p.x, p.y - 8.5])).toBe(true);
@@ -223,7 +247,11 @@ describe('drawTextFamily：锚定文本', () => {
 describe('drawTextFamily：箭头标记', () => {
   it('14px 箭杆 + 实心箭头 + 右侧文本', () => {
     const { ctx, dctx } = makeDctx();
-    const d = drawing({ type: 'arrow-mark', points: [P(T0, 100)], style: { color: '#787b86', lineWidth: 2, text: '标记', fontSize: 12 } });
+    const d = drawing({
+      type: 'arrow-mark',
+      points: [P(T0, 100)],
+      style: { color: '#787b86', lineWidth: 2, text: '标记', fontSize: 12 },
+    });
     const p = toPix(d.points[0], dctx);
     drawTextFamily(asCtx(ctx), d, [p], 2);
     expect(hasPair(ctx, 'moveTo', [p.x, p.y], 'lineTo', [p.x + 14, p.y])).toBe(true);
@@ -255,7 +283,11 @@ describe('hitTestTextFamily', () => {
   }
   it('便签命中盒覆盖背景框右下角', () => {
     const { dctx } = makeDctx();
-    const d = drawing({ type: 'note', points: [P(T0, 100)], style: { color: '#131722', lineWidth: 1, fillColor: '#fff9c4', text: '便签', fontSize: 12 } });
+    const d = drawing({
+      type: 'note',
+      points: [P(T0, 100)],
+      style: { color: '#131722', lineWidth: 1, fillColor: '#fff9c4', text: '便签', fontSize: 12 },
+    });
     const p = toPix(d.points[0], dctx);
     expect(hitTestTextFamily(d, [p], p.x + 38, p.y + 27)).toBe(true); // 框内（40×29）
     expect(hitTestTextFamily(d, [p], p.x + 50, p.y + 27)).toBe(false); // 框外
@@ -344,7 +376,9 @@ let mock: MockCtx;
 beforeEach(() => {
   document.body.innerHTML = '';
   mock = createMockCtx();
-  HTMLCanvasElement.prototype.getContext = vi.fn(() => asCtx(mock)) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = vi.fn(() =>
+    asCtx(mock),
+  ) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.setPointerCapture = vi.fn();
   HTMLCanvasElement.prototype.hasPointerCapture = vi.fn(() => false);
   HTMLCanvasElement.prototype.releasePointerCapture = vi.fn();
@@ -359,7 +393,17 @@ beforeEach(() => {
   canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   canvas.getBoundingClientRect = () =>
-    ({ left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H, width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    ({
+      left: 0,
+      top: 0,
+      right: CANVAS_W,
+      bottom: CANVAS_H,
+      width: CANVAS_W,
+      height: CANVAS_H,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
 });
 
 afterEach(() => {
@@ -374,7 +418,9 @@ function makeRenderer(): ChartRenderer {
 }
 
 function ptr(type: string, x: number, y: number): void {
-  canvas.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }));
+  canvas.dispatchEvent(
+    new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }),
+  );
 }
 
 function click(x: number, y: number): void {

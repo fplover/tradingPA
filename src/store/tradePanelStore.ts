@@ -36,8 +36,7 @@ function persist(state: { open: boolean; height: number }): void {
   }
 }
 
-export const clampPanelHeight = (h: number) =>
-  Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.round(h)));
+export const clampPanelHeight = (h: number) => Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.round(h)));
 
 export const useTradePanelStore = create<TradePanelState>((set, get) => {
   const saved = load();

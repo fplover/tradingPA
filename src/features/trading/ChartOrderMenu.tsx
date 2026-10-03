@@ -35,23 +35,49 @@ export function ChartOrderMenu({ decimals }: { decimals: number }) {
         <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
           <button
             onClick={() => setSide('buy')}
-            style={{ ...segStyle, flex: 1, background: side === 'buy' ? 'var(--buy)' : 'var(--panel-2)', color: side === 'buy' ? 'var(--on-updown)' : 'var(--text-dim)' }}
+            style={{
+              ...segStyle,
+              flex: 1,
+              background: side === 'buy' ? 'var(--buy)' : 'var(--panel-2)',
+              color: side === 'buy' ? 'var(--on-updown)' : 'var(--text-dim)',
+            }}
           >
             买入
           </button>
           <button
             onClick={() => setSide('sell')}
-            style={{ ...segStyle, flex: 1, background: side === 'sell' ? 'var(--sell)' : 'var(--panel-2)', color: side === 'sell' ? 'var(--on-updown)' : 'var(--text-dim)' }}
+            style={{
+              ...segStyle,
+              flex: 1,
+              background: side === 'sell' ? 'var(--sell)' : 'var(--panel-2)',
+              color: side === 'sell' ? 'var(--on-updown)' : 'var(--text-dim)',
+            }}
           >
             卖出
           </button>
         </div>
 
         <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-          <button onClick={() => setType('limit')} style={{ ...segStyle, flex: 1, background: type === 'limit' ? 'var(--accent)' : 'var(--panel-2)', color: type === 'limit' ? 'var(--text-on-accent)' : 'var(--text-dim)' }}>
+          <button
+            onClick={() => setType('limit')}
+            style={{
+              ...segStyle,
+              flex: 1,
+              background: type === 'limit' ? 'var(--accent)' : 'var(--panel-2)',
+              color: type === 'limit' ? 'var(--text-on-accent)' : 'var(--text-dim)',
+            }}
+          >
             限价
           </button>
-          <button onClick={() => setType('market')} style={{ ...segStyle, flex: 1, background: type === 'market' ? 'var(--accent)' : 'var(--panel-2)', color: type === 'market' ? 'var(--text-on-accent)' : 'var(--text-dim)' }}>
+          <button
+            onClick={() => setType('market')}
+            style={{
+              ...segStyle,
+              flex: 1,
+              background: type === 'market' ? 'var(--accent)' : 'var(--panel-2)',
+              color: type === 'market' ? 'var(--text-on-accent)' : 'var(--text-dim)',
+            }}
+          >
             市价
           </button>
         </div>
@@ -78,7 +104,14 @@ export function ChartOrderMenu({ decimals }: { decimals: number }) {
           <button style={{ ...segStyle, background: 'var(--panel-2)', color: 'var(--text-dim)' }} onClick={close}>
             取消
           </button>
-          <button style={{ ...segStyle, background: side === 'buy' ? 'var(--buy)' : 'var(--sell)', color: 'var(--on-updown)' }} onClick={submit}>
+          <button
+            style={{
+              ...segStyle,
+              background: side === 'buy' ? 'var(--buy)' : 'var(--sell)',
+              color: 'var(--on-updown)',
+            }}
+            onClick={submit}
+          >
             下单
           </button>
         </div>

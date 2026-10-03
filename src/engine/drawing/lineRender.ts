@@ -8,7 +8,13 @@ import type { DrawContext } from './coords';
 type Pix = { x: number; y: number };
 
 /** 线族渲染分发（4 种） */
-export function drawLineFamily(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[], dctx: DrawContext, decimals: number): void {
+export function drawLineFamily(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  pts: Pix[],
+  dctx: DrawContext,
+  decimals: number,
+): void {
   switch (d.type) {
     case 'hline': {
       const y = Math.round(pts[0].y) + 0.5;

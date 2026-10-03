@@ -85,8 +85,14 @@ export function hitTestIndicatorLine(
       const v1 = values[i + 1 - ctxFrom];
       if (v0 === undefined || v1 === undefined) continue; // 断点不连段（与渲染一致）
       if (
-        distToSegment(x, y, viewport.indexToX(i), priceScale.priceToY(v0), viewport.indexToX(i + 1), priceScale.priceToY(v1)) <=
-        HIT_TOL
+        distToSegment(
+          x,
+          y,
+          viewport.indexToX(i),
+          priceScale.priceToY(v0),
+          viewport.indexToX(i + 1),
+          priceScale.priceToY(v1),
+        ) <= HIT_TOL
       ) {
         return true;
       }
@@ -153,6 +159,8 @@ export function hitTestIndicatorAt(
 export function selectStudyAt(host: StudyHitHost, popup: SelectionPopupTracker, x: number, y: number): void {
   const main = host.panes()[0];
   const { from, to } = host.visibleRange();
-  const hit = main ? hitTestIndicatorAt(main, host.visibleStudies(), host.displaySeries().raw(), from, to, host.viewport, x, y) : null;
+  const hit = main
+    ? hitTestIndicatorAt(main, host.visibleStudies(), host.displaySeries().raw(), from, to, host.viewport, x, y)
+    : null;
   popup.setStudySelection(hit?.uid ?? null, hit?.bbox ?? null, host.chartW());
 }

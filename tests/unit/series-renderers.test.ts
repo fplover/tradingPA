@@ -44,16 +44,24 @@ function fixture(bars: Bar[] = BARS, spacing = 8) {
   viewport.scrollToRealtime();
   const priceScale = new PriceScale();
   priceScale.setSize(H);
-  priceScale.autoScale(
-    Math.min(...bars.map((b) => b.low)),
-    Math.max(...bars.map((b) => b.high)),
-  );
+  priceScale.autoScale(Math.min(...bars.map((b) => b.low)), Math.max(...bars.map((b) => b.high)));
   const geo = { chartW: W, chartH: H };
   const ctx = createMockCtx();
   return { ctx, series, viewport, priceScale, geo };
 }
 
-function run(fn: (ctx: CanvasRenderingContext2D, s: BarSeries, f: number, t: number, v: Viewport, p: PriceScale, g: { chartW: number; chartH: number }) => void, f = fixture()) {
+function run(
+  fn: (
+    ctx: CanvasRenderingContext2D,
+    s: BarSeries,
+    f: number,
+    t: number,
+    v: Viewport,
+    p: PriceScale,
+    g: { chartW: number; chartH: number },
+  ) => void,
+  f = fixture(),
+) {
   fn(asCtx(f.ctx), f.series, FROM, TO, f.viewport, f.priceScale, f.geo);
   return f.ctx;
 }

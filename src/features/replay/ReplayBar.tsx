@@ -14,7 +14,19 @@ import {
 import { useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { Menu, MenuItem } from '@/ui/primitives';
-import { barStyle, dateBadgeStyle, centerGroupStyle, btnStyle, orderBtn, qtyInput, sepStyle, selectStyle, datePopStyle, dateInputStyle, hintStyle } from './replayBarStyles';
+import {
+  barStyle,
+  dateBadgeStyle,
+  centerGroupStyle,
+  btnStyle,
+  orderBtn,
+  qtyInput,
+  sepStyle,
+  selectStyle,
+  datePopStyle,
+  dateInputStyle,
+  hintStyle,
+} from './replayBarStyles';
 
 const SPEEDS = [1, 2, 4];
 const BASE_INTERVAL = 300;
@@ -100,7 +112,6 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
     place({ type: 'market', side, qty: q }, price, time);
   };
 
-
   void tradeVersion;
   const position = tradeEngine.position;
 
@@ -142,7 +153,10 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
               onChange={(e) => setDateValue(e.target.value)}
               style={dateInputStyle}
             />
-            <button style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }} onClick={applyDate}>
+            <button
+              style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }}
+              onClick={applyDate}
+            >
               跳转
             </button>
           </div>
@@ -151,17 +165,35 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
         {!selecting && (
           <>
             <div style={sepStyle} />
-            <button style={btnStyle} title="上一根" onClick={() => { setPlaying(false); setIndex(Math.max(0, index - 1)); }}>
+            <button
+              style={btnStyle}
+              title="上一根"
+              onClick={() => {
+                setPlaying(false);
+                setIndex(Math.max(0, index - 1));
+              }}
+            >
               <SkipBack size={14} />
             </button>
             <button
-              style={{ ...btnStyle, background: playing ? 'var(--accent)' : 'transparent', color: playing ? 'var(--text-on-accent)' : 'var(--text-dim)' }}
+              style={{
+                ...btnStyle,
+                background: playing ? 'var(--accent)' : 'transparent',
+                color: playing ? 'var(--text-on-accent)' : 'var(--text-dim)',
+              }}
               title={playing ? '暂停' : '播放'}
               onClick={() => setPlaying(!playing)}
             >
               {playing ? <Pause size={14} /> : <Play size={14} />}
             </button>
-            <button style={btnStyle} title="下一根" onClick={() => { setPlaying(false); setIndex(Math.min(barCount - 1, index + 1)); }}>
+            <button
+              style={btnStyle}
+              title="下一根"
+              onClick={() => {
+                setPlaying(false);
+                setIndex(Math.min(barCount - 1, index + 1));
+              }}
+            >
               <SkipForward size={14} />
             </button>
             <div style={sepStyle} />
@@ -202,7 +234,11 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
       {/* 右：模拟下单（对齐 TV 回放底条） */}
       {!selecting && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-          <button style={{ ...orderBtn, background: 'var(--down)' }} onClick={() => quick('sell')} title="市价卖出/做空">
+          <button
+            style={{ ...orderBtn, background: 'var(--down)' }}
+            onClick={() => quick('sell')}
+            title="市价卖出/做空"
+          >
             卖出
           </button>
           <input value={qty} onChange={(e) => setQty(e.target.value)} style={qtyInput} title="数量" />
@@ -210,7 +246,11 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
             买入
           </button>
           <button
-            style={{ ...orderBtn, background: position ? 'var(--warn)' : 'var(--panel-2)', color: position ? 'var(--on-warn)' : 'var(--text-faint)' }}
+            style={{
+              ...orderBtn,
+              background: position ? 'var(--warn)' : 'var(--panel-2)',
+              color: position ? 'var(--on-warn)' : 'var(--text-faint)',
+            }}
             onClick={() => position && closePosition(price, time)}
             title="市价平仓"
             disabled={!position}

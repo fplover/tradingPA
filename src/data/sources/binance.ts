@@ -68,7 +68,10 @@ interface PriceRow {
  * 因此按计价资产补全候选交易对，再用一次批量行情校验哪些真实存在。
  */
 export async function cryptoSearch(query: string): Promise<SearchHit[]> {
-  const q = query.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const q = query
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
   if (q.length < 2) return [];
   const candidates = QUOTE_ASSETS.some((a) => q.endsWith(a)) ? [q] : QUOTE_ASSETS.map((a) => `${q}${a}`);
   try {

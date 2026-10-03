@@ -74,7 +74,11 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
       <div style={headerStyle}>
         <strong style={{ color: 'var(--text)', fontSize: 12 }}>回放交易面板</strong>
         <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>
-          权益 {engine.equity.toFixed(2)} · 浮动 <b style={{ color: pnlColor(engine.unrealizedPnL) }}>{engine.unrealizedPnL >= 0 ? '+' : ''}{engine.unrealizedPnL.toFixed(2)}</b>
+          权益 {engine.equity.toFixed(2)} · 浮动{' '}
+          <b style={{ color: pnlColor(engine.unrealizedPnL) }}>
+            {engine.unrealizedPnL >= 0 ? '+' : ''}
+            {engine.unrealizedPnL.toFixed(2)}
+          </b>
         </span>
         <div style={{ flex: 1 }} />
         <button style={iconBtn} title="限价 / 止损挂单" onClick={() => setDialogOpen(true)}>
@@ -90,81 +94,89 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
 
       {/* 页签 + 列表（展开时显示） */}
       {panelOpen && (
-      <Tabs.Root value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-        <TabList>
-          {(
-            [
-              ['pending', `挂单 (${pending.length})`],
-              ['position', position ? `持仓 (${fmtQty(position.qty)})` : '持仓'],
-              ['trades', `成交 (${engine.trades.length})`],
-            ] as const
-          ).map(([key, label]) => (
-            <Tab key={key} value={key} active={tab === key}>
-              {label}
-            </Tab>
-          ))}
-        </TabList>
+        <Tabs.Root value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabList>
+            {(
+              [
+                ['pending', `挂单 (${pending.length})`],
+                ['position', position ? `持仓 (${fmtQty(position.qty)})` : '持仓'],
+                ['trades', `成交 (${engine.trades.length})`],
+              ] as const
+            ).map(([key, label]) => (
+              <Tab key={key} value={key} active={tab === key}>
+                {label}
+              </Tab>
+            ))}
+          </TabList>
 
-        <div style={listStyle}>
-          <Tabs.Content value="pending">
-            {pending.length === 0 ? (
-              <Empty text="无挂单" />
-            ) : (
-              pending.map((o) => (
-                <Row key={o.id}>
-                  <span style={{ color: o.side === 'buy' ? 'var(--buy)' : 'var(--sell)' }}>{o.side === 'buy' ? '买' : '卖'}</span>
-                  <span style={{ color: 'var(--text-dim)' }}>{ORDER_TYPE_LABELS[o.type]}</span>
-                  <span style={{ color: 'var(--text)' }}>{fmtQty(o.qty)}</span>
-                  <span style={{ color: 'var(--text-faint)' }}>
-                    {o.limitPrice ? `限 ${o.limitPrice}` : ''} {o.stopPrice ? `止 ${o.stopPrice}` : ''}
+          <div style={listStyle}>
+            <Tabs.Content value="pending">
+              {pending.length === 0 ? (
+                <Empty text="无挂单" />
+              ) : (
+                pending.map((o) => (
+                  <Row key={o.id}>
+                    <span style={{ color: o.side === 'buy' ? 'var(--buy)' : 'var(--sell)' }}>
+                      {o.side === 'buy' ? '买' : '卖'}
+                    </span>
+                    <span style={{ color: 'var(--text-dim)' }}>{ORDER_TYPE_LABELS[o.type]}</span>
+                    <span style={{ color: 'var(--text)' }}>{fmtQty(o.qty)}</span>
+                    <span style={{ color: 'var(--text-faint)' }}>
+                      {o.limitPrice ? `限 ${o.limitPrice}` : ''} {o.stopPrice ? `止 ${o.stopPrice}` : ''}
+                    </span>
+                    <span style={{ color: 'var(--text-faint)' }}>{fmtOrderTime(o.createdAt)}</span>
+                    <div style={{ flex: 1 }} />
+                    <button style={iconBtn} title="撤单" onClick={() => cancel(o.id)}>
+                      <X size={12} />
+                    </button>
+                  </Row>
+                ))
+              )}
+            </Tabs.Content>
+
+            <Tabs.Content value="position">
+              {position ? (
+                <Row>
+                  <span style={{ color: position.side === 'long' ? 'var(--up)' : 'var(--down)' }}>
+                    {position.side === 'long' ? '多' : '空'}
                   </span>
-                  <span style={{ color: 'var(--text-faint)' }}>{fmtOrderTime(o.createdAt)}</span>
+                  <span style={{ color: 'var(--text)' }}>{fmtQty(position.qty)}</span>
+                  <span style={{ color: 'var(--text-dim)' }}>@ {position.avgPrice.toFixed(2)}</span>
                   <div style={{ flex: 1 }} />
-                  <button style={iconBtn} title="撤单" onClick={() => cancel(o.id)}>
-                    <X size={12} />
-                  </button>
-                </Row>
-              ))
-            )}
-          </Tabs.Content>
-
-          <Tabs.Content value="position">
-            {position ? (
-              <Row>
-                <span style={{ color: position.side === 'long' ? 'var(--up)' : 'var(--down)' }}>{position.side === 'long' ? '多' : '空'}</span>
-                <span style={{ color: 'var(--text)' }}>{fmtQty(position.qty)}</span>
-                <span style={{ color: 'var(--text-dim)' }}>@ {position.avgPrice.toFixed(2)}</span>
-                <div style={{ flex: 1 }} />
-                <b style={{ color: pnlColor(engine.unrealizedPnL) }}>
-                  {engine.unrealizedPnL >= 0 ? '+' : ''}{engine.unrealizedPnL.toFixed(2)}
-                </b>
-              </Row>
-            ) : (
-              <Empty text="无持仓" />
-            )}
-          </Tabs.Content>
-
-          <Tabs.Content value="trades">
-            {engine.trades.length === 0 ? (
-              <Empty text="无成交" />
-            ) : (
-              engine.trades.slice(0, 20).map((t) => (
-                <Row key={t.id}>
-                  <span style={{ color: t.side === 'long' ? 'var(--up)' : 'var(--down)' }}>{t.side === 'long' ? '多' : '空'}</span>
-                  <span style={{ color: 'var(--text-dim)' }}>{fmtQty(t.qty)}</span>
-                  <span style={{ color: 'var(--text-faint)' }}>
-                    {t.entryPrice.toFixed(2)} → {t.exitPrice.toFixed(2)}
-                  </span>
-                  <div style={{ flex: 1 }} />
-                  <b style={{ color: pnlColor(t.pnl) }}>
-                    {t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(2)}
+                  <b style={{ color: pnlColor(engine.unrealizedPnL) }}>
+                    {engine.unrealizedPnL >= 0 ? '+' : ''}
+                    {engine.unrealizedPnL.toFixed(2)}
                   </b>
                 </Row>
-              ))
-            )}
-          </Tabs.Content>
-        </div>
-      </Tabs.Root>
+              ) : (
+                <Empty text="无持仓" />
+              )}
+            </Tabs.Content>
+
+            <Tabs.Content value="trades">
+              {engine.trades.length === 0 ? (
+                <Empty text="无成交" />
+              ) : (
+                engine.trades.slice(0, 20).map((t) => (
+                  <Row key={t.id}>
+                    <span style={{ color: t.side === 'long' ? 'var(--up)' : 'var(--down)' }}>
+                      {t.side === 'long' ? '多' : '空'}
+                    </span>
+                    <span style={{ color: 'var(--text-dim)' }}>{fmtQty(t.qty)}</span>
+                    <span style={{ color: 'var(--text-faint)' }}>
+                      {t.entryPrice.toFixed(2)} → {t.exitPrice.toFixed(2)}
+                    </span>
+                    <div style={{ flex: 1 }} />
+                    <b style={{ color: pnlColor(t.pnl) }}>
+                      {t.pnl >= 0 ? '+' : ''}
+                      {t.pnl.toFixed(2)}
+                    </b>
+                  </Row>
+                ))
+              )}
+            </Tabs.Content>
+          </div>
+        </Tabs.Root>
       )}
 
       <Modal open={dialogOpen} onOpenChange={setDialogOpen} title="挂单" width={280}>
@@ -183,14 +195,25 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
 
 function Row({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 2px', fontSize: 11, borderBottom: '1px solid var(--border)' }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 2px',
+        fontSize: 11,
+        borderBottom: '1px solid var(--border)',
+      }}
+    >
       {children}
     </div>
   );
 }
 
 function Empty({ text }: { text: string }) {
-  return <div style={{ color: 'var(--text-faint)', fontSize: 11, padding: '10px 2px', textAlign: 'center' }}>{text}</div>;
+  return (
+    <div style={{ color: 'var(--text-faint)', fontSize: 11, padding: '10px 2px', textAlign: 'center' }}>{text}</div>
+  );
 }
 
 const panelStyle: React.CSSProperties = {

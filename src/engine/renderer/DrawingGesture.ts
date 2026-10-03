@@ -68,19 +68,35 @@ export class DrawingGesture {
   private dragNotify = new DragBroadcast();
   private toolFinishedCb: (() => void) | null = null;
 
-  constructor(private host: DrawingHost, private popup: SelectionPopupTracker | null = null) {}
+  constructor(
+    private host: DrawingHost,
+    private popup: SelectionPopupTracker | null = null,
+  ) {}
 
   // ---------- 绘制与公开 API 读取 ----------
 
-  get tool(): DrawingTypeId | null { return this.activeTool; }
-  get placingPoints(): DrawingPoint[] { return this.placing; }
-  get preview(): DrawingPoint | null { return this.previewPoint; }
-  get hoverCursor(): string { return this.hover; }
-  setHoverCursor(cursor: string): void { this.hover = cursor; }
+  get tool(): DrawingTypeId | null {
+    return this.activeTool;
+  }
+  get placingPoints(): DrawingPoint[] {
+    return this.placing;
+  }
+  get preview(): DrawingPoint | null {
+    return this.previewPoint;
+  }
+  get hoverCursor(): string {
+    return this.hover;
+  }
+  setHoverCursor(cursor: string): void {
+    this.hover = cursor;
+  }
 
   /** 选中变更 → TV 式选择工具栏（bbox = 选中锚点像素范围；纯几何在 selectionPopup.ts）。
    *  手势内选中变更直接调；公开 API 的选中变更经 ChartController.notifyDrawings 汇聚到此 */
-  syncSelection(): void { if (this.popup) syncDrawingSelection(this.popup, this.layer, (p) => pointToPixel(p, this.host.drawingCtx()), this.host.chartW()); }
+  syncSelection(): void {
+    if (this.popup)
+      syncDrawingSelection(this.popup, this.layer, (p) => pointToPixel(p, this.host.drawingCtx()), this.host.chartW());
+  }
 
   setToolFinishedCallback(cb: (() => void) | null): void {
     this.toolFinishedCb = cb;
@@ -98,7 +114,8 @@ export class DrawingGesture {
   /** 完成路径类画线（双击/回车） */
   finishPlacing(): void {
     if (this.activeTool === 'path' && this.placing.length >= 2) {
-      this.layer.add('path', this.placing); this.syncSelection();
+      this.layer.add('path', this.placing);
+      this.syncSelection();
     }
     this.placing = [];
     this.previewPoint = null;
@@ -111,13 +128,17 @@ export class DrawingGesture {
     this.placing = [];
     this.previewPoint = null;
     this.pendingClone = null;
-    this.layer.select(null); this.syncSelection();
+    this.layer.select(null);
+    this.syncSelection();
     this.host.notifyDrawings();
     this.host.invalidate();
   }
 
   /** 空白处点击：清空选中（进入平移拖拽的前置） */
-  deselect(): void { this.layer.select(null); this.syncSelection(); }
+  deselect(): void {
+    this.layer.select(null);
+    this.syncSelection();
+  }
 
   /** 画布级画线命中（锁定态守卫 + 上下文装配；逐对象判定在 hitTest.ts） */
   hitAt(x: number, y: number, paneY: number): DrawingHit | null {
@@ -136,7 +157,8 @@ export class DrawingGesture {
     if (this.activeTool === 'fib-auto') {
       const swing = this.detectSwingForAutoFib();
       if (swing) {
-        this.layer.add('fib-auto', [swing.start, swing.end]); this.syncSelection();
+        this.layer.add('fib-auto', [swing.start, swing.end]);
+        this.syncSelection();
         this.toolFinishedCb?.();
       }
       this.host.invalidate();
@@ -148,14 +170,16 @@ export class DrawingGesture {
     }
     const def = getToolDef(this.activeTool!);
     if (def.points === 1) {
-      this.layer.add(this.activeTool!, [pt]); this.syncSelection();
+      this.layer.add(this.activeTool!, [pt]);
+      this.syncSelection();
       this.host.invalidate();
       this.toolFinishedCb?.();
       return;
     }
     this.placing.push(pt);
     if (def.points > 0 && this.placing.length >= def.points) {
-      this.layer.add(this.activeTool!, this.placing); this.syncSelection();
+      this.layer.add(this.activeTool!, this.placing);
+      this.syncSelection();
       this.placing = [];
       this.previewPoint = null;
       this.toolFinishedCb?.();
@@ -177,12 +201,19 @@ export class DrawingGesture {
     }
     // 多选态下点击已选中对象 = 整组拖拽；否则单选该对象
     const groupDrag = hit.part === 'body' && this.layer.isSelected(hit.id) && this.layer.selectedIdList.length > 1;
-    if (!groupDrag) { this.layer.select(hit.id); this.syncSelection(); }
+    if (!groupDrag) {
+      this.layer.select(hit.id);
+      this.syncSelection();
+    }
     const ids = groupDrag ? this.layer.selectedIdList : [hit.id];
     const origins = new Map<string, DrawingPoint[]>();
     for (const id of ids) {
       const dd = this.layer.list().find((z) => z.id === id);
-      if (dd && !dd.locked) origins.set(id, dd.points.map((p) => ({ ...p })));
+      if (dd && !dd.locked)
+        origins.set(
+          id,
+          dd.points.map((p) => ({ ...p })),
+        );
     }
     this.layer.beginHistory();
     const dragIds = [...origins.keys()];
@@ -210,7 +241,8 @@ export class DrawingGesture {
         if (src && !src.locked) {
           // 先快照再克隆：克隆 + 拖拽 = 单步撤销
           this.layer.beginHistory();
-          const clone = this.layer.cloneDrawing(src.id)!; this.syncSelection();
+          const clone = this.layer.cloneDrawing(src.id)!;
+          this.syncSelection();
           this.dragDrawing = {
             ids: [clone.id],
             part: pc.part,
@@ -235,7 +267,13 @@ export class DrawingGesture {
       let pt = pixelToPoint(x, y - paneY, dctx, this.layer.magnetModeForDraw);
       // B7：Shift 约束预览——与落点约束同规则（相对上一个锚点按主导轴锁轴）
       if (shift && isConstrainableTool(this.activeTool)) {
-        pt = constrainPointPixel(this.placing[this.placing.length - 1], x, y - paneY, dctx, this.layer.magnetModeForDraw);
+        pt = constrainPointPixel(
+          this.placing[this.placing.length - 1],
+          x,
+          y - paneY,
+          dctx,
+          this.layer.magnetModeForDraw,
+        );
       }
       this.previewPoint = pt;
       this.host.invalidate();
@@ -265,7 +303,15 @@ export class DrawingGesture {
     if (!drag) return;
     const dctx = this.host.drawingCtx();
     const list = this.layer.list();
-    for (const [id, pts] of computeDragPoints(drag, x, y, this.host.mainPaneY(), shift, dctx, (zid) => list.find((d) => d.id === zid)?.type)) {
+    for (const [id, pts] of computeDragPoints(
+      drag,
+      x,
+      y,
+      this.host.mainPaneY(),
+      shift,
+      dctx,
+      (zid) => list.find((d) => d.id === zid)?.type,
+    )) {
       this.layer.updatePoints(id, pts);
     }
     if (this.dragNotify.onMove(draggedHlinePrice(drag.ids, list))) this.host.requestDrawingsNotify();

@@ -40,7 +40,13 @@ function levelLabel(ctx: CanvasRenderingContext2D, text: string, x: number, y: n
 /** 回撤/扩展水平位标签：贴线右端外侧（endX + 4，左对齐）；
  *  溢出画布右缘（endX + 4 + 字宽 > chartW - 2）时钳到 chartW - 字宽 - 2 并改右对齐。
  *  导出供百分比线（percentRender）复用：fib 类水平线组的标签贴线策略完全一致。 */
-export function drawLevelLabel(ctx: CanvasRenderingContext2D, text: string, endX: number, y: number, chartW: number): void {
+export function drawLevelLabel(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  endX: number,
+  y: number,
+  chartW: number,
+): void {
   ctx.font = `10px ${TV_FONT}`;
   const w = ctx.measureText(text).width;
   const lx = endX + 4;
@@ -79,7 +85,13 @@ export function timezonePixelXs(anchorTime: number, dctx: DrawContext): number[]
 
 /** 回撤水平组（fib / fib-auto 共用）：水平线 + 比率/价格标签（线末端与标签见 fibLevelEndX/drawLevelLabel）。
  *  档位优先取对象自定义 d.levels（设置对话框「分割线」），undefined 时回退 FIB_RETRACEMENT_LEVELS。 */
-export function drawFibRetracement(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[], dctx: DrawContext, decimals: number): void {
+export function drawFibRetracement(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  pts: Pix[],
+  dctx: DrawContext,
+  decimals: number,
+): void {
   if (pts.length < 2) return;
   const [p0, p1] = d.points;
   const x0 = Math.min(pts[0].x, pts[1].x);
@@ -95,7 +107,13 @@ export function drawFibRetracement(ctx: CanvasRenderingContext2D, d: Drawing, pt
 
 /** 扩展：锚点连线 1→2→3 + 以第 3 点为枢轴的水平比率组。
  *  档位优先取对象自定义 d.levels（设置对话框「分割线」），undefined 时回退 FIB_EXTENSION_LEVELS。 */
-export function drawFibExtension(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[], dctx: DrawContext, decimals: number): void {
+export function drawFibExtension(
+  ctx: CanvasRenderingContext2D,
+  d: Drawing,
+  pts: Pix[],
+  dctx: DrawContext,
+  decimals: number,
+): void {
   if (pts.length < 2) return;
   strokeLine(ctx, pts[0].x, pts[0].y, pts[1].x, pts[1].y);
   if (pts.length < 3) return;
@@ -119,7 +137,13 @@ export function drawFibFan(ctx: CanvasRenderingContext2D, d: Drawing, pts: Pix[]
     const end = fanRayEndPix(d.points[0], d.points[1], lv, dctx);
     strokeLine(ctx, pts[0].x, pts[0].y, end.x, end.y);
     const fromRight = end.x >= pts[0].x;
-    levelLabel(ctx, `${(lv * 100).toFixed(1)}%`, fromRight ? end.x - 4 : end.x + 4, end.y, fromRight ? 'right' : 'left');
+    levelLabel(
+      ctx,
+      `${(lv * 100).toFixed(1)}%`,
+      fromRight ? end.x - 4 : end.x + 4,
+      end.y,
+      fromRight ? 'right' : 'left',
+    );
   }
 }
 
@@ -137,7 +161,13 @@ export function drawFibArc(ctx: CanvasRenderingContext2D, pts: Pix[]): void {
     ctx.stroke();
     // 标签落在弧中点（半径 = 比率 × 锚距；x 用时间跨度、y 用价格跨度分别缩放）
     const mid = (a0 + a1) / 2;
-    levelLabel(ctx, `${(lv * 100).toFixed(1)}%`, a.x + rx * lv * Math.cos(mid) + 4, a.y + ry * lv * Math.sin(mid), 'left');
+    levelLabel(
+      ctx,
+      `${(lv * 100).toFixed(1)}%`,
+      a.x + rx * lv * Math.cos(mid) + 4,
+      a.y + ry * lv * Math.sin(mid),
+      'left',
+    );
   }
 }
 

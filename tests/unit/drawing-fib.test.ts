@@ -183,7 +183,14 @@ describe('fibArcAngles / fibArcHit', () => {
 
 describe('detectVisibleSwing（Auto Fib 简化算法）', () => {
   const T0 = 1_000_000;
-  const bar = (time: number, high: number, low: number): Bar => ({ time, open: low, high, low, close: (high + low) / 2, volume: 1 });
+  const bar = (time: number, high: number, low: number): Bar => ({
+    time,
+    open: low,
+    high,
+    low,
+    close: (high + low) / 2,
+    volume: 1,
+  });
 
   it('最高点在最低点之前：start = 高点，end = 低点（按时间排序）', () => {
     const bars = [bar(T0, 10, 8), bar(T0 + 1, 12, 9), bar(T0 + 2, 11, 7)];
@@ -199,7 +206,10 @@ describe('detectVisibleSwing（Auto Fib 简化算法）', () => {
 
   it('区间越界时 clamp 到有效范围', () => {
     const bars = [bar(T0, 10, 8), bar(T0 + 1, 12, 9), bar(T0 + 2, 11, 7)];
-    expect(detectVisibleSwing(bars, -5, 100)).toEqual({ start: { time: T0 + 1, price: 12 }, end: { time: T0 + 2, price: 7 } });
+    expect(detectVisibleSwing(bars, -5, 100)).toEqual({
+      start: { time: T0 + 1, price: 12 },
+      end: { time: T0 + 2, price: 7 },
+    });
   });
 
   it('from > to（空区间）返回 null', () => {
@@ -284,7 +294,13 @@ describe('fibLevelEndX（回撤/扩展水平线右端：摆幅外再延一个摆
 describe('drawFibRetracement（回撤水平组）', () => {
   it('7 条水平线 + 7 个「比率% 价格」标签', () => {
     const { ctx, dctx, priceScale } = makeDctx();
-    const d = drawing({ type: 'fib', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 102 }] });
+    const d = drawing({
+      type: 'fib',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 5 * IV, price: 102 },
+      ],
+    });
     const pts = d.points.map((p) => toPix(p, dctx));
     drawFibRetracement(asCtx(ctx), d, pts, dctx, 2);
 
@@ -293,7 +309,12 @@ describe('drawFibRetracement（回撤水平组）', () => {
     // 末端 = xLabel(412) + 摆幅(40) = 452（不再到画布右缘 460）
     const endX = fibLevelEndX(pts[0].x, pts[1].x, W);
     expect(endX).toBe(452);
-    expect(hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(100)) + 0.5], 'lineTo', [endX, Math.round(priceScale.priceToY(100)) + 0.5])).toBe(true);
+    expect(
+      hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(100)) + 0.5], 'lineTo', [
+        endX,
+        Math.round(priceScale.priceToY(100)) + 0.5,
+      ]),
+    ).toBe(true);
     expect(fillTexts(ctx)).toEqual([
       '0.0% 100.00',
       '23.6% 100.47',
@@ -311,9 +332,24 @@ describe('drawFibRetracement（回撤水平组）', () => {
 
   it('末端靠近左缘时标签放得下：贴 endX + 4 左对齐', () => {
     const { ctx, dctx, priceScale } = makeDctx();
-    const d = drawing({ type: 'fib', points: [{ time: T0, price: 100 }, { time: T0 + IV, price: 102 }] });
+    const d = drawing({
+      type: 'fib',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + IV, price: 102 },
+      ],
+    });
     // 手工指定锚点像素（x 位置才是本用例变量）：x0=100 / xLabel=124 → 摆幅下限 24 → endX=148
-    drawFibRetracement(asCtx(ctx), d, [{ x: 100, y: 0 }, { x: 124, y: 0 }], dctx, 2);
+    drawFibRetracement(
+      asCtx(ctx),
+      d,
+      [
+        { x: 100, y: 0 },
+        { x: 124, y: 0 },
+      ],
+      dctx,
+      2,
+    );
     const y0 = Math.round(priceScale.priceToY(100)) + 0.5;
     // '0.0% 100.00' 宽 72：148 + 4 + 72 = 224 ≤ 458 → 贴末端左对齐
     expect(hasCall(ctx, 'fillText', ['0.0% 100.00', 152, y0])).toBe(true);
@@ -326,7 +362,11 @@ describe('drawFibExtension（扩展）', () => {
     const { ctx, dctx, priceScale } = makeDctx();
     const d = drawing({
       type: 'fib-extension',
-      points: [{ time: T0, price: 100 }, { time: T0 + 2 * IV, price: 108 }, { time: T0 + 4 * IV, price: 104 }],
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 2 * IV, price: 108 },
+        { time: T0 + 4 * IV, price: 104 },
+      ],
     });
     const pts = d.points.map((p) => toPix(p, dctx));
     drawFibExtension(asCtx(ctx), d, pts, dctx, 2);
@@ -341,7 +381,12 @@ describe('drawFibExtension（扩展）', () => {
     // 末端 = xLabel(404) + 摆幅(32) = 436（与回撤同规则）
     const endX = fibLevelEndX(pts[0].x, pts[2].x, W);
     expect(endX).toBe(436);
-    expect(hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(112)) + 0.5], 'lineTo', [endX, Math.round(priceScale.priceToY(112)) + 0.5])).toBe(true);
+    expect(
+      hasPair(ctx, 'moveTo', [pts[0].x, Math.round(priceScale.priceToY(112)) + 0.5], 'lineTo', [
+        endX,
+        Math.round(priceScale.priceToY(112)) + 0.5,
+      ]),
+    ).toBe(true);
     // 标签溢出 → 钳到 460 - 78 - 2 = 380 右对齐（'100.0% 112.00' 13 字 × 6px）
     expect(hasCall(ctx, 'fillText', ['100.0% 112.00', 380, Math.round(priceScale.priceToY(112)) + 0.5])).toBe(true);
     expect(propSets(ctx, 'textAlign').at(-1)).toBe('right');
@@ -360,7 +405,13 @@ describe('drawFibExtension（扩展）', () => {
 
   it('放置中仅 2 点（预览态）：只画锚线，不画扩展线', () => {
     const { ctx, dctx } = makeDctx();
-    const d = drawing({ type: 'fib-extension', points: [{ time: T0, price: 100 }, { time: T0 + 2 * IV, price: 108 }] });
+    const d = drawing({
+      type: 'fib-extension',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 2 * IV, price: 108 },
+      ],
+    });
     const pts = d.points.map((p) => toPix(p, dctx));
     drawFibExtension(asCtx(ctx), d, pts, dctx, 2);
     expect(callsOf(ctx, 'stroke')).toHaveLength(1);
@@ -429,7 +480,13 @@ describe('drawFibTimezone（时区）', () => {
 describe('hitTestFib', () => {
   it('fib：锚线、水平比率线命中，远处不中', () => {
     const { dctx, priceScale } = makeDctx();
-    const d = drawing({ type: 'fib', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 102 }] });
+    const d = drawing({
+      type: 'fib',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 5 * IV, price: 102 },
+      ],
+    });
     const pts = d.points.map((p) => toPix(p, dctx));
     // 锚线中点
     const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
@@ -446,7 +503,11 @@ describe('hitTestFib', () => {
     const { dctx, priceScale } = makeDctx();
     const d = drawing({
       type: 'fib-extension',
-      points: [{ time: T0, price: 100 }, { time: T0 + 2 * IV, price: 108 }, { time: T0 + 4 * IV, price: 104 }],
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 2 * IV, price: 108 },
+        { time: T0 + 4 * IV, price: 104 },
+      ],
     });
     const pts = d.points.map((p) => toPix(p, dctx));
     const mid = { x: (pts[1].x + pts[2].x) / 2, y: (pts[1].y + pts[2].y) / 2 };
@@ -496,7 +557,13 @@ describe('hitTestFib', () => {
 
   it('非 fib 类型返回 false', () => {
     const { dctx } = makeDctx();
-    const d = drawing({ type: 'rect', points: [{ time: T0, price: 100 }, { time: T0 + 2 * IV, price: 108 }] });
+    const d = drawing({
+      type: 'rect',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 2 * IV, price: 108 },
+      ],
+    });
     const pts = d.points.map((p) => toPix(p, dctx));
     expect(hitTestFib(d, pts, 200, 150, dctx)).toBe(false);
   });

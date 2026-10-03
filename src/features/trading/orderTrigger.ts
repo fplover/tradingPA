@@ -54,8 +54,7 @@ export function checkOrderTrigger(order: Order, bar: TriggerBar): TriggerResult 
       if (limit === undefined || stop === undefined) return notActivated;
       const buy = order.side === 'buy';
       // 限价段在开盘即生效的两种情形：此前已激活，或本根开盘跳穿触发价
-      const preActive = order.triggered === true ||
-        (buy ? bar.open >= stop : bar.open <= stop);
+      const preActive = order.triggered === true || (buy ? bar.open >= stop : bar.open <= stop);
       if (preActive) {
         if (buy) {
           if (bar.open <= limit) return { fillPrice: bar.open, activated: true };

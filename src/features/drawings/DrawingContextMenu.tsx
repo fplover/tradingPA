@@ -31,7 +31,17 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
       }}
     >
       <DropdownMenu.Trigger asChild>
-        <span aria-hidden style={{ position: 'fixed', left: state?.x ?? 0, top: state?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }} />
+        <span
+          aria-hidden
+          style={{
+            position: 'fixed',
+            left: state?.x ?? 0,
+            top: state?.y ?? 0,
+            width: 1,
+            height: 1,
+            pointerEvents: 'none',
+          }}
+        />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" sideOffset={2} className="tv-scroll" style={menuStyle}>
@@ -92,7 +102,12 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
                     ['back', '置于底层'],
                   ] as const
                 ).map(([action, label]) => (
-                  <DropdownMenu.Item key={action} className="tv-menu-item" style={itemStyle} onSelect={() => order(action)}>
+                  <DropdownMenu.Item
+                    key={action}
+                    className="tv-menu-item"
+                    style={itemStyle}
+                    onSelect={() => order(action)}
+                  >
                     {label}
                   </DropdownMenu.Item>
                 ))}

@@ -117,7 +117,9 @@ export function IndicatorPanel() {
         boxShadow: shadow.popover,
       }}
     >
-      <div style={{ display: 'flex', gap: space.sm, padding: `${space.sm}px ${space.sm}px ${space.xs}px`, flexShrink: 0 }}>
+      <div
+        style={{ display: 'flex', gap: space.sm, padding: `${space.sm}px ${space.sm}px ${space.xs}px`, flexShrink: 0 }}
+      >
         <input
           ref={inputRef}
           placeholder="搜索"
@@ -153,14 +155,30 @@ export function IndicatorPanel() {
         </button>
       </div>
 
-      <div ref={listRef} className="tv-scroll" role="listbox" aria-label="指标列表" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 0' }}>
+      <div
+        ref={listRef}
+        className="tv-scroll"
+        role="listbox"
+        aria-label="指标列表"
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 0' }}
+      >
         {items.map(row)}
         {items.length === 0 && (
-          <div style={{ color: 'var(--text-faint)', fontSize: fontSize.md, padding: `${space.sm}px ${space.md}px` }}>没有符合您搜索条件的指标.</div>
+          <div style={{ color: 'var(--text-faint)', fontSize: fontSize.md, padding: `${space.sm}px ${space.md}px` }}>
+            没有符合您搜索条件的指标.
+          </div>
         )}
       </div>
 
-      <div style={{ color: 'var(--text-faint)', fontSize: fontSize.sm, padding: `${space.xs}px ${space.md}px ${space.sm}px`, borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+      <div
+        style={{
+          color: 'var(--text-faint)',
+          fontSize: fontSize.sm,
+          padding: `${space.xs}px ${space.md}px ${space.sm}px`,
+          borderTop: '1px solid var(--border)',
+          flexShrink: 0,
+        }}
+      >
         共 {allDefs.length} 个指标（含自定义）
       </div>
 

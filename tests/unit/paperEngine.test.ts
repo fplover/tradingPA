@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { PaperTradingEngine } from '@/features/trading/paperEngine';
 
-const bar = (time: number, o: number, h: number, l: number, c: number) => ({ time, open: o, high: h, low: l, close: c });
+const bar = (time: number, o: number, h: number, l: number, c: number) => ({
+  time,
+  open: o,
+  high: h,
+  low: l,
+  close: c,
+});
 
 describe('PaperTradingEngine 市价单', () => {
   it('市价买入立即开多并标记浮动盈亏', () => {

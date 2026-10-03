@@ -106,7 +106,13 @@ export class IndicatorManager {
     const vp = this.host.vp.getState();
     if (vp.on) {
       const def = getIndicatorDef('volume-profile');
-      out.push({ uid: VP_UID, id: 'volume-profile', name: def?.name ?? 'Volume Profile', overlay: true, params: vp.params });
+      out.push({
+        uid: VP_UID,
+        id: 'volume-profile',
+        name: def?.name ?? 'Volume Profile',
+        overlay: true,
+        params: vp.params,
+      });
     }
     return out;
   }

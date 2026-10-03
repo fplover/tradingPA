@@ -200,7 +200,8 @@ export function useAlertWatcher(symbol: string | undefined, bars: Bar[], price: 
     const lineAlerts = relevant.filter((a): a is LineAlert => a.source.type === 'line');
     if (lineAlerts.length > 0) {
       const levels = hlinePrices(currentDrawings());
-      for (const sync of lineThresholdSyncs(lineAlerts, levels)) updateRef.current(sync.id, { threshold: sync.threshold });
+      for (const sync of lineThresholdSyncs(lineAlerts, levels))
+        updateRef.current(sync.id, { threshold: sync.threshold });
       if (Number.isFinite(price) && price > 0) {
         for (const a of lineAlerts) {
           if (!levels.has(a.source.drawingId)) continue;

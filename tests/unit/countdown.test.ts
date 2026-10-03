@@ -68,7 +68,8 @@ describe('nextCalendarClose：日历分桶（与 aggregate.ts 同锚点）', () 
     for (const t of [Date.UTC(2024, 0, 8), Date.UTC(2024, 0, 14, 23, 59, 59), Date.UTC(2024, 5, 15, 3, 21, 0)]) {
       const d = new Date(t);
       const day = (d.getUTCDay() + 6) % 7;
-      const monday = t - day * 86_400_000 - (d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds()) * 1000;
+      const monday =
+        t - day * 86_400_000 - (d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds()) * 1000;
       expect(nextCalendarClose('week', t) - 7 * 86_400_000).toBe(monday);
     }
   });
@@ -257,7 +258,9 @@ describe('CloseCountdown', () => {
     cd.setLastBar(Date.UTC(2024, 0, 31, 23, 0, 0));
     expect(cd.textAt(Date.UTC(2024, 1, 1))).toBeNull(); // 2 月 1 日已收盘
     cd.setLastBar(Date.UTC(2024, 1, 1)); // 2 月 bar
-    expect(cd.textAt(Date.UTC(2024, 1, 15, 12))).toBe(formatCountdown(Date.UTC(2024, 2, 1) - Date.UTC(2024, 1, 15, 12)));
+    expect(cd.textAt(Date.UTC(2024, 1, 15, 12))).toBe(
+      formatCountdown(Date.UTC(2024, 2, 1) - Date.UTC(2024, 1, 15, 12)),
+    );
   });
 
   it('全部周期端到端：对齐 bar → 合规倒计时文本，远超收盘时刻后消失', () => {
@@ -336,7 +339,9 @@ describe('ChartRenderer 收盘倒计时接线', () => {
 
   beforeEach(() => {
     ctx = createMockCtx();
-    HTMLCanvasElement.prototype.getContext = vi.fn(() => asCtx(ctx)) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = vi.fn(() =>
+      asCtx(ctx),
+    ) as unknown as typeof HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.setPointerCapture = vi.fn();
     HTMLCanvasElement.prototype.hasPointerCapture = vi.fn(() => false);
     HTMLCanvasElement.prototype.releasePointerCapture = vi.fn();
@@ -351,7 +356,17 @@ describe('ChartRenderer 收盘倒计时接线', () => {
     canvas = document.createElement('canvas');
     document.body.appendChild(canvas);
     canvas.getBoundingClientRect = () =>
-      ({ left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H, width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+      ({
+        left: 0,
+        top: 0,
+        right: CANVAS_W,
+        bottom: CANVAS_H,
+        width: CANVAS_W,
+        height: CANVAS_H,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }) as DOMRect;
   });
 
   afterEach(() => {

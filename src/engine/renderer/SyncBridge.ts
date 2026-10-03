@@ -106,7 +106,12 @@ export class SyncBridge {
    * 小数 index 插值定位——跨周期图表的时间戳不落在 bar 上时也能对齐。
    * 本地十字光标可见时不画（避免双线）。
    */
-  drawReferenceLine(ctx: CanvasRenderingContext2D, chartW: number, chartH: number, localCrosshairVisible: boolean): void {
+  drawReferenceLine(
+    ctx: CanvasRenderingContext2D,
+    chartW: number,
+    chartH: number,
+    localCrosshairVisible: boolean,
+  ): void {
     if (this.syncCrosshairTime === null || localCrosshairVisible) return;
     const sx = this.viewport.indexToX(this.series().fractionalIndexAt(this.syncCrosshairTime));
     if (sx < 0 || sx > chartW) return;

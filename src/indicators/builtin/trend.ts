@@ -66,7 +66,13 @@ export const DEMA: IndicatorDef = {
     const e1 = ema(closes(bars), p).map((v) => v ?? 0);
     const e2 = ema(e1, p);
     const e1v = ema(closes(bars), p);
-    return { dema: combine(mapValues(e1v, (v) => 2 * v), e2, (x, y) => x - y) };
+    return {
+      dema: combine(
+        mapValues(e1v, (v) => 2 * v),
+        e2,
+        (x, y) => x - y,
+      ),
+    };
   },
 };
 
@@ -119,7 +125,11 @@ export const HMA: IndicatorDef = {
     const c = closes(bars);
     const w1 = wma(c, half);
     const w2 = wma(c, p);
-    const diff = combine(mapValues(w1, (v) => 2 * v), w2, (x, y) => x - y).map((v) => v ?? 0);
+    const diff = combine(
+      mapValues(w1, (v) => 2 * v),
+      w2,
+      (x, y) => x - y,
+    ).map((v) => v ?? 0);
     return { hma: wma(diff, Math.max(1, Math.round(Math.sqrt(p)))) };
   },
 };

@@ -151,7 +151,15 @@ describe('parseAlertsPayload（schema 版本兼容）', () => {
   it('v1 顶层数组：price/direction 迁移为 threshold/condition + once（行为与旧实现一致）', () => {
     const payload = parseAlertsPayload(
       JSON.stringify([
-        { id: 'old1', symbol: 'BTCUSDT', price: 123.5, direction: 'above', active: true, triggered: false, createdAt: 1 },
+        {
+          id: 'old1',
+          symbol: 'BTCUSDT',
+          price: 123.5,
+          direction: 'above',
+          active: true,
+          triggered: false,
+          createdAt: 1,
+        },
         { id: 'old2', symbol: 'ETHUSDT', price: 10, direction: 'below', active: false, triggered: true, createdAt: 2 },
       ]),
     );

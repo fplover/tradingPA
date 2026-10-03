@@ -1,6 +1,12 @@
 import type { PineProgram, Stmt } from './ast';
 import { parseExprSrc } from './expr';
-import { parseAlertDirective, parseHlineDirective, parsePaintDirective, parsePlotDirective, parseShapeDirective } from './directives';
+import {
+  parseAlertDirective,
+  parseHlineDirective,
+  parsePaintDirective,
+  parsePlotDirective,
+  parseShapeDirective,
+} from './directives';
 
 /**
  * Pine v5 子集语句解析器（行制 + 缩进块）。
@@ -231,7 +237,10 @@ class StmtParser {
 
   private parseFundef(m: RegExpMatchArray, indent: number, line: number): void {
     const [, name, paramsSrc, inlineBody] = m;
-    const params = paramsSrc.split(',').map((p) => p.trim()).filter(Boolean);
+    const params = paramsSrc
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
     if (params.some((p) => !/^[A-Za-z_]\w*$/.test(p))) throw new Error(`函数「${name}」参数名不合法`);
     this.i++;
     const body = inlineBody.trim()

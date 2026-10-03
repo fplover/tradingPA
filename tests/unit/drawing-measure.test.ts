@@ -99,7 +99,13 @@ function makeDctx(): { ctx: MockCtx; dctx: DrawContext } {
 }
 
 function drawing(d: Partial<Drawing> & { type: Drawing['type']; points: DrawingPoint[] }): Drawing {
-  return { id: 'd1', locked: false, visible: true, style: { color: '#787b86', lineWidth: 1, dash: true }, ...d } as Drawing;
+  return {
+    id: 'd1',
+    locked: false,
+    visible: true,
+    style: { color: '#787b86', lineWidth: 1, dash: true },
+    ...d,
+  } as Drawing;
 }
 
 function toPix(p: DrawingPoint, dctx: DrawContext): { x: number; y: number } {
@@ -240,7 +246,9 @@ let canvas: HTMLCanvasElement;
 beforeEach(() => {
   document.body.innerHTML = '';
   const mock = createMockCtx();
-  HTMLCanvasElement.prototype.getContext = vi.fn(() => asCtx(mock)) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = vi.fn(() =>
+    asCtx(mock),
+  ) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.setPointerCapture = vi.fn();
   HTMLCanvasElement.prototype.hasPointerCapture = vi.fn(() => false);
   HTMLCanvasElement.prototype.releasePointerCapture = vi.fn();
@@ -255,7 +263,17 @@ beforeEach(() => {
   canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   canvas.getBoundingClientRect = () =>
-    ({ left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H, width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    ({
+      left: 0,
+      top: 0,
+      right: CANVAS_W,
+      bottom: CANVAS_H,
+      width: CANVAS_W,
+      height: CANVAS_H,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
 });
 
 afterEach(() => {
@@ -270,7 +288,9 @@ function makeRenderer(): ChartRenderer {
 }
 
 function ptr(type: string, x: number, y: number): void {
-  canvas.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }));
+  canvas.dispatchEvent(
+    new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }),
+  );
 }
 
 function click(x: number, y: number): void {

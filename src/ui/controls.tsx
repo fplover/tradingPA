@@ -172,7 +172,15 @@ export function Checkbox({
 }
 
 /** TV 化复选框行：整行可点 + role="checkbox" 键盘可达；aria-label 与可见文案一致（getByLabel 可定位） */
-export function CheckRow({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+export function CheckRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
     <button
       type="button"

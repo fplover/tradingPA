@@ -1,14 +1,7 @@
 import type { Drawing } from './types';
 import { TV_FONT } from '../theme';
 import { distToSegment } from './geom';
-import {
-  drawFibArc,
-  drawFibExtension,
-  drawFibFan,
-  drawFibRetracement,
-  drawFibTimezone,
-  hitTestFib,
-} from './fibRender';
+import { drawFibArc, drawFibExtension, drawFibFan, drawFibRetracement, drawFibTimezone, hitTestFib } from './fibRender';
 import {
   drawArrow,
   drawInfoLine,
@@ -82,7 +75,11 @@ export function hitTestDrawing(
       const maxY = Math.max(pts[0].y, pts[1].y);
       const inside = x >= minX && x <= maxX && y >= minY && y <= maxY;
       if (!inside) return null;
-      const onEdge = distToSegment(x, y, minX, minY, maxX, minY) <= 5 || distToSegment(x, y, minX, maxY, maxX, maxY) <= 5 || distToSegment(x, y, minX, minY, minX, maxY) <= 5 || distToSegment(x, y, maxX, minY, maxX, maxY) <= 5;
+      const onEdge =
+        distToSegment(x, y, minX, minY, maxX, minY) <= 5 ||
+        distToSegment(x, y, minX, maxY, maxX, maxY) <= 5 ||
+        distToSegment(x, y, minX, minY, minX, maxY) <= 5 ||
+        distToSegment(x, y, maxX, minY, maxX, maxY) <= 5;
       return onEdge || drawing.type === 'rect' ? { part: 'body' } : null;
     }
     case 'path': {
@@ -109,7 +106,8 @@ export function hitTestDrawing(
       if (drawing.type === 'channel' && pts.length >= 3) {
         const ox = pts[2].x - pts[0].x;
         const oy = pts[2].y - pts[0].y;
-        if (distToSegment(x, y, pts[0].x + ox, pts[0].y + oy, pts[1].x + ox, pts[1].y + oy) <= 6) return { part: 'body' };
+        if (distToSegment(x, y, pts[0].x + ox, pts[0].y + oy, pts[1].x + ox, pts[1].y + oy) <= 6)
+          return { part: 'body' };
       }
       return null;
     }

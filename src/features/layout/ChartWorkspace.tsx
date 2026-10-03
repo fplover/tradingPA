@@ -70,7 +70,10 @@ export function ChartWorkspace({
   const compareSymbol = useChartConfigStore((s) => s.compareSymbol);
   const comparePickerOpen = useChartConfigStore((s) => s.comparePickerOpen);
   const compare = useCompareSeries(compareSymbol, timeframe, bars);
-  const compareLegend = useMemo(() => buildCompareLegend(compareSymbol?.symbol ?? '', compare.aligned), [compareSymbol, compare.aligned]);
+  const compareLegend = useMemo(
+    () => buildCompareLegend(compareSymbol?.symbol ?? '', compare.aligned),
+    [compareSymbol, compare.aligned],
+  );
 
   // 主图左缘懒加载（useLazyLoad 500ms 轮询触发）：主 series 与对比序列同步向左翻页，
   // 各自携带 inflight / 无更多守卫，互不等待。经 ref 间接调用保住回调身份稳定——
@@ -197,20 +200,29 @@ export function ChartWorkspace({
           {/* 该市场没有历史数据源时，明确说明原因而不是留一块空白画布 */}
           {bars.length === 0 && series.status === 'error' && (
             <div style={noDataStyle}>
-              <div style={{ fontSize: fontSize.lg, color: 'var(--text-dim)', marginBottom: space.xs }}>无法载入 K 线</div>
-              <div style={{ fontSize: fontSize.md, color: 'var(--text-faint)', lineHeight: 1.7 }}>{series.statusDetail}</div>
+              <div style={{ fontSize: fontSize.lg, color: 'var(--text-dim)', marginBottom: space.xs }}>
+                无法载入 K 线
+              </div>
+              <div style={{ fontSize: fontSize.md, color: 'var(--text-faint)', lineHeight: 1.7 }}>
+                {series.statusDetail}
+              </div>
             </div>
           )}
 
           {/* 首批数据未就绪：居中加载指示，避免画布空白无反馈 */}
-          {bars.length === 0 && (series.status === 'idle' || series.status === 'loading' || series.status === 'reconnecting') && (
-            <div style={noDataStyle}>
-              <LoaderCircle size={24} className="spin" style={{ color: 'var(--text-faint)', marginBottom: space.sm }} />
-              <div style={{ fontSize: fontSize.md, color: 'var(--text-faint)' }}>
-                {series.status === 'reconnecting' ? '正在重新连接数据…' : series.statusDetail || '正在载入 K 线…'}
+          {bars.length === 0 &&
+            (series.status === 'idle' || series.status === 'loading' || series.status === 'reconnecting') && (
+              <div style={noDataStyle}>
+                <LoaderCircle
+                  size={24}
+                  className="spin"
+                  style={{ color: 'var(--text-faint)', marginBottom: space.sm }}
+                />
+                <div style={{ fontSize: fontSize.md, color: 'var(--text-faint)' }}>
+                  {series.status === 'reconnecting' ? '正在重新连接数据…' : series.statusDetail || '正在载入 K 线…'}
+                </div>
               </div>
-            </div>
-          )}
+            )}
         </div>
       </div>
       {pineOpen && <PineEditorPanel />}

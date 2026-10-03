@@ -61,7 +61,9 @@ export function applyQuote(bars: Bar[], quote: Quote, tf: Timeframe, tzOffsetMin
   if (t > last.time) {
     const open = dailyOrCoarser && quote.open > 0 ? quote.open : last.close;
     const high = dailyOrCoarser ? maxPos(open, quote.high, quote.price) : Math.max(open, quote.price);
-    const low = dailyOrCoarser ? minPos(open > 0 ? open : Infinity, quote.low, quote.price) : minPos(open > 0 ? open : Infinity, quote.price);
+    const low = dailyOrCoarser
+      ? minPos(open > 0 ? open : Infinity, quote.low, quote.price)
+      : minPos(open > 0 ? open : Infinity, quote.price);
     return [
       ...bars,
       {

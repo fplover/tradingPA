@@ -67,7 +67,11 @@ export function DrawingLevelsEditor({ levels, onChange }: { levels: number[]; on
                 setTexts(next);
                 commit(next);
               }}
-              style={{ ...delBtnStyle, opacity: texts.length <= 1 ? 0.4 : 1, cursor: texts.length <= 1 ? 'not-allowed' : 'pointer' }}
+              style={{
+                ...delBtnStyle,
+                opacity: texts.length <= 1 ? 0.4 : 1,
+                cursor: texts.length <= 1 ? 'not-allowed' : 'pointer',
+              }}
             >
               <Trash2 size={icon.md} />
             </button>

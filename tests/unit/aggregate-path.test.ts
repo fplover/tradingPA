@@ -153,7 +153,12 @@ describe('纯函数：tailChanged', () => {
     const middleRevised = agg.map((b, i) => (i === 0 ? { ...b, close: -1, volume: 999 } : b));
     expect(tailChanged(agg, middleRevised)).toBe(false);
 
-    expect(tailChanged(agg, agg.map((b) => ({ ...b })))).toBe(false);
+    expect(
+      tailChanged(
+        agg,
+        agg.map((b) => ({ ...b })),
+      ),
+    ).toBe(false);
   });
 });
 
@@ -232,7 +237,9 @@ describe('AggregateFeedPath：loadMore', () => {
     const fake = makeFakeFetch();
     // 初始窗口从 00:04 起（首桶残缺）；翻页拉 00:00-00:03
     fake.setHandler((call) =>
-      call.opts.endTime !== undefined ? Promise.resolve(minuteBars(4, T0)) : Promise.resolve(minuteBars(10, T0 + 4 * 60_000)),
+      call.opts.endTime !== undefined
+        ? Promise.resolve(minuteBars(4, T0))
+        : Promise.resolve(minuteBars(10, T0 + 4 * 60_000)),
     );
     const { path, onBars } = makePath(fake);
     await path.start();

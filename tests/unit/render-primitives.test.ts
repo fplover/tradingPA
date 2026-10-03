@@ -19,15 +19,7 @@ import {
 import { drawCrosshair, drawLegendBlock, DEFAULT_LEGEND_OPTIONS } from '@/engine/renderer/drawCrosshair';
 import { drawDrawings, hitTestDrawing, pixelToPoint, type DrawContext } from '@/engine/drawing/drawDrawings';
 import { drawTrading, hitTestTrading, type TradeVisual } from '@/engine/renderer/drawTrading';
-import {
-  createMockCtx,
-  asCtx,
-  callsOf,
-  propSets,
-  hasCall,
-  hasPair,
-  fillTexts,
-} from './helpers/mock-ctx';
+import { createMockCtx, asCtx, callsOf, propSets, hasCall, hasPair, fillTexts } from './helpers/mock-ctx';
 
 /** drawGrid 读 window.devicePixelRatio；node 环境下打桩（1 = 与视觉回归锁定的 DPR 一致） */
 beforeEach(() => {
@@ -56,7 +48,14 @@ function manyBars(n: number): Bar[] {
   for (let i = 0; i < n; i++) {
     const open = 100 + (i % 5);
     const close = 100 + ((i + 2) % 5);
-    out.push({ time: T0 + i * IV, open, close, high: Math.max(open, close) + 2, low: Math.min(open, close) - 2, volume: 500 + i });
+    out.push({
+      time: T0 + i * IV,
+      open,
+      close,
+      high: Math.max(open, close) + 2,
+      low: Math.min(open, close) - 2,
+      volume: 500 + i,
+    });
   }
   return out;
 }
@@ -82,7 +81,12 @@ function fixture(bars: Bar[] = BARS, spacing = 8) {
 }
 
 /** 默认夹具：first ≈ -46.5（6 根贴右），spacing 8 */
-function dctx(series: BarSeries, viewport: Viewport, priceScale: PriceScale, geo: { chartW: number; chartH: number }): DrawContext {
+function dctx(
+  series: BarSeries,
+  viewport: Viewport,
+  priceScale: PriceScale,
+  geo: { chartW: number; chartH: number },
+): DrawContext {
   return { viewport, priceScale, series, geo };
 }
 
@@ -148,7 +152,9 @@ describe('drawCandles', () => {
     expect(callsOf(ctx, 'stroke')).toHaveLength(230);
     expect(callsOf(ctx, 'fillRect')).toHaveLength(0);
     // 第一列：x = round(0*2) = 0 → px = 0.5；bar0 高 104 低 98
-    expect(hasPair(ctx, 'moveTo', [0.5, priceScale.priceToY(104)], 'lineTo', [0.5, priceScale.priceToY(98)])).toBe(true);
+    expect(hasPair(ctx, 'moveTo', [0.5, priceScale.priceToY(104)], 'lineTo', [0.5, priceScale.priceToY(98)])).toBe(
+      true,
+    );
   });
 
   it('to < from 直接返回，不产生任何绘制调用', () => {
@@ -200,7 +206,12 @@ describe('drawAxes', () => {
       const y = Math.round(priceScale.priceToY(t)) + 0.5;
       return y >= 0 && y <= H;
     })!;
-    expect(hasPair(ctx, 'moveTo', [0, Math.round(priceScale.priceToY(tick)) + 0.5], 'lineTo', [W, Math.round(priceScale.priceToY(tick)) + 0.5])).toBe(true);
+    expect(
+      hasPair(ctx, 'moveTo', [0, Math.round(priceScale.priceToY(tick)) + 0.5], 'lineTo', [
+        W,
+        Math.round(priceScale.priceToY(tick)) + 0.5,
+      ]),
+    ).toBe(true);
     // step=10，startIdx=-50 → 首条可见竖线 i=-40，x=(−40+46.5)*8=52 → align=52.5
     expect(hasPair(ctx, 'moveTo', [52.5, 0], 'lineTo', [52.5, H])).toBe(true);
   });
@@ -332,7 +343,10 @@ describe('drawLegendBlock', () => {
     ];
     const info = { collapsed: -1 };
     // 矮画布：iy=28 起始，28+16 > chartH-4 → 全部折叠
-    drawLegendBlock(asCtx(ctx), BARS[0], legend, rows, DEFAULT_LEGEND_OPTIONS, null, undefined, info, { chartW: W, chartH: 40 });
+    drawLegendBlock(asCtx(ctx), BARS[0], legend, rows, DEFAULT_LEGEND_OPTIONS, null, undefined, info, {
+      chartW: W,
+      chartH: 40,
+    });
     expect(info.collapsed).toBe(2);
     // 正常高度：u1 按 precision=2 → 123.46；u2 无精度 → formatIndicatorValue(123.456) = 123.456
     const ctx2 = createMockCtx();
@@ -343,7 +357,17 @@ describe('drawLegendBlock', () => {
 
   it('图例开关：showOHLC=false 不画 OHLC 字段', () => {
     const { ctx, geo } = fixture();
-    drawLegendBlock(asCtx(ctx), BARS[0], legend, undefined, { ...DEFAULT_LEGEND_OPTIONS, showOHLC: false, showChange: false, showVolume: false }, null, undefined, undefined, geo);
+    drawLegendBlock(
+      asCtx(ctx),
+      BARS[0],
+      legend,
+      undefined,
+      { ...DEFAULT_LEGEND_OPTIONS, showOHLC: false, showChange: false, showVolume: false },
+      null,
+      undefined,
+      undefined,
+      geo,
+    );
     const texts = fillTexts(ctx);
     expect(texts).toContain('BTC/USDT');
     expect(texts).not.toContain('开=');
@@ -356,7 +380,11 @@ describe('drawLegendBlock', () => {
 describe('drawDrawings', () => {
   it('水平线：整幅横线 + 右端价格标签，虚线样式生效', () => {
     const { ctx, series, viewport, priceScale, geo } = fixture();
-    const d = drawing({ type: 'hline', points: [{ time: BARS[3].time, price: 104 }], style: { color: '#2962ff', lineWidth: 2, dash: true } });
+    const d = drawing({
+      type: 'hline',
+      points: [{ time: BARS[3].time, price: 104 }],
+      style: { color: '#2962ff', lineWidth: 2, dash: true },
+    });
     drawDrawings(asCtx(ctx), [d], null, dctx(series, viewport, priceScale, geo), 2);
     const yPix = priceScale.priceToY(104);
     const y = Math.round(yPix) + 0.5;

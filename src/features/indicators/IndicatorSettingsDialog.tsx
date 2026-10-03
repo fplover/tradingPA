@@ -11,7 +11,21 @@ import { CheckRow, Checkbox, NumberStepper } from '@/ui/controls';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { fontSize, space } from '@/ui/tokens';
 import type { PlotKind } from '@/indicators/core/types';
-import { overlayStyle, contentStyle, navStyle, navItemStyle, paneStyle, rowStyle, inputStyle, swatchStyle, checkLabelStyle, groupLabelStyle, emptyStyle, footerStyle, ghostBtnStyle } from './indicatorSettingsStyles';
+import {
+  overlayStyle,
+  contentStyle,
+  navStyle,
+  navItemStyle,
+  paneStyle,
+  rowStyle,
+  inputStyle,
+  swatchStyle,
+  checkLabelStyle,
+  groupLabelStyle,
+  emptyStyle,
+  footerStyle,
+  ghostBtnStyle,
+} from './indicatorSettingsStyles';
 
 /** TV 页签顺序：输入 → 样式 → 可见范围（精度折进样式页的「覆盖最小tick」） */
 const TABS = ['输入', '样式', '可见范围'] as const;
@@ -97,7 +111,11 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  style={{ ...navItemStyle, background: t === tab ? 'var(--panel-2)' : 'transparent', color: t === tab ? 'var(--text)' : 'var(--text-dim)' }}
+                  style={{
+                    ...navItemStyle,
+                    background: t === tab ? 'var(--panel-2)' : 'transparent',
+                    color: t === tab ? 'var(--text)' : 'var(--text-dim)',
+                  }}
                 >
                   {t}
                 </button>
@@ -120,9 +138,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                     const kind = st?.kind ?? plot.style.kind;
                     // band 需与另一 plot 成对；单 plot 指标不提供该选项
                     const kindOptions =
-                      def.plots.length > 1
-                        ? PLOT_KIND_OPTIONS
-                        : PLOT_KIND_OPTIONS.filter((o) => o.value !== 'band');
+                      def.plots.length > 1 ? PLOT_KIND_OPTIONS : PLOT_KIND_OPTIONS.filter((o) => o.value !== 'band');
                     return (
                       <Row key={plot.key} label={plot.label}>
                         <ToolbarSelect
@@ -179,39 +195,43 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                       return !p.hideWhenPlotsHidden.every((k) => active.styles?.[k]?.hidden === true);
                     })
                     .map((p) => (
-                    <Row key={p.key} label={p.label}>
-                      {p.type === 'number' && (
-                        <NumberStepper
-                          value={Number(active.params[p.key] ?? p.default)}
-                          min={p.min}
-                          max={p.max}
-                          step={p.step ?? 1}
-                          ariaLabel={p.label}
-                          onChange={(v) => setParam(p.key, v)}
-                        />
-                      )}
-                      {p.type === 'color' && (
-                        <input
-                          type="color"
-                          value={String(active.params[p.key] ?? p.default)}
-                          onChange={(e) => setParam(p.key, e.target.value)}
-                          style={swatchStyle}
-                        />
-                      )}
-                      {p.type === 'boolean' && (
-                        <Checkbox checked={Boolean(active.params[p.key] ?? p.default)} ariaLabel={p.label} onChange={(v) => setParam(p.key, v)} />
-                      )}
-                      {p.type === 'select' && (
-                        <ToolbarSelect
-                          ariaLabel={p.label}
-                          value={String(active.params[p.key] ?? p.default)}
-                          options={(p.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))}
-                          minWidth={120}
-                          onChange={(v) => setParam(p.key, v)}
-                        />
-                      )}
-                    </Row>
-                  ))}
+                      <Row key={p.key} label={p.label}>
+                        {p.type === 'number' && (
+                          <NumberStepper
+                            value={Number(active.params[p.key] ?? p.default)}
+                            min={p.min}
+                            max={p.max}
+                            step={p.step ?? 1}
+                            ariaLabel={p.label}
+                            onChange={(v) => setParam(p.key, v)}
+                          />
+                        )}
+                        {p.type === 'color' && (
+                          <input
+                            type="color"
+                            value={String(active.params[p.key] ?? p.default)}
+                            onChange={(e) => setParam(p.key, e.target.value)}
+                            style={swatchStyle}
+                          />
+                        )}
+                        {p.type === 'boolean' && (
+                          <Checkbox
+                            checked={Boolean(active.params[p.key] ?? p.default)}
+                            ariaLabel={p.label}
+                            onChange={(v) => setParam(p.key, v)}
+                          />
+                        )}
+                        {p.type === 'select' && (
+                          <ToolbarSelect
+                            ariaLabel={p.label}
+                            value={String(active.params[p.key] ?? p.default)}
+                            options={(p.options ?? []).map((o) => ({ value: String(o.value), label: o.label }))}
+                            minWidth={120}
+                            onChange={(v) => setParam(p.key, v)}
+                          />
+                        )}
+                      </Row>
+                    ))}
                 </>
               )}
 
@@ -238,14 +258,20 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                               const next = e
                                 ? [...new Set([...checkedTfs, ...items.map((t) => t.id)])]
                                 : checkedTfs.filter((t) => !items.some((i) => i.id === t));
-                              updateInstance(id, { visibleTimeframes: allTfIds.every((tf) => next.includes(tf)) ? undefined : next });
+                              updateInstance(id, {
+                                visibleTimeframes: allTfIds.every((tf) => next.includes(tf)) ? undefined : next,
+                              });
                             }}
                           />
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: space.sm, paddingLeft: 22 }}>
                           {items.map((t) => (
                             <label key={t.id} style={checkLabelStyle}>
-                              <Checkbox checked={checkedTfs.includes(t.id)} ariaLabel={t.label} onChange={(e) => setTf(t.id, e)} />
+                              <Checkbox
+                                checked={checkedTfs.includes(t.id)}
+                                ariaLabel={t.label}
+                                onChange={(e) => setTf(t.id, e)}
+                              />
                               {t.label}
                             </label>
                           ))}
@@ -265,7 +291,12 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
                 const defaults: Record<string, ParamValue> = {};
                 for (const p of def.params) defaults[p.key] = p.default;
                 updateParams(id, defaults);
-                updateInstance(id, { styles: {}, precision: undefined, displayName: undefined, visibleTimeframes: undefined });
+                updateInstance(id, {
+                  styles: {},
+                  precision: undefined,
+                  displayName: undefined,
+                  visibleTimeframes: undefined,
+                });
               }}
             >
               应用默认值

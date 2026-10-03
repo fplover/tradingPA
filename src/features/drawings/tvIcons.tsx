@@ -18,7 +18,13 @@ export interface TvIconProps {
 export type TvIconComponent = (props: TvIconProps) => JSX.Element;
 
 /** 统一 svg 外壳：各图标只提供内部几何路径 */
-export function TvIcon({ size = 24, strokeWidth = 1.5, style, className, children }: TvIconProps & { children: ReactNode }): JSX.Element {
+export function TvIcon({
+  size = 24,
+  strokeWidth = 1.5,
+  style,
+  className,
+  children,
+}: TvIconProps & { children: ReactNode }): JSX.Element {
   return (
     <svg
       width={size}

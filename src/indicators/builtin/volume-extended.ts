@@ -11,7 +11,7 @@ function adlValues(bars: readonly Bar[]): number[] {
   let adl = 0;
   for (let i = 0; i < bars.length; i++) {
     const b = bars[i];
-    const clv = b.high === b.low ? 0 : ((b.close - b.low) - (b.high - b.close)) / (b.high - b.low);
+    const clv = b.high === b.low ? 0 : (b.close - b.low - (b.high - b.close)) / (b.high - b.low);
     adl += clv * b.volume;
     out.push(adl);
   }
@@ -57,14 +57,30 @@ export const ElderRay: IndicatorDef = {
   lookback: 50,
   params: [{ key: 'length', label: 'EMA 周期', type: 'number', default: 13, min: 1, max: 100 }],
   plots: [
-    { key: 'bull', label: '牛力', style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red } },
-    { key: 'bear', label: '熊力', style: { kind: 'histogram', color: PALETTE.red, upColor: PALETTE.green, downColor: PALETTE.red } },
+    {
+      key: 'bull',
+      label: '牛力',
+      style: { kind: 'histogram', color: PALETTE.green, upColor: PALETTE.green, downColor: PALETTE.red },
+    },
+    {
+      key: 'bear',
+      label: '熊力',
+      style: { kind: 'histogram', color: PALETTE.red, upColor: PALETTE.green, downColor: PALETTE.red },
+    },
   ],
   compute: (bars, params) => {
     const emaC = ema(closes(bars), num(params.length));
     return {
-      bull: combine(bars.map((b) => b.high), emaC, (h, e) => h - e),
-      bear: combine(bars.map((b) => b.low), emaC, (l, e) => l - e),
+      bull: combine(
+        bars.map((b) => b.high),
+        emaC,
+        (h, e) => h - e,
+      ),
+      bear: combine(
+        bars.map((b) => b.low),
+        emaC,
+        (l, e) => l - e,
+      ),
     };
   },
 };
@@ -98,7 +114,10 @@ export const Klinger: IndicatorDef = {
       vf.push(b.volume * trend * cm);
     }
     const kvo = combine(ema(vf, num(params.fast)), ema(vf, num(params.slow)), (a, b) => a - b);
-    const signal = ema(kvo.map((v) => v ?? 0), num(params.signal)).map((v, i) => (kvo[i] === undefined ? undefined : v));
+    const signal = ema(
+      kvo.map((v) => v ?? 0),
+      num(params.signal),
+    ).map((v, i) => (kvo[i] === undefined ? undefined : v));
     return { kvo, signal };
   },
 };
@@ -144,7 +163,9 @@ export const NetVolume: IndicatorDef = {
     },
   ],
   compute: (bars) => ({
-    nv: bars.map((b, i) => (i === 0 || b.close === bars[i - 1].close ? b.volume : b.close > bars[i - 1].close ? b.volume : -b.volume)),
+    nv: bars.map((b, i) =>
+      i === 0 || b.close === bars[i - 1].close ? b.volume : b.close > bars[i - 1].close ? b.volume : -b.volume,
+    ),
   }),
 };
 

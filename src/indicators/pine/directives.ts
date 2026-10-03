@@ -208,7 +208,8 @@ export function parseShapeDirective(text: string, line: number, isChar = false):
     throw new Error(`${name} 无法识别的位置参数「${t}」（absolute 定位价格请用 price= 或第三位置参数）`);
   }
 
-  if (!isChar && !SHAPE_NAMES.has(style)) throw new Error(`不支持的 shape「shape.${style}」（可用：${[...SHAPE_NAMES].join('/')}）`);
+  if (!isChar && !SHAPE_NAMES.has(style))
+    throw new Error(`不支持的 shape「shape.${style}」（可用：${[...SHAPE_NAMES].join('/')}）`);
   if (!LOCATION_NAMES.has(location)) throw new Error(`不支持的 location「location.${location}」`);
   if (location === 'absolute' && !priceSrc) throw new Error(`${name} location.absolute 需提供 price= 价格表达式`);
 

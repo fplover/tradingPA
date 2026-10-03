@@ -94,8 +94,7 @@ export const useIndicatorStore = create<IndicatorStore>((set, get) => ({
       if (!entry || entry.params.anchorTime === anchorTime) return s;
       return { active: s.active.map((a) => (a.id === id ? { ...a, params: { ...a.params, anchorTime } } : a)) };
     }),
-  updateInstance: (id, patch) =>
-    set((s) => ({ active: s.active.map((a) => (a.id === id ? { ...a, ...patch } : a)) })),
+  updateInstance: (id, patch) => set((s) => ({ active: s.active.map((a) => (a.id === id ? { ...a, ...patch } : a)) })),
   toggleFavorite: (id) =>
     set((s) => {
       const favorites = s.favorites.includes(id) ? s.favorites.filter((f) => f !== id) : [...s.favorites, id];

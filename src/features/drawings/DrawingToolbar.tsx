@@ -38,15 +38,18 @@ export function DrawingToolbar({
   const [bottomMenu, setBottomMenu] = useState<BottomMenuState | null>(null);
   const [hovered, setHovered] = useState<HoverTarget | null>(null);
 
-  const { flyout, openFlyout, closeFlyout, onFlyoutOpenChange, onGroupPointerDown, onGroupPointerUp } =
-    useGroupHold(activeTool, activate);
+  const { flyout, openFlyout, closeFlyout, onFlyoutOpenChange, onGroupPointerDown, onGroupPointerUp } = useGroupHold(
+    activeTool,
+    activate,
+  );
 
   // TV 热键：Alt+T/H/J/V/F、Alt+Shift+R 直接选工具
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.altKey || e.ctrlKey || e.metaKey) return;
       const target = e.target as HTMLElement | null;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT'))
+        return;
       const key = e.key.toLowerCase();
       const pick: Record<string, DrawingTypeId> = {
         t: 'trendline',

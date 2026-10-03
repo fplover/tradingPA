@@ -36,7 +36,10 @@ describe('P1-A 趋势扩充金标准', () => {
   });
 
   it('McGinley：自适应除数 (c/prev)^4', () => {
-    const bars = custom([[100, 101, 99, 100, 100], [110, 111, 109, 110, 100]]);
+    const bars = custom([
+      [100, 101, 99, 100, 100],
+      [110, 111, 109, 110, 100],
+    ]);
     const out = compute('mcginley', bars, { length: 10 });
     // md1 = 100 + 10 / (10 × 1.1^4)
     expect(out.md![1]).toBeCloseTo(100 + 10 / (10 * Math.pow(1.1, 4)), 10);
@@ -69,7 +72,7 @@ describe('P1-A 动量扩充金标准', () => {
   it('ROC', () => {
     const out = compute('roc', bars, { length: 3 });
     expect(out.roc![2]).toBeUndefined();
-    expect(out.roc![9]).toBeCloseTo((300 / 7), 10);
+    expect(out.roc![9]).toBeCloseTo(300 / 7, 10);
   });
 
   it('MOM', () => {
@@ -105,13 +108,25 @@ describe('P1-A 动量扩充金标准', () => {
   });
 
   it('TSI：动量/|动量| 双重 RMA（p=1 退化为符号）', () => {
-    const out = compute('tsi', custom([[10, 11, 9, 10, 100], [10, 13, 11, 12, 100], [10, 12, 10, 11, 100]]), { long: 1, short: 1 });
+    const out = compute(
+      'tsi',
+      custom([
+        [10, 11, 9, 10, 100],
+        [10, 13, 11, 12, 100],
+        [10, 12, 10, 11, 100],
+      ]),
+      { long: 1, short: 1 },
+    );
     expect(out.tsi![1]).toBe(100);
     expect(out.tsi![2]).toBe(-100);
   });
 
   it('Fisher：Ehlers 递推（hl2 = 10,12,8, p=2）', () => {
-    const barsF = custom([[10, 11, 9, 10, 100], [10, 13, 11, 12, 100], [10, 9, 7, 8, 100]]);
+    const barsF = custom([
+      [10, 11, 9, 10, 100],
+      [10, 13, 11, 12, 100],
+      [10, 9, 7, 8, 100],
+    ]);
     const out = compute('fisher', barsF, { length: 2 });
     // p=2 时 i=0 无窗口 → undefined；value: 0.33, −0.1089 → fisher = 0.5·ln((1+v)/(1−v))
     expect(out.fisher![0]).toBeUndefined();
@@ -175,7 +190,14 @@ describe('P1-A 波动扩充金标准', () => {
   });
 
   it('Mass Index：Σ EMA9(r)/EMA9(EMA9(r))（恒定振幅从第 17 根起 ratio=1）', () => {
-    const flat = Array.from({ length: 30 }, (_, i) => ({ time: (i + 1) * 60_000, open: 10, high: 12, low: 8, close: 10, volume: 100 }));
+    const flat = Array.from({ length: 30 }, (_, i) => ({
+      time: (i + 1) * 60_000,
+      open: 10,
+      high: 12,
+      low: 8,
+      close: 10,
+      volume: 100,
+    }));
     const out = compute('mass-index', flat);
     // 独立闭式参考：single 自 i=8 起恒 4；double 种子 4/9，d(i)=4−(32/9)·0.8^(i−8)
     // ratio(i) = 1/(1−(8/9)·0.8^(i−8))（i≥8，否则 0）
@@ -192,26 +214,52 @@ describe('P1-A 波动扩充金标准', () => {
   it('HistVol：100·Stdev(对数收益)·√年化因子', () => {
     const out = compute('hist-vol', bars, { length: 3, annual: 1 });
     expect(out.hv![2]).toBeUndefined();
-    const expected = 100 * Math.sqrt(((Math.log(2) - 0.4620981) ** 2 + (Math.log(1.5) - 0.4620981) ** 2 + (Math.log(4 / 3) - 0.4620981) ** 2) / 3);
+    const expected =
+      100 *
+      Math.sqrt(
+        ((Math.log(2) - 0.4620981) ** 2 + (Math.log(1.5) - 0.4620981) ** 2 + (Math.log(4 / 3) - 0.4620981) ** 2) / 3,
+      );
     expect(out.hv![3]).toBeCloseTo(expected, 8);
   });
 });
 
 describe('P1-A 量能扩充金标准', () => {
   it('A/D：CLV×Vol 累计', () => {
-    const out = compute('adl', custom([[10, 12, 8, 11, 100], [11, 13, 9, 9, 100], [9, 10, 7, 10, 100]]));
+    const out = compute(
+      'adl',
+      custom([
+        [10, 12, 8, 11, 100],
+        [11, 13, 9, 9, 100],
+        [9, 10, 7, 10, 100],
+      ]),
+    );
     expect(out.adl![0]).toBeCloseTo(50, 10);
     expect(out.adl![1]).toBeCloseTo(-50, 10);
     expect(out.adl![2]).toBeCloseTo(50, 10);
   });
 
   it('Chaikin Osc：EMA(ADL,f)−EMA(ADL,s)', () => {
-    const out = compute('chaikin-osc', custom([[10, 12, 8, 11, 100], [11, 13, 9, 9, 100], [9, 10, 7, 10, 100]]), { fast: 2, slow: 3 });
+    const out = compute(
+      'chaikin-osc',
+      custom([
+        [10, 12, 8, 11, 100],
+        [11, 13, 9, 9, 100],
+        [9, 10, 7, 10, 100],
+      ]),
+      { fast: 2, slow: 3 },
+    );
     expect(out.osc![2]).toBeCloseTo(50 / 3, 10);
   });
 
   it('Elder Ray：high/low − EMA(close)', () => {
-    const flat = Array.from({ length: 15 }, (_, i) => ({ time: (i + 1) * 60_000, open: 100, high: 102, low: 98, close: 100, volume: 100 }));
+    const flat = Array.from({ length: 15 }, (_, i) => ({
+      time: (i + 1) * 60_000,
+      open: 100,
+      high: 102,
+      low: 98,
+      close: 100,
+      volume: 100,
+    }));
     const out = compute('elder-ray', flat, { length: 13 });
     expect(out.bull![12]).toBeCloseTo(2, 10);
     expect(out.bear![12]).toBeCloseTo(-2, 10);
@@ -238,21 +286,35 @@ describe('P1-A 量能扩充金标准', () => {
     const bars = ramp(4, (i) => i * 100);
     const out = compute('volume-osc', bars, { fast: 2, slow: 3 });
     expect(out.vo![2]).toBeCloseTo(25, 10); // (250−200)/200
-    expect(out.vo![3]).toBeCloseTo(100 * 50 / 300, 10); // (350−300)/300
+    expect(out.vo![3]).toBeCloseTo((100 * 50) / 300, 10); // (350−300)/300
   });
 
   it('Net Volume：涨为正、跌为负', () => {
     const out = compute('net-volume', ramp(3));
     expect(out.nv![0]).toBe(100);
     expect(out.nv![2]).toBe(100);
-    const down = compute('net-volume', custom([[10, 11, 9, 10, 100], [10, 11, 9, 9, 100]]));
+    const down = compute(
+      'net-volume',
+      custom([
+        [10, 11, 9, 10, 100],
+        [10, 11, 9, 9, 100],
+      ]),
+    );
     expect(down.nv![1]).toBe(-100);
   });
 
   it('Corr Coeff：close×volume 的 Pearson r', () => {
-    const same = compute('corr-coeff', ramp(5, (i) => i), { length: 3 });
+    const same = compute(
+      'corr-coeff',
+      ramp(5, (i) => i),
+      { length: 3 },
+    );
     expect(same.corr![2]).toBeCloseTo(1, 10);
-    const inv = compute('corr-coeff', ramp(5, (i) => 6 - i), { length: 3 });
+    const inv = compute(
+      'corr-coeff',
+      ramp(5, (i) => 6 - i),
+      { length: 3 },
+    );
     expect(inv.corr![2]).toBeCloseTo(-1, 10);
     const flat = compute('corr-coeff', ramp(5), { length: 3 });
     expect(flat.corr![2]).toBe(0); // 量恒定 → 方差 0 → 0

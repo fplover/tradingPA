@@ -198,7 +198,9 @@ export function Chart({
       }
     });
     // 双击画线 → 画线设置
-    rendererRef.current?.setDrawingSettingsCallback((drawingId) => useDrawingStore.getState().setSettingsFor(drawingId));
+    rendererRef.current?.setDrawingSettingsCallback((drawingId) =>
+      useDrawingStore.getState().setSettingsFor(drawingId),
+    );
     // 图例区右键 → 图例菜单
     rendererRef.current?.setLegendMenuCallback((x, y) => onLegendMenu?.(x, y));
     // 右键画线 → 画线菜单

@@ -56,10 +56,7 @@ describe('filterCommands', () => {
   });
 
   it('标题命中排在 keywords 命中之前（AC-E1 模糊匹配）', () => {
-    const withKw: Cmd[] = [
-      { title: '另一个命令', keywords: '指标' },
-      { title: '打开指标面板' },
-    ];
+    const withKw: Cmd[] = [{ title: '另一个命令', keywords: '指标' }, { title: '打开指标面板' }];
     const out = filterCommands(withKw, '指标');
     expect(out[0].title).toBe('打开指标面板');
   });

@@ -2,7 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { compilePine } from '@/indicators/pine/compile';
 import { pineAlertsOf } from '@/indicators/pine/alerts';
 import { IndicatorInstance } from '@/indicators/core/instance';
-import { parseAlertsPayload, runAlertCheck, sampleKey, sourceKeyOf, type PriceAlert } from '@/features/alerts/alertLogic';
+import {
+  parseAlertsPayload,
+  runAlertCheck,
+  sampleKey,
+  sourceKeyOf,
+  type PriceAlert,
+} from '@/features/alerts/alertLogic';
 import { pineAlertSamples } from '@/features/alerts/useAlertWatcher';
 import { BARS, CLOSES, compileOk } from './helpers/pine-fixture';
 
@@ -16,11 +22,19 @@ const FROM = 0;
 const TO = BARS.length - 1;
 
 /** extra 中的 alertcondition 条目 */
-function alertEntries(inst: IndicatorInstance): Array<{ key: string; title: string; message: string; cond: Array<number | undefined> | null }> {
+function alertEntries(
+  inst: IndicatorInstance,
+): Array<{ key: string; title: string; message: string; cond: Array<number | undefined> | null }> {
   const { extra } = inst.computeWindow(BARS, FROM, TO);
-  return (extra as Array<{ kind: string; key: string; title: string; message: string; cond: Array<number | undefined> | null }>).filter(
-    (e) => e.kind === 'alertcondition',
-  );
+  return (
+    extra as Array<{
+      kind: string;
+      key: string;
+      title: string;
+      message: string;
+      cond: Array<number | undefined> | null;
+    }>
+  ).filter((e) => e.kind === 'alertcondition');
 }
 
 function pineAlert(patch: Partial<PriceAlert> = {}): PriceAlert {
@@ -43,19 +57,25 @@ describe('P2-A③ alertcondition 编译期注册', () => {
   it('元数据进入注册表：key/title/message/line', () => {
     const id = 'pine-alert-meta';
     const r = compilePine(
-      ['indicator("A", overlay=true)', 'plot(close)', 'alertcondition(close > open, title="阳线", message="出现阳线")'].join('\n'),
+      [
+        'indicator("A", overlay=true)',
+        'plot(close)',
+        'alertcondition(close > open, title="阳线", message="出现阳线")',
+      ].join('\n'),
       id,
     );
     expect(r.def).not.toBeNull();
-    expect(pineAlertsOf(id)).toEqual([
-      { key: 'a0', title: '阳线', message: '出现阳线', line: 3 },
-    ]);
+    expect(pineAlertsOf(id)).toEqual([{ key: 'a0', title: '阳线', message: '出现阳线', line: 3 }]);
   });
 
   it('多条件按序生成 a0/a1；message 缺省回落 title', () => {
     const id = 'pine-alert-multi';
     compilePine(
-      ['plot(close)', 'alertcondition(close > open, title="甲")', 'alertcondition(close < open, title="乙", message="乙条件")'].join('\n'),
+      [
+        'plot(close)',
+        'alertcondition(close > open, title="甲")',
+        'alertcondition(close < open, title="乙", message="乙条件")',
+      ].join('\n'),
       id,
     );
     expect(pineAlertsOf(id)).toEqual([
@@ -66,7 +86,10 @@ describe('P2-A③ alertcondition 编译期注册', () => {
 
   it('纯警报脚本（无 plot）可编译（TV 合法形态）', () => {
     const id = 'pine-alert-only';
-    const r = compilePine('indicator("纯警报", overlay=true)\nalertcondition(ta.crossover(close, open), title="金叉")', id);
+    const r = compilePine(
+      'indicator("纯警报", overlay=true)\nalertcondition(ta.crossover(close, open), title="金叉")',
+      id,
+    );
     expect(r.def).not.toBeNull();
     expect(r.def!.plots).toEqual([]);
     expect(pineAlertsOf(id)).toHaveLength(1);
@@ -110,7 +133,9 @@ describe('P2-A③ alertcondition 编译期注册', () => {
 
 describe('P2-A③ computeExtra 条件序列旁路（窗口对齐）', () => {
   it('extra 暴露 alertcondition 条目：cond 与 bars 逐根对齐', () => {
-    const inst = new IndicatorInstance(compileOk('plot(close)\nalertcondition(close > open, title="阳线", message="m")'));
+    const inst = new IndicatorInstance(
+      compileOk('plot(close)\nalertcondition(close > open, title="阳线", message="m")'),
+    );
     const entries = alertEntries(inst);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ key: 'a0', title: '阳线', message: 'm' });

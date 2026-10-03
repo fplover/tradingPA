@@ -37,10 +37,7 @@ function fixture() {
   viewport.scrollToRealtime();
   const priceScale = new PriceScale();
   priceScale.setSize(H);
-  priceScale.autoScale(
-    Math.min(...BARS.map((b) => b.low)),
-    Math.max(...BARS.map((b) => b.high)),
-  );
+  priceScale.autoScale(Math.min(...BARS.map((b) => b.low)), Math.max(...BARS.map((b) => b.high)));
   const geo = { chartW: W, chartH: H };
   const ctx = createMockCtx();
   return { ctx, series, viewport, priceScale, geo };
@@ -81,7 +78,9 @@ describe('P2-A② plotshape/plotchar 指令解析', () => {
   });
 
   it('plotchar：char= 字符 + 默认 abovebar', () => {
-    const inst = shapeInstance('plot(close)\nplotchar(close < open, char="X", location=location.abovebar, color=color.green)');
+    const inst = shapeInstance(
+      'plot(close)\nplotchar(close < open, char="X", location=location.abovebar, color=color.green)',
+    );
     const sh = shapesOf(inst);
     expect(sh[0]).toMatchObject({ kind: 'char', style: 'X', color: '#4caf50', location: 'abovebar' });
     expect(sh[0].cond).toEqual(CLOSES.map((_, i) => (i % 2 === 0 ? 1 : 0)));
@@ -142,7 +141,11 @@ describe('P2-A② plotshape/plotchar 指令解析', () => {
   });
 
   it('plotshape 不参与 indicatorRange（autoscale 只认数值 plot）', () => {
-    const inst = new IndicatorInstance(compileOk('plot(close)\nplotshape(close > open, style=shape.circle, location=location.absolute, price=high * 100)'));
+    const inst = new IndicatorInstance(
+      compileOk(
+        'plot(close)\nplotshape(close > open, style=shape.circle, location=location.absolute, price=high * 100)',
+      ),
+    );
     const r = indicatorRange(inst, BARS, FROM, TO);
     expect(r.low).toBe(Math.min(...CLOSES));
     expect(r.high).toBe(Math.max(...CLOSES));
@@ -170,11 +173,15 @@ describe('P2-A② drawPineShapes 渲染', () => {
 
   it('plotchar：偶 bar fillText，字号=size、位置在 high 上方', () => {
     const f = fixture();
-    const inst = shapeInstance('plot(close)\nplotchar(close < open, char="X", location=location.abovebar, color=color.green)');
+    const inst = shapeInstance(
+      'plot(close)\nplotchar(close < open, char="X", location=location.abovebar, color=color.green)',
+    );
     drawPineShapes(asCtx(f.ctx), inst, BARS, FROM, TO, f.viewport, f.priceScale, f.geo);
     const texts = callsOf(f.ctx, 'fillText');
     expect(texts).toHaveLength(6);
-    expect(propSets(f.ctx, 'font')).toEqual([`8px 'Trebuchet MS', -apple-system, BlinkMacSystemFont, Roboto, Ubuntu, Arial, sans-serif`]);
+    expect(propSets(f.ctx, 'font')).toEqual([
+      `8px 'Trebuchet MS', -apple-system, BlinkMacSystemFont, Roboto, Ubuntu, Arial, sans-serif`,
+    ]);
     texts.forEach((a, k) => {
       const i = EVEN[k];
       expect(a[0]).toBe('X');

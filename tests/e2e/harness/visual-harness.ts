@@ -70,8 +70,22 @@ const CELLS = [
   // market 必传：图例开/闭市圆点（Wave5 项4）。crypto 在 isMarketOpen 首行短路
   // （7×24 恒开市）——不读时钟，基线确定性不受采集时点影响；若将来引入
   // 时段依赖市场的种子符号，需同步冻结 new Date() 而非仅 Date.now。
-  { symbol: 'BTC/USDT', interval: '1m', timeframeId: '1m', market: 'crypto' as const, decimals: 2, exchange: 'Binance' },
-  { symbol: 'ETH/USDT', interval: '1m', timeframeId: '1m', market: 'crypto' as const, decimals: 2, exchange: 'Binance' },
+  {
+    symbol: 'BTC/USDT',
+    interval: '1m',
+    timeframeId: '1m',
+    market: 'crypto' as const,
+    decimals: 2,
+    exchange: 'Binance',
+  },
+  {
+    symbol: 'ETH/USDT',
+    interval: '1m',
+    timeframeId: '1m',
+    market: 'crypto' as const,
+    decimals: 2,
+    exchange: 'Binance',
+  },
 ];
 
 const grid = document.getElementById('grid')!;

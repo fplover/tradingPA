@@ -107,7 +107,8 @@ function normalizeDrawing(v: unknown): Drawing | null {
   const style: Drawing['style'] = { ...def.defaultStyle };
   if (isPlainObject(v.style)) {
     if (typeof v.style.color === 'string') style.color = v.style.color;
-    if (typeof v.style.lineWidth === 'number' && Number.isFinite(v.style.lineWidth)) style.lineWidth = v.style.lineWidth;
+    if (typeof v.style.lineWidth === 'number' && Number.isFinite(v.style.lineWidth))
+      style.lineWidth = v.style.lineWidth;
     if (typeof v.style.dash === 'boolean') style.dash = v.style.dash;
     if (typeof v.style.fillColor === 'string') style.fillColor = v.style.fillColor;
     if (typeof v.style.text === 'string') style.text = v.style.text;
@@ -150,7 +151,10 @@ export function migrateSnapshot(raw: unknown): LayoutSnapshot | null {
     ? raw.drawings.map(normalizeDrawing).filter((d): d is Drawing => d !== null)
     : [];
   const cells = Array.isArray(raw.cells)
-    ? raw.cells.map(normalizeCell).filter((c): c is LayoutCellSnapshot => c !== null).slice(0, 8)
+    ? raw.cells
+        .map(normalizeCell)
+        .filter((c): c is LayoutCellSnapshot => c !== null)
+        .slice(0, 8)
     : [];
   const layout = asFiniteNumber(raw.layout, 1);
 

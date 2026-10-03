@@ -1,5 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Undo2, Redo2, X, Eye, EyeOff, Lock, Unlock, Trash2, ArrowUpToLine, ChevronUp, ChevronDown, ArrowDownToLine, Settings, Copy } from 'lucide-react';
+import {
+  Undo2,
+  Redo2,
+  X,
+  Eye,
+  EyeOff,
+  Lock,
+  Unlock,
+  Trash2,
+  ArrowUpToLine,
+  ChevronUp,
+  ChevronDown,
+  ArrowDownToLine,
+  Settings,
+  Copy,
+} from 'lucide-react';
 import type { Drawing } from '@/engine/drawing/types';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useDrawingStore } from '@/store/drawingStore';
@@ -31,7 +46,9 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <strong style={{ color: 'var(--text)', fontSize: 12 }}>
           对象树（{drawings.length}）
-          {selectedIds.length > 1 && <span style={{ color: 'var(--accent)', fontWeight: 400 }}>{` · 已选 ${selectedIds.length}`}</span>}
+          {selectedIds.length > 1 && (
+            <span style={{ color: 'var(--accent)', fontWeight: 400 }}>{` · 已选 ${selectedIds.length}`}</span>
+          )}
         </strong>
         <div style={{ display: 'flex', gap: 6 }}>
           <button style={btn} onClick={() => renderer.undoDrawing()} title="撤销 (Ctrl+Z)">
@@ -45,7 +62,9 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
           </button>
         </div>
       </div>
-      {drawings.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无画线。左侧选择工具后在图表上点击放置。</div>}
+      {drawings.length === 0 && (
+        <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无画线。左侧选择工具后在图表上点击放置。</div>
+      )}
       {drawings.map((d) => (
         <div
           key={d.id}
@@ -65,7 +84,14 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
         >
           <span style={{ width: 10, height: 10, background: d.style.color, borderRadius: 2, flexShrink: 0 }} />
           <span
-            style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+            }}
             onClick={(e) => {
               // B7：Ctrl+点击行 = 加入/移出多选集合（与画布 Ctrl+点击同语义）
               if (e.ctrlKey || e.metaKey) renderer.toggleDrawingSelection(d.id);
@@ -75,16 +101,36 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
           >
             {labelOf(d)}
           </span>
-          <button style={miniBtn} onClick={() => renderer.setDrawingOrder(d.id, 'front')} title="置于顶层" aria-label="置于顶层">
+          <button
+            style={miniBtn}
+            onClick={() => renderer.setDrawingOrder(d.id, 'front')}
+            title="置于顶层"
+            aria-label="置于顶层"
+          >
             <ArrowUpToLine size={12} />
           </button>
-          <button style={miniBtn} onClick={() => renderer.setDrawingOrder(d.id, 'forward')} title="上移一层" aria-label="上移一层">
+          <button
+            style={miniBtn}
+            onClick={() => renderer.setDrawingOrder(d.id, 'forward')}
+            title="上移一层"
+            aria-label="上移一层"
+          >
             <ChevronUp size={12} />
           </button>
-          <button style={miniBtn} onClick={() => renderer.setDrawingOrder(d.id, 'backward')} title="下移一层" aria-label="下移一层">
+          <button
+            style={miniBtn}
+            onClick={() => renderer.setDrawingOrder(d.id, 'backward')}
+            title="下移一层"
+            aria-label="下移一层"
+          >
             <ChevronDown size={12} />
           </button>
-          <button style={miniBtn} onClick={() => renderer.setDrawingOrder(d.id, 'back')} title="置于底层" aria-label="置于底层">
+          <button
+            style={miniBtn}
+            onClick={() => renderer.setDrawingOrder(d.id, 'back')}
+            title="置于底层"
+            aria-label="置于底层"
+          >
             <ArrowDownToLine size={12} />
           </button>
           <button style={miniBtn} onClick={() => renderer.setDrawingVisible(d.id, !d.visible)} title="显示/隐藏">
@@ -93,7 +139,12 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
           <button style={miniBtn} onClick={() => renderer.setDrawingLocked(d.id, !d.locked)} title="锁定">
             {d.locked ? <Lock size={14} /> : <Unlock size={14} />}
           </button>
-          <button style={miniBtn} onClick={() => useDrawingStore.getState().setSettingsFor(d.id)} title="设置" aria-label="画线设置">
+          <button
+            style={miniBtn}
+            onClick={() => useDrawingStore.getState().setSettingsFor(d.id)}
+            title="设置"
+            aria-label="画线设置"
+          >
             <Settings size={12} />
           </button>
           <button style={miniBtn} onClick={() => renderer.removeDrawing(d.id)} title="删除">
@@ -105,7 +156,18 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
         </div>
       ))}
       {drawings.length > 0 && (
-        <button style={{ ...btn, width: '100%', marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }} onClick={() => renderer.clearDrawings()}>
+        <button
+          style={{
+            ...btn,
+            width: '100%',
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+          }}
+          onClick={() => renderer.clearDrawings()}
+        >
           <Trash2 size={12} /> 清空全部
         </button>
       )}
@@ -115,11 +177,23 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
 
 function labelOf(d: Drawing): string {
   const names: Record<string, string> = {
-    trendline: '趋势线', ray: '射线', hline: '水平线', vline: '垂直线', arrow: '箭头',
-    'info-line': '信息线', channel: '平行通道', rect: '矩形', ellipse: '椭圆', path: '路径',
-    text: `文本「${d.style.text ?? ''}」`, fib: '斐波那契回撤',
-    'fib-extension': '斐波那契扩展', 'fib-fan': '斐波那契扇形', 'fib-arc': '斐波那契弧线',
-    'fib-timezone': '斐波那契时区', 'fib-auto': 'Auto Fib（自动回撤）',
+    trendline: '趋势线',
+    ray: '射线',
+    hline: '水平线',
+    vline: '垂直线',
+    arrow: '箭头',
+    'info-line': '信息线',
+    channel: '平行通道',
+    rect: '矩形',
+    ellipse: '椭圆',
+    path: '路径',
+    text: `文本「${d.style.text ?? ''}」`,
+    fib: '斐波那契回撤',
+    'fib-extension': '斐波那契扩展',
+    'fib-fan': '斐波那契扇形',
+    'fib-arc': '斐波那契弧线',
+    'fib-timezone': '斐波那契时区',
+    'fib-auto': 'Auto Fib（自动回撤）',
     // P2-B 新增工具（文本类带内容预览）
     note: `便签「${d.style.text ?? ''}」`,
     'price-label': '价格标签',
@@ -128,8 +202,11 @@ function labelOf(d: Drawing): string {
     measure: '测量',
     'percent-line': '百分比线',
     polygon: `多边形（${d.points.length} 顶点）`,
-    arc: '圆弧', curve: '曲线',
-    'gann-fan': '江恩扇形', 'gann-line': '江恩线', 'gann-box': '江恩箱',
+    arc: '圆弧',
+    curve: '曲线',
+    'gann-fan': '江恩扇形',
+    'gann-line': '江恩线',
+    'gann-box': '江恩箱',
     'elliott-wave': '艾略特波浪',
   };
   return names[d.type] ?? d.type;

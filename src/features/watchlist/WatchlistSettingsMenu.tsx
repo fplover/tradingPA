@@ -70,7 +70,11 @@ export function WatchlistSettingsMenu({
           {canDelete && (
             <>
               <DropdownMenu.Separator style={sepStyle} />
-              <DropdownMenu.Item className="tv-menu-item" style={{ ...menuItemStyle, color: 'var(--down)' }} onSelect={() => onDelete()}>
+              <DropdownMenu.Item
+                className="tv-menu-item"
+                style={{ ...menuItemStyle, color: 'var(--down)' }}
+                onSelect={() => onDelete()}
+              >
                 <span style={leadingIconSlot}>
                   <X size={14} />
                 </span>

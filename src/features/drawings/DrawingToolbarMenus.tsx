@@ -25,13 +25,19 @@ export function BottomMenu({
   onOpenChange: (open: boolean) => void;
 }) {
   return (
-    <DropdownMenu.Root
-      open={menu !== null}
-      modal={false}
-      onOpenChange={onOpenChange}
-    >
+    <DropdownMenu.Root open={menu !== null} modal={false} onOpenChange={onOpenChange}>
       <DropdownMenu.Trigger asChild>
-        <span aria-hidden style={{ position: 'fixed', left: menu?.x ?? 0, top: menu?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }} />
+        <span
+          aria-hidden
+          style={{
+            position: 'fixed',
+            left: menu?.x ?? 0,
+            top: menu?.y ?? 0,
+            width: 1,
+            height: 1,
+            pointerEvents: 'none',
+          }}
+        />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" side="right" sideOffset={0} className="tv-scroll" style={menuStyle}>
@@ -41,7 +47,11 @@ export function BottomMenu({
                 <DropdownMenu.Item
                   key={m}
                   className="tv-menu-item"
-                  style={{ ...itemStyle, background: magnetMode === m ? 'var(--accent)' : undefined, color: magnetMode === m ? 'var(--text-on-accent)' : 'var(--text)' }}
+                  style={{
+                    ...itemStyle,
+                    background: magnetMode === m ? 'var(--accent)' : undefined,
+                    color: magnetMode === m ? 'var(--text-on-accent)' : 'var(--text)',
+                  }}
                   onSelect={() => setMagnetMode(m)}
                 >
                   {m === 'weak' ? '弱磁铁（50px 内吸附）' : '强磁铁（始终吸附）'}
@@ -90,7 +100,14 @@ export function ToolFlyoutMenu({
       <DropdownMenu.Trigger asChild>
         <span
           aria-hidden
-          style={{ position: 'fixed', left: flyout?.x ?? 0, top: flyout?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }}
+          style={{
+            position: 'fixed',
+            left: flyout?.x ?? 0,
+            top: flyout?.y ?? 0,
+            width: 1,
+            height: 1,
+            pointerEvents: 'none',
+          }}
         />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -114,7 +131,11 @@ export function ToolFlyoutMenu({
                 <DropdownMenu.Item
                   key={id}
                   className="tv-menu-item"
-                  style={{ ...itemStyle, background: selected ? 'var(--accent)' : undefined, color: selected ? 'var(--text-on-accent)' : 'var(--text)' }}
+                  style={{
+                    ...itemStyle,
+                    background: selected ? 'var(--accent)' : undefined,
+                    color: selected ? 'var(--text-on-accent)' : 'var(--text)',
+                  }}
                   onSelect={() => onSelect(id)}
                 >
                   <span style={iconSlot}>

@@ -126,13 +126,9 @@ describe('Pine ta 函数（10 个各一例，手算黄金值）', () => {
 
   it('ta.crossover / ta.crossunder：上穿/下沿瞬间为 1', () => {
     // i=0 无前值 → undefined；close 上穿 open：奇 bar（1,3,5,7,9,11）
-    expect(plotValues('plot(ta.crossover(close, open))')).toEqual([
-      undefined, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,
-    ]);
+    expect(plotValues('plot(ta.crossover(close, open))')).toEqual([undefined, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1]);
     // close 下穿 open：偶 bar（2,4,6,8,10）
-    expect(plotValues('plot(ta.crossunder(close, open))')).toEqual([
-      undefined, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-    ]);
+    expect(plotValues('plot(ta.crossunder(close, open))')).toEqual([undefined, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]);
   });
 
   it('ta.nz：undefined 替换为 0', () => {
@@ -162,9 +158,7 @@ describe('Pine 赋值 / plot / input', () => {
   it('input.int：参数元数据 + compute 期注入覆盖默认值', () => {
     const def = compileOk('len = input.int(3, "周期", minval=1, maxval=200)\nplot(ta.sma(close, len))');
     // 现状：input.int 仅识别 title=/defval= 关键字形式的位置标签，位置参数字符串回退为 key
-    expect(def.params).toEqual([
-      { key: 'len', label: 'len', type: 'number', default: 3, min: 1, max: 200, step: 1 },
-    ]);
+    expect(def.params).toEqual([{ key: 'len', label: 'len', type: 'number', default: 3, min: 1, max: 200, step: 1 }]);
     // 默认 len=3 → 窗口 3（compute 期需注入全部 input 参数，与面板管线一致）
     expect((def.compute(BARS, { len: 3 }).p0 as number[])[2]).toBeCloseTo(11, 10);
     // 覆盖 len=2 → 窗口 2

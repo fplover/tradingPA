@@ -7,7 +7,19 @@ import { useWatchlistStore } from '@/store/watchlistStore';
 import { useSymbolSearchStore } from './searchStore';
 import { TABS, buildResultSections, filterByTab, type ResultSection } from './symbolSearchFilter';
 import { ResultRow, Kbd } from './SymbolSearchRows';
-import { clearBtnStyle, contentStyle, emptyStyle, footerStyle, inputRowStyle, inputStyle, listStyle, overlayStyle, sectionLabelStyle, tabRowStyle, tabStyle } from './symbolSearchStyles';
+import {
+  clearBtnStyle,
+  contentStyle,
+  emptyStyle,
+  footerStyle,
+  inputRowStyle,
+  inputStyle,
+  listStyle,
+  overlayStyle,
+  sectionLabelStyle,
+  tabRowStyle,
+  tabStyle,
+} from './symbolSearchStyles';
 import { fontSize } from '@/ui/tokens';
 
 const DEBOUNCE_MS = 250;
@@ -120,7 +132,9 @@ export function SymbolSearchDialog() {
       <Dialog.Portal>
         <Dialog.Overlay style={overlayStyle} />
         <Dialog.Content style={contentStyle} aria-describedby={undefined} onKeyDown={onKeyDown}>
-          <Dialog.Title style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>
+          <Dialog.Title
+            style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}
+          >
             搜索品种
           </Dialog.Title>
 
@@ -137,7 +151,9 @@ export function SymbolSearchDialog() {
               spellCheck={false}
               style={inputStyle}
             />
-            {loading && <LoaderCircle size={16} className="spin" style={{ color: 'var(--text-faint)', flexShrink: 0 }} />}
+            {loading && (
+              <LoaderCircle size={16} className="spin" style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+            )}
             {query && !loading && (
               <button onClick={() => setQuery('')} aria-label="清空搜索" style={clearBtnStyle}>
                 <X size={16} />

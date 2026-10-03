@@ -96,7 +96,12 @@ export function ChartDialogs({
         currentLabel={tf.label}
         onApply={(t) => setTimeframe(t.id as TimeframeId)}
       />
-      <GoToDateDialog open={goToDateOpen} onClose={() => setGoToDateOpen(false)} bars={bars} onGoToDate={handleGoToDate} />
+      <GoToDateDialog
+        open={goToDateOpen}
+        onClose={() => setGoToDateOpen(false)}
+        bars={bars}
+        onGoToDate={handleGoToDate}
+      />
       <ChartSettingsDialog
         open={chartSettingsOpen}
         onClose={() => setChartSettingsOpen(false)}

@@ -148,13 +148,17 @@ export function LayoutGrid() {
         )}
         {/* 边缘分隔条：列间 + 行间各 n-1 条（最大化时隐藏） */}
         {!maximized &&
-          colR.slice(0, -1).map((_, i) => (
-            <Grip key={`col-${i}`} axis="col" index={i} ratios={colR} onPointerDown={startDrag('col', i)} />
-          ))}
+          colR
+            .slice(0, -1)
+            .map((_, i) => (
+              <Grip key={`col-${i}`} axis="col" index={i} ratios={colR} onPointerDown={startDrag('col', i)} />
+            ))}
         {!maximized &&
-          rowR.slice(0, -1).map((_, i) => (
-            <Grip key={`row-${i}`} axis="row" index={i} ratios={rowR} onPointerDown={startDrag('row', i)} />
-          ))}
+          rowR
+            .slice(0, -1)
+            .map((_, i) => (
+              <Grip key={`row-${i}`} axis="row" index={i} ratios={rowR} onPointerDown={startDrag('row', i)} />
+            ))}
       </div>
     </div>
   );

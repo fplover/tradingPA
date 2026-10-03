@@ -32,7 +32,14 @@ export function WatchlistRowMenu({
       <DropdownMenu.Trigger asChild>
         <span
           aria-hidden
-          style={{ position: 'fixed', left: state?.x ?? 0, top: state?.y ?? 0, width: 1, height: 1, pointerEvents: 'none' }}
+          style={{
+            position: 'fixed',
+            left: state?.x ?? 0,
+            top: state?.y ?? 0,
+            width: 1,
+            height: 1,
+            pointerEvents: 'none',
+          }}
         />
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>

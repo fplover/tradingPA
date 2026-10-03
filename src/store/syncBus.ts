@@ -107,9 +107,11 @@ const emitViewportThrottled = createThrottler(({ range, sourceId }: { range: Vie
 const emitSymbolThrottled = createThrottler(({ symbol, sourceId }: { symbol: string; sourceId: symbol }) => {
   dispatch(symbolSubs, sourceId, (h) => h(symbol, sourceId));
 });
-const emitIntervalThrottled = createThrottler(({ timeframe, sourceId }: { timeframe: TimeframeId; sourceId: symbol }) => {
-  dispatch(intervalSubs, sourceId, (h) => h(timeframe, sourceId));
-});
+const emitIntervalThrottled = createThrottler(
+  ({ timeframe, sourceId }: { timeframe: TimeframeId; sourceId: symbol }) => {
+    dispatch(intervalSubs, sourceId, (h) => h(timeframe, sourceId));
+  },
+);
 const emitDrawingsThrottled = createThrottler(({ raw, sourceId }: { raw: string; sourceId: symbol }) => {
   dispatch(drawingsSubs, sourceId, (h) => h(raw, sourceId));
 });

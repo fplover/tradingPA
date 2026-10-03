@@ -71,19 +71,32 @@ function evalExpr(e: Expr, scope: Scope, ctx: InterpCtx, allowTuple = false): S 
       const a = evalExpr(e.l, scope, ctx);
       const b = evalExpr(e.r, scope, ctx);
       switch (e.op) {
-        case '+': return ops.add(a, b);
-        case '-': return ops.sub(a, b);
-        case '*': return ops.mul(a, b);
-        case '/': return ops.div(a, b);
-        case '>': return ops.gt(a, b);
-        case '<': return ops.lt(a, b);
-        case '>=': return ops.gte(a, b);
-        case '<=': return ops.lte(a, b);
-        case '==': return ops.eq(a, b);
-        case '!=': return ops.not(ops.eq(a, b));
-        case 'and': return ops.and(a, b);
-        case 'or': return ops.or(a, b);
-        default: throw new Error(`不支持的运算符「${e.op}」`);
+        case '+':
+          return ops.add(a, b);
+        case '-':
+          return ops.sub(a, b);
+        case '*':
+          return ops.mul(a, b);
+        case '/':
+          return ops.div(a, b);
+        case '>':
+          return ops.gt(a, b);
+        case '<':
+          return ops.lt(a, b);
+        case '>=':
+          return ops.gte(a, b);
+        case '<=':
+          return ops.lte(a, b);
+        case '==':
+          return ops.eq(a, b);
+        case '!=':
+          return ops.not(ops.eq(a, b));
+        case 'and':
+          return ops.and(a, b);
+        case 'or':
+          return ops.or(a, b);
+        default:
+          throw new Error(`不支持的运算符「${e.op}」`);
       }
     }
     case 'call': {

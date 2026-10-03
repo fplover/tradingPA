@@ -129,12 +129,7 @@ export function drawBorders(ctx: CanvasRenderingContext2D, geo: DrawGeometry): v
 }
 
 /** 副图面板图例：指标名（指标色）+ 最新值，置于面板左上角（TV 风格） */
-export function drawPaneLegend(
-  ctx: CanvasRenderingContext2D,
-  name: string,
-  value: string,
-  color: string,
-): void {
+export function drawPaneLegend(ctx: CanvasRenderingContext2D, name: string, value: string, color: string): void {
   ctx.font = `11px ${TV_FONT}`;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';

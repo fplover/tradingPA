@@ -22,7 +22,16 @@ interface ToolbarSelectProps {
 }
 
 /** 顶栏下拉按钮：替代原生 select，视觉与 TradingView 工具栏一致（分组 + 勾选当前项） */
-export function ToolbarSelect({ value, options, onChange, ariaLabel, icon, label, align = 'start', minWidth = 132 }: ToolbarSelectProps) {
+export function ToolbarSelect({
+  value,
+  options,
+  onChange,
+  ariaLabel,
+  icon,
+  label,
+  align = 'start',
+  minWidth = 132,
+}: ToolbarSelectProps) {
   const current = options.find((o) => o.value === value);
 
   const groups: Array<{ name?: string; items: ToolbarOption[] }> = [];
@@ -49,7 +58,12 @@ export function ToolbarSelect({ value, options, onChange, ariaLabel, icon, label
             <div key={g.name ?? gi}>
               {g.name && <DropdownMenu.Label style={groupLabelStyle}>{g.name}</DropdownMenu.Label>}
               {g.items.map((o) => (
-                <DropdownMenu.Item key={o.value} className="tv-menu-item" style={itemStyle} onSelect={() => onChange(o.value)}>
+                <DropdownMenu.Item
+                  key={o.value}
+                  className="tv-menu-item"
+                  style={itemStyle}
+                  onSelect={() => onChange(o.value)}
+                >
                   <span style={checkSlot}>{o.value === value ? <Check size={14} /> : null}</span>
                   {o.label}
                 </DropdownMenu.Item>

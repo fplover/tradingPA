@@ -207,7 +207,9 @@ export default function App() {
   return (
     <Tooltip.Provider delayDuration={400} skipDelayDuration={100}>
       <ToastProvider>
-        <div style={{ width: '100vw', height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}>
+        <div
+          style={{ width: '100vw', height: '100vh', background: 'var(--bg)', display: 'flex', flexDirection: 'column' }}
+        >
           <TopBar rendererRef={rendererRef} series={series} barsCount={bars.length} onScreenshot={handleScreenshot} />
           {layout === 1 ? (
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>

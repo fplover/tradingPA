@@ -37,8 +37,9 @@ test('Pine 编辑器编译自定义指标', async ({ page }) => {
     .poll(() =>
       page.evaluate(
         () =>
-          (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer?.listIndicators().some((i) => i.name === '双均线交叉') ??
-          false,
+          (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer
+            ?.listIndicators()
+            .some((i) => i.name === '双均线交叉') ?? false,
       ),
     )
     .toBe(true);

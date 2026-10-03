@@ -8,7 +8,19 @@ const ALL = { open: true, high: true, low: true, close: true, volumeWidthHint: f
 
 describe('legendFieldsFor', () => {
   it('蜡烛/竹线/空心/平均K/基线/面积/砖块族：O H L C 全显', () => {
-    for (const t of ['candles', 'ohlc', 'hollow', 'heikin-ashi', 'baseline', 'area', 'renko', 'kagi', 'line-break', 'point-figure', 'range'] as ChartTypeId[]) {
+    for (const t of [
+      'candles',
+      'ohlc',
+      'hollow',
+      'heikin-ashi',
+      'baseline',
+      'area',
+      'renko',
+      'kagi',
+      'line-break',
+      'point-figure',
+      'range',
+    ] as ChartTypeId[]) {
       expect(legendFieldsFor(t)).toEqual(ALL);
     }
   });
@@ -18,7 +30,13 @@ describe('legendFieldsFor', () => {
   });
 
   it('柱状图：O C', () => {
-    expect(legendFieldsFor('columns')).toEqual({ open: true, high: false, low: false, close: true, volumeWidthHint: false });
+    expect(legendFieldsFor('columns')).toEqual({
+      open: true,
+      high: false,
+      low: false,
+      close: true,
+      volumeWidthHint: false,
+    });
   });
 
   it('线族（线形/阶梯/带标记/HLC面积）：仅 C', () => {

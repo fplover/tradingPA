@@ -13,7 +13,13 @@ import {
 } from '@/features/alerts/alertLogic';
 import { playAlertBeep } from '@/features/alerts/sound';
 
-export type { PriceAlert, AlertSource, AlertCondition, AlertFrequency, AlertSample } from '@/features/alerts/alertLogic';
+export type {
+  PriceAlert,
+  AlertSource,
+  AlertCondition,
+  AlertFrequency,
+  AlertSample,
+} from '@/features/alerts/alertLogic';
 
 const STORAGE_KEY = 'tradingpa.alerts';
 let seq = 0;
@@ -105,7 +111,13 @@ export const useAlertStore = create<AlertStore>((set, get) => {
     update: (id, patch) =>
       set((s) => {
         const alerts = s.alerts.map((a) =>
-          a.id === id ? { ...a, ...patch, cooldownMs: patch.cooldownMs !== undefined ? clampCooldown(patch.cooldownMs) : a.cooldownMs } : a,
+          a.id === id
+            ? {
+                ...a,
+                ...patch,
+                cooldownMs: patch.cooldownMs !== undefined ? clampCooldown(patch.cooldownMs) : a.cooldownMs,
+              }
+            : a,
         );
         persist(alerts, s.soundEnabled);
         return { alerts };

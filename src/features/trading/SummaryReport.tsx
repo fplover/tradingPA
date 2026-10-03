@@ -13,68 +13,75 @@ export function SummaryReport({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal open onOpenChange={(o) => !o && onClose()} title="交易总结报告" width={480}>
+      {/* 核心指标 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+        <Stat label="初始资金" value={s.initialBalance.toFixed(2)} />
+        <Stat label="最终权益" value={s.finalEquity.toFixed(2)} />
+        <Stat label="净盈亏" value={`${s.netPnL >= 0 ? '+' : ''}${s.netPnL.toFixed(2)}`} color={pnlColor(s.netPnL)} />
+        <Stat
+          label="收益率"
+          value={`${s.returnPct >= 0 ? '+' : ''}${s.returnPct.toFixed(2)}%`}
+          color={pnlColor(s.returnPct)}
+        />
+        <Stat label="交易次数" value={String(s.totalTrades)} />
+        <Stat label="胜率" value={`${s.winRate.toFixed(1)}%`} hint={`胜 ${s.winTrades} / 负 ${s.loseTrades}`} />
+        <Stat label="盈亏比" value={s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2)} />
+        <Stat label="最大回撤" value={`${s.maxDrawdownPct.toFixed(2)}%`} color="var(--down)" />
+        <Stat label="平均盈利" value={s.avgWin.toFixed(2)} color="var(--up)" />
+        <Stat label="平均亏损" value={s.avgLoss.toFixed(2)} color="var(--down)" />
+      </div>
 
-        {/* 核心指标 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-          <Stat label="初始资金" value={s.initialBalance.toFixed(2)} />
-          <Stat label="最终权益" value={s.finalEquity.toFixed(2)} />
-          <Stat label="净盈亏" value={`${s.netPnL >= 0 ? '+' : ''}${s.netPnL.toFixed(2)}`} color={pnlColor(s.netPnL)} />
-          <Stat label="收益率" value={`${s.returnPct >= 0 ? '+' : ''}${s.returnPct.toFixed(2)}%`} color={pnlColor(s.returnPct)} />
-          <Stat label="交易次数" value={String(s.totalTrades)} />
-          <Stat label="胜率" value={`${s.winRate.toFixed(1)}%`} hint={`胜 ${s.winTrades} / 负 ${s.loseTrades}`} />
-          <Stat
-            label="盈亏比"
-            value={s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2)}
-          />
-          <Stat label="最大回撤" value={`${s.maxDrawdownPct.toFixed(2)}%`} color="var(--down)" />
-          <Stat label="平均盈利" value={s.avgWin.toFixed(2)} color="var(--up)" />
-          <Stat label="平均亏损" value={s.avgLoss.toFixed(2)} color="var(--down)" />
-        </div>
-
-        {/* 未平状态 */}
-        {(s.openPosition || s.pendingOrders > 0) && (
-          <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 8 }}>
-            {s.openPosition && (
-              <span>
-                未平仓：{s.openPosition.side === 'long' ? '多' : '空'} {fmtQty(s.openPosition.qty)} @ {s.openPosition.avgPrice.toFixed(2)}
-                （浮动 {s.unrealizedPnL >= 0 ? '+' : ''}{s.unrealizedPnL.toFixed(2)}）
-              </span>
-            )}
-            {s.openPosition && s.pendingOrders > 0 && ' · '}
-            {s.pendingOrders > 0 && <span>挂单 {s.pendingOrders} 笔</span>}
-          </div>
-        )}
-
-        {/* 成交明细 */}
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 4 }}>成交明细</div>
-        <div style={tableWrap}>
-          {engine.trades.length === 0 ? (
-            <div style={{ color: 'var(--text-faint)', fontSize: 11, padding: 8, textAlign: 'center' }}>暂无成交</div>
-          ) : (
-            <table style={tableStyle}>
-              <thead>
-                <tr style={{ color: 'var(--text-faint)' }}>
-                  <th style={thStyle}>方向</th>
-                  <th style={thStyle}>数量</th>
-                  <th style={thStyle}>开仓价</th>
-                  <th style={thStyle}>平仓价</th>
-                  <th style={thStyle}>盈亏</th>
-                </tr>
-              </thead>
-              <tbody>
-                {engine.trades.map((t) => (
-                  <tr key={t.id} style={{ color: 'var(--text)' }}>
-                    <td style={{ ...tdStyle, color: t.side === 'long' ? 'var(--up)' : 'var(--down)' }}>{t.side === 'long' ? '多' : '空'}</td>
-                    <td style={tdStyle}>{fmtQty(t.qty)}</td>
-                    <td style={tdStyle}>{t.entryPrice.toFixed(2)}</td>
-                    <td style={tdStyle}>{t.exitPrice.toFixed(2)}</td>
-                    <td style={{ ...tdStyle, color: pnlColor(t.pnl) }}>{t.pnl >= 0 ? '+' : ''}{t.pnl.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* 未平状态 */}
+      {(s.openPosition || s.pendingOrders > 0) && (
+        <div style={{ fontSize: 11, color: 'var(--text-faint)', marginBottom: 8 }}>
+          {s.openPosition && (
+            <span>
+              未平仓：{s.openPosition.side === 'long' ? '多' : '空'} {fmtQty(s.openPosition.qty)} @{' '}
+              {s.openPosition.avgPrice.toFixed(2)}
+              （浮动 {s.unrealizedPnL >= 0 ? '+' : ''}
+              {s.unrealizedPnL.toFixed(2)}）
+            </span>
           )}
+          {s.openPosition && s.pendingOrders > 0 && ' · '}
+          {s.pendingOrders > 0 && <span>挂单 {s.pendingOrders} 笔</span>}
         </div>
+      )}
+
+      {/* 成交明细 */}
+      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginBottom: 4 }}>成交明细</div>
+      <div style={tableWrap}>
+        {engine.trades.length === 0 ? (
+          <div style={{ color: 'var(--text-faint)', fontSize: 11, padding: 8, textAlign: 'center' }}>暂无成交</div>
+        ) : (
+          <table style={tableStyle}>
+            <thead>
+              <tr style={{ color: 'var(--text-faint)' }}>
+                <th style={thStyle}>方向</th>
+                <th style={thStyle}>数量</th>
+                <th style={thStyle}>开仓价</th>
+                <th style={thStyle}>平仓价</th>
+                <th style={thStyle}>盈亏</th>
+              </tr>
+            </thead>
+            <tbody>
+              {engine.trades.map((t) => (
+                <tr key={t.id} style={{ color: 'var(--text)' }}>
+                  <td style={{ ...tdStyle, color: t.side === 'long' ? 'var(--up)' : 'var(--down)' }}>
+                    {t.side === 'long' ? '多' : '空'}
+                  </td>
+                  <td style={tdStyle}>{fmtQty(t.qty)}</td>
+                  <td style={tdStyle}>{t.entryPrice.toFixed(2)}</td>
+                  <td style={tdStyle}>{t.exitPrice.toFixed(2)}</td>
+                  <td style={{ ...tdStyle, color: pnlColor(t.pnl) }}>
+                    {t.pnl >= 0 ? '+' : ''}
+                    {t.pnl.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </Modal>
   );
 }

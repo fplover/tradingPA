@@ -48,7 +48,12 @@ export function BottomControls({
           aria-pressed={magnet}
           onClick={() => setMagnet(!magnet)}
         >
-          <span style={{ ...cellStyle, background: magnet ? 'var(--accent)' : hovered === 'magnet' ? 'var(--panel-2)' : 'transparent' }}>
+          <span
+            style={{
+              ...cellStyle,
+              background: magnet ? 'var(--accent)' : hovered === 'magnet' ? 'var(--panel-2)' : 'transparent',
+            }}
+          >
             <TvMagnet size={18} strokeWidth={1.5} style={{ color: magnet ? 'var(--text-on-accent)' : undefined }} />
           </span>
         </button>
@@ -101,13 +106,12 @@ export function BottomControls({
         {hideDrawings ? <TvEyeOff size={18} /> : <TvEye size={18} />}
       </button>
       {/* 清空全部：caret 展开 移除画线/移除指标/移除画线和指标（TV removeAllDrawingTools） */}
-      <div style={{ ...controlStyle, marginTop: 'auto' }} onMouseEnter={() => onHover('remove')} onMouseLeave={() => onHover(null)}>
-        <button
-          style={mainBtnStyle}
-          title="清空全部"
-          aria-label="清空全部"
-          onClick={() => onRemoveAll('drawings')}
-        >
+      <div
+        style={{ ...controlStyle, marginTop: 'auto' }}
+        onMouseEnter={() => onHover('remove')}
+        onMouseLeave={() => onHover(null)}
+      >
+        <button style={mainBtnStyle} title="清空全部" aria-label="清空全部" onClick={() => onRemoveAll('drawings')}>
           <span style={{ ...cellStyle, background: hovered === 'remove' ? 'var(--panel-2)' : 'transparent' }}>
             <TvTrash size={18} strokeWidth={1.5} />
           </span>

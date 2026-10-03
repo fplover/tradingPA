@@ -24,7 +24,13 @@ export interface PaneButtonHit {
  * 画布级画线命中：自顶向下（顶层级优先），跳过不可见/锁定对象。
  * y 为全画布坐标，内部换算到面板局部（y - paneY）后交给 drawDrawings 的逐对象测试。
  */
-export function hitDrawings(drawings: readonly Drawing[], x: number, y: number, paneY: number, dctx: DrawContext): DrawingHit | null {
+export function hitDrawings(
+  drawings: readonly Drawing[],
+  x: number,
+  y: number,
+  paneY: number,
+  dctx: DrawContext,
+): DrawingHit | null {
   for (let i = drawings.length - 1; i >= 0; i--) {
     const d = drawings[i];
     if (!d.visible || d.locked) continue;
@@ -38,7 +44,13 @@ export function hitDrawings(drawings: readonly Drawing[], x: number, y: number, 
  * 面板头部按钮命中（设置/移除，仅选中指标面板绘制了按钮）。
  * 命中区外扩 2px（触摸友好）；btns/indicatorId 为 null 时无按钮可命中的。
  */
-export function hitPaneButtons(x: number, y: number, paneY: number, btns: PaneButtonRects | null, indicatorId: string | null): PaneButtonHit | null {
+export function hitPaneButtons(
+  x: number,
+  y: number,
+  paneY: number,
+  btns: PaneButtonRects | null,
+  indicatorId: string | null,
+): PaneButtonHit | null {
   if (!btns || !indicatorId) return null;
   const ly = y - paneY;
   const inRect = (r: { x: number; y: number; w: number; h: number }) =>

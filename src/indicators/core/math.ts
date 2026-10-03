@@ -174,10 +174,7 @@ export function logReturns(values: number[]): Array<number | undefined> {
 }
 
 /** 数值数组逐点运算 */
-export function mapValues(
-  a: Array<number | undefined>,
-  fn: (v: number) => number,
-): Array<number | undefined> {
+export function mapValues(a: Array<number | undefined>, fn: (v: number) => number): Array<number | undefined> {
   return a.map((v) => (v === undefined ? undefined : fn(v)));
 }
 

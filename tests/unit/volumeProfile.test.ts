@@ -76,10 +76,7 @@ describe('computeProfile：delta 源（buyRatio 近似式）', () => {
   // 行高 1，两 bar 均跨 [100,102]（各摊 2 行）：
   // d1 close=101.8 → buyRatio=0.9，v200 → 总 buy180/sell20 → 每行 up90/down10
   // d2 close=100.2 → buyRatio=0.1，v100 → 总 buy10/sell90 → 每行 up5/down45
-  const bars: Bar[] = [
-    bar(100.2, 102, 100, 101.8, 200),
-    bar(101, 102, 100, 100.2, 100),
-  ];
+  const bars: Bar[] = [bar(100.2, 102, 100, 101.8, 200), bar(101, 102, 100, 100.2, 100)];
   const params = { rowCount: 2, vaPercent: 70, source: 'delta' as const };
 
   it('每行 up=95/down=55；POC 平量取更低价行 100.5；VA 全覆盖', () => {
@@ -191,7 +188,18 @@ describe('IndicatorManager：profile 专用分支', () => {
     calls = [];
     vpState = { on: false, params: { ...DEFAULT_VP_PARAMS } as Record<string, string | number | boolean> };
     const panes: PaneState[] = [
-      { id: 'main', kind: 'price', heightRatio: 3, priceScale: {} as never, indicators: [], y: 0, height: 0, manual: false, autoBtn: null, headerBtns: null },
+      {
+        id: 'main',
+        kind: 'price',
+        heightRatio: 3,
+        priceScale: {} as never,
+        indicators: [],
+        y: 0,
+        height: 0,
+        manual: false,
+        autoBtn: null,
+        headerBtns: null,
+      },
     ];
     const mgr = new IndicatorManager(makeHost(panes));
     const uid = mgr.add('volume-profile', { params: { rowCount: 48 } });
@@ -199,14 +207,27 @@ describe('IndicatorManager：profile 专用分支', () => {
     expect(calls[0]).toEqual({ on: true, params: { rowCount: 48 } });
     expect(panes[0].indicators).toHaveLength(0); // 无实例
     expect(panes).toHaveLength(1); // 无新面板
-    expect(mgr.list()).toEqual([{ uid: 'vp', id: 'volume-profile', name: VOLUME_PROFILE.name, overlay: true, params: expect.anything() }]);
+    expect(mgr.list()).toEqual([
+      { uid: 'vp', id: 'volume-profile', name: VOLUME_PROFILE.name, overlay: true, params: expect.anything() },
+    ]);
   });
 
   it('remove/update：路由到 vp 通路，不动面板数组', () => {
     calls = [];
     vpState = { on: true, params: { ...DEFAULT_VP_PARAMS } as Record<string, string | number | boolean> };
     const panes: PaneState[] = [
-      { id: 'main', kind: 'price', heightRatio: 3, priceScale: {} as never, indicators: [], y: 0, height: 0, manual: false, autoBtn: null, headerBtns: null },
+      {
+        id: 'main',
+        kind: 'price',
+        heightRatio: 3,
+        priceScale: {} as never,
+        indicators: [],
+        y: 0,
+        height: 0,
+        manual: false,
+        autoBtn: null,
+        headerBtns: null,
+      },
     ];
     const mgr = new IndicatorManager(makeHost(panes));
     mgr.update('vp', { params: { vaPercent: 80, source: 'delta' } });
@@ -220,7 +241,18 @@ describe('IndicatorManager：profile 专用分支', () => {
     calls = [];
     vpState = { on: true, params: { ...DEFAULT_VP_PARAMS } as Record<string, string | number | boolean> };
     const panes: PaneState[] = [
-      { id: 'main', kind: 'price', heightRatio: 3, priceScale: {} as never, indicators: [], y: 0, height: 0, manual: false, autoBtn: null, headerBtns: null },
+      {
+        id: 'main',
+        kind: 'price',
+        heightRatio: 3,
+        priceScale: {} as never,
+        indicators: [],
+        y: 0,
+        height: 0,
+        manual: false,
+        autoBtn: null,
+        headerBtns: null,
+      },
     ];
     const mgr = new IndicatorManager(makeHost(panes));
     mgr.importTemplate([{ id: 'volume-profile', params: { rowCount: 30 } }]);

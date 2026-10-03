@@ -6,7 +6,13 @@ import { getToolDef } from '../drawing/types';
 import { drawDrawings, type DrawContext } from '../drawing/drawDrawings';
 import { drawTrading } from './drawTrading';
 import { drawTimeAxis, drawBorders } from './drawAxes';
-import { drawCrosshair, drawLegendBlock, type LegendInfo, type LegendStudyValues, type LegendDrawInfo } from './drawCrosshair';
+import {
+  drawCrosshair,
+  drawLegendBlock,
+  type LegendInfo,
+  type LegendStudyValues,
+  type LegendDrawInfo,
+} from './drawCrosshair';
 import { indicatorValuesAt } from './drawIndicator';
 import { AXIS_WIDTH, AXIS_HEIGHT, type ChartState } from './ChartState';
 import type { SyncBridge } from './SyncBridge';
@@ -76,7 +82,11 @@ export class RenderPipeline {
     }
 
     const legend = this.host.legend();
-    const autoscaleOpts: AutoscaleOptions = { autoScaleOn: st.autoScaleOn, logScale: st.logScale, timeframeId: legend.timeframeId };
+    const autoscaleOpts: AutoscaleOptions = {
+      autoScaleOn: st.autoScaleOn,
+      logScale: st.logScale,
+      timeframeId: legend.timeframeId,
+    };
     const countdownText = this.host.countdownText(now);
     for (const pane of st.panes) {
       // compare 随 legend 每帧下发（P2-D）：PaneRenderer 主价格面板绘归一化叠加，
@@ -107,7 +117,14 @@ export class RenderPipeline {
     if (!st.drawingsHidden) {
       const sel = this.host.drawing.layer.selectedIdList;
       const primary = sel.length > 0 ? sel[sel.length - 1] : null;
-      drawDrawings(ctx, this.host.drawing.layer.list(), primary, this.host.drawingCtx(), legend.decimals, sel.slice(0, -1));
+      drawDrawings(
+        ctx,
+        this.host.drawing.layer.list(),
+        primary,
+        this.host.drawingCtx(),
+        legend.decimals,
+        sel.slice(0, -1),
+      );
     }
     // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记
     drawTrading(
@@ -126,7 +143,16 @@ export class RenderPipeline {
       const def = getToolDef(previewTool);
       drawDrawings(
         ctx,
-        [{ id: '__preview', type: previewTool, points: pts, style: { ...def.defaultStyle, color: theme.crosshair }, locked: false, visible: true }],
+        [
+          {
+            id: '__preview',
+            type: previewTool,
+            points: pts,
+            style: { ...def.defaultStyle, color: theme.crosshair },
+            locked: false,
+            visible: true,
+          },
+        ],
         null,
         this.host.drawingCtx(),
         legend.decimals,
@@ -139,7 +165,8 @@ export class RenderPipeline {
     // 主图叠加指标在悬停 bar 上的值（图例展示）
     const legendIndicators: LegendStudyValues[] = [];
     const mainPane = st.panes[0];
-    const legendIndex = this.host.crosshair.visible && hoveredBar ? this.host.crosshair.barIndex : st.displaySeries.length - 1;
+    const legendIndex =
+      this.host.crosshair.visible && hoveredBar ? this.host.crosshair.barIndex : st.displaySeries.length - 1;
     if (!st.hideStudies && mainPane.indicators.length > 0 && legendIndex >= 0) {
       const bars = st.bars();
       for (const inst of mainPane.indicators) {
@@ -152,7 +179,16 @@ export class RenderPipeline {
         });
       }
     }
-    drawCrosshair(ctx, this.host.crosshair, this.host.viewport, hoveredPane.priceScale, mainGeo, legend, hoveredPane.y, hoveredPane.height);
+    drawCrosshair(
+      ctx,
+      this.host.crosshair,
+      this.host.viewport,
+      hoveredPane.priceScale,
+      mainGeo,
+      legend,
+      hoveredPane.y,
+      hoveredPane.height,
+    );
     // 图例常驻：悬停跟随十字光标，否则显示最后一根；同时收集研究行命中区
     st.studyRects = [];
     const legendInfo: LegendDrawInfo = { collapsed: 0 };
@@ -174,7 +210,11 @@ export class RenderPipeline {
       ctx.fillStyle = theme.legendDim;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      ctx.fillText(`+${legendInfo.collapsed}`, st.studyRects.length ? st.studyRects[st.studyRects.length - 1].btnX + 56 : 120, 28);
+      ctx.fillText(
+        `+${legendInfo.collapsed}`,
+        st.studyRects.length ? st.studyRects[st.studyRects.length - 1].btnX + 56 : 120,
+        28,
+      );
       ctx.restore();
     }
 

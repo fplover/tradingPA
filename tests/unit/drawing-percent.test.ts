@@ -129,7 +129,13 @@ function pts0(d: Drawing, dctx: DrawContext): { x: number; y: number } {
 describe('drawPercentLine（默认三档水平线组 + 右端标签）', () => {
   it('3 条水平线 + 3 个「百分比 价格」标签（golden：p0=100, p1=110 → 0%/50%/100%）', () => {
     const { ctx, dctx, priceScale } = makeDctx();
-    const d = drawing({ type: 'percent-line', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 110 }] });
+    const d = drawing({
+      type: 'percent-line',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 5 * IV, price: 110 },
+      ],
+    });
     const pts = d.points.map((p) => toPix(p, dctx));
     drawPercentLine(asCtx(ctx), d, pts, dctx, 2);
 
@@ -146,16 +152,18 @@ describe('drawPercentLine（默认三档水平线组 + 右端标签）', () => {
     // 100% 档 = 110（终点锚点价）
     const y100 = Math.round(priceScale.priceToY(110)) + 0.5;
     expect(hasPair(ctx, 'moveTo', [pts[0].x, y100], 'lineTo', [endX, y100])).toBe(true);
-    expect(fillTexts(ctx)).toEqual([
-      '0.0% 100.00',
-      '50.0% 105.00',
-      '100.0% 110.00',
-    ]);
+    expect(fillTexts(ctx)).toEqual(['0.0% 100.00', '50.0% 105.00', '100.0% 110.00']);
   });
 
   it('标签溢出画布 → 钳到 chartW - 字宽 - 2 并右对齐（clamp 态）', () => {
     const { ctx, dctx, priceScale } = makeDctx();
-    const d = drawing({ type: 'percent-line', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 110 }] });
+    const d = drawing({
+      type: 'percent-line',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 5 * IV, price: 110 },
+      ],
+    });
     const pts = d.points.map((p) => toPix(p, dctx));
     drawPercentLine(asCtx(ctx), d, pts, dctx, 2);
     // mock 字宽 = 字数 × 6；'0.0% 100.00' 11 字 → 66；endX(452) + 4 + 66 = 522 > 458
@@ -166,9 +174,24 @@ describe('drawPercentLine（默认三档水平线组 + 右端标签）', () => {
 
   it('末端靠近左缘时标签放得下：贴 endX + 4 左对齐（非 clamp 态）', () => {
     const { ctx, dctx, priceScale } = makeDctx();
-    const d = drawing({ type: 'percent-line', points: [{ time: T0, price: 100 }, { time: T0 + IV, price: 110 }] });
+    const d = drawing({
+      type: 'percent-line',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + IV, price: 110 },
+      ],
+    });
     // 手工指定锚点像素（x 位置才是本用例变量）：x0=100 / xLabel=124 → 摆幅下限 24 → endX=148
-    drawPercentLine(asCtx(ctx), d, [{ x: 100, y: 0 }, { x: 124, y: 0 }], dctx, 2);
+    drawPercentLine(
+      asCtx(ctx),
+      d,
+      [
+        { x: 100, y: 0 },
+        { x: 124, y: 0 },
+      ],
+      dctx,
+      2,
+    );
     const y0 = Math.round(priceScale.priceToY(100)) + 0.5;
     // '0.0% 100.00' 宽 66：148 + 4 + 66 = 218 ≤ 458 → 贴末端左对齐
     expect(hasCall(ctx, 'fillText', ['0.0% 100.00', 152, y0])).toBe(true);
@@ -189,7 +212,13 @@ describe('drawPercentLine（默认三档水平线组 + 右端标签）', () => {
 describe('hitTestPercentLine（锚线 ±6px + 水平线 ±6px，末端与渲染一致）', () => {
   it('锚线、各水平线命中；末端外不中；远处不中', () => {
     const { dctx, priceScale } = makeDctx();
-    const d = drawing({ type: 'percent-line', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 110 }] });
+    const d = drawing({
+      type: 'percent-line',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 5 * IV, price: 110 },
+      ],
+    });
     const pts = d.points.map((p) => toPix(p, dctx));
     // 锚线（两落点对角线）中点
     const mid = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
@@ -208,14 +237,26 @@ describe('hitTestPercentLine（锚线 ±6px + 水平线 ±6px，末端与渲染�
 
   it('非 percent-line 类型返回 false', () => {
     const { dctx } = makeDctx();
-    const d = drawing({ type: 'fib', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 110 }] });
+    const d = drawing({
+      type: 'fib',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 5 * IV, price: 110 },
+      ],
+    });
     const pts = d.points.map((p) => toPix(p, dctx));
     expect(hitTestPercentLine(d, pts, 200, 150, dctx)).toBe(false);
   });
 
   it('drawDrawings 分发：命中返回 body，末端外返回 null', () => {
     const { dctx, priceScale } = makeDctx();
-    const d = drawing({ type: 'percent-line', points: [{ time: T0, price: 100 }, { time: T0 + 5 * IV, price: 110 }] });
+    const d = drawing({
+      type: 'percent-line',
+      points: [
+        { time: T0, price: 100 },
+        { time: T0 + 5 * IV, price: 110 },
+      ],
+    });
     expect(hitTestDrawing(d, pts0(d, dctx).x + 20, priceScale.priceToY(105), dctx)).toEqual({ part: 'body' });
     expect(hitTestDrawing(d, W, priceScale.priceToY(105), dctx)).toBeNull();
   });
@@ -281,7 +322,9 @@ let canvas: HTMLCanvasElement;
 beforeEach(() => {
   document.body.innerHTML = '';
   const mock = createMockCtx();
-  HTMLCanvasElement.prototype.getContext = vi.fn(() => asCtx(mock)) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = vi.fn(() =>
+    asCtx(mock),
+  ) as unknown as typeof HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.setPointerCapture = vi.fn();
   HTMLCanvasElement.prototype.hasPointerCapture = vi.fn(() => false);
   HTMLCanvasElement.prototype.releasePointerCapture = vi.fn();
@@ -296,7 +339,17 @@ beforeEach(() => {
   canvas = document.createElement('canvas');
   document.body.appendChild(canvas);
   canvas.getBoundingClientRect = () =>
-    ({ left: 0, top: 0, right: CANVAS_W, bottom: CANVAS_H, width: CANVAS_W, height: CANVAS_H, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    ({
+      left: 0,
+      top: 0,
+      right: CANVAS_W,
+      bottom: CANVAS_H,
+      width: CANVAS_W,
+      height: CANVAS_H,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
 });
 
 afterEach(() => {
@@ -311,7 +364,9 @@ function makeRenderer(): ChartRenderer {
 }
 
 function ptr(type: string, x: number, y: number): void {
-  canvas.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }));
+  canvas.dispatchEvent(
+    new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true }),
+  );
 }
 
 function click(x: number, y: number): void {

@@ -80,9 +80,7 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
             </Dialog.Close>
           </div>
           <div ref={listRef} role="listbox" aria-label="命令列表" className="tv-scroll" style={listStyle}>
-            {filtered.length === 0 && (
-              <div style={emptyStyle}>没有匹配的命令</div>
-            )}
+            {filtered.length === 0 && <div style={emptyStyle}>没有匹配的命令</div>}
             {filtered.map((cmd, i) => {
               const Icon = cmd.icon;
               return (
@@ -94,8 +92,14 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
                   onClick={() => execute(cmd)}
                   style={{ ...itemStyle, ...(i === active ? activeItemStyle : null) }}
                 >
-                  {Icon ? <Icon size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }} /> : <span style={{ width: 16 }} />}
-                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {Icon ? (
+                    <Icon size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
+                  ) : (
+                    <span style={{ width: 16 }} />
+                  )}
+                  <span
+                    style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
                     {cmd.title}
                   </span>
                   {cmd.hint && <kbd style={hintStyle}>{cmd.hint}</kbd>}

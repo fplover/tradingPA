@@ -81,10 +81,21 @@ export class ChartController {
     this.legend = { symbol: 'BTC/USDT', interval: '1m', decimals: 2, ...legend };
     this.countdown.setTimeframe(this.resolveTimeframe());
     // Model 层：viewport/crosshair/countdown 注入，重绘经 invalidate 上送
-    this.state = new ChartState(this.viewport, this.crosshair, this.countdown, () => this.manager.width - AXIS_WIDTH, () => this.invalidate());
+    this.state = new ChartState(
+      this.viewport,
+      this.crosshair,
+      this.countdown,
+      () => this.manager.width - AXIS_WIDTH,
+      () => this.invalidate(),
+    );
     this.state.initData(bars);
     // 联动边界：viewport 直接注入；displaySeries/画布宽/重绘请求用 getter（随图表类型与尺寸变化）
-    this.sync = new SyncBridge(this.viewport, () => this.state.displaySeries, () => this.manager.width - AXIS_WIDTH, () => this.invalidate());
+    this.sync = new SyncBridge(
+      this.viewport,
+      () => this.state.displaySeries,
+      () => this.manager.width - AXIS_WIDTH,
+      () => this.invalidate(),
+    );
     this.manager.onResize(() => {
       this.viewport.setSize(this.manager.width - AXIS_WIDTH);
       this.invalidate();
@@ -118,7 +129,10 @@ export class ChartController {
       barSelectMode: () => this.state.barSelectMode,
       replayIndex: () => this.state.replayIndex,
       visibleRange: () => this.state.visibleRange(),
-      visibleStudies: () => this.state.hideStudies ? [] : this.state.panes[0].indicators.filter((i) => i.isVisibleOn(this.legend.timeframeId)),
+      visibleStudies: () =>
+        this.state.hideStudies
+          ? []
+          : this.state.panes[0].indicators.filter((i) => i.isVisibleOn(this.legend.timeframeId)),
       barSelected: (rawIndex) => {
         const idx = Math.min(Math.max(rawIndex, 0), Math.max(0, this.state.displaySeries.length - 1));
         this.barSelectCb?.(idx);
@@ -139,7 +153,14 @@ export class ChartController {
     this.drawing = new DrawingGesture(inputHost, this.selectionPopup);
     this.trade = new TradeGesture(inputHost);
     this.hover = new HoverController(inputHost, this.drawing, this.trade);
-    this.input = new InputController(inputHost, this.panzoom, this.drawing, this.trade, this.hover, this.selectionPopup);
+    this.input = new InputController(
+      inputHost,
+      this.panzoom,
+      this.drawing,
+      this.trade,
+      this.hover,
+      this.selectionPopup,
+    );
     // AVWAP 锚定落点装配（P2-B 红线拆分）：host 注入指标查询/选 bar 模式/落点解析与写回
     const avwapHost: AvwapAnchorHost = {
       lookupIndicator: (uid) => {
@@ -216,7 +237,8 @@ export class ChartController {
   setLegend(legend: Partial<LegendInfo>): void {
     this.legend = { ...this.legend, ...legend };
     this.countdown.setTimeframe(this.resolveTimeframe()); // 周期切换 → 重算倒计时
-    this.invalidate(); this.clearStudySelection(); // 周期切换 → 指标选中目标可能失效
+    this.invalidate();
+    this.clearStudySelection(); // 周期切换 → 指标选中目标可能失效
   }
 
   /** 日历桶时区（分钟，东为正）：crypto=UTC / CN 源=本地（bar 时间戳语义决定，见 data/tz.ts） */
@@ -225,8 +247,13 @@ export class ChartController {
     this.invalidate();
   }
 
-  setData(bars: Bar[]): void { this.state.setData(bars); this.clearStudySelection(); }
-  updateBar(bar: Bar): void { this.state.updateBar(bar); }
+  setData(bars: Bar[]): void {
+    this.state.setData(bars);
+    this.clearStudySelection();
+  }
+  updateBar(bar: Bar): void {
+    this.state.updateBar(bar);
+  }
 
   /** 前插更早的历史（懒加载），保持当前视口不跳动 */
   prependBars(bars: Bar[]): void {
@@ -234,44 +261,101 @@ export class ChartController {
     this.state.prependData(bars);
     this.viewport.panByBars(bars.length);
     this.notifyDrawings();
-    this.invalidate(); this.clearStudySelection();
+    this.invalidate();
+    this.clearStudySelection();
   }
 
-  setChartType(type: ChartTypeId): void { this.state.setChartType(type); this.clearStudySelection(); }
-  get chartTypeNow(): ChartTypeId { return this.state.chartType; }
-  setLogScale(on: boolean): void { this.state.setLogScale(on); }
-  setAutoScale(on: boolean): void { this.state.setAutoScale(on); }
-  get isAutoScale(): boolean { return this.state.autoScaleOn; }
-  setDrawingsHidden(hidden: boolean): void { this.state.setDrawingsHidden(hidden); }
-  setPercentMode(on: boolean): void { this.state.setPercentMode(on); }
-  setDrawingsLocked(locked: boolean): void { this.state.setDrawingsLocked(locked); }
-  setLegendOptions(options: Partial<LegendOptions>): void { this.state.setLegendOptions(options); }
-  setStudyActionCallback(cb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null): void { this.studyActionCb = cb; }
+  setChartType(type: ChartTypeId): void {
+    this.state.setChartType(type);
+    this.clearStudySelection();
+  }
+  get chartTypeNow(): ChartTypeId {
+    return this.state.chartType;
+  }
+  setLogScale(on: boolean): void {
+    this.state.setLogScale(on);
+  }
+  setAutoScale(on: boolean): void {
+    this.state.setAutoScale(on);
+  }
+  get isAutoScale(): boolean {
+    return this.state.autoScaleOn;
+  }
+  setDrawingsHidden(hidden: boolean): void {
+    this.state.setDrawingsHidden(hidden);
+  }
+  setPercentMode(on: boolean): void {
+    this.state.setPercentMode(on);
+  }
+  setDrawingsLocked(locked: boolean): void {
+    this.state.setDrawingsLocked(locked);
+  }
+  setLegendOptions(options: Partial<LegendOptions>): void {
+    this.state.setLegendOptions(options);
+  }
+  setStudyActionCallback(cb: ((action: 'hide' | 'settings' | 'remove', uid: string) => void) | null): void {
+    this.studyActionCb = cb;
+  }
   /** 注册引擎 → store 的参数写回回调（P2-D③：AVWAP 落锚后 anchorTime 落入 indicatorStore；
    *  Chart.tsx 接线，store 侧同值短路避免 store→engine→store 回环） */
-  setIndicatorParamsCallback(cb: ((uid: string, params: Record<string, ParamValue>) => void) | null): void { this.indicatorParamsCb = cb; }
-  setToolFinishedCallback(cb: (() => void) | null): void { this.drawing.setToolFinishedCallback(cb); }
-  setDrawingSettingsCallback(cb: ((id: string) => void) | null): void { this.drawingSettingsCb = cb; }
+  setIndicatorParamsCallback(cb: ((uid: string, params: Record<string, ParamValue>) => void) | null): void {
+    this.indicatorParamsCb = cb;
+  }
+  setToolFinishedCallback(cb: (() => void) | null): void {
+    this.drawing.setToolFinishedCallback(cb);
+  }
+  setDrawingSettingsCallback(cb: ((id: string) => void) | null): void {
+    this.drawingSettingsCb = cb;
+  }
   /** 双击最新价线打开图表设置（TV：double-click on the price line → settings） */
-  setPriceLineDblClickCallback(cb: (() => void) | null): void { this.priceLineDblClickCb = cb; }
-  setLegendMenuCallback(cb: ((x: number, y: number) => void) | null): void { this.legendMenuCb = cb; }
-  setDrawingMenuCallback(cb: ((id: string, x: number, y: number) => void) | null): void { this.drawingMenuCb = cb; }
-  setHideStudies(hidden: boolean): void { this.state.setHideStudies(hidden); this.clearStudySelection(); }
-  get studiesHidden(): boolean { return this.state.hideStudies; }
+  setPriceLineDblClickCallback(cb: (() => void) | null): void {
+    this.priceLineDblClickCb = cb;
+  }
+  setLegendMenuCallback(cb: ((x: number, y: number) => void) | null): void {
+    this.legendMenuCb = cb;
+  }
+  setDrawingMenuCallback(cb: ((id: string, x: number, y: number) => void) | null): void {
+    this.drawingMenuCb = cb;
+  }
+  setHideStudies(hidden: boolean): void {
+    this.state.setHideStudies(hidden);
+    this.clearStudySelection();
+  }
+  get studiesHidden(): boolean {
+    return this.state.hideStudies;
+  }
   /** 注册 TV 式选择工具栏回调（薄委托 tracker.subscribe；选中变化时推送，画线/指标双空 → null） */
-  setSelectionPopupCallback(cb: (info: SelectionPopupInfo | null) => void): void { this.selectionPopup.subscribe(cb); }
+  setSelectionPopupCallback(cb: (info: SelectionPopupInfo | null) => void): void {
+    this.selectionPopup.subscribe(cb);
+  }
   /** 当前选择工具栏信息（React 层读初始值用） */
-  get selectionPopupInfo(): SelectionPopupInfo | null { return this.selectionPopup.current; }
+  get selectionPopupInfo(): SelectionPopupInfo | null {
+    return this.selectionPopup.current;
+  }
   /** 指标选中失效（指标增删/隐藏/换周期/换数据后目标不存在）→ 工具栏收起 */
-  private clearStudySelection(): void { this.selectionPopup.setStudySelection(null, null, this.manager.width - AXIS_WIDTH); }
+  private clearStudySelection(): void {
+    this.selectionPopup.setStudySelection(null, null, this.manager.width - AXIS_WIDTH);
+  }
   /** 回放位置公开读 API（拆分前为实例私有字段、运行时经 window.__chartRenderer 可读；
    *  D 批次迁入 ChartState 后补此 getter 保持对外读取面不变——E2E 回放用例依赖） */
-  get replayIndex(): number | null { return this.state.replayIndex; }
-  setGridMode(mode: GridMode): void { this.state.setGridMode(mode); }
-  setBordersVisible(visible: boolean): void { this.state.setBordersVisible(visible); }
-  setWatermarkVisible(visible: boolean): void { this.state.setWatermarkVisible(visible); }
-  get watermarkOn(): boolean { return this.state.watermarkVisible; }
-  resetPriceScale(): void { this.state.resetPriceScale(); }
+  get replayIndex(): number | null {
+    return this.state.replayIndex;
+  }
+  setGridMode(mode: GridMode): void {
+    this.state.setGridMode(mode);
+  }
+  setBordersVisible(visible: boolean): void {
+    this.state.setBordersVisible(visible);
+  }
+  setWatermarkVisible(visible: boolean): void {
+    this.state.setWatermarkVisible(visible);
+  }
+  get watermarkOn(): boolean {
+    return this.state.watermarkVisible;
+  }
+  resetPriceScale(): void {
+    this.state.resetPriceScale();
+  }
 
   // ---------- 指标 ----------
 
@@ -283,7 +367,8 @@ export class ChartController {
 
   removeIndicator(uid: string): void {
     this.avwapAnchor.maybeCancel(uid); // 被锚定实例移除 → 退出选 bar 模式
-    this.state.indicators.remove(uid); this.clearStudySelection();
+    this.state.indicators.remove(uid);
+    this.clearStudySelection();
   }
 
   updateIndicator(uid: string, options: IndicatorOptions): void {
@@ -291,9 +376,16 @@ export class ChartController {
     this.state.indicators.update(uid, options);
   }
 
-  listIndicators(): IndicatorInfo[] { return this.state.indicators.list(); }
-  exportIndicatorTemplate(): Array<{ id: string; params: Record<string, string | number | boolean> }> { return this.state.indicators.exportTemplate(); }
-  importIndicatorTemplate(list: Array<{ id: string; params?: Record<string, string | number | boolean> }>): void { this.state.indicators.importTemplate(list); this.clearStudySelection(); }
+  listIndicators(): IndicatorInfo[] {
+    return this.state.indicators.list();
+  }
+  exportIndicatorTemplate(): Array<{ id: string; params: Record<string, string | number | boolean> }> {
+    return this.state.indicators.exportTemplate();
+  }
+  importIndicatorTemplate(list: Array<{ id: string; params?: Record<string, string | number | boolean> }>): void {
+    this.state.indicators.importTemplate(list);
+    this.clearStudySelection();
+  }
 
   // ---------- 生命周期 ----------
 
@@ -330,7 +422,9 @@ export class ChartController {
     this.manager.dispose();
   }
 
-  invalidate(): void { this.dirty = true; }
+  invalidate(): void {
+    this.dirty = true;
+  }
 
   /** 强制立即重绘（主题切换等需要零延迟的场景，不等 rAF） */
   redraw(): void {
@@ -339,10 +433,14 @@ export class ChartController {
   }
 
   /** 视口首个可见 bar 的 index（懒加载检测用） */
-  get viewportFirst(): number { return this.viewport.first; }
+  get viewportFirst(): number {
+    return this.viewport.first;
+  }
 
   /** 截图：画布 PNG dataURL */
-  screenshot(): string { return this.manager.canvas.toDataURL('image/png'); }
+  screenshot(): string {
+    return this.manager.canvas.toDataURL('image/png');
+  }
 
   // ---------- 复盘 / 选线 / 视口 ----------
 
@@ -376,8 +474,12 @@ export class ChartController {
   }
 
   /** 注册图表空白处点击回调（弹出下单浮窗） */
-  setChartClickCallback(cb: ((price: number, time: number, clientX: number, clientY: number) => void) | null): void { this.chartClickCb = cb; }
-  setContextMenuCallback(cb: ((price: number, time: number, clientX: number, clientY: number) => void) | null): void { this.contextMenuCb = cb; }
+  setChartClickCallback(cb: ((price: number, time: number, clientX: number, clientY: number) => void) | null): void {
+    this.chartClickCb = cb;
+  }
+  setContextMenuCallback(cb: ((price: number, time: number, clientX: number, clientY: number) => void) | null): void {
+    this.contextMenuCb = cb;
+  }
 
   /** 重置视图：恢复自动价格适配并让最新 K 线贴右 */
   resetView(): void {
@@ -421,7 +523,9 @@ export class ChartController {
     this.invalidate();
   }
 
-  get atRightEdge(): boolean { return this.viewport.isAtRightEdge(); }
+  get atRightEdge(): boolean {
+    return this.viewport.isAtRightEdge();
+  }
 
   /** 以画布中心为锚点缩放 */
   zoom(factor: number): void {
@@ -437,47 +541,71 @@ export class ChartController {
   }
 
   /** 注册面板头部按钮回调（选中副图面板后显示 设置/移除） */
-  setPaneActionCallback(cb: ((action: 'settings' | 'remove', indicatorId: string) => void) | null): void { this.paneActionCb = cb; }
+  setPaneActionCallback(cb: ((action: 'settings' | 'remove', indicatorId: string) => void) | null): void {
+    this.paneActionCb = cb;
+  }
 
   // ---------- 交易可视化 ----------
 
-  setTradeVisual(visual: TradeVisual): void { this.trade.setVisual(visual); }
-  setTradeCallbacks(cbs: TradeCallbacks): void { this.trade.setCallbacks(cbs); }
+  setTradeVisual(visual: TradeVisual): void {
+    this.trade.setVisual(visual);
+  }
+  setTradeCallbacks(cbs: TradeCallbacks): void {
+    this.trade.setCallbacks(cbs);
+  }
 
   // ---------- 联动 ----------
 
   /** 联动：外部图表十字光标时间（绘制垂直参考线） */
-  setSyncCrosshair(time: number | null): void { this.sync.setSyncCrosshair(time); }
+  setSyncCrosshair(time: number | null): void {
+    this.sync.setSyncCrosshair(time);
+  }
 
   /** 联动：外部视口变化（平移/缩放广播，索引空间） */
-  setSyncViewport(v: { first: number; spacing: number }): void { this.sync.setSyncViewport(v); }
+  setSyncViewport(v: { first: number; spacing: number }): void {
+    this.sync.setSyncViewport(v);
+  }
 
   /**
    * 联动发布：当前视口的时间空间范围 {fromTime, toTime}（供 syncBus 广播）。
    * 跨周期/跨品种图表按 TV 语义对齐时间轴——接收方用自己的 series 换算，
    * 因此这里广播时间而非索引（索引空间跨周期会错位）。
    */
-  getViewportTimeRange(): ViewportTimeRange { return this.sync.getViewportTimeRange(); }
+  getViewportTimeRange(): ViewportTimeRange {
+    return this.sync.getViewportTimeRange();
+  }
 
   /**
    * 联动接收：按时间范围对齐视口——用自己的 BarSeries.fractionalIndexAt 把
    * {fromTime, toTime} 换算回索引/间距（TV 时间轴同步语义）。
    * 无效载荷（非有限值/空区间/空序列）安全忽略，不扰动当前视口。
    */
-  setViewportTimeRange(range: ViewportTimeRange): void { this.sync.setViewportTimeRange(range); }
-  getViewport(): { first: number; spacing: number } { return this.sync.getViewport(); }
+  setViewportTimeRange(range: ViewportTimeRange): void {
+    this.sync.setViewportTimeRange(range);
+  }
+  getViewport(): { first: number; spacing: number } {
+    return this.sync.getViewport();
+  }
 
   /** 视口提交（拖拽/缩放结束）回调，用于多图表联动 */
-  onViewportCommit(cb: ((v: { first: number; spacing: number }) => void) | null): void { this.sync.onViewportCommit(cb); }
+  onViewportCommit(cb: ((v: { first: number; spacing: number }) => void) | null): void {
+    this.sync.onViewportCommit(cb);
+  }
 
   /** 十字光标所在 bar 时间回调，用于多图表联动 */
-  onCrosshairTime(cb: ((t: number | null) => void) | null): void { this.sync.onCrosshairTime(cb); }
+  onCrosshairTime(cb: ((t: number | null) => void) | null): void {
+    this.sync.onCrosshairTime(cb);
+  }
 
   /** 最新 bar 时间戳（缺口检测用） */
-  get lastBarTime(): number { return this.state.lastBarTime; }
+  get lastBarTime(): number {
+    return this.state.lastBarTime;
+  }
 
   /** 当前全部 bar（缺口回补合并用） */
-  getBars(): Bar[] { return [...this.state.baseSeries.raw()]; }
+  getBars(): Bar[] {
+    return [...this.state.baseSeries.raw()];
+  }
 
   // ---------- 画线 ----------
 
@@ -486,47 +614,96 @@ export class ChartController {
     this.avwapAnchor.cancelIfActive(); // 锚定落点进行中切换工具 = 放弃（退出选 bar 模式）
     this.drawing.setTool(tool);
   }
-  setMagnet(on: boolean): void { this.drawing.layer.setMagnet(on); }
+  setMagnet(on: boolean): void {
+    this.drawing.layer.setMagnet(on);
+  }
 
   /** 磁吸档位：weak（50px 内吸附）/ strong（始终吸附） */
-  setMagnetMode(mode: 'weak' | 'strong'): void { this.drawing.layer.setMagnetMode(mode); }
-  get magnetMode(): 'weak' | 'strong' { return this.drawing.layer.mode; }
+  setMagnetMode(mode: 'weak' | 'strong'): void {
+    this.drawing.layer.setMagnetMode(mode);
+  }
+  get magnetMode(): 'weak' | 'strong' {
+    return this.drawing.layer.mode;
+  }
 
   /** 清空全部画线 */
-  clearDrawings(): void { this.drawing.layer.clear(); this.notifyDrawings(); this.invalidate(); }
+  clearDrawings(): void {
+    this.drawing.layer.clear();
+    this.notifyDrawings();
+    this.invalidate();
+  }
 
   /** 克隆画线（偏移少量像素，避免与原图完全重合） */
   duplicateDrawing(id: string): void {
     const src = this.drawing.layer.list().find((d) => d.id === id);
     if (!src) return;
-    const iv = this.state.displaySeries.length > 1 ? this.state.displaySeries.raw()[1].time - this.state.displaySeries.raw()[0].time : 60_000;
+    const iv =
+      this.state.displaySeries.length > 1
+        ? this.state.displaySeries.raw()[1].time - this.state.displaySeries.raw()[0].time
+        : 60_000;
     const span = this.state.panes[0].priceScale.range;
     const dPrice = (span.max - span.min) * 0.02;
-    const clone = this.drawing.layer.add(src.type, src.points.map((p) => ({ time: p.time + iv * 3, price: p.price + dPrice })), src.style);
+    const clone = this.drawing.layer.add(
+      src.type,
+      src.points.map((p) => ({ time: p.time + iv * 3, price: p.price + dPrice })),
+      src.style,
+    );
     this.drawing.layer.select(clone.id);
     this.notifyDrawings();
     this.invalidate();
   }
 
-  listDrawings(): Drawing[] { return [...this.drawing.layer.list()]; }
-  get selectedDrawingId(): string | null { return this.drawing.layer.selected?.id ?? null; }
-  updateDrawingStyle(id: string, style: Partial<Drawing['style']>): void { this.drawing.layer.updateStyle(id, style); this.notifyDrawings(); this.invalidate(); }
+  listDrawings(): Drawing[] {
+    return [...this.drawing.layer.list()];
+  }
+  get selectedDrawingId(): string | null {
+    return this.drawing.layer.selected?.id ?? null;
+  }
+  updateDrawingStyle(id: string, style: Partial<Drawing['style']>): void {
+    this.drawing.layer.updateStyle(id, style);
+    this.notifyDrawings();
+    this.invalidate();
+  }
   /** 更新画线分割档位（fib / fib-extension / percent-line；levels = 百分比小数，去重且非空由调用方保证） */
-  updateDrawingLevels(id: string, levels: number[]): void { this.drawing.layer.updateLevels(id, levels); this.notifyDrawings(); this.invalidate(); }
-  setDrawingVisible(id: string, visible: boolean): void { this.drawing.layer.setVisible(id, visible); this.notifyDrawings(); this.invalidate(); }
-  setDrawingLocked(id: string, locked: boolean): void { this.drawing.layer.setLocked(id, locked); this.notifyDrawings(); this.invalidate(); }
+  updateDrawingLevels(id: string, levels: number[]): void {
+    this.drawing.layer.updateLevels(id, levels);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+  setDrawingVisible(id: string, visible: boolean): void {
+    this.drawing.layer.setVisible(id, visible);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+  setDrawingLocked(id: string, locked: boolean): void {
+    this.drawing.layer.setLocked(id, locked);
+    this.notifyDrawings();
+    this.invalidate();
+  }
 
   /** 选中画线（对象树点击行） */
-  selectDrawing(id: string | null): void { this.drawing.layer.select(id); this.drawing.syncSelection(); this.invalidate(); }
+  selectDrawing(id: string | null): void {
+    this.drawing.layer.select(id);
+    this.drawing.syncSelection();
+    this.invalidate();
+  }
 
   /** Ctrl+点击切换多选集合成员（对象树/画布同语义） */
-  toggleDrawingSelection(id: string): void { this.drawing.layer.toggleSelect(id); this.notifyDrawings(); this.invalidate(); }
+  toggleDrawingSelection(id: string): void {
+    this.drawing.layer.toggleSelect(id);
+    this.notifyDrawings();
+    this.invalidate();
+  }
 
   /** 多选集合（B7：Ctrl+点击累积；对象树高亮/ Delete 删除用） */
-  get selectedDrawingIds(): string[] { return this.drawing.layer.selectedIdList; }
+  get selectedDrawingIds(): string[] {
+    return this.drawing.layer.selectedIdList;
+  }
 
   /** 是否存在选中画线（方向键微调 vs 视口平移的路由判据） */
-  hasSelectedDrawing(): boolean { return this.drawing.layer.selectedIdList.length > 0; }
+  hasSelectedDrawing(): boolean {
+    return this.drawing.layer.selectedIdList.length > 0;
+  }
 
   /** 方向键微调（B7）：以像素步长平移全部选中对象，Shift = 大步长。
    *  每次调用为单步历史（入撤销栈）；无选中返回 false 不改动。 */
@@ -547,13 +724,39 @@ export class ChartController {
   }
 
   /** 视觉顺序：置于顶层/上移一层/下移一层/置于底层 */
-  setDrawingOrder(id: string, action: 'front' | 'forward' | 'backward' | 'back'): void { this.drawing.layer.setOrder(id, action); this.notifyDrawings(); this.invalidate(); }
-  removeDrawing(id: string): void { this.drawing.layer.remove(id); this.notifyDrawings(); this.invalidate(); }
-  removeSelectedDrawing(): void { this.drawing.layer.removeSelected(); this.notifyDrawings(); this.invalidate(); }
-  undoDrawing(): void { this.drawing.layer.undo(); this.notifyDrawings(); this.invalidate(); }
-  redoDrawing(): void { this.drawing.layer.redo(); this.notifyDrawings(); this.invalidate(); }
-  exportDrawings(): string { return serializeDrawings(this.drawing.layer.list()); }
-  importDrawings(raw: string): void { this.drawing.layer.replaceAll(deserializeDrawings(raw)); this.notifyDrawings(); this.invalidate(); }
+  setDrawingOrder(id: string, action: 'front' | 'forward' | 'backward' | 'back'): void {
+    this.drawing.layer.setOrder(id, action);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+  removeDrawing(id: string): void {
+    this.drawing.layer.remove(id);
+    this.notifyDrawings();
+    this.invalidate();
+  }
+  removeSelectedDrawing(): void {
+    this.drawing.layer.removeSelected();
+    this.notifyDrawings();
+    this.invalidate();
+  }
+  undoDrawing(): void {
+    this.drawing.layer.undo();
+    this.notifyDrawings();
+    this.invalidate();
+  }
+  redoDrawing(): void {
+    this.drawing.layer.redo();
+    this.notifyDrawings();
+    this.invalidate();
+  }
+  exportDrawings(): string {
+    return serializeDrawings(this.drawing.layer.list());
+  }
+  importDrawings(raw: string): void {
+    this.drawing.layer.replaceAll(deserializeDrawings(raw));
+    this.notifyDrawings();
+    this.invalidate();
+  }
 
   /** 完成路径类画线（双击/回车）：path 既有语义 +
    *  P2-B 多边形（≥3 顶点）/ 艾略特波浪（≥2 锚点）支持提前收尾（最小落点数见 placingRules） */
@@ -622,7 +825,7 @@ export class ChartController {
   /** 图例 timeframeId → Timeframe（缺失/无效时倒计时停用） */
   private resolveTimeframe(): Timeframe | null {
     const id = this.legend.timeframeId;
-    return id ? TIMEFRAMES.find((t) => t.id === id) ?? null : null;
+    return id ? (TIMEFRAMES.find((t) => t.id === id) ?? null) : null;
   }
 
   /**

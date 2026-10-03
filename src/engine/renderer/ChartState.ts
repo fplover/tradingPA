@@ -2,7 +2,16 @@ import type { Viewport } from '../viewport/Viewport';
 import type { Crosshair } from '../crosshair/Crosshair';
 import { BarSeries } from '@/data/BarSeries';
 import type { CloseCountdown } from '../countdown';
-import { heikinAshi, renko, kagi, lineBreak, pointAndFigure, rangeBars, atr, type BrickOptions } from '@/data/transforms';
+import {
+  heikinAshi,
+  renko,
+  kagi,
+  lineBreak,
+  pointAndFigure,
+  rangeBars,
+  atr,
+  type BrickOptions,
+} from '@/data/transforms';
 import { CHART_TYPES, type Bar, type ChartTypeId } from '@/types/market';
 import { DEFAULT_LEGEND_OPTIONS, type LegendOptions, type StudyLegendRect } from './drawCrosshair';
 import type { GridMode } from './drawAxes';
@@ -71,7 +80,12 @@ export class ChartState {
   /** 指标生命周期（拆分④：pane 数组操作独立成模块） */
   readonly indicators: IndicatorManager;
   /** Volume Profile 运行态（P1-F）：经 vpRuntimeOf 暴露给渲染层，IndicatorManager 专用分支读写 */
-  readonly vp: VolumeProfileRuntime = { on: false, params: { ...DEFAULT_VP_PARAMS }, dataEpoch: 0, model: new VolumeProfileModel() };
+  readonly vp: VolumeProfileRuntime = {
+    on: false,
+    params: { ...DEFAULT_VP_PARAMS },
+    dataEpoch: 0,
+    model: new VolumeProfileModel(),
+  };
 
   constructor(
     private viewport: Viewport,

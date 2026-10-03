@@ -29,8 +29,16 @@ export const BollingerBands: IndicatorDef = {
     const sd = stdev(c, p);
     return {
       basis,
-      upper: combine(basis, mapValues(sd, (v) => v * m), (a, b) => a + b),
-      lower: combine(basis, mapValues(sd, (v) => v * m), (a, b) => a - b),
+      upper: combine(
+        basis,
+        mapValues(sd, (v) => v * m),
+        (a, b) => a + b,
+      ),
+      lower: combine(
+        basis,
+        mapValues(sd, (v) => v * m),
+        (a, b) => a - b,
+      ),
       band: basis, // band 占位，填充范围由 upper/lower 决定（渲染时取 bandWith 两端）
     };
   },
@@ -68,8 +76,16 @@ export const KeltnerChannels: IndicatorDef = {
     const atr = wilder(trs, ap);
     return {
       basis,
-      upper: combine(basis, mapValues(atr, (v) => v * m), (a, b) => a + b),
-      lower: combine(basis, mapValues(atr, (v) => v * m), (a, b) => a - b),
+      upper: combine(
+        basis,
+        mapValues(atr, (v) => v * m),
+        (a, b) => a + b,
+      ),
+      lower: combine(
+        basis,
+        mapValues(atr, (v) => v * m),
+        (a, b) => a - b,
+      ),
     };
   },
 };
@@ -96,7 +112,9 @@ export const DonchianChannels: IndicatorDef = {
     const basis: Array<number | undefined> = [];
     for (let i = 0; i < bars.length; i++) {
       if (i < p - 1) {
-        upper.push(undefined); lower.push(undefined); basis.push(undefined);
+        upper.push(undefined);
+        lower.push(undefined);
+        basis.push(undefined);
         continue;
       }
       let hh = -Infinity;

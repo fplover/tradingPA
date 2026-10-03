@@ -31,9 +31,7 @@ const PRICE_SOURCE = 'price';
 function useSourceOptions(): ToolbarOption[] {
   const active = useIndicatorStore((s) => s.active);
   return useMemo(() => {
-    const defs = active
-      .map((a) => getIndicatorDef(a.id))
-      .filter((d): d is NonNullable<typeof d> => Boolean(d));
+    const defs = active.map((a) => getIndicatorDef(a.id)).filter((d): d is NonNullable<typeof d> => Boolean(d));
     return [
       { value: PRICE_SOURCE, label: '价格', group: '作用对象' },
       ...defs.map((d) => ({ value: d.id, label: d.name, group: '指标' })),
@@ -64,7 +62,11 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
     () => (def ? def.plots.map((p) => ({ value: p.key, label: p.label })) : []),
     [def],
   );
-  const effPlotKey = def ? (plotOptions.some((o) => o.value === plotKey) ? plotKey : plotOptions[0]?.value ?? '') : '';
+  const effPlotKey = def
+    ? plotOptions.some((o) => o.value === plotKey)
+      ? plotKey
+      : (plotOptions[0]?.value ?? '')
+    : '';
 
   const submit = () => {
     const t = Number(threshold);
@@ -184,10 +186,7 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
           清除已触发
         </button>
       )}
-      <AlertEditDialog
-        alert={alerts.find((a) => a.id === editingId) ?? null}
-        onClose={() => setEditingId(null)}
-      />
+      <AlertEditDialog alert={alerts.find((a) => a.id === editingId) ?? null} onClose={() => setEditingId(null)} />
     </div>
   );
 }
@@ -196,7 +195,17 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
  *  清单经画线数据桥（useAlertWatcher 的 currentHlines）实时读取；
  *  默认 crossUp——价格穿越水平线才触发，避免 greater 在「价格已在线上方」时立即触发。
  *  frequency / cooldownIdx / expiryIdx 跟随主表单当前选择（与价格/指标/Pine 警报一致）。 */
-function HlineAlertSection({ symbol, frequency, cooldownIdx, expiryIdx }: { symbol: string; frequency: AlertFrequency; cooldownIdx: number; expiryIdx: number }) {
+function HlineAlertSection({
+  symbol,
+  frequency,
+  cooldownIdx,
+  expiryIdx,
+}: {
+  symbol: string;
+  frequency: AlertFrequency;
+  cooldownIdx: number;
+  expiryIdx: number;
+}) {
   const add = useAlertStore((s) => s.add);
   const hlines = useSyncExternalStore(subscribeDrawings, currentHlines);
   if (hlines.length === 0) return null;

@@ -42,7 +42,9 @@ test('切换周期和图表类型', async ({ page }) => {
   await expect(page.getByText(/[1-9][0-9,]* 根 · 1分/)).toBeVisible({ timeout: 20_000 });
 
   const chartTypeOf = () =>
-    page.evaluate(() => (window as unknown as { __chartRenderer?: { chartTypeNow: string } }).__chartRenderer?.chartTypeNow ?? null);
+    page.evaluate(
+      () => (window as unknown as { __chartRenderer?: { chartTypeNow: string } }).__chartRenderer?.chartTypeNow ?? null,
+    );
   const paintedPx = () =>
     page.evaluate(() => {
       const c = document.querySelector('canvas') as HTMLCanvasElement;
@@ -79,8 +81,9 @@ test('添加指标创建副图', async ({ page }) => {
     .poll(() =>
       page.evaluate(
         () =>
-          (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer?.listIndicators().some((i) => i.name === 'RSI 相对强弱') ??
-          false,
+          (window as unknown as { __chartRenderer?: { listIndicators(): Array<{ name: string }> } }).__chartRenderer
+            ?.listIndicators()
+            .some((i) => i.name === 'RSI 相对强弱') ?? false,
       ),
     )
     .toBe(true);
@@ -137,7 +140,12 @@ test('回放模式进入与退出', async ({ page }) => {
   await expect(page.getByRole('menuitem', { name: '选择K线' })).toBeHidden();
   await page.waitForTimeout(150); // portal 遮罩移除的微任务时间
   // 播放推进（可见页面定时器正常；经开发句柄读取回放位置）
-  const idxOf = () => page.evaluate(() => (window as unknown as { __chartRenderer?: { replayIndex: number | null } }).__chartRenderer?.replayIndex ?? null);
+  const idxOf = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __chartRenderer?: { replayIndex: number | null } }).__chartRenderer?.replayIndex ??
+        null,
+    );
   const before = await idxOf();
   expect(before).not.toBeNull();
   await page.getByRole('button', { name: '播放' }).click();
@@ -183,14 +191,22 @@ test('图表右键菜单与缩放快捷键', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
 
-  await page.locator('canvas').first().click({ button: 'right', position: { x: 400, y: 300 } });
+  await page
+    .locator('canvas')
+    .first()
+    .click({ button: 'right', position: { x: 400, y: 300 } });
   await expect(page.getByRole('menuitem', { name: /加入自选股/ })).toBeVisible();
   await expect(page.getByRole('menuitem', { name: /重置图表/ })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('menuitem', { name: /重置图表/ })).toBeHidden();
 
   const spacingOf = () =>
-    page.evaluate(() => (window as unknown as { __chartRenderer?: { getViewport(): { spacing: number } } }).__chartRenderer?.getViewport().spacing ?? 0);
+    page.evaluate(
+      () =>
+        (
+          window as unknown as { __chartRenderer?: { getViewport(): { spacing: number } } }
+        ).__chartRenderer?.getViewport().spacing ?? 0,
+    );
   const before = await spacingOf();
   await page.keyboard.press('+');
   await page.waitForTimeout(250);

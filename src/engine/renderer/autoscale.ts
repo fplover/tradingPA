@@ -27,7 +27,13 @@ export interface AutoscaleOptions {
 }
 
 /** 主图价格域自适应：可见 bar 高低 + 叠加指标值域；manual 面板保持当前范围 */
-export function autoscalePrice(pane: ScalablePane, series: BarSeries, from: number, to: number, opts: AutoscaleOptions): void {
+export function autoscalePrice(
+  pane: ScalablePane,
+  series: BarSeries,
+  from: number,
+  to: number,
+  opts: AutoscaleOptions,
+): void {
   if (!opts.autoScaleOn) return;
   let low = Infinity;
   let high = -Infinity;
@@ -51,7 +57,13 @@ export function autoscalePrice(pane: ScalablePane, series: BarSeries, from: numb
 }
 
 /** 副图指标价格域自适应：含零轴（histogram 需要） */
-export function autoscaleIndicators(pane: ScalablePane, series: BarSeries, from: number, to: number, opts: AutoscaleOptions): void {
+export function autoscaleIndicators(
+  pane: ScalablePane,
+  series: BarSeries,
+  from: number,
+  to: number,
+  opts: AutoscaleOptions,
+): void {
   if (pane.manual) return;
   let low = Infinity;
   let high = -Infinity;
@@ -69,7 +81,13 @@ export function autoscaleIndicators(pane: ScalablePane, series: BarSeries, from:
 /** 确保面板价格轴尺寸与自适应范围最新（rAF 暂停时拖拽换算也正确）。
  *  与 draw 帧内的自适应区分：这里只按可见 bar 高低适配（不含指标域），
  *  调用方负责先 layout() 并把可视区间换算好。 */
-export function ensurePriceScaleReady(pane: ScalablePane, series: BarSeries, from: number, to: number, logScale: boolean): void {
+export function ensurePriceScaleReady(
+  pane: ScalablePane,
+  series: BarSeries,
+  from: number,
+  to: number,
+  logScale: boolean,
+): void {
   if (to < from) return;
   let low = Infinity;
   let high = -Infinity;

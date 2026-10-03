@@ -40,12 +40,14 @@ function normalizeAlert(raw: Record<string, unknown>): PriceAlert | null {
   if (typeof raw.id !== 'string' || typeof raw.symbol !== 'string') return null;
   if (typeof raw.threshold !== 'number' || !Number.isFinite(raw.threshold)) return null;
   const src = raw.source as AlertSource | undefined;
-  if (!src || (src.type !== 'price' && src.type !== 'indicator' && src.type !== 'pine' && src.type !== 'line')) return null;
+  if (!src || (src.type !== 'price' && src.type !== 'indicator' && src.type !== 'pine' && src.type !== 'line'))
+    return null;
   if (src.type === 'indicator' && (typeof src.indicatorId !== 'string' || typeof src.plotKey !== 'string')) return null;
   if (src.type === 'pine' && (typeof src.indicatorId !== 'string' || typeof src.key !== 'string')) return null;
   if (src.type === 'line' && typeof src.drawingId !== 'string') return null;
   const condition = raw.condition;
-  if (condition !== 'greater' && condition !== 'less' && condition !== 'crossUp' && condition !== 'crossDown') return null;
+  if (condition !== 'greater' && condition !== 'less' && condition !== 'crossUp' && condition !== 'crossDown')
+    return null;
   return {
     id: raw.id,
     symbol: raw.symbol,

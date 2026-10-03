@@ -7,7 +7,13 @@ import { DEFAULT_LEGEND_OPTIONS } from './legendTypes';
 /** 图例 OHLCV 字段按图表类型收窄（TV 规格）：
  *  高低图 H L C；柱状图 O C；线族（线形/阶梯/带标记/HLC面积）仅 C；
  *  成交量蜡烛 O H L C + 柱宽语义提示；其余类型（蜡烛/竹线/空心/平均K/基线/面积/砖块）O H L C。 */
-export function legendFieldsFor(chartType: ChartTypeId): { open: boolean; high: boolean; low: boolean; close: boolean; volumeWidthHint: boolean } {
+export function legendFieldsFor(chartType: ChartTypeId): {
+  open: boolean;
+  high: boolean;
+  low: boolean;
+  close: boolean;
+  volumeWidthHint: boolean;
+} {
   switch (chartType) {
     case 'high-low':
       return { open: false, high: true, low: true, close: true, volumeWidthHint: false };
@@ -86,7 +92,8 @@ export function drawLegendBlock(
       if (f.high) fields.push(['高=', bar.high.toFixed(d), color]);
       if (f.low) fields.push(['低=', bar.low.toFixed(d), color]);
       if (f.close) fields.push(['收=', bar.close.toFixed(d), color]);
-      if (options.showChange) fields.push(['涨跌', `${sign}${change.toFixed(d)} (${sign}${changePct.toFixed(2)}%)`, color]);
+      if (options.showChange)
+        fields.push(['涨跌', `${sign}${change.toFixed(d)} (${sign}${changePct.toFixed(2)}%)`, color]);
       // 成交量蜡烛：柱宽编码成交量，TV 图例附语义提示
       if (f.volumeWidthHint) fields.push(['量宽', '表示成交量', theme.legendDim]);
     }

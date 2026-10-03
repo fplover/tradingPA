@@ -41,7 +41,9 @@ export function TemplateSection() {
 
   return (
     <section style={{ borderTop: '1px solid var(--border)', flexShrink: 0 }} aria-label="指标模板">
-      <div style={{ color: 'var(--text-dim)', fontSize: fontSize.sm, padding: `${space.xs}px ${space.sm}px 0` }}>模板</div>
+      <div style={{ color: 'var(--text-dim)', fontSize: fontSize.sm, padding: `${space.xs}px ${space.sm}px 0` }}>
+        模板
+      </div>
 
       <div style={{ display: 'flex', gap: space.xs, padding: `${space.xs}px ${space.sm}px` }}>
         <input

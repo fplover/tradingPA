@@ -12,7 +12,18 @@ import { drawIndicator, indicatorValuesAt } from './drawIndicator';
 import { drawPinePaint, isCandleLike } from './drawPinePaint';
 import { drawPineShapes } from './drawPineShapes';
 import { autoscalePrice, autoscaleIndicators, type AutoscaleOptions } from './autoscale';
-import { drawOhlc, drawLine, drawArea, drawBaseline, drawColumns, drawHighLow, drawStepLine, drawLineMarkers, drawHlcArea, drawVolumeCandles } from './seriesRenderers';
+import {
+  drawOhlc,
+  drawLine,
+  drawArea,
+  drawBaseline,
+  drawColumns,
+  drawHighLow,
+  drawStepLine,
+  drawLineMarkers,
+  drawHlcArea,
+  drawVolumeCandles,
+} from './seriesRenderers';
 import { formatCompact } from '@/data/format';
 import { theme, TV_FONT } from '../theme';
 import { isTimeBasedChartType, vpRuntimeOf } from './ChartState';
@@ -50,7 +61,15 @@ export class PaneRenderer {
   /** 绘制单面板内容（面板局部坐标：调用方已 translate 到 pane.y）。
    *  countdownText 由编排层每帧算一次后传入（多面板共用同一墙钟读数）。
    *  compare = 对比序列图例信息（P2-D；随 legend 每帧经 RenderPipeline 下发，null = 不叠加）。 */
-  draw(ctx: CanvasRenderingContext2D, pane: PaneState, from: number, to: number, opts: AutoscaleOptions, countdownText: string | null, compare?: CompareLegendInfo | null): void {
+  draw(
+    ctx: CanvasRenderingContext2D,
+    pane: PaneState,
+    from: number,
+    to: number,
+    opts: AutoscaleOptions,
+    countdownText: string | null,
+    compare?: CompareLegendInfo | null,
+  ): void {
     const geo: DrawGeometry = { chartW: this.host.chartW(), chartH: pane.height };
     ctx.save();
     ctx.translate(0, pane.y);
@@ -76,7 +95,18 @@ export class PaneRenderer {
       // 仅时间轴类图表绘制（变换类无价格连续性），隐藏指标开关一并生效
       const vp = vpRuntimeOf(this.host.viewport);
       if (vp?.on && !this.host.hideStudies() && isTimeBasedChartType(this.host.chartType())) {
-        drawVolumeProfile(ctx, this.host.series().raw(), from, to, pane.priceScale, geo, vp.model, vp.params, vp.dataEpoch, this.host.decimals());
+        drawVolumeProfile(
+          ctx,
+          this.host.series().raw(),
+          from,
+          to,
+          pane.priceScale,
+          geo,
+          vp.model,
+          vp.params,
+          vp.dataEpoch,
+          this.host.decimals(),
+        );
       }
       // 主图叠加指标
       for (const inst of pane.indicators) {
@@ -130,7 +160,12 @@ export class PaneRenderer {
     if (pane.kind === 'indicator' && pane.indicators.length > 0) {
       const inst = pane.indicators[0];
       const value = this.indicatorValueAt(inst, to);
-      drawPaneLegend(ctx, inst.name, value === null ? '' : formatCompact(value), inst.def.plots[0]?.style.color ?? theme.axisText);
+      drawPaneLegend(
+        ctx,
+        inst.name,
+        value === null ? '' : formatCompact(value),
+        inst.def.plots[0]?.style.color ?? theme.axisText,
+      );
       if (pane.id === this.host.selectedPaneId()) {
         pane.headerBtns = drawPaneButtons(ctx, geo);
       }
@@ -168,7 +203,14 @@ export class PaneRenderer {
 
   /** Pine 绘图指令相位绘制（P2-A①）：主价格面板的全部可见指标实例，
    *  无 paint 旁路的实例在 drawPinePaint 内直接返回（computeExtra undefined）。 */
-  private drawPinePaints(ctx: CanvasRenderingContext2D, pane: PaneState, geo: DrawGeometry, from: number, to: number, mode: 'bg' | 'bar'): void {
+  private drawPinePaints(
+    ctx: CanvasRenderingContext2D,
+    pane: PaneState,
+    geo: DrawGeometry,
+    from: number,
+    to: number,
+    mode: 'bg' | 'bar',
+  ): void {
     const bars = this.host.series().raw();
     for (const inst of pane.indicators) {
       if (this.host.hideStudies() || !inst.isVisibleOn(this.host.timeframeId())) continue;
@@ -178,7 +220,13 @@ export class PaneRenderer {
 
   /** Pine plotshape/plotchar 标记绘制（P2-A②）：与 drawPinePaints 同遍历口径，
    *  无 shape 旁路（kind 不匹配）的实例在 drawPineShapes 内直接返回。 */
-  private drawPineMarkers(ctx: CanvasRenderingContext2D, pane: PaneState, geo: DrawGeometry, from: number, to: number): void {
+  private drawPineMarkers(
+    ctx: CanvasRenderingContext2D,
+    pane: PaneState,
+    geo: DrawGeometry,
+    from: number,
+    to: number,
+  ): void {
     const bars = this.host.series().raw();
     for (const inst of pane.indicators) {
       if (this.host.hideStudies() || !inst.isVisibleOn(this.host.timeframeId())) continue;
@@ -187,7 +235,13 @@ export class PaneRenderer {
   }
 
   /** 图表类型 → 序列渲染器分发（面板局部坐标：绘制内容已通过 translate 偏移） */
-  private drawPriceSeries(ctx: CanvasRenderingContext2D, pane: PaneState, geo: DrawGeometry, from: number, to: number): void {
+  private drawPriceSeries(
+    ctx: CanvasRenderingContext2D,
+    pane: PaneState,
+    geo: DrawGeometry,
+    from: number,
+    to: number,
+  ): void {
     const vs = this.host.viewport;
     const ps = pane.priceScale;
     const series = this.host.series();

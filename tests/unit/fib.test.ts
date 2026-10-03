@@ -58,7 +58,12 @@ function fixture(bars: Bar[] = BARS, spacing = 8) {
   return { ctx, series, viewport, priceScale, geo };
 }
 
-function dc(series: BarSeries, viewport: Viewport, priceScale: PriceScale, geo: { chartW: number; chartH: number }): DrawContext {
+function dc(
+  series: BarSeries,
+  viewport: Viewport,
+  priceScale: PriceScale,
+  geo: { chartW: number; chartH: number },
+): DrawContext {
   return { viewport, priceScale, series, geo };
 }
 
@@ -240,8 +245,18 @@ describe('DRAWING_TOOLS 注册表（B6 新增 5 工具 + P2-B 新增 12 工具 +
   it('总数 30，既有 12 工具不动', () => {
     expect(DRAWING_TOOLS).toHaveLength(30);
     expect(DRAWING_TOOLS.slice(0, 12).map((t) => t.id)).toEqual([
-      'trendline', 'ray', 'hline', 'vline', 'arrow', 'info-line', 'channel',
-      'rect', 'ellipse', 'path', 'text', 'fib',
+      'trendline',
+      'ray',
+      'hline',
+      'vline',
+      'arrow',
+      'info-line',
+      'channel',
+      'rect',
+      'ellipse',
+      'path',
+      'text',
+      'fib',
     ]);
   });
 
@@ -299,7 +314,15 @@ describe('新类型序列化兼容', () => {
 
   it('坏数据丢弃路径不受影响', () => {
     const raw = JSON.stringify([
-      { id: 'a', type: 'fib-extension', points: [{ time: 1, price: 2 }, { time: 2, price: 3 }, { time: 3, price: 4 }] },
+      {
+        id: 'a',
+        type: 'fib-extension',
+        points: [
+          { time: 1, price: 2 },
+          { time: 2, price: 3 },
+          { time: 3, price: 4 },
+        ],
+      },
       { foo: 1 },
       { id: 'b', type: 'fib-auto', points: 'not-array' },
     ]);
@@ -493,7 +516,9 @@ describe('命中测试：斐波那契家族', () => {
     const ry = Math.abs(b.y - a.y);
     // 0.5 弧中点（圆心 = 第 1 锚点 + 双轴半径 × 方向，右上象限）
     const mid = -Math.PI / 4;
-    expect(hitTestDrawing(d, a.x + rx * 0.5 * Math.cos(mid), a.y + ry * 0.5 * Math.sin(mid), c)).toEqual({ part: 'body' });
+    expect(hitTestDrawing(d, a.x + rx * 0.5 * Math.cos(mid), a.y + ry * 0.5 * Math.sin(mid), c)).toEqual({
+      part: 'body',
+    });
     // 象限背面（左上）距任一弧 > 6px → null
     expect(hitTestDrawing(d, a.x - 20, a.y - 20, c)).toBeNull();
   });

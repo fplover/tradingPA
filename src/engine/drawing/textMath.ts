@@ -4,7 +4,8 @@
  *  渲染取精确宽度用 ctx.measureText，命中取本估算 + 4px 外扩，两者偏差在容差内。 */
 
 /** CJK 及全宽符号区段（表意文字/韩文/全角 ASCII/中文标点） */
-const CJK_RE = /[\u1100-\u11ff\u2e80-\u9fff\ua960-\ua97f\uac00-\ud7ff\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/;
+const CJK_RE =
+  /[\u1100-\u11ff\u2e80-\u9fff\ua960-\ua97f\uac00-\ud7ff\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/;
 
 /** 估算文本像素宽（CJK 全宽 / 拉丁 0.6 宽） */
 export function measureTextWidth(text: string, fontSize: number): number {

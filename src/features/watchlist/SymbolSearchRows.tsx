@@ -35,23 +35,46 @@ export function ResultRow({ hit, query, selected, addMode, onHover, onChoose, ro
         background: selected ? 'var(--panel-2)' : 'transparent',
       }}
     >
-      {selected && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: 'var(--accent)' }} />}
+      {selected && (
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: 'var(--accent)' }} />
+      )}
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: fontSize.lg, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div
+          style={{
+            fontSize: fontSize.lg,
+            fontWeight: 600,
+            color: 'var(--text)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
           <Highlight text={inst.symbol} query={query} />
         </div>
-        <div style={{ fontSize: fontSize.sm, color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div
+          style={{
+            fontSize: fontSize.sm,
+            color: 'var(--text-faint)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
           <Highlight text={inst.name} query={query} />
         </div>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: space.sm, flexShrink: 0 }}>
-        {market.label !== inst.exchange && <span style={{ fontSize: fontSize.sm, color: 'var(--text-faint)' }}>{inst.exchange}</span>}
+        {market.label !== inst.exchange && (
+          <span style={{ fontSize: fontSize.sm, color: 'var(--text-faint)' }}>{inst.exchange}</span>
+        )}
         <span style={badgeStyle}>{market.label}</span>
       </div>
 
-      <span style={{ width: 20, textAlign: 'center', color: 'var(--accent)', fontSize: 16, flexShrink: 0 }}>{addMode ? '+' : ''}</span>
+      <span style={{ width: 20, textAlign: 'center', color: 'var(--accent)', fontSize: 16, flexShrink: 0 }}>
+        {addMode ? '+' : ''}
+      </span>
     </div>
   );
 }

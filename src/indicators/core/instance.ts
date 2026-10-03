@@ -111,7 +111,12 @@ export class IndicatorInstance {
   styleFor(plotKey: string, base: PlotStyle): PlotStyle {
     const o = this.styles[plotKey];
     if (!o) return base;
-    return { ...base, color: o.color ?? base.color, lineWidth: o.lineWidth ?? base.lineWidth, kind: o.kind ?? base.kind };
+    return {
+      ...base,
+      color: o.color ?? base.color,
+      lineWidth: o.lineWidth ?? base.lineWidth,
+      kind: o.kind ?? base.kind,
+    };
   }
 
   isPlotHidden(plotKey: string): boolean {
@@ -139,7 +144,11 @@ export class IndicatorInstance {
    *
    * 返回的 outputs 是副本：调用方只读，禁就地修改（改副本不影响缓存）。
    */
-  computeWindow(bars: readonly Bar[], from: number, to: number): { outputs: IndicatorOutputs; ctxFrom: number; extra: unknown } {
+  computeWindow(
+    bars: readonly Bar[],
+    from: number,
+    to: number,
+  ): { outputs: IndicatorOutputs; ctxFrom: number; extra: unknown } {
     const lastBar = bars.length > 0 ? bars[bars.length - 1] : undefined;
     const key = `${from}:${to}`;
     const hit = this.windowCache.get(key);

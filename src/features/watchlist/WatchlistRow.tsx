@@ -2,7 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Flag, X } from 'lucide-react';
 import type { Instrument } from '@/types/instrument';
 import type { Quote } from '@/data/sources/types';
-import { decimalsFor, directionOf, directionVar, formatCompact, formatPct, formatPrice, formatSigned } from '@/data/format';
+import {
+  decimalsFor,
+  directionOf,
+  directionVar,
+  formatCompact,
+  formatPct,
+  formatPrice,
+  formatSigned,
+} from '@/data/format';
 import type { ColumnId } from '@/store/watchlistStore';
 import { COLUMN_WIDTH, QUOTE_FIELD } from './watchlistShared';
 import { fontSize, space } from '@/ui/tokens';
@@ -92,15 +100,34 @@ export function WatchlistRow({
       }}
     >
       {/* 当前图表品种的左侧强调条 */}
-      {isActive && <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: 'var(--accent)' }} />}
+      {isActive && (
+        <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: 'var(--accent)' }} />
+      )}
 
       <div style={{ flex: 1, minWidth: 108, display: 'flex', alignItems: 'center', gap: 5 }}>
         {isFlagged && <Flag size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} aria-label="已标记" />}
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: fontSize.lg, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div
+            style={{
+              fontSize: fontSize.lg,
+              fontWeight: 600,
+              color: 'var(--text)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
             {instrument.symbol}
           </div>
-          <div style={{ fontSize: fontSize.sm, color: 'var(--text-faint)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div
+            style={{
+              fontSize: fontSize.sm,
+              color: 'var(--text-faint)',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
             {instrument.name} · {instrument.exchange}
           </div>
         </div>

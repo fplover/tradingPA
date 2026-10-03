@@ -84,9 +84,7 @@ export function equalRatios(n: number): number[] {
 export function fitRatios(ratios: unknown, n: number): number[] {
   const count = Math.max(1, n);
   if (!Array.isArray(ratios) || ratios.length !== count) return equalRatios(count);
-  return ratios.map((r) =>
-    typeof r === 'number' && Number.isFinite(r) && r >= MIN_TRACK_RATIO ? r : MIN_TRACK_RATIO,
-  );
+  return ratios.map((r) => (typeof r === 'number' && Number.isFinite(r) && r >= MIN_TRACK_RATIO ? r : MIN_TRACK_RATIO));
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

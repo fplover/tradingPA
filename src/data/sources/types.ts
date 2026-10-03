@@ -36,7 +36,10 @@ export interface BarsRequest {
 
 /** 无历史 K 线可用时抛出，UI 据此显示「暂无该市场历史数据」而非假数据 */
 export class NoHistoryError extends Error {
-  constructor(public instrument: Instrument, public timeframe: TimeframeId) {
+  constructor(
+    public instrument: Instrument,
+    public timeframe: TimeframeId,
+  ) {
     super(`${instrument.symbol} 在 ${timeframe} 周期暂无可用历史数据源`);
     this.name = 'NoHistoryError';
   }

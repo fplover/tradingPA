@@ -59,7 +59,11 @@ export function useTvShortcuts(options: TvShortcutsOptions) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return;
+      if (
+        el &&
+        (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+      )
+        return;
       if (el && el.closest('[role="menu"], [role="dialog"], [role="listbox"]')) return;
       const k = e.key;
       const lower = k.toLowerCase();
@@ -168,7 +172,11 @@ export function useTvShortcuts(options: TvShortcutsOptions) {
         // 多图表：焦点已在图表画布上时 Tab/Shift+Tab 切换单元格（TV 行为）；
         // 其余位置保留原生 Tab 导航（可访问性）
         const active = document.activeElement;
-        if (useLayoutStore.getState().layout > 1 && active instanceof HTMLCanvasElement && active.dataset.tvChart !== undefined) {
+        if (
+          useLayoutStore.getState().layout > 1 &&
+          active instanceof HTMLCanvasElement &&
+          active.dataset.tvChart !== undefined
+        ) {
           const list = [...document.querySelectorAll<HTMLCanvasElement>('canvas[data-tv-chart]')];
           if (list.length > 1) {
             e.preventDefault();
