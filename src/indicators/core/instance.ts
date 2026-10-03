@@ -158,7 +158,9 @@ export class IndicatorInstance {
       this.windowCache.set(key, hit);
       return { outputs: copyOutputs(hit.outputs), ctxFrom: hit.ctxFrom, extra: hit.extra };
     }
-    const ctxFrom = Math.max(0, from - this.def.lookback);
+    // 累积型指标必须自数据起点起算：其数值是绝对累计量，切片重算会让同一根 bar 的值
+    // 随窗口而变（视口/图例/警报各自窗口不同）。见 core/types.ts 的 cumulative 注释。
+    const ctxFrom = this.def.cumulative ? 0 : Math.max(0, from - this.def.lookback);
     const ctx = bars.slice(ctxFrom, to + 1);
     const outputs = this.def.compute(ctx, this.params);
     const extra = this.def.computeExtra?.(ctx, this.params);

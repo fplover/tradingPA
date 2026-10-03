@@ -45,8 +45,20 @@ export interface IndicatorDef {
   /** true = 区间几何型指标（Volume Profile）：不产逐 bar 序列、不建实例/面板，
    *  由 IndicatorManager 走专用分支挂图表级状态（P1-F 蓝图 §4） */
   profile?: boolean;
-  /** 计算所需的最大回看 bar 数 */
+  /** 计算所需的最大回看 bar 数。cumulative 为 true 时此字段被忽略。 */
   lookback: number;
+  /**
+   * 累积型指标（OBV / VWAP / CVD / ADL / Chaikin / AVWAP…）：数值是**自数据起点累计**
+   * 的绝对量，同一根 bar 的值与「从哪里开始算」无关。
+   *
+   * 这类指标**不能用窗口切片重算**——否则平移一次图，同一根 bar 的值就变，
+   * 且图例（(i-50, i) 窗口）与画线（(from, to) 窗口）会给出两个不同的数。
+   * 置 true 后 computeWindow 一律从 bar 0 起算再按窗口截取（见 core/instance.ts），
+   * 代价是每窗口 O(to) 而非 O(lookback)，对已加载数据量级（≤ 数千根）可忽略。
+   *
+   * 回归测试见 tests/unit/indicator-window-invariance.test.ts。
+   */
+  cumulative?: boolean;
   params: IndicatorParam[];
   plots: IndicatorPlot[];
   compute(bars: readonly Bar[], params: Record<string, ParamValue>): IndicatorOutputs;

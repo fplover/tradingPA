@@ -11,6 +11,7 @@ export const OBV: IndicatorDef = {
   category: '成交量',
   overlay: false,
   lookback: 1,
+  cumulative: true,
   params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.blue }],
   plots: [{ key: 'obv', label: 'OBV', style: { kind: 'line', color: PALETTE.blue, lineWidth: 2 } }],
   compute: (bars) => {
@@ -34,6 +35,7 @@ export const VWAP: IndicatorDef = {
   category: '成交量',
   overlay: true,
   lookback: 1,
+  cumulative: true,
   params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.orange }],
   plots: [{ key: 'vwap', label: 'VWAP', style: { kind: 'line', color: PALETTE.orange, lineWidth: 1.5 } }],
   compute: (bars) => {
@@ -57,6 +59,7 @@ export const CVD: IndicatorDef = {
   category: '成交量',
   overlay: false,
   lookback: 1,
+  cumulative: true,
   params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.purple }],
   plots: [{ key: 'cvd', label: 'CVD', style: { kind: 'line', color: PALETTE.purple, lineWidth: 2 } }],
   compute: (bars) => {

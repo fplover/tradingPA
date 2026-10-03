@@ -25,6 +25,7 @@ export const ADL: IndicatorDef = {
   category: '成交量',
   overlay: false,
   lookback: 1,
+  cumulative: true,
   params: [{ key: 'color', label: '颜色', type: 'color', default: PALETTE.green }],
   plots: [{ key: 'adl', label: 'A/D', style: { kind: 'line', color: PALETTE.green, lineWidth: 2 } }],
   compute: (bars) => ({ adl: adlValues(bars) }),
@@ -37,6 +38,7 @@ export const ChaikinOsc: IndicatorDef = {
   category: '成交量',
   overlay: false,
   lookback: 100,
+  cumulative: true,
   params: [
     { key: 'fast', label: '快线', type: 'number', default: 3, min: 1, max: 50 },
     { key: 'slow', label: '慢线', type: 'number', default: 10, min: 1, max: 100 },
