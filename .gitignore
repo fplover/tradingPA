@@ -6,6 +6,7 @@ dist-ssr
 .playwright-browsers
 test-results
 playwright-report
+.vitest
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
