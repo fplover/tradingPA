@@ -6,7 +6,7 @@ import type { CSSProperties, JSX, ReactNode } from 'react';
  *  ——细线、几何精确、无填充的 TV 图标语言。描边色继承 CSS color，
  *  激活/悬停变色由调用方 style 控制（与既有 LucideIcon 调用处兼容）。
  *  按族分三个文件：tvIcons.tsx（基础 + 控件族）、tvIconsDraw.tsx（线条/几何/测量/百分比）、
- *  tvIconsFib.tsx（文本/Fib/江恩/艾略特）；本文件汇总 re-export，调用方只引此处。 */
+ *  tvIconsFib.tsx（文本/Fib/江恩/艾略特）；tvIconSet.ts 汇总 re-export，调用方只引此处。 */
 
 export interface TvIconProps {
   size?: number;
@@ -136,7 +136,3 @@ export function TvCaret({ size, strokeWidth }: TvIconProps): JSX.Element {
     </TvIcon>
   );
 }
-
-// 线条/几何/测量/百分比 与 文本/Fib/江恩/艾略特 两族图标（供 ICONS 统一从本模块引入）
-export * from './tvIconsDraw';
-export * from './tvIconsFib';

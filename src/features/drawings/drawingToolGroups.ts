@@ -32,7 +32,7 @@ import {
   TvTrendline,
   TvVline,
   type TvIconComponent,
-} from './tvIcons';
+} from './tvIconSet';
 import type { DrawingTypeId } from '@/engine/drawing/types';
 
 export type ToolbarItem = DrawingTypeId | 'cursor' | 'magnet';

@@ -4,7 +4,8 @@ import { useTradeStore } from './tradeStore';
 import { useTradePanelStore } from '@/store/tradePanelStore';
 import { Modal, Tab, TabList } from '@/ui/primitives';
 import * as Tabs from '@radix-ui/react-tabs';
-import { OrderDialog, ORDER_TYPE_LABELS } from './OrderDialog';
+import { OrderDialog } from './OrderDialog';
+import { ORDER_TYPE_LABELS } from './orderLabels';
 import { icon, radius } from '@/ui/tokens';
 
 const fmtQty = (q: number) => String(Number(q.toFixed(8)));

@@ -1,22 +1,15 @@
-import { createContext, useCallback, useContext, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { AlertTriangle, Check, Info } from 'lucide-react';
 import { icon, radius, shadow, space, zIndex } from '@/ui/tokens';
+import { ToastCtx, type ToastKind } from './toastModel';
 
 /** 全局操作反馈 Toast（TV 规格）：顶部居中深色 pill，150ms 淡入，3s 自动消失。
- *  用法：const toast = useToast(); toast('已加入自选股'); */
-
-export type ToastKind = 'success' | 'info' | 'error';
+ *  宿主渲染 + Provider 在此；ToastKind/上下文/useToast 在同级 toastModel。 */
 
 interface ToastItem {
   id: number;
   kind: ToastKind;
   text: string;
-}
-
-const ToastCtx = createContext<(text: string, kind?: ToastKind) => void>(() => {});
-
-export function useToast(): (text: string, kind?: ToastKind) => void {
-  return useContext(ToastCtx);
 }
 
 const ICONS = { success: Check, info: Info, error: AlertTriangle } as const;

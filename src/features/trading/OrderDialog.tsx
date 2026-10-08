@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import type { OrderType, OrderSide, OrderSpec } from './paperEngine';
+import { ORDER_TYPE_LABELS } from './orderLabels';
 import { radius } from '@/ui/tokens';
-
-export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
-  market: '市价',
-  limit: '限价',
-  stop: '止损',
-  'stop-limit': '止损限价',
-};
 
 /** 挂单对话框：限价 / 止损 / 止损限价 下单表单（颜色走 --buy/--sell token） */
 export function OrderDialog({

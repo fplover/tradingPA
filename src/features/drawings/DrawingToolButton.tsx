@@ -1,4 +1,4 @@
-import { TvCaret } from './tvIcons';
+import { TvCaret } from './tvIconSet';
 import { ICONS, isGroupActive, shownOf, TOOL_LABELS, type ToolGroup, type ToolbarItem } from './drawingToolGroups';
 import { caretStyle, cellStyle, controlStyle, mainBtnStyle } from './drawingToolbarStyles';
 import { icon } from '@/ui/tokens';

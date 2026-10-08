@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { control, fontSize, icon, radius, space } from '@/ui/tokens';
+import { parseLevelTexts } from './drawingLevels';
 
 /** 分割线档位编辑器（TV fib 设置 levels 列表形态）：档位双列网格展示（行优先填充），
  *  每格数值（%）+ 删除按钮 + 「添加档位」，改动实时生效。
@@ -91,22 +92,6 @@ export function DrawingLevelsEditor({ levels, onChange }: { levels: number[]; on
       </button>
     </div>
   );
-}
-
-/** 本地文本行 → 档位集合（百分比小数）：输入按 % 填写，此处 ÷100 存小数。
- *  校验规则：非法值（非数字/NaN）整批返回 null 不写入；空文本行视为待编辑新行（跳过）；
- *  重复值跳过并保持原档顺序；结果为空（无有效档）返回 null——至少保留 1 档。 */
-export function parseLevelTexts(texts: readonly string[]): number[] | null {
-  const out: number[] = [];
-  for (const t of texts) {
-    if (t.trim() === '') continue;
-    const n = Number(t.trim());
-    if (!Number.isFinite(n)) return null;
-    const v = Math.round((n / 100) * 1e6) / 1e6; // ÷100 存小数，并 round 掉二进制毛刺（23.6% → 0.236）
-    if (out.includes(v)) continue; // 重复值跳过，保持原档顺序
-    out.push(v);
-  }
-  return out.length === 0 ? null : out;
 }
 
 /** 百分比小数 → 输入框文本（×100，去浮点毛刺：0.236 → "23.6"、0.5 → "50"、2.618 → "261.8"） */

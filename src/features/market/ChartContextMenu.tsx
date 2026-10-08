@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
   BarChart3,
@@ -22,7 +22,7 @@ import { useIndicatorStore } from '@/store/indicatorStore';
 import { useRightDockStore } from '@/features/rightbar/rightPanelStore';
 import { useThemeStore } from '@/store/themeStore';
 import { useDrawingStore } from '@/store/drawingStore';
-import { useToast } from '@/features/ui/Toast';
+import { useToast } from '@/features/ui/toastModel';
 import { Modal } from '@/ui/primitives';
 import { decimalsFor } from '@/data/format';
 import { icon, space } from '@/ui/tokens';
@@ -266,10 +266,12 @@ function ChartAlertDialog({
   const [direction, setDirection] = useState<'crossUp' | 'crossDown'>('crossUp');
   const toast = useToast();
 
-  // 每次打开用最新右键价格重置（价格随 state 变化时才需要）
-  const lastPrice = useRef(price);
-  if (open && lastPrice.current !== price) {
-    lastPrice.current = price;
+  // 每次打开用最新右键价格重置（价格随 state 变化时才需要）：渲染期按 prev prop
+  // 调整状态。ref 版在渲染期读写 ref 触发 react(refs)；state 版语义等价——open
+  // 期间 price 与 lastPrice 不一致才同步，用户编辑后的输入不会被同值刷新冲掉
+  const [lastPrice, setLastPrice] = useState(price);
+  if (open && price !== lastPrice) {
+    setLastPrice(price);
     setText(price.toFixed(decimals));
   }
 

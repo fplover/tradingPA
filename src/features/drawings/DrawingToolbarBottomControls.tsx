@@ -1,4 +1,4 @@
-import { TvCaret, TvEye, TvEyeOff, TvLock, TvMagnet, TvStayMode, TvTrash, TvUnlock } from './tvIcons';
+import { TvCaret, TvEye, TvEyeOff, TvLock, TvMagnet, TvStayMode, TvTrash, TvUnlock } from './tvIconSet';
 import type { HoverTarget } from './drawingToolGroups';
 import { bottomBtnStyle, caretStyle, cellStyle, controlStyle, mainBtnStyle } from './drawingToolbarStyles';
 import type { BottomMenuState } from './DrawingToolbarMenus';

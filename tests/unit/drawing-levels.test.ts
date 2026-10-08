@@ -15,7 +15,7 @@ import {
   fibExtensionPrice,
   fibRetracementPrice,
 } from '@/engine/drawing/fibMath';
-import { parseLevelTexts } from '@/features/drawings/DrawingLevelsEditor';
+import { parseLevelTexts } from '@/features/drawings/drawingLevels';
 import { createMockCtx, asCtx, callsOf, fillTexts, type MockCtx } from './helpers/mock-ctx';
 import type { Bar } from '@/types/market';
 import type { Drawing, DrawingPoint } from '@/engine/drawing/types';
