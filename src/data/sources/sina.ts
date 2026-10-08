@@ -4,23 +4,71 @@ import { customIntervalMinutes } from '@/features/market/customInterval';
 import type { Instrument } from '@/types/instrument';
 import { aggregateBars } from '@/data/aggregate';
 import { localTzOffsetMinutes } from '@/data/tz';
-import { fetchGbk } from './http';
+import { fetchVarJsonp } from './http';
 import { NoHistoryError, type BarsRequest, type MarketSource } from './types';
 
 /**
- * 新浪财经：国内期货全部周期 + 美股分钟线（腾讯不提供美股分钟数据）。
- * 该站校验 Referer 且不带 CORS 头，浏览器无法直连，开发环境经 vite 代理注入 Referer。
- * 生产构建没有代理，这两个市场会退化为「暂无数据源」——这是已知边界。
+ * 新浪财经：国内期货 / 外盘期货 / 美股 的历史 K 线。
+ * 三组接口同为 jsonp.php / jsonp_v2.php 形态——回调「变量名」嵌在 URL 路径里，
+ * 经 script 标签执行赋值，不受 CORS 与 Referer 限制，开发与生产（GitHub Pages）均可直连，
+ * 无需 dev server 代理（2026-10-08 实测：相关端点不带 Referer 也返回数据）。
+ *
+ * 数据量：分钟线固定回 1023 根（1m≈2 个交易日，60m≈2 个月）；日线回上市以来全部。
+ * 外盘期货成交量字段常年为 0（新浪不提供），成交量副图对外盘为空属数据源边界。
  */
 
-const HOSTS = {
-  futures: { direct: 'https://stock2.finance.sina.com.cn', proxy: '/sina-futures' },
-  us: { direct: 'https://stock.finance.sina.com.cn', proxy: '/sina-us' },
-} as const;
+const INNER_JSONP = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/{cb}/InnerFuturesNewService';
+const GLOBAL_DAILY_JSONP =
+  'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/{cb}/GlobalFuturesService.getGlobalFuturesDailyKLine?symbol=';
+const GLOBAL_MIN_JSONP = 'https://gu.sina.cn/ft/api/jsonp.php/{cb}/GlobalService.getMinK?symbol=';
+const US_JSONP = 'https://stock.finance.sina.com.cn/usstock/api/jsonp_v2.php/{cb}/US_MinKService';
 
-function baseOf(kind: keyof typeof HOSTS): string {
-  const h = HOSTS[kind];
-  return import.meta.env.DEV ? h.proxy : h.direct;
+/** 内盘期货：东财主连「rbm」→ 新浪「RB0」；合约代码恒以数字结尾，M 结尾即主连 */
+function innerSinaSymbol(inst: Instrument): string {
+  const code = inst.code.toUpperCase();
+  return code.endsWith('M') ? `${code.slice(0, -1)}0` : code;
+}
+
+/** 外盘期货期货月份代码 → 月序号（F=1 … Z=12，跳过不用字母） */
+const MONTH_LETTER: Record<string, string> = {
+  F: '01', G: '02', H: '03', J: '04', K: '05', M: '06',
+  N: '07', Q: '08', U: '09', V: '10', X: '11', Z: '12',
+};
+
+/**
+ * 东财外盘代码 → 新浪外盘代码。
+ * 主连 GC00Y → GC；字母月合约 HG27F → HG2701（实测两形态均可用）；
+ * 新浪原生数字月合约（CL2612）原样透传。识别不了的代码返回 null（调用方报无数据）。
+ */
+export function globalSinaSymbol(code: string): string | null {
+  const c = code.toUpperCase();
+  const main = /^([A-Z]+)00Y$/.exec(c);
+  if (main) return main[1];
+  const contract = /^([A-Z]+)(\d{2})([FGHJKMNQUVXZ])$/.exec(c);
+  if (contract) return `${contract[1]}${contract[2]}${MONTH_LETTER[contract[3]]}`;
+  if (/^[A-Z]+\d{3,4}$/.test(c)) return c;
+  return null;
+}
+
+/** 各市场的 K 线 URL（{cb} 为回调变量名占位，由 fetchVarJsonp 替换）。导出供单测。 */
+export function innerUrl(kind: 'daily' | 'minute', symbol: string, type: number): string {
+  return kind === 'daily'
+    ? `${INNER_JSONP}.getDailyKLine?symbol=${symbol}`
+    : `${INNER_JSONP}.getFewMinLine?symbol=${symbol}&type=${type}`;
+}
+
+export function usUrl(kind: 'daily' | 'minute', symbol: string, type: number): string {
+  return kind === 'daily'
+    ? `${US_JSONP}.getDailyK?symbol=${symbol}`
+    : `${US_JSONP}.getMinK?symbol=${symbol}&type=${type}`;
+}
+
+export function globalDailyUrl(symbol: string): string {
+  return `${GLOBAL_DAILY_JSONP}${symbol}`;
+}
+
+export function globalMinuteUrl(symbol: string, type: number): string {
+  return `${GLOBAL_MIN_JSONP}${symbol}&type=${type}`;
 }
 
 interface SinaBar {
@@ -91,47 +139,49 @@ function parseTime(s: string): number {
   return new Date(date[0], date[1] - 1, date[2], t[0] || 0, t[1] || 0, t[2] || 0).getTime();
 }
 
-/** 响应形如 `/*...*\/\nvar t=([...]);`，取最外层括号内的 JSON */
-function unwrap(text: string): SinaBar[] {
-  const open = text.indexOf('(');
-  const close = text.lastIndexOf(')');
-  if (open < 0 || close <= open) return [];
-  try {
-    const parsed = JSON.parse(text.slice(open + 1, close)) as SinaBar[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+/**
+ * 归一化三类响应负载（var JSONP 的赋值结果）为统一行格式。
+ * 内盘/美股分钟与外盘分钟用 {d,o,h,l,c,v}；外盘日线用 {date,open,high,low,close,volume}——两形态按字段名兼容。
+ * 服务端错误（null / {__ERROR:…}）与脏行一律过滤为空数组，调用方以空判定无数据。
+ */
+export function unwrapBars(data: unknown): SinaBar[] {
+  if (!Array.isArray(data)) return [];
+  const out: SinaBar[] = [];
+  for (const row of data) {
+    if (typeof row !== 'object' || row === null) continue;
+    const r = row as Record<string, unknown>;
+    const d = r.d ?? r.date;
+    const o = r.o ?? r.open;
+    const h = r.h ?? r.high;
+    const l = r.l ?? r.low;
+    const c = r.c ?? r.close;
+    const v = r.v ?? r.volume;
+    if (typeof d !== 'string' || typeof o !== 'string' || typeof h !== 'string') continue;
+    if (typeof l !== 'string' || typeof c !== 'string') continue;
+    out.push({ d, o, h, l, c, v: typeof v === 'string' ? v : '0' });
   }
+  return out;
 }
 
-/** 各市场的新浪服务路径。期货代码需大写（RB2610），美股用裸代码。
- *  主连后缀两家不一致：东财 `rbm`，新浪 `RB0`。合约代码恒以数字结尾，故以 M 结尾即主连。 */
-function sinaSymbol(inst: Instrument): string {
-  const code = inst.code.toUpperCase();
-  return code.endsWith('M') ? `${code.slice(0, -1)}0` : code;
-}
-
+/** 品种 + 周期 → 请求 URL。市场不归本源或代码映射失败返回 null。 */
 function serviceFor(inst: Instrument, plan: ActivePlan): string | null {
   if (inst.market === 'cn-fut') {
-    const sym = sinaSymbol(inst);
-    const path = `${baseOf('futures')}/futures/api/jsonp.php/var%20t=`;
-    return plan.kind === 'daily'
-      ? `${path}/InnerFuturesNewService.getDailyKLine?symbol=${sym}`
-      : `${path}/InnerFuturesNewService.getFewMinLine?symbol=${sym}&type=${plan.type}`;
+    return innerUrl(plan.kind, innerSinaSymbol(inst), plan.kind === 'minute' ? plan.type : 0);
+  }
+  if (inst.market === 'global-fut') {
+    const sym = globalSinaSymbol(inst.code);
+    if (!sym) return null;
+    return plan.kind === 'daily' ? globalDailyUrl(sym) : globalMinuteUrl(sym, plan.type);
   }
   if (inst.market.startsWith('us-')) {
-    const sym = inst.code.toUpperCase();
-    const path = `${baseOf('us')}/usstock/api/jsonp_v2.php/var%20t=`;
-    return plan.kind === 'daily'
-      ? `${path}/US_MinKService.getDailyK?symbol=${sym}`
-      : `${path}/US_MinKService.getMinK?symbol=${sym}&type=${plan.type}`;
+    return usUrl(plan.kind, inst.code.toUpperCase(), plan.kind === 'minute' ? plan.type : 0);
   }
   return null;
 }
 
 export const sinaSource: MarketSource = {
   name: '新浪财经',
-  markets: ['cn-fut', 'us-nasdaq', 'us-nyse', 'us-amex'],
+  markets: ['cn-fut', 'global-fut', 'us-nasdaq', 'us-nyse', 'us-amex'],
 
   async bars({ instrument, timeframe }: BarsRequest): Promise<Bar[]> {
     const plan = planFor(timeframe);
@@ -139,7 +189,8 @@ export const sinaSource: MarketSource = {
     const url = serviceFor(instrument, plan);
     if (!url) throw new NoHistoryError(instrument, timeframe);
 
-    const rows = unwrap(await fetchGbk(url, 15_000));
+    const payload = await fetchVarJsonp<unknown>(url, 15_000);
+    const rows = unwrapBars(payload);
     if (rows.length === 0) throw new NoHistoryError(instrument, timeframe);
 
     const bars: Bar[] = rows.map((r) => ({
@@ -153,7 +204,7 @@ export const sinaSource: MarketSource = {
 
     const tf = getTimeframe(timeframe);
     const baseSeconds = plan.kind === 'daily' ? 86_400 : plan.type * 60;
-    // 新浪一次给全上市以来的数据，不截断，向左滚动无需再翻页
+    // 分钟线固定 1023 根、日线给全历史，均无需向左翻页
     if (tf.calendar === undefined && tf.seconds <= baseSeconds) return bars;
     return aggregateBars(bars, tf, localTzOffsetMinutes());
   },

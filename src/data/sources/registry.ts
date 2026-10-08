@@ -29,16 +29,16 @@ const BARS_BY_MARKET: Record<MarketId, MarketSource[]> = {
   'cn-sh': [tencentSource],
   'cn-sz': [tencentSource],
   'cn-bj': [tencentSource],
-  // 港股只有日/周/月，分钟线两个源都不提供
+  // 港股只有日/周/月，分钟线暂无免费源（腾讯/新浪/东财均不提供）——唯一已知缺口
   hk: [tencentSource],
-  // 美股日线走腾讯（无需代理），分钟线腾讯没有，落到新浪
+  // 美股日线走腾讯，分钟线落新浪（script 标签 JSONP 直连，生产可用）
   'us-nasdaq': [tencentSource, sinaSource],
   'us-nyse': [tencentSource, sinaSource],
   'us-amex': [tencentSource, sinaSource],
   'cn-index': [tencentSource],
+  // 国内/外盘期货：新浪 script 标签 JSONP 直连，开发与生产均可用
   'cn-fut': [sinaSource],
-  // 外盘期货：已验证的免费源都只有报价，没有历史 K 线
-  'global-fut': [],
+  'global-fut': [sinaSource],
   crypto: [binanceSource],
 };
 

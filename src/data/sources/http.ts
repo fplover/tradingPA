@@ -64,6 +64,42 @@ export function fetchJsonp<T>(url: string, cbParam = 'cb', timeoutMs = DEFAULT_T
   });
 }
 
+/**
+ * 新浪 jsonp.php / jsonp_v2.php 家族：回调「变量名」嵌在 URL 路径里
+ * （…/jsonp.php/var%20NAME=/Service.method?…），响应体是 `var NAME=(payload);`。
+ * script 标签执行即完成赋值，不受 CORS 与 Referer 限制——生产构建（无代理）可直连。
+ * urlTemplate 用 `{cb}` 占位回调变量名。服务端报错时 payload 为 null 或 {__ERROR:…}，由调用方甄别。
+ */
+export function fetchVarJsonp<T>(urlTemplate: string, timeoutMs = DEFAULT_TIMEOUT): Promise<T | null> {
+  return new Promise((resolve, reject) => {
+    const name = `__tpv_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+    const url = urlTemplate.replace('{cb}', encodeURIComponent(`var ${name}`));
+    const script = document.createElement('script');
+    let settled = false;
+
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      delete (window as unknown as Record<string, unknown>)[name];
+      script.remove();
+    };
+    const done = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn();
+    };
+    const timer = window.setTimeout(() => done(() => reject(new Error('JSONP 超时'))), timeoutMs);
+
+    script.onload = () => {
+      const data = (window as unknown as Record<string, unknown>)[name];
+      done(() => resolve((data ?? null) as T | null));
+    };
+    script.onerror = () => done(() => reject(new Error('JSONP 加载失败')));
+    script.src = url;
+    document.head.appendChild(script);
+  });
+}
+
 /** 解析 `v_xxx="a~b~c";` 形式的腾讯行情响应，返回 code → 字段数组 */
 export function parseTencentPayload(text: string): Map<string, string[]> {
   const out = new Map<string, string[]>();
