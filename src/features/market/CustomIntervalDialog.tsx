@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { Modal } from '@/ui/primitives';
-import { fontSize, radius, space } from '@/ui/tokens';
+import { fontSize, icon, radius, space } from '@/ui/tokens';
 import type { Timeframe } from '@/types/market';
 import {
   CUSTOM_HOUR_RANGE,
@@ -137,7 +137,7 @@ export function CustomIntervalDialog({
                 title={`删除 ${t.label}`}
                 onClick={() => remove(t.id)}
               >
-                <X size={12} />
+                <X size={icon.sm} />
               </button>
             </div>
           ))}

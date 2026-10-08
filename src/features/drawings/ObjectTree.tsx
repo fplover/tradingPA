@@ -18,6 +18,7 @@ import {
 import type { Drawing } from '@/engine/drawing/types';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useDrawingStore } from '@/store/drawingStore';
+import { icon, radius } from '@/ui/tokens';
 
 interface ObjectTreeProps {
   renderer: ChartRenderer | null;
@@ -52,13 +53,13 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
         </strong>
         <div style={{ display: 'flex', gap: 6 }}>
           <button style={btn} onClick={() => renderer.undoDrawing()} title="撤销 (Ctrl+Z)">
-            <Undo2 size={14} />
+            <Undo2 size={icon.md} />
           </button>
           <button style={btn} onClick={() => renderer.redoDrawing()} title="重做 (Ctrl+Y)">
-            <Redo2 size={14} />
+            <Redo2 size={icon.md} />
           </button>
           <button style={btn} onClick={onClose} title="关闭">
-            <X size={14} />
+            <X size={icon.md} />
           </button>
         </div>
       </div>
@@ -76,7 +77,7 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             alignItems: 'center',
             gap: 4,
             padding: '4px 6px',
-            borderRadius: 4,
+            borderRadius: radius.sm,
             fontSize: 11,
             color: 'var(--text)',
             background: selectedIds.includes(d.id) ? 'var(--panel-2)' : 'transparent',
@@ -107,7 +108,7 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             title="置于顶层"
             aria-label="置于顶层"
           >
-            <ArrowUpToLine size={12} />
+            <ArrowUpToLine size={icon.sm} />
           </button>
           <button
             style={miniBtn}
@@ -115,7 +116,7 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             title="上移一层"
             aria-label="上移一层"
           >
-            <ChevronUp size={12} />
+            <ChevronUp size={icon.sm} />
           </button>
           <button
             style={miniBtn}
@@ -123,7 +124,7 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             title="下移一层"
             aria-label="下移一层"
           >
-            <ChevronDown size={12} />
+            <ChevronDown size={icon.sm} />
           </button>
           <button
             style={miniBtn}
@@ -131,13 +132,13 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             title="置于底层"
             aria-label="置于底层"
           >
-            <ArrowDownToLine size={12} />
+            <ArrowDownToLine size={icon.sm} />
           </button>
           <button style={miniBtn} onClick={() => renderer.setDrawingVisible(d.id, !d.visible)} title="显示/隐藏">
-            {d.visible ? <Eye size={14} /> : <EyeOff size={14} />}
+            {d.visible ? <Eye size={icon.md} /> : <EyeOff size={icon.md} />}
           </button>
           <button style={miniBtn} onClick={() => renderer.setDrawingLocked(d.id, !d.locked)} title="锁定">
-            {d.locked ? <Lock size={14} /> : <Unlock size={14} />}
+            {d.locked ? <Lock size={icon.md} /> : <Unlock size={icon.md} />}
           </button>
           <button
             style={miniBtn}
@@ -145,13 +146,13 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
             title="设置"
             aria-label="画线设置"
           >
-            <Settings size={12} />
+            <Settings size={icon.sm} />
           </button>
           <button style={miniBtn} onClick={() => renderer.removeDrawing(d.id)} title="删除">
-            <X size={14} />
+            <X size={icon.md} />
           </button>
           <button style={miniBtn} onClick={() => renderer.duplicateDrawing(d.id)} title="克隆" aria-label="克隆">
-            <Copy size={12} />
+            <Copy size={icon.sm} />
           </button>
         </div>
       ))}
@@ -168,7 +169,7 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
           }}
           onClick={() => renderer.clearDrawings()}
         >
-          <Trash2 size={12} /> 清空全部
+          <Trash2 size={icon.sm} /> 清空全部
         </button>
       )}
     </div>
@@ -225,7 +226,7 @@ const btn: React.CSSProperties = {
   background: 'var(--panel-2)',
   color: 'var(--text)',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   padding: '3px 8px',
   fontSize: 11,
   cursor: 'pointer',

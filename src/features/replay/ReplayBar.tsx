@@ -14,6 +14,7 @@ import {
 import { nextAutoplayIndex, useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { Menu, MenuItem } from '@/ui/primitives';
+import { icon } from '@/ui/tokens';
 import {
   barStyle,
   dateBadgeStyle,
@@ -127,21 +128,21 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
         <Menu
           trigger={
             <button style={btnStyle} title="回放计时">
-              <Timer size={14} />
+              <Timer size={icon.md} />
               <span style={{ marginLeft: 4 }}>选择K线</span>
             </button>
           }
         >
-          <MenuItem icon={<MousePointerClick size={14} />} onSelect={() => setSelectMode(true)}>
+          <MenuItem icon={<MousePointerClick size={icon.md} />} onSelect={() => setSelectMode(true)}>
             选择K线
           </MenuItem>
-          <MenuItem icon={<Calendar size={14} />} onSelect={() => setDatePickerOpen(true)}>
+          <MenuItem icon={<Calendar size={icon.md} />} onSelect={() => setDatePickerOpen(true)}>
             选择日期
           </MenuItem>
-          <MenuItem icon={<CalendarRange size={14} />} onSelect={() => setIndex(0)}>
+          <MenuItem icon={<CalendarRange size={icon.md} />} onSelect={() => setIndex(0)}>
             选择第一个可用日期
           </MenuItem>
-          <MenuItem icon={<Shuffle size={14} />} onSelect={seekRandom}>
+          <MenuItem icon={<Shuffle size={icon.md} />} onSelect={seekRandom}>
             随机K线
           </MenuItem>
         </Menu>
@@ -173,7 +174,7 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
                 setIndex(Math.max(0, index - 1));
               }}
             >
-              <SkipBack size={14} />
+              <SkipBack size={icon.md} />
             </button>
             <button
               style={{
@@ -184,7 +185,7 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
               title={playing ? '暂停' : '播放'}
               onClick={() => setPlaying(!playing)}
             >
-              {playing ? <Pause size={14} /> : <Play size={14} />}
+              {playing ? <Pause size={icon.md} /> : <Play size={icon.md} />}
             </button>
             <button
               style={btnStyle}
@@ -194,7 +195,7 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
                 setIndex(Math.min(barCount - 1, index + 1));
               }}
             >
-              <SkipForward size={14} />
+              <SkipForward size={icon.md} />
             </button>
             <div style={sepStyle} />
             <select
@@ -216,14 +217,14 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
         {/* 选择中提示 */}
         {selectMode && selecting && (
           <span style={hintStyle}>
-            <MousePointerClick size={12} /> 请在图表上点击选择 K 线作为回放起点
+            <MousePointerClick size={icon.sm} /> 请在图表上点击选择 K 线作为回放起点
           </span>
         )}
         {selectMode && !selecting && (
           <span style={hintStyle}>
-            <MousePointerClick size={12} /> 请在图表上点击选择 K 线
+            <MousePointerClick size={icon.sm} /> 请在图表上点击选择 K 线
             <button style={{ ...btnStyle, padding: '0 4px' }} onClick={() => setSelectMode(false)} title="取消">
-              <X size={12} />
+              <X size={icon.sm} />
             </button>
           </span>
         )}
@@ -261,7 +262,7 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
       )}
 
       <button style={btnStyle} title="退出回放" onClick={exit}>
-        <X size={16} />
+        <X size={icon.lg} />
       </button>
     </div>
   );

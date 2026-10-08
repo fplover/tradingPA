@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp, Play, Save, Plus, X } from 'lucide-react';
 import { usePineStore, DRAFT_ID } from '@/store/pineStore';
 import { usePineRuntimeError } from './usePineRuntimeErrors';
-import { fontSize, icon, space } from '@/ui/tokens';
+import { fontSize, icon, radius, space } from '@/ui/tokens';
 
 /** Pine 编辑器：TV 底部 dock 形态——编辑区 + 控制台，实时编译注册为指标 */
 export function PineEditorPanel() {
@@ -80,17 +80,17 @@ export function PineEditorPanel() {
           </select>
         )}
         <button style={btnStyle} onClick={() => run()} title="运行（编译草稿）">
-          <Play size={14} /> 运行
+          <Play size={icon.md} /> 运行
         </button>
         <button style={btnStyle} onClick={() => save()} title="保存脚本">
-          <Save size={14} /> 保存
+          <Save size={icon.md} /> 保存
         </button>
         <button
           style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }}
           onClick={() => addDraftToChart()}
           title="添加到图表"
         >
-          <Plus size={14} /> 添加到图表
+          <Plus size={icon.md} /> 添加到图表
         </button>
         <button
           style={iconBtnStyle}
@@ -98,10 +98,10 @@ export function PineEditorPanel() {
           title={collapsed ? '展开编辑器' : '收起编辑器'}
           aria-label={collapsed ? '展开编辑器' : '收起编辑器'}
         >
-          {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {collapsed ? <ChevronUp size={icon.md} /> : <ChevronDown size={icon.md} />}
         </button>
         <button style={iconBtnStyle} onClick={() => setPanelOpen(false)} title="关闭" aria-label="关闭 Pine 编辑器">
-          <X size={14} />
+          <X size={icon.md} />
         </button>
       </div>
 
@@ -176,7 +176,7 @@ const btnStyle: React.CSSProperties = {
   background: 'var(--panel-2)',
   color: 'var(--text)',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   fontSize: fontSize.sm,
   cursor: 'pointer',
   flexShrink: 0,
@@ -191,7 +191,7 @@ const iconBtnStyle: React.CSSProperties = {
   background: 'transparent',
   color: 'var(--text-dim)',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   cursor: 'pointer',
   flexShrink: 0,
 };
@@ -201,7 +201,7 @@ const selectStyle: React.CSSProperties = {
   background: 'var(--panel-2)',
   color: 'var(--text)',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   fontSize: fontSize.sm,
   padding: `0 ${space.xs}px`,
   maxWidth: 140,

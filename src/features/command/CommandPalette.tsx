@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { Search, X } from 'lucide-react';
 import { filterCommands } from './fuzzyMatch';
 import type { CommandItem } from './commandRegistry';
-import { fontSize, shadow, zIndex } from '@/ui/tokens';
+import { fontSize, icon, radius, shadow, zIndex } from '@/ui/tokens';
 
 interface CommandPaletteProps {
   open: boolean;
@@ -63,7 +63,7 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
           <Dialog.Title style={visuallyHidden}>命令面板</Dialog.Title>
           <Dialog.Description style={visuallyHidden} />
           <div style={inputRowStyle}>
-            <Search size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+            <Search size={icon.md} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
             <input
               ref={inputRef}
               autoFocus
@@ -75,7 +75,7 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
             />
             <Dialog.Close asChild>
               <button style={closeStyle} aria-label="关闭命令面板">
-                <X size={14} />
+                <X size={icon.md} />
               </button>
             </Dialog.Close>
           </div>
@@ -93,9 +93,9 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
                   style={{ ...itemStyle, ...(i === active ? activeItemStyle : null) }}
                 >
                   {Icon ? (
-                    <Icon size={16} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
+                    <Icon size={icon.lg} style={{ color: 'var(--text-dim)', flexShrink: 0 }} />
                   ) : (
-                    <span style={{ width: 16 }} />
+                    <span style={{ width: icon.lg }} />
                   )}
                   <span
                     style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
@@ -139,7 +139,7 @@ const contentStyle: React.CSSProperties = {
   maxWidth: 'calc(100vw - 32px)',
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 8,
+  borderRadius: radius.lg,
   boxShadow: shadow.modal,
   zIndex: zIndex.modal + 1,
   overflow: 'hidden',
@@ -187,7 +187,7 @@ const itemStyle: React.CSSProperties = {
   fontSize: fontSize.sm,
   color: 'var(--text)',
   cursor: 'pointer',
-  borderRadius: 4,
+  borderRadius: radius.sm,
 };
 
 const activeItemStyle: React.CSSProperties = {
@@ -198,7 +198,7 @@ const hintStyle: React.CSSProperties = {
   fontSize: 10,
   color: 'var(--text-faint)',
   border: '1px solid var(--border)',
-  borderRadius: 3,
+  borderRadius: radius.xs,
   padding: '0 4px',
 };
 

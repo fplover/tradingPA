@@ -1,6 +1,6 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronDown } from 'lucide-react';
-import { fontSize, radius, shadow, space, zIndex } from './tokens';
+import { fontSize, icon as iconSize, radius, shadow, space, zIndex } from './tokens';
 
 export interface ToolbarOption {
   value: string;
@@ -49,7 +49,7 @@ export function ToolbarSelect({
           <span style={{ maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {label ?? current?.label ?? value}
           </span>
-          <ChevronDown size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
+          <ChevronDown size={iconSize.sm} style={{ opacity: 0.6, flexShrink: 0 }} />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -64,7 +64,7 @@ export function ToolbarSelect({
                   style={itemStyle}
                   onSelect={() => onChange(o.value)}
                 >
-                  <span style={checkSlot}>{o.value === value ? <Check size={14} /> : null}</span>
+                  <span style={checkSlot}>{o.value === value ? <Check size={iconSize.md} /> : null}</span>
                   {o.label}
                 </DropdownMenu.Item>
               ))}
@@ -122,7 +122,7 @@ const itemStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-const checkSlot: React.CSSProperties = { width: 14, flexShrink: 0, display: 'flex', alignItems: 'center' };
+const checkSlot: React.CSSProperties = { width: iconSize.md, flexShrink: 0, display: 'flex', alignItems: 'center' };
 
 const sepStyle: React.CSSProperties = {
   height: 1,

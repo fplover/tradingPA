@@ -2,7 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ChevronRight, Settings, Trash2, Copy } from 'lucide-react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useDrawingStore } from '@/store/drawingStore';
-import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
+import { fontSize, icon, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 export interface DrawingMenuState {
   id: string;
@@ -54,7 +54,7 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
             }}
           >
             <span style={slot}>
-              <Settings size={14} />
+              <Settings size={icon.md} />
             </span>
             设置
           </DropdownMenu.Item>
@@ -67,7 +67,7 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
             }}
           >
             <span style={slot}>
-              <Trash2 size={14} />
+              <Trash2 size={icon.md} />
             </span>
             移除
           </DropdownMenu.Item>
@@ -80,7 +80,7 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
             }}
           >
             <span style={slot}>
-              <Copy size={14} />
+              <Copy size={icon.md} />
             </span>
             克隆
           </DropdownMenu.Item>
@@ -88,7 +88,7 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
           <DropdownMenu.Sub>
             <DropdownMenu.SubTrigger className="tv-menu-item" style={itemStyle}>
               <span style={slot}>
-                <ChevronRight size={14} />
+                <ChevronRight size={icon.md} />
               </span>
               视觉顺序
             </DropdownMenu.SubTrigger>
@@ -145,6 +145,6 @@ const itemStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-const slot: React.CSSProperties = { width: 16, flexShrink: 0, display: 'flex', alignItems: 'center' };
+const slot: React.CSSProperties = { width: icon.lg, flexShrink: 0, display: 'flex', alignItems: 'center' };
 
 const sepStyle: React.CSSProperties = { height: 1, background: 'var(--border)', margin: `${space.xs}px 0` };

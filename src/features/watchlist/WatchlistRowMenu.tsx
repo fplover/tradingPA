@@ -2,6 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Flag, LineChart, X } from 'lucide-react';
 import type { Instrument } from '@/types/instrument';
 import { leadingIconSlot, menuItemStyle, menuLabelStyle, menuStyle } from './watchlistShared';
+import { icon } from '@/ui/tokens';
 
 export interface WatchlistRowMenuState {
   x: number;
@@ -53,7 +54,7 @@ export function WatchlistRowMenu({
             }}
           >
             <span style={leadingIconSlot}>
-              <LineChart size={14} />
+              <LineChart size={icon.md} />
             </span>
             在图表中打开
           </DropdownMenu.Item>
@@ -65,7 +66,7 @@ export function WatchlistRowMenu({
             }}
           >
             <span style={leadingIconSlot}>
-              <Flag size={14} />
+              <Flag size={icon.md} />
             </span>
             {isFlagged ? '取消标记' : '标记'}
           </DropdownMenu.Item>
@@ -77,7 +78,7 @@ export function WatchlistRowMenu({
             }}
           >
             <span style={leadingIconSlot}>
-              <X size={14} />
+              <X size={icon.md} />
             </span>
             从列表移除
           </DropdownMenu.Item>

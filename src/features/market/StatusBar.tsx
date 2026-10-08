@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Eye, EyeOff, RotateCcw, Settings2, ZoomIn, ZoomOut } from 'lucide-react';
-import { fontSize, space } from '@/ui/tokens';
+import { fontSize, icon, radius, space } from '@/ui/tokens';
 
 interface StatusBarProps {
   barsCount: number;
@@ -131,19 +131,19 @@ export function StatusBar({
       {/* control_bar 导航组（P2-C）：缩放 / 左右平移 / 重置视图——TV 底部控制条落点 */}
       <span style={{ display: 'flex', alignItems: 'center', gap: 1, padding: `0 ${space.xs}px` }}>
         <NavBtn label="放大" onClick={onZoomIn}>
-          <ZoomIn size={14} />
+          <ZoomIn size={icon.md} />
         </NavBtn>
         <NavBtn label="缩小" onClick={onZoomOut}>
-          <ZoomOut size={14} />
+          <ZoomOut size={icon.md} />
         </NavBtn>
         <NavBtn label="向左平移" onClick={onPanLeft}>
-          <ChevronLeft size={14} />
+          <ChevronLeft size={icon.md} />
         </NavBtn>
         <NavBtn label="向右平移" onClick={onPanRight}>
-          <ChevronRight size={14} />
+          <ChevronRight size={icon.md} />
         </NavBtn>
         <NavBtn label="重置视图" onClick={onResetView}>
-          <RotateCcw size={14} />
+          <RotateCcw size={icon.md} />
         </NavBtn>
       </span>
 
@@ -160,12 +160,12 @@ export function StatusBar({
           background: 'transparent',
           color: 'var(--text-faint)',
           border: 'none',
-          borderRadius: 3,
+          borderRadius: radius.xs,
           cursor: 'pointer',
           flexShrink: 0,
         }}
       >
-        <Settings2 size={14} />
+        <Settings2 size={icon.md} />
       </button>
 
       <span style={{ flex: 1 }} />
@@ -183,12 +183,12 @@ export function StatusBar({
           background: 'transparent',
           color: hideStudies ? 'var(--accent)' : 'var(--text-faint)',
           border: 'none',
-          borderRadius: 3,
+          borderRadius: radius.xs,
           cursor: 'pointer',
           flexShrink: 0,
         }}
       >
-        {hideStudies ? <EyeOff size={14} /> : <Eye size={14} />}
+        {hideStudies ? <EyeOff size={icon.md} /> : <Eye size={icon.md} />}
       </button>
       <Toggle label="切换为百分比坐标" active={percent} onClick={onTogglePercent}>
         %
@@ -210,7 +210,7 @@ const rangeBtnStyle: React.CSSProperties = {
   fontSize: fontSize.md,
   cursor: 'pointer',
   padding: '2px 5px',
-  borderRadius: 3,
+  borderRadius: radius.xs,
   flexShrink: 0,
 };
 
@@ -230,7 +230,7 @@ function NavBtn({ label, onClick, children }: { label: string; onClick: () => vo
         background: 'transparent',
         color: 'var(--text-faint)',
         border: 'none',
-        borderRadius: 3,
+        borderRadius: radius.xs,
         cursor: 'pointer',
         flexShrink: 0,
       }}
@@ -263,7 +263,7 @@ function Toggle({
         background: 'transparent',
         color: active ? 'var(--accent)' : 'var(--text-faint)',
         border: 'none',
-        borderRadius: 3,
+        borderRadius: radius.xs,
         fontSize: fontSize.lg,
         cursor: 'pointer',
         flexShrink: 0,

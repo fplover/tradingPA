@@ -1,6 +1,7 @@
 import { TvCaret } from './tvIcons';
 import { ICONS, isGroupActive, shownOf, TOOL_LABELS, type ToolGroup, type ToolbarItem } from './drawingToolGroups';
 import { caretStyle, cellStyle, controlStyle, mainBtnStyle } from './drawingToolbarStyles';
+import { icon } from '@/ui/tokens';
 
 interface DrawingToolButtonProps {
   group: ToolGroup;
@@ -59,7 +60,7 @@ export function DrawingToolButton({
           }}
         >
           <Icon
-            size={18}
+            size={icon.xl}
             strokeWidth={1.5}
             style={{ color: active ? 'var(--text-on-accent)' : hovered ? 'var(--text)' : undefined }}
           />
@@ -94,7 +95,7 @@ export function DrawingToolButton({
           }}
         >
           <TvCaret
-            size={12}
+            size={icon.sm}
             style={{
               transform: open ? 'rotate(180deg)' : undefined,
               transition: 'transform 200ms cubic-bezier(0.175, 0.885, 0.32, 1.275)',

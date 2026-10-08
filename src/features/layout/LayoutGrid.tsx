@@ -3,6 +3,7 @@ import { Square, Columns2, Grid2x2, Grid3x3, Table, type LucideIcon } from 'luci
 import { useLayoutStore, LAYOUTS, type LayoutId, type SyncChannel } from '@/store/layoutStore';
 import { ToolbarSelect } from '@/ui/ToolbarSelect';
 import { ChartCell } from './ChartCell';
+import { icon, radius } from '@/ui/tokens';
 
 const LAYOUT_ICONS: Record<LayoutId, LucideIcon> = {
   1: Square,
@@ -23,7 +24,7 @@ export function LayoutMenu() {
       ariaLabel="切换布局"
       value={String(current.id)}
       label={current.label}
-      icon={<Icon size={14} />}
+      icon={<Icon size={icon.md} />}
       align="end"
       minWidth={96}
       onChange={(v) => setLayout(Number(v) as LayoutId)}
@@ -77,7 +78,7 @@ function SyncToggleStrip() {
             background: values[c.channel] ? 'var(--accent)' : 'transparent',
             color: values[c.channel] ? 'var(--text-on-accent)' : 'var(--text-faint)',
             border: '1px solid var(--border)',
-            borderRadius: 3,
+            borderRadius: radius.xs,
             cursor: 'pointer',
           }}
         >

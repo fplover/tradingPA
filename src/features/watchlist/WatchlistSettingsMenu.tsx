@@ -2,6 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, Copy, Download, Pencil, Settings2, X } from 'lucide-react';
 import { COLUMNS, type ColumnId } from '@/store/watchlistStore';
 import { iconBtnStyle, leadingIconSlot, menuItemStyle, menuLabelStyle, menuStyle, sepStyle } from './watchlistShared';
+import { icon } from '@/ui/tokens';
 
 interface WatchlistSettingsMenuProps {
   columns: ColumnId[];
@@ -28,7 +29,7 @@ export function WatchlistSettingsMenu({
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
         <button className="tv-icon-btn" style={iconBtnStyle} aria-label="列表设置">
-          <Settings2 size={16} />
+          <Settings2 size={icon.lg} />
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
@@ -44,26 +45,26 @@ export function WatchlistSettingsMenu({
               onSelect={(e) => e.preventDefault()}
               onCheckedChange={() => onToggleColumn(c.id)}
             >
-              <span style={leadingIconSlot}>{columns.includes(c.id) ? <Check size={14} /> : null}</span>
+              <span style={leadingIconSlot}>{columns.includes(c.id) ? <Check size={icon.md} /> : null}</span>
               {c.label}
             </DropdownMenu.CheckboxItem>
           ))}
           <DropdownMenu.Separator style={sepStyle} />
           <DropdownMenu.Item className="tv-menu-item" style={menuItemStyle} onSelect={() => onRename()}>
             <span style={leadingIconSlot}>
-              <Pencil size={14} />
+              <Pencil size={icon.md} />
             </span>
             重命名列表
           </DropdownMenu.Item>
           <DropdownMenu.Item className="tv-menu-item" style={menuItemStyle} onSelect={() => onDuplicate()}>
             <span style={leadingIconSlot}>
-              <Copy size={14} />
+              <Copy size={icon.md} />
             </span>
             复制列表
           </DropdownMenu.Item>
           <DropdownMenu.Item className="tv-menu-item" style={menuItemStyle} onSelect={() => onExport()}>
             <span style={leadingIconSlot}>
-              <Download size={14} />
+              <Download size={icon.md} />
             </span>
             导出 CSV
           </DropdownMenu.Item>
@@ -76,7 +77,7 @@ export function WatchlistSettingsMenu({
                 onSelect={() => onDelete()}
               >
                 <span style={leadingIconSlot}>
-                  <X size={14} />
+                  <X size={icon.md} />
                 </span>
                 删除列表
               </DropdownMenu.Item>

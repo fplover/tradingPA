@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronsRight } from 'lucide-react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
+import { icon, radius } from '@/ui/tokens';
 
 /** 离开右边缘时显示「回到最新」（TradingView 同位置按钮） */
 export function useBackToLatest(rendererRef: { current: ChartRenderer | null }): boolean {
@@ -25,7 +26,7 @@ export function BackToLatestButton({ rendererRef }: { rendererRef: { current: Ch
       aria-label="回到最新"
       style={gotoLatestStyle}
     >
-      <ChevronsRight size={14} />
+      <ChevronsRight size={icon.md} />
     </button>
   );
 }
@@ -42,7 +43,7 @@ const gotoLatestStyle: React.CSSProperties = {
   background: 'var(--panel)',
   color: 'var(--text-dim)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   cursor: 'pointer',
   zIndex: 12,
 };

@@ -25,7 +25,7 @@ import { useDrawingStore } from '@/store/drawingStore';
 import { useToast } from '@/features/ui/Toast';
 import { Modal } from '@/ui/primitives';
 import { decimalsFor } from '@/data/format';
-import { space } from '@/ui/tokens';
+import { icon, space } from '@/ui/tokens';
 import {
   menuStyle,
   itemStyle,
@@ -110,21 +110,21 @@ export function ChartContextMenu({
           <DropdownMenu.Content align="start" sideOffset={2} style={menuStyle}>
             <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={() => renderer?.resetView()}>
               <span style={iconSlot}>
-                <RotateCcw size={14} />
+                <RotateCcw size={icon.md} />
               </span>
               重置图表
               <span style={hintStyle}>Alt + R</span>
             </DropdownMenu.Item>
             <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={onGoToDate}>
               <span style={iconSlot}>
-                <CalendarSearch size={14} />
+                <CalendarSearch size={icon.md} />
               </span>
               前往日期…
               <span style={hintStyle}>Alt + G</span>
             </DropdownMenu.Item>
             <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={copyPrice}>
               <span style={iconSlot}>
-                <Copy size={14} />
+                <Copy size={icon.md} />
               </span>
               复制价格{state ? ` ${state.price.toFixed(decimalsFor(state.price, instrument?.decimals ?? 2))}` : ''}
             </DropdownMenu.Item>
@@ -138,7 +138,7 @@ export function ChartContextMenu({
               }}
             >
               <span style={iconSlot}>
-                <BellRing size={14} />
+                <BellRing size={icon.md} />
               </span>
               添加警报…
               <span style={hintStyle}>Alt + A</span>
@@ -154,7 +154,7 @@ export function ChartContextMenu({
               }}
             >
               <span style={iconSlot}>
-                <Star size={14} />
+                <Star size={icon.md} />
               </span>
               加入自选股
               <span style={hintStyle}>Alt + W</span>
@@ -168,7 +168,7 @@ export function ChartContextMenu({
               }}
             >
               <span style={iconSlot}>
-                <Type size={14} />
+                <Type size={icon.md} />
               </span>
               添加文本注释
               <span style={hintStyle}>Alt + N</span>
@@ -181,7 +181,7 @@ export function ChartContextMenu({
               }}
             >
               <span style={iconSlot}>
-                <ListTree size={14} />
+                <ListTree size={icon.md} />
               </span>
               对象树…
             </DropdownMenu.Item>
@@ -192,7 +192,7 @@ export function ChartContextMenu({
                 useThemeStore.getState().toggle();
               }}
             >
-              <span style={iconSlot}>{themeName === 'dark' ? <Sun size={14} /> : <Moon size={14} />}</span>
+              <span style={iconSlot}>{themeName === 'dark' ? <Sun size={icon.md} /> : <Moon size={icon.md} />}</span>
               颜色主题
             </DropdownMenu.Item>
             <DropdownMenu.Separator style={sepStyle} />
@@ -202,7 +202,7 @@ export function ChartContextMenu({
               onSelect={() => renderer?.clearDrawings()}
             >
               <span style={iconSlot}>
-                <Trash2 size={14} />
+                <Trash2 size={icon.md} />
               </span>
               移除画线
             </DropdownMenu.Item>
@@ -212,7 +212,7 @@ export function ChartContextMenu({
               onSelect={() => useIndicatorStore.getState().replaceAll([])}
             >
               <span style={iconSlot}>
-                <Trash2 size={14} />
+                <Trash2 size={icon.md} />
               </span>
               移除指标
             </DropdownMenu.Item>
@@ -223,13 +223,13 @@ export function ChartContextMenu({
               onSelect={() => useIndicatorStore.getState().setPanelOpen(true)}
             >
               <span style={iconSlot}>
-                <BarChart3 size={14} />
+                <BarChart3 size={icon.md} />
               </span>
               指标…
             </DropdownMenu.Item>
             <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={onOpenSettings}>
               <span style={iconSlot}>
-                <Settings size={14} />
+                <Settings size={icon.md} />
               </span>
               设置…
             </DropdownMenu.Item>

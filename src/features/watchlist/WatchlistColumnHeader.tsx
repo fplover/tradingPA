@@ -1,7 +1,7 @@
 import { ArrowDown, ArrowUp } from 'lucide-react';
 import { COLUMNS, type ColumnId, type SortDir, type SortKey } from '@/store/watchlistStore';
 import { COLUMN_WIDTH } from './watchlistShared';
-import { fontSize, space } from '@/ui/tokens';
+import { fontSize, icon, space } from '@/ui/tokens';
 
 interface ColumnHeaderProps {
   columns: ColumnId[];
@@ -24,7 +24,7 @@ export function ColumnHeader({ columns, sort, onCycleSort }: ColumnHeaderProps) 
           width={COLUMN_WIDTH[c]}
         />
       ))}
-      <span style={{ width: 18, flexShrink: 0 }} />
+      <span style={{ width: icon.xl, flexShrink: 0 }} />
     </div>
   );
 }
@@ -66,7 +66,7 @@ function SortLabel({
       }}
     >
       {label}
-      {active && (sort.dir === 'asc' ? <ArrowUp size={12} /> : <ArrowDown size={12} />)}
+      {active && (sort.dir === 'asc' ? <ArrowUp size={icon.sm} /> : <ArrowDown size={icon.sm} />)}
     </button>
   );
 }

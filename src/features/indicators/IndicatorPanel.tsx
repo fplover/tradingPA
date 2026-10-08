@@ -4,7 +4,7 @@ import { indicatorsByCategory } from '@/indicators/registry';
 import type { IndicatorDef } from '@/indicators/core/types';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { TemplateSection } from './TemplateSection';
-import { fontSize, radius, shadow, space } from '@/ui/tokens';
+import { fontSize, icon, radius, shadow, space } from '@/ui/tokens';
 
 /** 指标选择面板：TV 形态——搜索 + 扁平列表（收藏置顶）+ 每行星标 + ↑↓/Enter，
  *  底部内嵌「模板」分区（命名保存 / 应用 / 重命名 / 删除，TV 指标对话框 Templates 形态）。
@@ -91,7 +91,7 @@ export function IndicatorPanel() {
             flexShrink: 0,
           }}
         >
-          <Star size={14} fill={isFav ? 'currentColor' : 'none'} />
+          <Star size={icon.md} fill={isFav ? 'currentColor' : 'none'} />
         </button>
         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           <Highlight text={def.name} query={q} />
@@ -144,14 +144,14 @@ export function IndicatorPanel() {
             flex: 1,
             background: 'var(--input-bg)',
             border: '1px solid var(--border)',
-            borderRadius: 4,
+            borderRadius: radius.sm,
             color: 'var(--text)',
             padding: '4px 8px',
             fontSize: fontSize.md,
           }}
         />
         <button onClick={() => setPanelOpen(false)} style={closeBtnStyle} title="关闭" aria-label="关闭指标面板">
-          <X size={14} />
+          <X size={icon.md} />
         </button>
       </div>
 
@@ -209,7 +209,7 @@ const closeBtnStyle: React.CSSProperties = {
   background: 'var(--panel-2)',
   color: 'var(--text)',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   cursor: 'pointer',
   flexShrink: 0,
 };

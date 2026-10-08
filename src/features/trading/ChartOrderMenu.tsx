@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useOrderMenuStore } from '@/store/orderMenuStore';
 import { useTradeStore } from './tradeStore';
+import { radius } from '@/ui/tokens';
 
 /** 图表点击下单浮窗（TV 风格）：市价/限价 + 买/卖 + 数量 + 价格 */
 export function ChartOrderMenu({ decimals }: { decimals: number }) {
@@ -131,7 +132,7 @@ const menuStyle: React.CSSProperties = {
   width: 224,
   background: 'var(--panel)',
   border: '1px solid var(--border)',
-  borderRadius: 8,
+  borderRadius: radius.lg,
   padding: 12,
   boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
   zIndex: 41,
@@ -140,7 +141,7 @@ const menuStyle: React.CSSProperties = {
 const segStyle: React.CSSProperties = {
   height: 24,
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   fontSize: 11,
   cursor: 'pointer',
 };
@@ -159,7 +160,7 @@ const inputStyle: React.CSSProperties = {
   height: 24,
   background: 'var(--bg)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   color: 'var(--text)',
   fontSize: 12,
   padding: '0 6px',

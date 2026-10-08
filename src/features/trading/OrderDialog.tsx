@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { OrderType, OrderSide, OrderSpec } from './paperEngine';
+import { radius } from '@/ui/tokens';
 
 export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
   market: '市价',
@@ -114,7 +115,7 @@ const chipStyle: React.CSSProperties = {
   height: 24,
   padding: '0 10px',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   fontSize: 11,
   cursor: 'pointer',
 };
@@ -133,7 +134,7 @@ const fieldInput: React.CSSProperties = {
   height: 24,
   background: 'var(--bg)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   color: 'var(--text)',
   fontSize: 12,
   padding: '0 6px',

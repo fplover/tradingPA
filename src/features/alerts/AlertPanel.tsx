@@ -20,6 +20,7 @@ import { PineConditionSection } from './PineConditionSection';
 import { currentHlines, subscribeDrawings } from './useAlertWatcher';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { btnStyle, inputStyle, miniBtn, panelStyle, rowStyle } from './ui';
+import { icon } from '@/ui/tokens';
 
 interface AlertPanelProps {
   symbol: string;
@@ -91,7 +92,7 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
     <div style={panelStyle}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <strong style={{ color: 'var(--text)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-          <Bell size={14} /> 警报
+          <Bell size={icon.md} /> 警报
         </strong>
         <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>
           当前 {currentPrice > 0 ? currentPrice.toFixed(2) : '--'}
@@ -145,7 +146,7 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
           title={noPlotOutput ? '该指标无可用输出，无法创建条件' : undefined}
           onClick={submit}
         >
-          <Plus size={12} /> 添加
+          <Plus size={icon.sm} /> 添加
         </button>
       </div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
@@ -246,7 +247,7 @@ function HlineAlertSection({
               })
             }
           >
-            <Plus size={12} />
+            <Plus size={icon.sm} />
           </button>
         </div>
       ))}
@@ -287,7 +288,7 @@ function AlertRow({
         )}
       </span>
       <button style={miniBtn} onClick={onEdit} title="编辑警报" aria-label="编辑警报">
-        <Pencil size={12} />
+        <Pencil size={icon.sm} />
       </button>
       <button
         style={miniBtn}
@@ -295,10 +296,10 @@ function AlertRow({
         title={alert.active ? '暂停警报' : '恢复警报'}
         aria-label={alert.active ? '暂停警报' : '恢复警报'}
       >
-        {alert.active ? <Pause size={12} /> : <Play size={12} />}
+        {alert.active ? <Pause size={icon.sm} /> : <Play size={icon.sm} />}
       </button>
       <button style={miniBtn} onClick={onRemove} title="删除警报" aria-label="删除警报">
-        <X size={12} />
+        <X size={icon.sm} />
       </button>
     </div>
   );

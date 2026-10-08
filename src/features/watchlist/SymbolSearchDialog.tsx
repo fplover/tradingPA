@@ -20,7 +20,7 @@ import {
   tabRowStyle,
   tabStyle,
 } from './symbolSearchStyles';
-import { fontSize } from '@/ui/tokens';
+import { fontSize, icon } from '@/ui/tokens';
 
 const DEBOUNCE_MS = 250;
 const RESULT_MAX = 40;
@@ -140,7 +140,7 @@ export function SymbolSearchDialog() {
 
           {/* 搜索输入 */}
           <div style={inputRowStyle}>
-            <Search size={16} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+            <Search size={icon.lg} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
             <input
               ref={inputRef}
               value={query}
@@ -152,11 +152,11 @@ export function SymbolSearchDialog() {
               style={inputStyle}
             />
             {loading && (
-              <LoaderCircle size={16} className="spin" style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+              <LoaderCircle size={icon.lg} className="spin" style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
             )}
             {query && !loading && (
               <button onClick={() => setQuery('')} aria-label="清空搜索" style={clearBtnStyle}>
-                <X size={16} />
+                <X size={icon.lg} />
               </button>
             )}
           </div>
@@ -190,7 +190,7 @@ export function SymbolSearchDialog() {
               <Fragment key={hit.instrument.id}>
                 {rowLabels[i] && (
                   <div style={sectionLabelStyle}>
-                    {rowLabels[i] === '收藏' && <Star size={12} style={{ marginRight: 3, verticalAlign: -2 }} />}
+                    {rowLabels[i] === '收藏' && <Star size={icon.sm} style={{ marginRight: 3, verticalAlign: -2 }} />}
                     {rowLabels[i]}
                   </div>
                 )}

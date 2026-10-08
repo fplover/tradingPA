@@ -13,7 +13,7 @@ import { WatchlistRow } from './WatchlistRow';
 import { WatchlistRowMenu, type WatchlistRowMenuState } from './WatchlistRowMenu';
 import { WatchlistSettingsMenu } from './WatchlistSettingsMenu';
 import { QUOTE_FIELD, iconBtnStyle } from './watchlistShared';
-import { control, fontSize, space } from '@/ui/tokens';
+import { control, fontSize, icon, space } from '@/ui/tokens';
 
 function sortItems(
   items: Instrument[],
@@ -115,14 +115,14 @@ export function WatchlistPanel() {
         <span style={{ flex: 1 }} />
 
         <HeaderButton label="添加品种" onClick={() => openSearch('add')}>
-          <Plus size={16} />
+          <Plus size={icon.lg} />
         </HeaderButton>
         <HeaderButton
           label={flagFilter ? '显示全部品种' : '只看标记品种'}
           active={flagFilter}
           onClick={() => setFlagFilter((v) => !v)}
         >
-          <Flag size={14} />
+          <Flag size={icon.md} />
         </HeaderButton>
 
         <WatchlistSettingsMenu

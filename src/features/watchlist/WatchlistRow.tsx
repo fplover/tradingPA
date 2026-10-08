@@ -13,7 +13,7 @@ import {
 } from '@/data/format';
 import type { ColumnId } from '@/store/watchlistStore';
 import { COLUMN_WIDTH, QUOTE_FIELD } from './watchlistShared';
-import { fontSize, space } from '@/ui/tokens';
+import { fontSize, icon, radius, space } from '@/ui/tokens';
 
 const ROW_H = 44;
 
@@ -105,7 +105,7 @@ export function WatchlistRow({
       )}
 
       <div style={{ flex: 1, minWidth: 108, display: 'flex', alignItems: 'center', gap: 5 }}>
-        {isFlagged && <Flag size={12} style={{ color: 'var(--accent)', flexShrink: 0 }} aria-label="已标记" />}
+        {isFlagged && <Flag size={icon.sm} style={{ color: 'var(--accent)', flexShrink: 0 }} aria-label="已标记" />}
         <div style={{ minWidth: 0 }}>
           <div
             style={{
@@ -137,7 +137,7 @@ export function WatchlistRow({
         <Cell key={col} col={col} quote={quote} decimals={decimals} />
       ))}
 
-      <span style={{ width: 18, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+      <span style={{ width: icon.xl, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -156,7 +156,7 @@ export function WatchlistRow({
             padding: 0,
           }}
         >
-          <X size={14} />
+          <X size={icon.md} />
         </button>
       </span>
     </div>
@@ -177,7 +177,7 @@ function Cell({ col, quote, decimals }: { col: ColumnId; quote?: Quote; decimals
             minWidth: 56,
             textAlign: 'center',
             padding: '2px 5px',
-            borderRadius: 3,
+            borderRadius: radius.xs,
             fontSize: fontSize.sm,
             fontWeight: 500,
             color: quote ? 'var(--on-updown)' : 'var(--text-faint)',

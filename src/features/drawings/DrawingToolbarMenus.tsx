@@ -2,6 +2,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { GROUPS, HOTKEYS, ICONS, TOOL_LABELS, type ToolbarItem } from './drawingToolGroups';
 import { hotkeyStyle, iconSlot, itemStyle, menuStyle } from './drawingToolbarStyles';
 import type { FlyoutState } from './useGroupHold';
+import { icon } from '@/ui/tokens';
 
 /** 底部 caret 菜单锚点：kind 区分磁吸档位/清空范围，x/y 为触发按钮右侧偏上 6px */
 export interface BottomMenuState {
@@ -139,7 +140,7 @@ export function ToolFlyoutMenu({
                   onSelect={() => onSelect(id)}
                 >
                   <span style={iconSlot}>
-                    <ItemIcon size={14} />
+                    <ItemIcon size={icon.md} />
                   </span>
                   {TOOL_LABELS[id]}
                   {HOTKEYS[id] && <span style={hotkeyStyle}>{HOTKEYS[id]}</span>}

@@ -5,7 +5,7 @@ import { useRightDockStore, type RightPanelId } from './rightPanelStore';
 import { WatchlistPanel } from '@/features/watchlist/WatchlistPanel';
 import { ObjectTree } from '@/features/drawings/ObjectTree';
 import { AlertPanel } from '@/features/alerts/AlertPanel';
-import { zIndex } from '@/ui/tokens';
+import { icon, zIndex } from '@/ui/tokens';
 
 /** 右侧图标轨的条目。顺序对齐 TradingView：自选股在最上。 */
 const RAIL: { id: RightPanelId; label: string; icon: typeof List }[] = [
@@ -126,7 +126,7 @@ export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps)
                   }}
                 />
               )}
-              <Icon size={18} />
+              <Icon size={icon.xl} />
               {id === 'alerts' && alertCount > 0 && <span style={badgeStyle}>{alertCount}</span>}
             </button>
           );

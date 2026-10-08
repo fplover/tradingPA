@@ -6,6 +6,7 @@ import { pineAlertsOf } from '@/indicators/pine/alerts';
 import { useAlertStore } from '@/store/alertStore';
 import { COOLDOWN_OPTIONS, EXPIRY_OPTIONS, type AlertFrequency } from './alertLogic';
 import { miniBtn, rowStyle } from './ui';
+import { icon } from '@/ui/tokens';
 
 interface PineConditionSectionProps {
   symbol: string;
@@ -82,7 +83,7 @@ export function PineConditionSection({ symbol, frequency, cooldownIdx, expiryIdx
               })
             }
           >
-            <Plus size={12} />
+            <Plus size={icon.sm} />
           </button>
         </div>
       ))}

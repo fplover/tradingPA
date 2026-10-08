@@ -1,7 +1,7 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Check, Settings } from 'lucide-react';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
-import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
+import { fontSize, icon, radius, shadow, space, zIndex } from '@/ui/tokens';
 
 export interface LegendMenuState {
   x: number;
@@ -59,7 +59,7 @@ export function LegendContextMenu({ state, legend, onLegend, onOpenSettings, onC
               onSelect={(e) => e.preventDefault()}
               onCheckedChange={(v) => onLegend({ [t.key]: v } as Partial<LegendOptions>)}
             >
-              <span style={checkSlot}>{legend[t.key] ? <Check size={14} /> : null}</span>
+              <span style={checkSlot}>{legend[t.key] ? <Check size={icon.md} /> : null}</span>
               {t.label}
             </DropdownMenu.CheckboxItem>
           ))}
@@ -73,7 +73,7 @@ export function LegendContextMenu({ state, legend, onLegend, onOpenSettings, onC
             }}
           >
             <span style={checkSlot}>
-              <Settings size={14} />
+              <Settings size={icon.md} />
             </span>
             设置
           </DropdownMenu.Item>
@@ -108,6 +108,6 @@ const itemStyle: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-const checkSlot: React.CSSProperties = { width: 16, flexShrink: 0, display: 'flex', alignItems: 'center' };
+const checkSlot: React.CSSProperties = { width: icon.lg, flexShrink: 0, display: 'flex', alignItems: 'center' };
 
 const sepStyle: React.CSSProperties = { height: 1, background: 'var(--border)', margin: `${space.xs}px 0` };

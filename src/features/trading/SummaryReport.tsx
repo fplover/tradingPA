@@ -1,5 +1,6 @@
 import { useTradeStore } from './tradeStore';
 import { Modal } from '@/ui/primitives';
+import { radius } from '@/ui/tokens';
 
 const fmtQty = (q: number) => String(Number(q.toFixed(8)));
 
@@ -97,7 +98,7 @@ export function SummaryReport({ onClose }: { onClose: () => void }) {
 
 function Stat({ label, value, color, hint }: { label: string; value: string; color?: string; hint?: string }) {
   return (
-    <div style={{ background: 'var(--bg)', borderRadius: 6, padding: '6px 10px' }}>
+    <div style={{ background: 'var(--bg)', borderRadius: radius.md, padding: '6px 10px' }}>
       <div style={{ fontSize: 10, color: 'var(--text-faint)' }}>{label}</div>
       <div style={{ fontSize: 14, fontWeight: 600, color: color ?? 'var(--text)' }}>{value}</div>
       {hint && <div style={{ fontSize: 9, color: 'var(--text-faint)' }}>{hint}</div>}
@@ -109,7 +110,7 @@ const tableWrap: React.CSSProperties = {
   maxHeight: 220,
   overflowY: 'auto',
   border: '1px solid var(--border)',
-  borderRadius: 6,
+  borderRadius: radius.md,
 };
 
 const tableStyle: React.CSSProperties = {

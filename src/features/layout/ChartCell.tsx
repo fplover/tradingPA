@@ -7,12 +7,13 @@ import { aggregateBars } from '@/data/aggregate';
 import { CHART_TYPES, TIMEFRAMES, getTimeframe, type ChartTypeId, type TimeframeId } from '@/types/market';
 import { CELL_DEFAULT_SYMBOLS, defaultCell, useLayoutStore } from '@/store/layoutStore';
 import { syncBus } from '@/store/syncBus';
+import { icon, radius } from '@/ui/tokens';
 
 const selectStyle: React.CSSProperties = {
   background: 'var(--panel)',
   color: 'var(--text)',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   padding: '2px 6px',
   fontSize: 11,
 };
@@ -156,12 +157,12 @@ export function ChartCell({ index }: { index: number }) {
             background: 'transparent',
             color: 'var(--text-faint)',
             border: 'none',
-            borderRadius: 3,
+            borderRadius: radius.xs,
             cursor: 'pointer',
             flexShrink: 0,
           }}
         >
-          {maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+          {maximized ? <Minimize2 size={icon.sm} /> : <Maximize2 size={icon.sm} />}
         </button>
       </div>
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>

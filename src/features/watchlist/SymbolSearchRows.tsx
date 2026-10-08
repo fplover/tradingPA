@@ -1,6 +1,6 @@
 import { MARKETS } from '@/types/instrument';
 import type { SearchHit } from '@/data/sources/types';
-import { fontSize, space } from '@/ui/tokens';
+import { fontSize, radius, space } from '@/ui/tokens';
 import { badgeStyle } from './symbolSearchStyles';
 
 interface ResultRowProps {
@@ -104,7 +104,7 @@ export function Kbd({ children }: { children: React.ReactNode }) {
         marginRight: 3,
         background: 'var(--panel-2)',
         border: '1px solid var(--border)',
-        borderRadius: 3,
+        borderRadius: radius.xs,
         fontSize: fontSize.xs,
         lineHeight: '16px',
         textAlign: 'center',

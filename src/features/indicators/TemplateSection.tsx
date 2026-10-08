@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { relativeTime, sortTemplates } from '@/store/indicatorTemplates';
-import { fontSize, radius, space } from '@/ui/tokens';
+import { fontSize, icon, radius, space } from '@/ui/tokens';
 
 /** 指标面板内嵌「模板」分区（TV 指标对话框 Templates 形态）：命名保存 / 应用 /
  *  行内重命名 / 删除（二次确认）。键盘导航只作用于指标搜索列表，本区不挂 ↑↓/Enter 劫持。 */
@@ -91,10 +91,10 @@ export function TemplateSection() {
                   style={{ ...inputStyle, flex: 1, minWidth: 0 }}
                 />
                 <RowIcon label={`确认重命名 ${t.name}`} onClick={commitRename}>
-                  <Check size={14} />
+                  <Check size={icon.md} />
                 </RowIcon>
                 <RowIcon label="取消重命名" onClick={() => setRenamingId(null)}>
-                  <X size={14} />
+                  <X size={icon.md} />
                 </RowIcon>
               </div>
             ) : (
@@ -109,13 +109,13 @@ export function TemplateSection() {
                 <span style={nameStyle}>{t.name}</span>
                 <span style={timeStyle}>{relativeTime(t.savedAt)}</span>
                 <RowIcon label={`应用模板 ${t.name}`} onClick={() => loadTemplate(t.id)}>
-                  <Check size={14} />
+                  <Check size={icon.md} />
                 </RowIcon>
                 <RowIcon label={`重命名模板 ${t.name}`} onClick={() => startRename(t.id, t.name)}>
-                  <Pencil size={14} />
+                  <Pencil size={icon.md} />
                 </RowIcon>
                 <RowIcon label={`删除模板 ${t.name}`} onClick={() => remove(t.id, t.name)}>
-                  <Trash2 size={14} />
+                  <Trash2 size={icon.md} />
                 </RowIcon>
               </div>
             ),

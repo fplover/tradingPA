@@ -2,6 +2,7 @@ import { TvCaret, TvEye, TvEyeOff, TvLock, TvMagnet, TvStayMode, TvTrash, TvUnlo
 import type { HoverTarget } from './drawingToolGroups';
 import { bottomBtnStyle, caretStyle, cellStyle, controlStyle, mainBtnStyle } from './drawingToolbarStyles';
 import type { BottomMenuState } from './DrawingToolbarMenus';
+import { icon } from '@/ui/tokens';
 
 interface BottomControlsProps {
   magnet: boolean;
@@ -54,7 +55,11 @@ export function BottomControls({
               background: magnet ? 'var(--accent)' : hovered === 'magnet' ? 'var(--panel-2)' : 'transparent',
             }}
           >
-            <TvMagnet size={18} strokeWidth={1.5} style={{ color: magnet ? 'var(--text-on-accent)' : undefined }} />
+            <TvMagnet
+              size={icon.xl}
+              strokeWidth={1.5}
+              style={{ color: magnet ? 'var(--text-on-accent)' : undefined }}
+            />
           </span>
         </button>
         <button
@@ -69,7 +74,7 @@ export function BottomControls({
             onBottomMenu(bottomMenu?.kind === 'magnet' ? null : { kind: 'magnet', x: r.right + 1, y: r.top - 6 });
           }}
         >
-          <TvCaret size={12} style={{ transform: bottomMenu?.kind === 'magnet' ? 'rotate(180deg)' : undefined }} />
+          <TvCaret size={icon.sm} style={{ transform: bottomMenu?.kind === 'magnet' ? 'rotate(180deg)' : undefined }} />
         </button>
       </div>
       <button
@@ -81,7 +86,7 @@ export function BottomControls({
         onClick={() => setStayMode(!stayMode)}
         style={bottomBtnStyle}
       >
-        <TvStayMode size={18} strokeWidth={1.5} />
+        <TvStayMode size={icon.xl} strokeWidth={1.5} />
       </button>
       <button
         className="rail-btn"
@@ -92,7 +97,7 @@ export function BottomControls({
         onClick={onToggleLock}
         style={bottomBtnStyle}
       >
-        {locked ? <TvLock size={18} /> : <TvUnlock size={18} />}
+        {locked ? <TvLock size={icon.xl} /> : <TvUnlock size={icon.xl} />}
       </button>
       <button
         className="rail-btn"
@@ -103,7 +108,7 @@ export function BottomControls({
         onClick={onToggleHide}
         style={bottomBtnStyle}
       >
-        {hideDrawings ? <TvEyeOff size={18} /> : <TvEye size={18} />}
+        {hideDrawings ? <TvEyeOff size={icon.xl} /> : <TvEye size={icon.xl} />}
       </button>
       {/* 清空全部：caret 展开 移除画线/移除指标/移除画线和指标（TV removeAllDrawingTools） */}
       <div
@@ -113,7 +118,7 @@ export function BottomControls({
       >
         <button style={mainBtnStyle} title="清空全部" aria-label="清空全部" onClick={() => onRemoveAll('drawings')}>
           <span style={{ ...cellStyle, background: hovered === 'remove' ? 'var(--panel-2)' : 'transparent' }}>
-            <TvTrash size={18} strokeWidth={1.5} />
+            <TvTrash size={icon.xl} strokeWidth={1.5} />
           </span>
         </button>
         <button
@@ -128,7 +133,7 @@ export function BottomControls({
             onBottomMenu(bottomMenu?.kind === 'remove' ? null : { kind: 'remove', x: r.right + 1, y: r.top - 6 });
           }}
         >
-          <TvCaret size={12} style={{ transform: bottomMenu?.kind === 'remove' ? 'rotate(180deg)' : undefined }} />
+          <TvCaret size={icon.sm} style={{ transform: bottomMenu?.kind === 'remove' ? 'rotate(180deg)' : undefined }} />
         </button>
       </div>
     </>

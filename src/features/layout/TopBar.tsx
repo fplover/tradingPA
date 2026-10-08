@@ -39,7 +39,7 @@ import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IconButton } from '@/ui/primitives';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { decimalsFor } from '@/data/format';
-import { fontSize, space, zIndex } from '@/ui/tokens';
+import { fontSize, icon, radius, space, zIndex } from '@/ui/tokens';
 
 /**
  * 顶栏（P2-C 自 App.tsx 拆出）：品种 / 周期 / 图表类型 / 回放入口 / 指标 / 布局存取 /
@@ -79,7 +79,7 @@ function ThemeButton() {
   const toggle = useThemeStore((s) => s.toggle);
   return (
     <IconButton onClick={toggle} title={name === 'dark' ? '切换到浅色' : '切换到深色'}>
-      {name === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+      {name === 'dark' ? <Sun size={icon.lg} /> : <Moon size={icon.lg} />}
     </IconButton>
   );
 }
@@ -116,7 +116,7 @@ function SymbolButton({ instrument }: { instrument: Instrument | null }) {
           </span>
         )}
       </span>
-      <ChevronDown size={14} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
+      <ChevronDown size={icon.md} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />
     </button>
   );
 }
@@ -133,7 +133,7 @@ function CompareButton() {
       title={compare ? `对比品种：${compare.symbol}（点击更换或移除）` : '叠加对比品种'}
       aria-label="叠加对比品种"
     >
-      <GitCompareArrows size={16} />
+      <GitCompareArrows size={icon.lg} />
     </IconButton>
   );
 }
@@ -197,7 +197,7 @@ export function TopBar({
             ariaLabel="图表类型"
             value={chartType}
             options={CT_OPTIONS}
-            icon={<CandlestickChart size={14} />}
+            icon={<CandlestickChart size={icon.md} />}
             minWidth={120}
             onChange={(v) => setChartType(v as ChartTypeId)}
           />
@@ -209,7 +209,7 @@ export function TopBar({
             }}
             title="回放：点击后在图表上选择 K 线作为起点"
           >
-            <Play size={16} />
+            <Play size={icon.lg} />
           </IconButton>
         </>
       )}
@@ -217,7 +217,7 @@ export function TopBar({
           指标模板的保存/加载已收口进面板底部「模板」分区（TV 指标对话框 Templates 形态） */}
       <div style={{ position: 'relative', display: 'flex' }}>
         <IconButton active={panelOpen} onClick={() => setPanelOpen(!panelOpen)} title="指标">
-          <BarChart3 size={16} />
+          <BarChart3 size={icon.lg} />
         </IconButton>
         {panelOpen && (
           <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: space.xs, zIndex: zIndex.dropdown }}>
@@ -229,36 +229,36 @@ export function TopBar({
       {layout === 1 && (
         <>
           <IconButton onClick={() => rendererRef.current?.undoDrawing()} title="复原">
-            <Undo2 size={16} />
+            <Undo2 size={icon.lg} />
           </IconButton>
           <IconButton onClick={() => rendererRef.current?.redoDrawing()} title="重做">
-            <Redo2 size={16} />
+            <Redo2 size={icon.lg} />
           </IconButton>
         </>
       )}
       <LayoutSaveMenu />
       <LayoutMenu />
       <IconButton onClick={() => useUiStore.getState().setChartSettingsOpen(true)} title="图表设置">
-        <Settings2 size={16} />
+        <Settings2 size={icon.lg} />
       </IconButton>
       <IconButton active={pineOpen} onClick={() => setPineOpen(!pineOpen)} title="Pine 编辑器">
-        <FileCode2 size={16} />
+        <FileCode2 size={icon.lg} />
       </IconButton>
       <IconButton onClick={() => useSymbolSearchStore.getState().openSearch('switch')} title="快速搜索">
-        <Search size={16} />
+        <Search size={icon.lg} />
       </IconButton>
       <IconButton onClick={() => useUiStore.getState().setCommandOpen(true)} title="命令面板（Ctrl+P）">
-        <Command size={16} />
+        <Command size={icon.lg} />
       </IconButton>
       <IconButton onClick={toggleFullscreen} title="全屏模式">
-        <Maximize2 size={16} />
+        <Maximize2 size={icon.lg} />
       </IconButton>
       <IconButton onClick={onScreenshot} title="生成快照">
-        <Camera size={16} />
+        <Camera size={icon.lg} />
       </IconButton>
       {layout === 1 && (
         <IconButton onClick={series.reload} title={series.mode === 'mock' ? '重新连接实时数据' : '重新加载历史数据'}>
-          <RefreshCw size={16} />
+          <RefreshCw size={icon.lg} />
         </IconButton>
       )}
       <ThemeButton />
@@ -273,7 +273,7 @@ const symbolBtnStyle: React.CSSProperties = {
   height: 26,
   padding: '0 8px',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   cursor: 'pointer',
 };
 

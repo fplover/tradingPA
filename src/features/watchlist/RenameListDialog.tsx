@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '@/ui/primitives';
 import { useWatchlistStore } from '@/store/watchlistStore';
-import { control, fontSize, space } from '@/ui/tokens';
+import { control, fontSize, radius, space } from '@/ui/tokens';
 
 /** 重命名当前自选股列表 */
 export function RenameListDialog({
@@ -45,7 +45,7 @@ export function RenameListDialog({
           padding: `0 ${space.sm}px`,
           background: 'var(--input-bg)',
           border: '1px solid var(--border)',
-          borderRadius: 4,
+          borderRadius: radius.sm,
           color: 'var(--text)',
           fontSize: fontSize.md,
         }}
@@ -67,7 +67,7 @@ const ghostBtnStyle: React.CSSProperties = {
   padding: `0 ${space.md}px`,
   background: 'transparent',
   border: '1px solid var(--border)',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   color: 'var(--text-dim)',
   fontSize: fontSize.md,
   cursor: 'pointer',
@@ -78,7 +78,7 @@ const primaryBtnStyle: React.CSSProperties = {
   padding: `0 ${space.md}px`,
   background: 'var(--accent)',
   border: 'none',
-  borderRadius: 4,
+  borderRadius: radius.sm,
   color: 'var(--text-on-accent)',
   fontSize: fontSize.md,
   cursor: 'pointer',

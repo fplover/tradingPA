@@ -3,7 +3,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import * as Tabs from '@radix-ui/react-tabs';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { X } from 'lucide-react';
-import { control, fontSize, radius, shadow, space, zIndex } from './tokens';
+import { control, fontSize, icon, radius, shadow, space, zIndex } from './tokens';
 
 /** Radix 原语的 TradingView 风格封装：可访问性（焦点陷阱/Esc/ARIA/键盘导航）由 Radix 提供，
  *  视觉由这里统一收拢。颜色全部走 CSS 变量，自动适配深浅主题。 */
@@ -44,7 +44,7 @@ export function DialogHeader({ title }: { title: React.ReactNode }) {
       <Dialog.Title style={dialogTitleStyle}>{title}</Dialog.Title>
       <Dialog.Close asChild>
         <button style={dialogCloseStyle} aria-label="关闭">
-          <X size={16} />
+          <X size={icon.lg} />
         </button>
       </Dialog.Close>
     </div>

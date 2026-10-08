@@ -5,6 +5,7 @@ import { useTradePanelStore } from '@/store/tradePanelStore';
 import { Modal, Tab, TabList } from '@/ui/primitives';
 import * as Tabs from '@radix-ui/react-tabs';
 import { OrderDialog, ORDER_TYPE_LABELS } from './OrderDialog';
+import { icon, radius } from '@/ui/tokens';
 
 const fmtQty = (q: number) => String(Number(q.toFixed(8)));
 
@@ -82,13 +83,13 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
         </span>
         <div style={{ flex: 1 }} />
         <button style={iconBtn} title="限价 / 止损挂单" onClick={() => setDialogOpen(true)}>
-          <Plus size={14} />
+          <Plus size={icon.md} />
         </button>
         <button style={iconBtn} title="交易报告" onClick={onReport}>
-          <FileChartLine size={14} />
+          <FileChartLine size={icon.md} />
         </button>
         <button style={iconBtn} title={panelOpen ? '收起面板' : '展开面板'} onClick={togglePanel}>
-          {panelOpen ? <FoldVertical size={14} /> : <UnfoldVertical size={14} />}
+          {panelOpen ? <FoldVertical size={icon.md} /> : <UnfoldVertical size={icon.md} />}
         </button>
       </div>
 
@@ -127,7 +128,7 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
                     <span style={{ color: 'var(--text-faint)' }}>{fmtOrderTime(o.createdAt)}</span>
                     <div style={{ flex: 1 }} />
                     <button style={iconBtn} title="撤单" onClick={() => cancel(o.id)}>
-                      <X size={12} />
+                      <X size={icon.sm} />
                     </button>
                   </Row>
                 ))
@@ -253,7 +254,7 @@ const iconBtn: React.CSSProperties = {
   color: 'var(--text-faint)',
   cursor: 'pointer',
   padding: 2,
-  borderRadius: 4,
+  borderRadius: radius.sm,
 };
 
 const listStyle: React.CSSProperties = {

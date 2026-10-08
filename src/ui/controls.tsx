@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { fontSize, radius, space } from './tokens';
+import { fontSize, icon, radius, space } from './tokens';
 
 /** 表单控件原语（TV 化）：分段单选 / 数字步进 / 复选框。
  *  从 primitives.tsx 拆出（单文件行数约束）；视觉语言与 primitives 一致。 */
@@ -152,8 +152,8 @@ export function Checkbox({
       aria-label={ariaLabel}
       onClick={() => onChange(!checked)}
       style={{
-        width: 16,
-        height: 16,
+        width: icon.lg,
+        height: icon.lg,
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
@@ -166,7 +166,7 @@ export function Checkbox({
         padding: 0,
       }}
     >
-      {checked && <Check size={12} strokeWidth={2.5} />}
+      {checked && <Check size={icon.sm} strokeWidth={2.5} />}
     </button>
   );
 }
