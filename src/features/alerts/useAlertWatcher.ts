@@ -183,6 +183,9 @@ export function useAlertWatcher(symbol: string | undefined, bars: Bar[], price: 
         const entry = activeIndicators.find((x) => x.id === indicatorId);
         inst.applyOptions({ params: entry?.params ?? {} });
         const { outputs, ctxFrom, extra } = inst.computeWindow(bars, from, to);
+        // 指标源只按 def 真实 outputs 取数：空输出/陈旧 plot 引用取不到值即无采样，
+        // 既不降级为价格、也不误报——创建侧的拦截见 AlertPanel 的
+        // resolveIndicatorAlertSource（空 plot 返回 null，阻止建单，用户口径 2026-10-08）
         for (const plotKey of want.plots) {
           const v = outputs[plotKey]?.[to - ctxFrom];
           if (typeof v === 'number' && Number.isFinite(v)) {

@@ -10,6 +10,7 @@ import {
   FREQUENCY_OPTIONS,
   describeCondition,
   describeSource,
+  resolveIndicatorAlertSource,
   type AlertCondition,
   type AlertFrequency,
   type AlertSource,
@@ -62,19 +63,17 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
     () => (def ? def.plots.map((p) => ({ value: p.key, label: p.label })) : []),
     [def],
   );
-  const effPlotKey = def
-    ? plotOptions.some((o) => o.value === plotKey)
-      ? plotKey
-      : (plotOptions[0]?.value ?? '')
-    : '';
+  // 指标源解析走 alertLogic 纯函数：plotKey 无效回退首个 plot；指标缺失或无任何
+  // plot → null。空 plot 不静默降级为价格警报——阻止创建并明示（用户口径 2026-10-08）
+  const indicatorSource = sourceId === PRICE_SOURCE ? null : resolveIndicatorAlertSource(sourceId, plotKey, def);
+  const noPlotOutput = sourceId !== PRICE_SOURCE && indicatorSource === null;
+  const effPlotKey = indicatorSource?.plotKey ?? '';
 
   const submit = () => {
     const t = Number(threshold);
     if (!Number.isFinite(t) || threshold.trim() === '') return;
-    const source: AlertSource =
-      sourceId === PRICE_SOURCE || !def || !effPlotKey
-        ? { type: 'price' }
-        : { type: 'indicator', indicatorId: def.id, plotKey: effPlotKey };
+    if (noPlotOutput) return; // 无可用输出：UI 已明示，不创建也不降级为价格警报
+    const source: AlertSource = indicatorSource ?? { type: 'price' };
     const expiryMs = Number(EXPIRY_OPTIONS[expiryIdx]?.value ?? 0);
     add({
       symbol,
@@ -110,7 +109,12 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
             setPlotKey('');
           }}
         />
-        {def && (
+        {noPlotOutput && (
+          <span style={{ alignSelf: 'center', fontSize: 10, color: 'var(--warn)' }} title="该指标没有任何可用的输出线">
+            无可用输出
+          </span>
+        )}
+        {def && !noPlotOutput && (
           <ToolbarSelect
             ariaLabel="警报指标线"
             value={effPlotKey}
@@ -135,7 +139,12 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
           onChange={(e) => setThreshold(e.target.value)}
           style={inputStyle}
         />
-        <button style={btnStyle} onClick={submit}>
+        <button
+          style={{ ...btnStyle, ...(noPlotOutput ? { opacity: 0.5, cursor: 'not-allowed' } : null) }}
+          disabled={noPlotOutput}
+          title={noPlotOutput ? '该指标无可用输出，无法创建条件' : undefined}
+          onClick={submit}
+        >
           <Plus size={12} /> 添加
         </button>
       </div>

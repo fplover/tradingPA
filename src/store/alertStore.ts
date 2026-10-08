@@ -136,8 +136,9 @@ export const useAlertStore = create<AlertStore>((set, get) => {
       }),
     clearTriggered: () =>
       set((s) => {
-        // once 触发后已停用（active=false, triggered=true）——与旧语义一致按已触发清除
-        const alerts = s.alerts.filter((a) => !a.triggered);
+        // 只清「已触发且已停用」（once 触发后，用户裁决 2026-10-03）；
+        // 运行中的 every 警报（triggered=true, active=true）保留，不再被一并删除
+        const alerts = s.alerts.filter((a) => !(a.triggered && !a.active));
         persist(alerts, s.soundEnabled);
         return { alerts };
       }),

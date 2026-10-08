@@ -106,6 +106,23 @@ export function sampleKey(symbol: string, src: AlertSource): string {
   return `${symbol}:${sourceKeyOf(src)}`;
 }
 
+// ---------- 源解析 ----------
+
+/**
+ * 指标警报源解析（纯函数，AlertPanel 与单测共用）：plotKey 无效回退首个 plot；
+ * 指标缺失或 plots 为空（无可用输出）→ null。空 plot 不静默降级为价格警报——
+ * 调用方（AlertPanel）据此阻止创建并在 UI 明示「无可用输出」（用户口径 2026-10-08）。
+ */
+export function resolveIndicatorAlertSource(
+  indicatorId: string,
+  plotKey: string,
+  def: { plots: readonly { key: string }[] } | undefined,
+): Extract<AlertSource, { type: 'indicator' }> | null {
+  const eff = def ? (def.plots.some((p) => p.key === plotKey) ? plotKey : (def.plots[0]?.key ?? '')) : '';
+  if (!eff) return null;
+  return { type: 'indicator', indicatorId, plotKey: eff };
+}
+
 /** 作用对象可读名：`价格` / `RSI·RSI`（指标名·plot 名）/ `指标名·条件标题`（Pine 条件）/ `画线水平线`（P2-D②） */
 export function describeSource(src: AlertSource): string {
   if (src.type === 'price') return '价格';

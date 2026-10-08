@@ -71,8 +71,8 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
       frequency,
       cooldownMs,
       expiresAt: expiryMs > 0 ? Date.now() + expiryMs : undefined,
-      // 重新编辑保存即重新武装（once 已停用 → 恢复待触发）
-      active: true,
+      // 编辑不隐式改变暂停状态（用户裁决 2026-10-03）：active 保留原值，已暂停的警报
+      // 不再被静默恢复（重新启用走面板的暂停开关）；触发标志清零（旧阈值下的记录随编辑失效）
       triggered: false,
       lastFiredAt: undefined,
     });
