@@ -21,8 +21,7 @@ npm run dev          # http://localhost:5173
 | `npm run build` | `tsc -b` + Vite 生产构建 |
 | `npm run preview` | 预览生产构建 |
 | `npm run typecheck` | 类型检查（含 `src` 与 `tests/unit`，开着 `noUnusedLocals`） |
-| `npm run check:size` | 文件规模检查（**逻辑单元**口径，oxc-parser AST 计数、与排版无关；含存量例外清单） |
-| `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；0 错误；61 条警告为存量债务基线：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1） |
+| `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；0 错误；61 条警告为存量债务基线：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
 | `npm test` | Vitest 单测（65 文件 / 1145 例） |
@@ -61,13 +60,12 @@ docs/           Spec 与差距分析（见下）
 
 ## 质量门禁
 
-批次出口标准：`npm run typecheck && npm run lint && npm run check:size && npm test && npm run test:e2e` 全绿 + `npm run build` 通过。
+批次出口标准：`npm run typecheck && npm run lint && npm test && npm run test:e2e` 全绿 + `npm run build` 通过。
 
 当前实测基线（2026-10-08）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**）/ lint 0 错（**61 条警告**，oxlint 口径：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1，全部为在案债务基线）/ 单测 1145 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 456.61 kB（>500 kB 警告已消除）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令原样兼容（已探针验证）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。
-- **check:size**：`check-file-size.mjs` 计数器迁 `oxc-parser`（与 oxlint 同解析器栈），口径不变（语句+声明+类成员+对象成员），例外清单按新口径校准（与 Babel 口径仅 ChartController ±2）。
 - `no-undef`/`no-unused-vars` 对 TS 关闭（tsc 把关全局与未使用代码）。
 
 **E2E 在 Windows 上必须先自己起 dev server 再跑**：
@@ -86,9 +84,13 @@ npm run test:e2e
   默认色走 `src/engine/palette.ts`（TV 调色板数据，非硬编码）、主题色走 `src/engine/theme.ts`、
   UI 走 `--text-on-accent` / `--on-updown` / `--on-warn` 等 CSS 变量
 - 渲染循环与 React 解耦：高频行情不触发 React 重渲染；跨图表联动走 `store/syncBus.ts`（sourceId 防环 + 限频）
-- 单文件 ≤ **300 逻辑单元**（AST 计数，与排版无关；原「≤300 行」口径因 Prettier 折行使文件数凭空翻倍而废弃）。
-  另有物理行 ≤900 的宽松护栏。存量超标仅剩 1 项（`ChartController`，纯委托门面三次裁决不拆）列于
-  `scripts/file-size-allowlist.json`（每项带理由与登记出处）；门禁只拦**新增**超标：`npm run check:size`
+- 函数级规模红线（oxlint 原生规则，随 lint 门禁执行）：单函数 ≤ **60 条语句**、≤ **10 个参数**
+  （2026-10-08 由「单文件 ≤300 逻辑单元」自定义脚本改为函数级口径——实测全仓 3863 个函数，
+  99.7% ≤30 条语句、最大 59；文件级口径对缺陷零捕获且最大文件 ChartController 三次裁决健康，
+  函数级才直接度量「巨型函数」这个真实风险）。存量 7 个帧编排/分发类大函数（`RenderPipeline.draw`
+  97 / `useTvShortcuts` onKey 107 / `drawLegendBlock` 88 / `drawIndicator` 80 / parser dispatch 73 /
+  `parseShapeDirective` 70 / `PaneRenderer.draw` 64）经 `.oxlintrc.json` overrides 放宽至 120 并登记；
+  放宽是提阈值而非关闭，>120 的新函数仍被拦
 - 引擎侧框架无关：不得 import React / zustand
 - 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1145 单测 + 54 E2E）
 
