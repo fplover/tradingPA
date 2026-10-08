@@ -14,6 +14,8 @@ export interface CursorInput {
   y: number;
   /** 图表区右边界（= 画布宽 - 价格轴宽；右侧为价格轴区域） */
   chartRight: number;
+  /** 图表区左边界画布 x（价格轴在左时 = 轴宽；左侧为价格轴区域）。默认 0 */
+  chartLeft?: number;
   /** 图表区下边界（= 画布高 - 时间轴高；下方为时间轴区域） */
   chartBottom: number;
   /** 面板分隔条命中 index（null = 未命中） */
@@ -27,10 +29,11 @@ export interface CursorInput {
 }
 
 /** TV 光标语义：面板分隔条与价格轴 ns-resize，时间轴 ew-resize，可交互元素 pointer。
- *  返回 '' 表示默认光标（交还给画布/页面默认样式）。 */
+ *  返回 '' 表示默认光标（交还给画布/页面默认样式）。
+ *  价格轴随轴侧：右轴 = 图表区右缘右侧，左轴 = 图表区左边界左侧（chartLeft）。 */
 export function decideCursor(input: CursorInput): string {
   if (input.separatorIndex !== null) return 'ns-resize';
-  if (input.x > input.chartRight) return 'ns-resize';
+  if (input.x > input.chartRight || input.x < (input.chartLeft ?? 0)) return 'ns-resize';
   if (input.y > input.chartBottom) return 'ew-resize';
   if (input.studyHoverBtn !== null) return 'pointer';
   if (input.drawingHoverCursor) return input.drawingHoverCursor;

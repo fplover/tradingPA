@@ -11,6 +11,11 @@ const YEAR_START = new Date(2025, 0, 2, 9, 30).getTime();
 const JANUARY = new Date(2024, 0, 15, 10, 0).getTime();
 // 2024-06-10（周/月视图的非 1 月）
 const JUNE = new Date(2024, 5, 10, 10, 0).getTime();
+// 12 小时制用例：0 点 / 12 点 / 上午 / 下午
+const MIDNIGHT = new Date(2024, 0, 8, 0, 30).getTime();
+const NOON = new Date(2024, 0, 8, 12, 0).getTime();
+const MORNING = new Date(2024, 0, 8, 9, 5).getTime();
+const AFTERNOON = new Date(2024, 0, 8, 15, 45).getTime();
 
 describe('formatTime', () => {
   it('日内（间距 <60px）：HH:mm', () => {
@@ -38,5 +43,23 @@ describe('formatTime', () => {
   it('边界：间距正好 60/300 归入对应档', () => {
     expect(formatTime(T, 300)).toBe('3月');
     expect(formatTime(T, 60)).toBe('3月5日');
+  });
+});
+
+/** 12 小时制（TV 坐标轴页）：默认 24 小时制零变化，hour12 仅作用于日内段 */
+describe('formatTime：12 小时制（AM/PM）', () => {
+  it('日内：H:mm AM/PM，小时不零填充', () => {
+    expect(formatTime(MORNING, 10, false, true)).toBe('9:05 AM');
+    expect(formatTime(AFTERNOON, 10, false, true)).toBe('3:45 PM');
+  });
+
+  it('0 点 → 12 AM，12 点 → 12 PM（不折半）', () => {
+    expect(formatTime(MIDNIGHT, 10, false, true)).toBe('12:30 AM');
+    expect(formatTime(NOON, 10, false, true)).toBe('12:00 PM');
+  });
+
+  it('日/月跨度不受 hour12 影响（保持中文日期）', () => {
+    expect(formatTime(T, 60, false, true)).toBe('3月5日');
+    expect(formatTime(T, 400, false, true)).toBe('3月');
   });
 });

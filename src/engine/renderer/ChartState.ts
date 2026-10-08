@@ -17,10 +17,20 @@ import { DEFAULT_LEGEND_OPTIONS, type LegendOptions, type StudyLegendRect } from
 import type { GridMode } from './drawAxes';
 import { IndicatorManager } from './IndicatorManager';
 import { DEFAULT_VP_PARAMS, VolumeProfileModel, coerceVpParams } from '../profile/volumeProfile';
-import { PANE_GAP, createPane, type PaneState } from './chartPanes';
+import { PANE_GAP, DEFAULT_PRICE_AXIS_POS, createPane, type PaneState, type PriceAxisPos } from './chartPanes';
 import { type VolumeProfileRuntime, bindVpRuntime } from './chartVp';
 
-export { AXIS_HEIGHT, AXIS_WIDTH, type PaneKind, type PaneState, createPane } from './chartPanes';
+export {
+  AXIS_HEIGHT,
+  AXIS_WIDTH,
+  DEFAULT_PRICE_AXIS_POS,
+  type PaneKind,
+  type PaneState,
+  type PriceAxisPos,
+  chartAreaOffsetX,
+  chartAreaWidth,
+  createPane,
+} from './chartPanes';
 export { type VolumeProfileRuntime, vpRuntimeOf } from './chartVp';
 
 /**
@@ -61,8 +71,12 @@ export class ChartState {
   drawingsLocked = false;
   percentOn = false;
   gridMode: GridMode = 'both';
+  /** 价格轴位置（TV Scales 页）：right / left / none；几何（图表区宽与左边界）由宿主按位换算 */
+  priceAxisPos: PriceAxisPos = DEFAULT_PRICE_AXIS_POS;
+  /** 时间坐标 12 小时制（TV 坐标轴页）：false = 24 小时制（HH:mm），true = AM/PM */
+  timeHour12 = false;
   bordersVisible = true;
-  /** 预留：水印渲染未实现，开关态先落状态层 */
+  /** 水印显隐（TV 画布页）：主面板居中「代码 · 周期」，引擎实时渲染到画布 */
   watermarkVisible = false;
   hideStudies = false;
   legendOptions: LegendOptions = { ...DEFAULT_LEGEND_OPTIONS };
@@ -316,9 +330,22 @@ export class ChartState {
     this.invalidate();
   }
 
-  /** 水印显隐（TV 画布页）。预留：引擎水印渲染未实现，状态先落状态层 */
+  /** 水印显隐（TV 画布页）：主价格面板居中「代码 · 周期」，引擎实时渲染 */
   setWatermarkVisible(visible: boolean): void {
     this.watermarkVisible = visible;
+    this.invalidate();
+  }
+
+  /** 价格轴位置（TV Scales 页）：right / left / none。
+   *  几何换算（图表区宽/左边界、视口宽）在宿主（ChartController）按位重算 */
+  setPriceAxisPos(pos: PriceAxisPos): void {
+    this.priceAxisPos = pos;
+    this.invalidate();
+  }
+
+  /** 时间坐标 12 小时制（TV 坐标轴页）：日内标签 HH:mm → H:mm AM/PM */
+  setTimeHour12(on: boolean): void {
+    this.timeHour12 = on;
     this.invalidate();
   }
 

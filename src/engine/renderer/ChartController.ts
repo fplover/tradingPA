@@ -16,7 +16,15 @@ import type { GridMode } from './drawAxes';
 import type { ViewportTimeRange } from '@/store/syncBus';
 import { SyncBridge } from './SyncBridge';
 import { ensurePriceScaleReady, type ScalablePane } from './autoscale';
-import { AXIS_WIDTH, AXIS_HEIGHT, ChartState, type PaneState } from './ChartState';
+import {
+  AXIS_HEIGHT,
+  ChartState,
+  DEFAULT_PRICE_AXIS_POS,
+  chartAreaOffsetX,
+  chartAreaWidth,
+  type PaneState,
+  type PriceAxisPos,
+} from './ChartState';
 import type { IndicatorInfo } from './IndicatorManager';
 import { PanZoomGesture } from './PanZoomGesture';
 import { DrawingGesture } from './DrawingGesture';
@@ -77,7 +85,7 @@ export class ChartController {
 
   constructor(canvas: HTMLCanvasElement, bars: Bar[] = [], legend?: Partial<LegendInfo>) {
     this.manager = new CanvasManager(canvas);
-    this.viewport = new Viewport(this.manager.width - AXIS_WIDTH);
+    this.viewport = new Viewport(chartAreaWidth(this.manager.width, DEFAULT_PRICE_AXIS_POS));
     this.legend = { symbol: 'BTC/USDT', interval: '1m', decimals: 2, ...legend };
     this.countdown.setTimeframe(this.resolveTimeframe());
     // Model 层：viewport/crosshair/countdown 注入，重绘经 invalidate 上送
@@ -85,7 +93,7 @@ export class ChartController {
       this.viewport,
       this.crosshair,
       this.countdown,
-      () => this.manager.width - AXIS_WIDTH,
+      () => this.chartW(),
       () => this.invalidate(),
     );
     this.state.initData(bars);
@@ -93,11 +101,11 @@ export class ChartController {
     this.sync = new SyncBridge(
       this.viewport,
       () => this.state.displaySeries,
-      () => this.manager.width - AXIS_WIDTH,
+      () => this.chartW(),
       () => this.invalidate(),
     );
     this.manager.onResize(() => {
-      this.viewport.setSize(this.manager.width - AXIS_WIDTH);
+      this.viewport.setSize(this.chartW());
       this.invalidate();
     });
     // 输入层装配：host 提供几何/序列/状态/回调的结构子集，各模块持窄接口，依赖只向下
@@ -114,7 +122,9 @@ export class ChartController {
       notifyDrawings: () => this.notifyDrawings(),
       requestDrawingsNotify: () => this.requestDrawingsNotify(),
       layout: () => this.state.layout(this.manager.height - AXIS_HEIGHT),
-      chartW: () => this.manager.width - AXIS_WIDTH,
+      chartW: () => this.chartW(),
+      chartOffsetX: () => this.chartOffsetX(),
+      priceAxisPos: () => this.state.priceAxisPos,
       chartH: () => this.manager.height - AXIS_HEIGHT,
       drawingCtx: () => this.drawingCtx(),
       mainPaneY: () => this.state.panes[0].y,
@@ -186,7 +196,9 @@ export class ChartController {
       currentBar: () => this.state.currentBar,
       currentIndex: () => this.state.currentIndex,
       canvasW: () => this.manager.width,
-      chartW: () => this.manager.width - AXIS_WIDTH,
+      chartW: () => this.chartW(),
+      chartOffsetX: () => this.chartOffsetX(),
+      priceAxisPos: () => this.state.priceAxisPos,
       chartType: () => this.state.chartType,
       gridMode: () => this.state.gridMode,
       hideStudies: () => this.state.hideStudies,
@@ -336,7 +348,7 @@ export class ChartController {
   }
   /** 指标选中失效（指标增删/隐藏/换周期/换数据后目标不存在）→ 工具栏收起 */
   private clearStudySelection(): void {
-    this.selectionPopup.setStudySelection(null, null, this.manager.width - AXIS_WIDTH);
+    this.selectionPopup.setStudySelection(null, null, this.chartW());
   }
   /** 回放位置公开读 API（拆分前为实例私有字段、运行时经 window.__chartRenderer 可读；
    *  D 批次迁入 ChartState 后补此 getter 保持对外读取面不变——E2E 回放用例依赖） */
@@ -354,6 +366,16 @@ export class ChartController {
   }
   get watermarkOn(): boolean {
     return this.state.watermarkVisible;
+  }
+  /** 价格轴位置（TV Scales 页）：right / left / none。
+   *  left↔right 图表区宽不变（仅整体偏移）；涉及 none 时视口宽随图表区重算 */
+  setPriceAxisPos(pos: PriceAxisPos): void {
+    this.state.setPriceAxisPos(pos);
+    this.viewport.setSize(this.chartW());
+  }
+  /** 时间坐标 12 小时制（TV 坐标轴页）：日内标签 H:mm AM/PM，默认 24 小时制 */
+  setTimeHour12(on: boolean): void {
+    this.state.setTimeHour12(on);
   }
   resetPriceScale(): void {
     this.state.resetPriceScale();
@@ -453,7 +475,7 @@ export class ChartController {
     st.replayIndex = index;
     this.viewport.setReplayEdge(index);
     if (index !== null && st.displaySeries.length > 0) {
-      const visibleCount = (this.manager.width - AXIS_WIDTH) / this.viewport.spacing;
+      const visibleCount = this.chartW() / this.viewport.spacing;
       if (prev === null) {
         // 首次选中：回放位置居中
         this.viewport.setFirstPublic(index - visibleCount / 2);
@@ -529,7 +551,7 @@ export class ChartController {
     return this.viewport.isAtRightEdge();
   }
 
-  /** 以画布中心为锚点缩放 */
+  /** 以画布中心为锚点缩放（锚点口径保持既有行为：画布中心，非图表区中心） */
   zoom(factor: number): void {
     this.viewport.zoomAt(this.manager.width / 2, factor);
     this.sync.publishViewport();
@@ -796,8 +818,18 @@ export class ChartController {
       viewport: this.viewport,
       priceScale: main.priceScale,
       series: this.state.displaySeries,
-      geo: { chartW: this.manager.width - AXIS_WIDTH, chartH: main.height },
+      geo: { chartW: this.chartW(), chartH: main.height },
     };
+  }
+
+  /** 图表区宽（画布宽 - 价格轴宽；none = 无轴全宽，随轴位置与画布尺寸变化） */
+  private chartW(): number {
+    return chartAreaWidth(this.manager.width, this.state.priceAxisPos);
+  }
+
+  /** 图表区左边界画布 x（价格轴在左时 = AXIS_WIDTH，其余 = 0） */
+  private chartOffsetX(): number {
+    return chartAreaOffsetX(this.state.priceAxisPos);
   }
 
   private paneAt(y: number): PaneState {

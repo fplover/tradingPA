@@ -3,7 +3,7 @@ import type { BarSeries } from '@/data/BarSeries';
 import type { Bar, ChartTypeId } from '@/types/market';
 import type { IndicatorInstance } from '@/indicators/core/instance';
 import type { PaneState } from './ChartState';
-import { AXIS_WIDTH } from './ChartState';
+import { AXIS_WIDTH, type PriceAxisPos } from './ChartState';
 import type { DrawGeometry } from './drawSeries';
 import type { GridMode } from './drawAxes';
 import { drawGrid, drawPriceAxis, drawLastPrice, drawPaneLegend, drawPaneButtons } from './drawAxes';
@@ -49,6 +49,10 @@ export interface PaneRenderHost {
   /** 画布宽（选中高亮贯穿含数值轴的全宽） */
   canvasW(): number;
   chartW(): number;
+  /** 图表区左边界画布 x（价格轴在左时 = AXIS_WIDTH，绘制前按位 translate） */
+  chartOffsetX(): number;
+  /** 价格轴位置（right/left/none）：轴条/徽章/自动按钮随侧切换 */
+  priceAxisPos(): PriceAxisPos;
   chartType(): ChartTypeId;
   gridMode(): GridMode;
   hideStudies(): boolean;
@@ -75,8 +79,11 @@ export class PaneRenderer {
     compare?: CompareLegendInfo | null,
   ): void {
     const geo: DrawGeometry = { chartW: this.host.chartW(), chartH: pane.height };
+    // 价格轴在左时图表区整体右移一个轴宽：内容按 offset translate，
+    // 轴条/徽章/自动按钮以本地负坐标画在轴条上（见 drawAxes.axisStripX）
+    const pos = this.host.priceAxisPos();
     ctx.save();
-    ctx.translate(0, pane.y);
+    ctx.translate(this.host.chartOffsetX(), pane.y);
 
     if (pane.kind === 'indicator') {
       autoscaleIndicators(pane, this.host.series(), from, to, opts);
@@ -141,9 +148,9 @@ export class PaneRenderer {
     if (pane.kind === 'price') {
       pane.priceScale.setPercentBase(this.host.percentOn() ? (this.host.series().barAt(from)?.close ?? null) : null);
     }
-    drawPriceAxis(ctx, pane.priceScale, this.host.decimals(), geo, pane.kind !== 'price');
+    drawPriceAxis(ctx, pane.priceScale, this.host.decimals(), geo, pane.kind !== 'price', pos);
 
-    // 主图最新价：点线 + 右轴方向着色徽章（徽章旁附带收盘倒计时）。
+    // 主图最新价：点线 + 价格轴方向着色徽章（徽章旁附带收盘倒计时）。
     // 取「当前 bar」而非真实末柱：回放中必须跟随回放游标，否则泄露未来价格。
     if (pane.kind === 'price') {
       const lastBar = this.host.currentBar();
@@ -151,15 +158,16 @@ export class PaneRenderer {
         const i = this.host.currentIndex();
         const bs = this.host.series().raw();
         const prevClose = i > 0 ? bs[i - 1].close : lastBar.open;
-        drawLastPrice(ctx, pane.priceScale, lastBar, prevClose, this.host.decimals(), geo, countdownText);
+        drawLastPrice(ctx, pane.priceScale, lastBar, prevClose, this.host.decimals(), geo, countdownText, pos);
       }
     }
 
-    // 选中面板淡色高亮（内容与轴之后绘制，避免冲淡文字/按钮）
+    // 选中面板淡色高亮（内容与轴之后绘制，避免冲淡文字/按钮）；
+    // 左轴时从左缘起绘，保证轴条与图表区同被高亮（右/无轴 = 原行为）
     pane.headerBtns = null;
     if (pane.id === this.host.selectedPaneId()) {
       ctx.fillStyle = theme.paneActive;
-      ctx.fillRect(0, 0, this.host.canvasW(), geo.chartH);
+      ctx.fillRect(-this.host.chartOffsetX(), 0, this.host.canvasW(), geo.chartH);
     }
 
     // 副图面板：指标图例（左上角）+ 选中时的操作按钮（右上角）
@@ -177,14 +185,15 @@ export class PaneRenderer {
       }
     }
 
-    // 手动价格域指示：“自动”恢复按钮（价格轴底部）
+    // 手动价格域指示：“自动”恢复按钮（价格轴底部，随轴侧落位）
     pane.autoBtn = null;
     if (pane.manual) {
       const text = '自动';
       ctx.font = `10px ${TV_FONT}`;
       const bw = ctx.measureText(text).width + 14;
       const bh = 16;
-      const bx = geo.chartW + (AXIS_WIDTH - bw) / 2;
+      const axisX = pos === 'left' ? -AXIS_WIDTH : geo.chartW; // 与 drawPriceAxis 同一轴条锚点
+      const bx = axisX + (AXIS_WIDTH - bw) / 2;
       const by = geo.chartH - bh - 4;
       ctx.fillStyle = theme.autoBtnBg;
       ctx.fillRect(bx, by, bw, bh);

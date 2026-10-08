@@ -11,6 +11,7 @@ import type { DrawingGesture, DrawingHost } from './DrawingGesture';
 import type { TradePane, TradeGesture, TradeHost } from './TradeGesture';
 import type { HoverController, HoverHost } from './HoverController';
 import { selectStudyAt, type SelectionPopupTracker } from './hitTestIndicator';
+import type { PriceAxisPos } from './chartPanes';
 
 /**
  * 输入控制器（D 批次拆分③；架构映射：ChartRenderer 输入区的 bind/unbind 与
@@ -38,6 +39,11 @@ export interface InputHost extends PanZoomHost, DrawingHost, TradeHost, HoverHos
   /** 当前渲染序列（getter：图表类型变换会整体替换） */
   displaySeries(): BarSeries;
   invalidate(): void;
+  /** 图表区左边界画布 x（价格轴在左时 = AXIS_WIDTH；命中区按轴侧重算）。
+   *  可选：旧宿主（测试替身等）缺省 = 0，即恒为右侧轴行为 */
+  chartOffsetX?(): number;
+  /** 价格轴位置（right/left/none）。可选：缺省 = 'right' */
+  priceAxisPos?(): PriceAxisPos;
 
   // ---- 图表级输入态（宿主持有，draw() 同读；setter 供路由写） ----
   /** 点击即选中面板（TV 行为） */
@@ -107,15 +113,31 @@ export class InputController {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
-  /** 面板头部按钮命中（设置/移除，仅选中指标面板绘制了按钮） */
+  /** 画布 x → 图表区局部 x（价格轴在左时扣除轴宽偏移；右/无轴 = 原值）。
+   *  图表区内的一切命中/放置/悬停/缩放锚点/选 K 落点均用局部坐标，
+   *  与 PaneRenderer 的 translate(offsetX) 对齐；价格轴/时间轴判定仍用画布坐标。 */
+  private chartX(x: number): number {
+    return x - (this.host.chartOffsetX?.() ?? 0);
+  }
+
+  /** 面板头部按钮命中（设置/移除，仅选中指标面板绘制了按钮）。
+   *  按钮绘制在 translate(offsetX) 后的面板局部坐标，命中区同步扣掉偏移 */
   private hitPaneButtonAt(x: number, y: number, pane: InputPane): PaneButtonHit | null {
     if (pane.indicators.length === 0) return null;
-    return hitPaneButtons(x, y, pane.y, pane.headerBtns, pane.indicators[0].def.id);
+    const off = this.host.chartOffsetX?.() ?? 0;
+    return hitPaneButtons(x - off, y, pane.y, pane.headerBtns, pane.indicators[0].def.id);
+  }
+
+  /** 价格轴命中判定（随轴侧）：右轴 = 图表区右缘右侧，左轴 = 图表区左边界左侧，无轴 = 永不命中 */
+  private inPriceAxisAt(x: number): boolean {
+    const pos = this.host.priceAxisPos?.() ?? 'right';
+    if (pos === 'none') return false;
+    return pos === 'left' ? x < (this.host.chartOffsetX?.() ?? 0) : x > this.host.chartW();
   }
 
   private onPointerDown = (e: PointerEvent) => {
     const { x, y } = this.toLocal(e);
-    const inPriceAxis = x > this.host.chartW();
+    const inPriceAxis = this.inPriceAxisAt(x);
     const inTimeAxis = y > this.host.chartH();
     this.panzoom.resetMoveFlag();
     this.host.manager.canvas.setPointerCapture(e.pointerId);
@@ -126,20 +148,21 @@ export class InputController {
     }
     if (inPriceAxis) {
       const pane = this.host.paneAt(y);
-      // 点击“自动”按钮 → 恢复自动适配
-      if (this.panzoom.hitAutoButton(x, y, pane)) return;
+      // 点击“自动”按钮 → 恢复自动适配（按钮随轴侧 translate，命中区同步扣偏移）
+      const off = this.host.chartOffsetX?.() ?? 0;
+      if (this.panzoom.hitAutoButton(x - off, y, pane)) return;
       this.panzoom.beginPriceDrag(y);
       return;
     }
     if (inTimeAxis) return;
     const pane = this.host.paneAt(y);
-    // 选择K线模式：点击任意位置完成选择，预览线与蒙层即消失
+    // 选择K线模式：点击任意位置完成选择，预览线与蒙层即消失（局部坐标落点）
     if (this.host.barSelectMode()) {
-      this.host.barSelected(Math.round(this.host.viewport.xToIndex(x)));
+      this.host.barSelected(Math.round(this.host.viewport.xToIndex(this.chartX(x))));
       return;
     }
     if (this.drawing.tool) {
-      this.drawing.place(x, y, pane.y, e.shiftKey);
+      this.drawing.place(this.chartX(x), y, pane.y, e.shiftKey);
       return;
     }
     // 面板头部按钮（设置/移除指标）优先于画线/交易命中
@@ -150,16 +173,16 @@ export class InputController {
     }
     // 点击即选中面板（TV 行为）
     this.host.selectPane(pane.id);
-    const hit = this.drawing.hitAt(x, y, pane.y);
+    const hit = this.drawing.hitAt(this.chartX(x), y, pane.y);
     if (hit) {
       // B7：Ctrl+按下 = 待克隆；无移动的 Ctrl+点击 = 多选切换
-      this.drawing.beginDrag(x, y, pane.y, hit, e.button, e.ctrlKey || e.metaKey);
+      this.drawing.beginDrag(this.chartX(x), y, pane.y, hit, e.button, e.ctrlKey || e.metaKey);
       return;
     }
     // 交易可视化命中：挂单线拖动改价 / 撤单 / 持仓详情块拖动设 TP-SL
-    if (this.trade.onPointerDown(x, y, pane)) return;
+    if (this.trade.onPointerDown(this.chartX(x), y, pane)) return;
     this.drawing.deselect();
-    if (this.popup) selectStudyAt(this.host, this.popup, x, y); // 指标选中（互斥单选；空白点击即清除）
+    if (this.popup) selectStudyAt(this.host, this.popup, this.chartX(x), y); // 指标选中（互斥单选；空白点击即清除）
     this.panzoom.beginPan(e.clientX, e.clientY);
     this.host.crosshair.clear();
     this.host.invalidate();
@@ -180,7 +203,7 @@ export class InputController {
       return;
     }
     const paneY = this.host.paneAt(y).y;
-    if (this.drawing.onPointerMove(x, y, paneY, e.shiftKey)) return;
+    if (this.drawing.onPointerMove(this.chartX(x), y, paneY, e.shiftKey)) return;
     if (this.trade.dragging) {
       this.trade.dragTo(y);
       return;
@@ -224,13 +247,13 @@ export class InputController {
   private onWheel = (e: WheelEvent) => {
     e.preventDefault();
     const { x, y } = this.toLocal(e);
-    this.panzoom.wheelZoom(x, y, e.deltaY, e.ctrlKey || e.metaKey);
+    this.panzoom.wheelZoom(this.chartX(x), y, e.deltaY, e.ctrlKey || e.metaKey);
   };
 
   private onDoubleClick = (e: MouseEvent) => {
     const { x, y } = this.toLocal(e);
-    // 双击价格轴 → 恢复该面板自动适配
-    if (x > this.host.chartW()) {
+    // 双击价格轴 → 恢复该面板自动适配（左右两态均命中轴条）
+    if (this.inPriceAxisAt(x)) {
       this.host.paneAt(y).manual = false;
       this.host.invalidate();
       return;
@@ -247,7 +270,7 @@ export class InputController {
     }
     // 双击画线 → 打开画线设置（TV 行为）
     const pane = this.host.paneAt(y);
-    const dHit = this.drawing.hitAt(x, y, pane.y);
+    const dHit = this.drawing.hitAt(this.chartX(x), y, pane.y);
     if (dHit) {
       this.host.drawingSettingsCb()?.(dHit.id);
       return;
@@ -260,15 +283,17 @@ export class InputController {
   private onContextMenu = (e: MouseEvent) => {
     e.preventDefault();
     const { x, y } = this.toLocal(e);
-    if (x < 0 || x > this.host.chartW() || y < 0 || y > this.host.chartH()) return;
+    // 图表区边界随轴侧：左轴时左边界右移一个轴宽（右/无轴 = 0）
+    const x0 = this.host.chartOffsetX?.() ?? 0;
+    if (x < x0 || x > x0 + this.host.chartW() || y < 0 || y > this.host.chartH()) return;
     const pane = this.host.paneAt(y);
 
     const chartClick = this.host.chartClickCb();
     const replayIndex = this.host.replayIndex();
     if (replayIndex !== null && chartClick) {
       // 命中交易可视化/画线时不弹下单
-      if (this.trade.hitAt(x, y, pane)) return;
-      if (this.drawing.hitAt(x, y, pane.y)) return;
+      if (this.trade.hitAt(this.chartX(x), y, pane)) return;
+      if (this.drawing.hitAt(this.chartX(x), y, pane.y)) return;
       this.host.ensurePaneScaleReady(pane);
       const price = pane.priceScale.yToPrice(y - pane.y);
       const bar = this.host.displaySeries().barAt(replayIndex);
@@ -279,13 +304,16 @@ export class InputController {
     const contextMenu = this.host.contextMenuCb();
     if (!contextMenu) return;
     // 右键命中画线 → 画线上下文菜单（设置/移除/视觉顺序）
-    const dHit = this.drawing.hitAt(x, y, pane.y);
+    const dHit = this.drawing.hitAt(this.chartX(x), y, pane.y);
     if (dHit) {
       this.host.drawingMenuCb()?.(dHit.id, e.clientX, e.clientY);
       return;
     }
-    // 图例区（商品行或研究行）右键 → 图例菜单（TV legend_context_menu）
-    const inStudyRow = this.host.studyRects().some((r) => x >= r.x && x <= r.btnX + 48 && y >= r.y && y <= r.y + r.h);
+    // 图例区（商品行或研究行）右键 → 图例菜单（TV legend_context_menu；
+    // rects 为图表区局部坐标，随图例块偏移）
+    const inStudyRow = this.host
+      .studyRects()
+      .some((r) => this.chartX(x) >= r.x && this.chartX(x) <= r.btnX + 48 && y >= r.y && y <= r.y + r.h);
     if (y <= 24 || inStudyRow) {
       this.host.legendMenuCb()?.(e.clientX, e.clientY);
       return;
@@ -295,7 +323,7 @@ export class InputController {
     // 时间钳到最近一根 bar（用户裁决 2026-10-03：保留越界下单交互并对齐 bar）——
     // 越界时间会掉出 series.indexOfTime 的精确二分，进出场标记将永不绘制
     const series = this.host.displaySeries();
-    const raw = Math.round(this.host.viewport.xToIndex(x));
+    const raw = Math.round(this.host.viewport.xToIndex(this.chartX(x)));
     const idx = Math.max(0, Math.min(raw, series.length - 1));
     const bar = series.barAt(idx);
     contextMenu(price, bar?.time ?? Date.now(), e.clientX, e.clientY);

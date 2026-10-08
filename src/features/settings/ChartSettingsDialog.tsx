@@ -3,6 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { DialogHeader } from '@/ui/primitives';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { GridMode } from '@/engine/renderer/drawAxes';
+import type { PriceAxisPos } from '@/engine/renderer/chartPanes';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
 import { CheckRow, Segmented } from '@/ui/controls';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
@@ -18,6 +19,19 @@ const GRID_OPTIONS: Array<{ value: GridMode; label: string }> = [
   { value: 'both', label: '全' },
 ];
 
+/** 价格坐标位置（TV Scales 页）：轴在右 / 左 / 无 */
+const PRICE_AXIS_OPTIONS: Array<{ value: PriceAxisPos; label: string }> = [
+  { value: 'right', label: '右' },
+  { value: 'left', label: '左' },
+  { value: 'none', label: '无' },
+];
+
+/** 时间坐标制式（TV 坐标轴页）：24 小时 / 12 小时（AM/PM） */
+const TIME_FORMAT_OPTIONS: Array<{ value: '24' | '12'; label: string }> = [
+  { value: '24', label: '24 小时' },
+  { value: '12', label: '12 小时（AM/PM）' },
+];
+
 interface ChartSettingsDialogProps {
   open: boolean;
   onClose: () => void;
@@ -25,7 +39,7 @@ interface ChartSettingsDialogProps {
   percent: boolean;
   autoScale: boolean;
   legend: LegendOptions;
-  /** 主图渲染器：网格四态/边框/水印实时下发 */
+  /** 主图渲染器：网格四态/边框/水印/价格轴位置/时间制式实时下发 */
   renderer: ChartRenderer | null;
   onLog: (v: boolean) => void;
   onPercent: (v: boolean) => void;
@@ -39,15 +53,21 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
   const [tab, setTab] = useState<Tab>('坐标轴');
   const [gridMode, setGridMode] = useState<GridMode>('both');
   const [borders, setBorders] = useState(true);
-  /** 预留：引擎水印渲染未实现，开关态先落 renderer（setWatermarkVisible） */
+  /** 水印开关（TV 画布页）：实时下发 renderer，引擎渲染到画布 */
   const [watermark, setWatermark] = useState(false);
+  /** 价格坐标位置（TV Scales 页）：右 / 左 / 无，引擎实时换算图表区几何 */
+  const [priceAxisPos, setPriceAxisPos] = useState<PriceAxisPos>('right');
+  /** 时间坐标制式：false = 24 小时，true = 12 小时（AM/PM） */
+  const [timeHour12, setTimeHour12] = useState(false);
 
   // renderer 就绪/偏好变更即下发（renderer 异步创建，就绪时补一次当前值）
   useEffect(() => {
     p.renderer?.setGridMode(gridMode);
     p.renderer?.setBordersVisible(borders);
     p.renderer?.setWatermarkVisible(watermark);
-  }, [p.renderer, gridMode, borders, watermark]);
+    p.renderer?.setPriceAxisPos(priceAxisPos);
+    p.renderer?.setTimeHour12(timeHour12);
+  }, [p.renderer, gridMode, borders, watermark, priceAxisPos, timeHour12]);
 
   return (
     <Dialog.Root
@@ -92,16 +112,19 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
                   <SettingRow label="价格坐标位置">
                     <Segmented
                       ariaLabel="价格坐标位置"
-                      value="right"
-                      options={[
-                        { value: 'right', label: '右' },
-                        { value: 'left', label: '左', disabled: true, title: '引擎侧支持中，敬请期待' },
-                        { value: 'none', label: '无', disabled: true, title: '引擎侧支持中，敬请期待' },
-                      ]}
-                      onChange={() => undefined}
+                      value={priceAxisPos}
+                      options={PRICE_AXIS_OPTIONS}
+                      onChange={setPriceAxisPos}
                     />
                   </SettingRow>
-                  <p style={hintStyle}>坐标位置切换需引擎支持（画布偏移），当前版本仅右侧；左/无为预留态。</p>
+                  <SettingRow label="时间坐标">
+                    <Segmented
+                      ariaLabel="时间坐标"
+                      value={timeHour12 ? '12' : '24'}
+                      options={TIME_FORMAT_OPTIONS}
+                      onChange={(v) => setTimeHour12(v === '12')}
+                    />
+                  </SettingRow>
                 </>
               )}
 
@@ -145,7 +168,7 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
                 <>
                   <CheckRow label="画布边框" checked={borders} onChange={setBorders} />
                   <CheckRow label="水印" checked={watermark} onChange={setWatermark} />
-                  <p style={hintStyle}>水印（商品代码 + 周期）渲染待引擎支持，当前仅记录开关状态。</p>
+                  <p style={hintStyle}>水印（商品代码 + 周期）实时渲染到画布。</p>
                 </>
               )}
 

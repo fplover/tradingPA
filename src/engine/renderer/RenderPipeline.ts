@@ -5,6 +5,7 @@ import { isMarketOpen } from '@/data/marketHours';
 import { getToolDef } from '../drawing/types';
 import { drawDrawings, type DrawContext } from '../drawing/drawDrawings';
 import { drawTrading } from './drawTrading';
+import { drawWatermark, watermarkText } from './drawWatermark';
 import { drawTimeAxis, drawBorders } from './drawAxes';
 import {
   drawCrosshair,
@@ -14,7 +15,8 @@ import {
   type LegendDrawInfo,
 } from './drawCrosshair';
 import { indicatorValuesAt } from './drawIndicator';
-import { AXIS_WIDTH, AXIS_HEIGHT, type ChartState } from './ChartState';
+import { AXIS_HEIGHT, type ChartState } from './ChartState';
+import { chartAreaOffsetX, chartAreaWidth } from './chartPanes';
 import type { SyncBridge } from './SyncBridge';
 import type { DrawingGesture } from './DrawingGesture';
 import type { TradeGesture } from './TradeGesture';
@@ -82,6 +84,11 @@ export class RenderPipeline {
     }
 
     const legend = this.host.legend();
+    const axisPos = st.priceAxisPos;
+    const hour12 = st.timeHour12;
+    // 图表区几何随价格轴侧：right=轴在右（x0=0）、left=轴在左（x0=轴宽）、none=全宽
+    const chartW = chartAreaWidth(w, axisPos);
+    const x0 = chartAreaOffsetX(axisPos);
     const autoscaleOpts: AutoscaleOptions = {
       autoScaleOn: st.autoScaleOn,
       logScale: st.logScale,
@@ -92,6 +99,18 @@ export class RenderPipeline {
       // compare 随 legend 每帧下发（P2-D）：PaneRenderer 主价格面板绘归一化叠加，
       // 图例第二行由下方 drawLegendBlock 读同一 legend.compare 渲染
       this.panes.draw(ctx, pane, from, to, autoscaleOpts, countdownText, legend.compare);
+    }
+
+    // 画布水印（P2 画布级特性）：主价格面板居中「代码 · 周期」。开关走 ChartState
+    // 既有 watermarkVisible（ChartController.watermarkOn 同源），默认关——关闭时
+    // 本帧路径零新增 ctx 状态变更，黄金截图零 diff。置于面板内容之上、画线/交易/
+    // 光标层之下：低透明度 + 主题色，不干扰行情
+    if (st.watermarkVisible) {
+      const wmPane = st.panes[0];
+      ctx.save();
+      ctx.translate(x0, wmPane.y);
+      drawWatermark(ctx, watermarkText(legend), { chartW, chartH: wmPane.height });
+      ctx.restore();
     }
 
     // 面板分隔线：各副图面板顶边（贯穿含数值轴的全宽，TV 风格）
@@ -105,15 +124,15 @@ export class RenderPipeline {
     }
     ctx.stroke();
 
-    // 共享时间轴 + 边框 + 十字光标（全画布坐标）
-    const mainGeo = { chartW: w - AXIS_WIDTH, chartH: h - AXIS_HEIGHT };
-    drawTimeAxis(ctx, st.displaySeries, this.host.viewport, mainGeo);
-    if (st.bordersVisible) drawBorders(ctx, mainGeo);
+    // 共享时间轴 + 边框 + 十字光标（全画布坐标；时间轴/边框/光标随轴侧偏移）
+    const mainGeo = { chartW, chartH: h - AXIS_HEIGHT };
+    drawTimeAxis(ctx, st.displaySeries, this.host.viewport, mainGeo, axisPos, hour12);
+    if (st.bordersVisible) drawBorders(ctx, mainGeo, axisPos);
 
-    // 画线层（主面板局部坐标）
+    // 画线层（主面板局部坐标：随图表区左边界偏移，左轴时整体右移一个轴宽）
     const main = st.panes[0];
     ctx.save();
-    ctx.translate(0, main.y);
+    ctx.translate(x0, main.y);
     if (!st.drawingsHidden) {
       const sel = this.host.drawing.layer.selectedIdList;
       const primary = sel.length > 0 ? sel[sel.length - 1] : null;
@@ -126,12 +145,12 @@ export class RenderPipeline {
         sel.slice(0, -1),
       );
     }
-    // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记
+    // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记（图表区局部坐标）
     drawTrading(
       ctx,
       this.host.trade.tradeVisual,
       main.priceScale,
-      { chartW: w - AXIS_WIDTH, chartH: main.height },
+      { chartW, chartH: main.height },
       legend.decimals,
       st.displaySeries,
       this.host.viewport,
@@ -189,10 +208,14 @@ export class RenderPipeline {
       legend,
       hoveredPane.y,
       hoveredPane.height,
+      axisPos,
+      hour12,
     );
     // 图例常驻：悬停跟随十字光标，否则显示最后一根；同时收集研究行命中区
     st.studyRects = [];
     const legendInfo: LegendDrawInfo = { collapsed: 0 };
+    ctx.save();
+    ctx.translate(x0, 0); // 图例块随图表区偏移（rects 仍为图表区局部坐标，输入层同口径判定）
     drawLegendBlock(
       ctx,
       hoveredBar ?? st.currentBar,
@@ -206,7 +229,6 @@ export class RenderPipeline {
       st.chartType,
     );
     if (legendInfo.collapsed > 0) {
-      ctx.save();
       ctx.font = `11px ${TV_FONT}`;
       ctx.fillStyle = theme.legendDim;
       ctx.textAlign = 'left';
@@ -216,30 +238,32 @@ export class RenderPipeline {
         st.studyRects.length ? st.studyRects[st.studyRects.length - 1].btnX + 56 : 120,
         28,
       );
-      ctx.restore();
     }
+    ctx.restore();
 
     // 联动：其他图表十字光标时间的垂直参考线（小数 index 插值定位——
     // 跨周期图表的时间戳不落在 bar 上时也能对齐，不再因精确匹配失败而错位/消失）
-    this.host.sync.drawReferenceLine(ctx, mainGeo.chartW, mainGeo.chartH, this.host.crosshair.visible);
+    this.host.sync.drawReferenceLine(ctx, mainGeo.chartW, mainGeo.chartH, this.host.crosshair.visible, x0);
 
-    // 选择K线预览线：实线 + 剪刀图标 + 线右侧淡蒙层（选中后由复盘标记线取代）
+    // 选择K线预览线：实线 + 剪刀图标 + 线右侧淡蒙层（选中后由复盘标记线取代）。
+    // selectPreviewX 为图表区局部坐标（HoverController 已换算），绘制时补左边界偏移
     if (st.barSelectMode && st.selectPreviewX !== null) {
       const px = st.selectPreviewX;
       if (px >= 0 && px <= mainGeo.chartW) {
+        const cx = px + x0;
         // 线右侧淡蒙层（“未来”区域提示）
         ctx.fillStyle = theme.accentMask;
-        ctx.fillRect(px, 0, mainGeo.chartW - px, mainGeo.chartH);
+        ctx.fillRect(cx, 0, mainGeo.chartW - px, mainGeo.chartH);
         // 实线
         ctx.strokeStyle = theme.accent;
         ctx.lineWidth = 1.5;
         ctx.setLineDash([]);
         ctx.beginPath();
-        ctx.moveTo(Math.round(px) + 0.5, 0);
-        ctx.lineTo(Math.round(px) + 0.5, mainGeo.chartH);
+        ctx.moveTo(Math.round(cx) + 0.5, 0);
+        ctx.lineTo(Math.round(cx) + 0.5, mainGeo.chartH);
         ctx.stroke();
         // 顶端剪刀图标
-        drawScissors(ctx, px, 10);
+        drawScissors(ctx, cx, 10);
       }
     }
 

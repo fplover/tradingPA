@@ -105,16 +105,17 @@ export class SyncBridge {
    * 联动参考线：其他图表十字光标时间的垂直虚线（全画布坐标，调用方已 translate 归零）。
    * 小数 index 插值定位——跨周期图表的时间戳不落在 bar 上时也能对齐。
    * 本地十字光标可见时不画（避免双线）。
-   */
+   * offsetX = 图表区左边界画布 x（价格轴在左时 = 轴宽；右/无轴 = 0）。 */
   drawReferenceLine(
     ctx: CanvasRenderingContext2D,
     chartW: number,
     chartH: number,
     localCrosshairVisible: boolean,
+    offsetX = 0,
   ): void {
     if (this.syncCrosshairTime === null || localCrosshairVisible) return;
-    const sx = this.viewport.indexToX(this.series().fractionalIndexAt(this.syncCrosshairTime));
-    if (sx < 0 || sx > chartW) return;
+    const sx = this.viewport.indexToX(this.series().fractionalIndexAt(this.syncCrosshairTime)) + offsetX;
+    if (sx < offsetX || sx > offsetX + chartW) return;
     ctx.strokeStyle = theme.crosshair;
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);

@@ -34,6 +34,8 @@ export interface HoverHost {
   chartW(): number;
   chartH(): number;
   separatorIndexAt(y: number): number | null;
+  /** 图表区左边界画布 x（价格轴在左时 = AXIS_WIDTH）。可选：缺省 = 0 */
+  chartOffsetX?(): number;
   /** 研究图例行命中区（drawLegendBlock 回写） */
   studyRects(): readonly StudyLegendRect[];
   setHoveredPane(id: string): void;
@@ -84,12 +86,14 @@ export class HoverController {
   }
 
   /** TV 光标语义：面板分隔条与价格轴 ns-resize，时间轴 ew-resize，可交互元素 pointer。
-   *  决策纯函数在 cursor.ts；此处只装配输入、写 DOM（带 dirty check） */
+   *  决策纯函数在 cursor.ts；此处只装配输入、写 DOM（带 dirty check）。
+   *  入参 x 为画布坐标（价格轴命中随轴侧由 decideCursor 的 chartLeft 判定）。 */
   updateHoverCursor(x: number, y: number): void {
     const cursor = decideCursor({
       x,
       y,
       chartRight: this.host.chartW(),
+      chartLeft: this.host.chartOffsetX?.() ?? 0,
       chartBottom: this.host.chartH(),
       separatorIndex: this.host.separatorIndexAt(y),
       studyHoverBtn: this.studyBtn,
@@ -100,11 +104,14 @@ export class HoverController {
     if (canvas.style.cursor !== cursor) canvas.style.cursor = cursor;
   }
 
-  /** 悬停更新：研究行/画线/交易命中态 + 十字光标定位 + 联动发布时间 */
+  /** 悬停更新：研究行/画线/交易命中态 + 十字光标定位 + 联动发布时间。
+   *  入参 x 为画布坐标；图表区内的一切判定（边界/命中/十字光标/预览线）先换算到
+   *  图表区局部坐标（扣除价格轴在左时的轴宽偏移），与 PaneRenderer 的 translate 对齐。 */
   update(x: number, y: number): void {
+    const cx = x - (this.host.chartOffsetX?.() ?? 0);
     const chartW = this.host.chartW();
     const chartH = this.host.chartH();
-    if (x < 0 || x > chartW || y < 0 || y > chartH) {
+    if (cx < 0 || cx > chartW || y < 0 || y > chartH) {
       this.host.crosshair.clear();
       this.host.setSelectPreviewX(null);
       this.host.publishCrosshairTime(null);
@@ -113,17 +120,17 @@ export class HoverController {
       this.host.invalidate();
       return;
     }
-    // 选择K线模式：预览线跟随光标（不显示十字光标）
+    // 选择K线模式：预览线跟随光标（不显示十字光标；预览线存图表区局部坐标）
     if (this.host.barSelectMode()) {
       this.host.crosshair.clear();
-      this.host.setSelectPreviewX(x);
+      this.host.setSelectPreviewX(cx);
       this.host.invalidate();
       return;
     }
-    // 研究图例行悬停：记录命中行与按钮区（眼睛/设置/移除）
+    // 研究图例行悬停：记录命中行与按钮区（眼睛/设置/移除；rects 为图表区局部坐标）
     this.studyUid = null;
     this.studyBtn = null;
-    const row = hoverStudyRow(this.host.studyRects(), x, y);
+    const row = hoverStudyRow(this.host.studyRects(), cx, y);
     if (row) {
       this.studyUid = row.uid;
       this.studyBtn = row.btn;
@@ -131,15 +138,15 @@ export class HoverController {
     const pane = this.host.paneAt(y);
     this.host.setHoveredPane(pane.id);
     // 画线悬停光标：顶点手柄 pointer、线体 move
-    const dHit = this.drawing.hitAt(x, y, pane.y);
+    const dHit = this.drawing.hitAt(cx, y, pane.y);
     this.drawing.setHoverCursor(dHit ? (dHit.part === 'handle' ? 'pointer' : 'move') : '');
-    const hit = this.trade.hitAt(x, y, pane);
+    const hit = this.trade.hitAt(cx, y, pane);
     this.trade.setHoverCursor(hit !== null);
-    const idx = Math.round(this.host.viewport.xToIndex(x));
+    const idx = Math.round(this.host.viewport.xToIndex(cx));
     const bar = this.host.displaySeries().barAt(idx);
     if (bar) {
       const price = pane.priceScale.yToPrice(y - pane.y);
-      this.host.crosshair.set(x, y, idx, bar.time, price);
+      this.host.crosshair.set(cx, y, idx, bar.time, price);
       this.host.publishCrosshairTime(bar.time);
     } else {
       this.host.crosshair.clear();

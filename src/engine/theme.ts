@@ -43,6 +43,8 @@ export interface ChartTheme {
   profilePoc: string;
   /** VAH/VAL 虚线 */
   profileVa: string;
+  /** 画布水印文字（TV 画布页：主价格面板居中「代码 · 周期」大号半透明，P2） */
+  watermark: string;
 }
 
 const darkTheme: ChartTheme = {
@@ -72,6 +74,8 @@ const darkTheme: ChartTheme = {
   profileDown: 'rgba(239, 83, 80, 0.5)',
   profilePoc: '#ff9800',
   profileVa: 'rgba(255, 152, 0, 0.5)',
+  /** 水印：深色底上取轴文字色 12% 透明度，大号居中仍不干扰行情 */
+  watermark: 'rgba(178, 181, 190, 0.12)',
 };
 
 const lightTheme: ChartTheme = {
@@ -101,6 +105,8 @@ const lightTheme: ChartTheme = {
   profileDown: 'rgba(239, 83, 80, 0.45)',
   profilePoc: '#ff9800',
   profileVa: 'rgba(255, 152, 0, 0.6)',
+  /** 水印：白底上取轴文字色 12% 透明度（与深色主题等强度，观感对齐 TV） */
+  watermark: 'rgba(80, 83, 94, 0.12)',
 };
 
 export const theme: ChartTheme = { ...darkTheme };

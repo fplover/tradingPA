@@ -159,6 +159,20 @@ describe('ChartState：面板布局与配置', () => {
     expect(state.gridMode).toBe('horizontal');
     expect(invalidate).toHaveBeenCalledTimes(3);
   });
+
+  it('价格轴位置与时间制式 setter：默认 right/24h，落状态并请求重绘', () => {
+    const { state, invalidate } = makeState();
+    expect(state.priceAxisPos).toBe('right');
+    expect(state.timeHour12).toBe(false);
+    invalidate.mockClear();
+    state.setPriceAxisPos('left');
+    expect(state.priceAxisPos).toBe('left');
+    state.setPriceAxisPos('none');
+    expect(state.priceAxisPos).toBe('none');
+    state.setTimeHour12(true);
+    expect(state.timeHour12).toBe(true);
+    expect(invalidate).toHaveBeenCalledTimes(3);
+  });
 });
 
 describe('IndicatorManager：指标生命周期', () => {

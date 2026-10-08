@@ -9,6 +9,8 @@ import type { ProfileResult, VolumeProfileModel, VolumeProfileParams } from '../
  * - 行宽按行总量比例，最大行宽 = 图表区宽 25%；up 段贴右缘、down 段续向左；
  * - POC 实线 + 右缘价签，VAH/VAL 虚线贯穿图表区；
  * - 颜色只读主题 token（参数显式覆盖除外），与挂单线/画线（后绘）TV 同序浮于其上。
+ * 右缘锚定 = 图表区右缘（本地 chartW）：PaneRenderer 按价格轴侧 translate 后，
+ * 左/无轴形态下直方图与价签随图表区右缘落位，无需在此感知轴侧。
  */
 
 /** 直方图最大行宽占图表区宽比例 */
