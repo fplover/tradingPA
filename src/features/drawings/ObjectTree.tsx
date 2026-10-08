@@ -66,96 +66,118 @@ export function ObjectTree({ renderer, onClose }: ObjectTreeProps) {
       {drawings.length === 0 && (
         <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无画线。左侧选择工具后在图表上点击放置。</div>
       )}
-      {drawings.map((d) => (
-        <div
-          key={d.id}
-          data-testid="object-row"
-          data-selected={selectedIds.includes(d.id)}
-          onDoubleClick={() => useDrawingStore.getState().setSettingsFor(d.id)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '4px 6px',
-            borderRadius: radius.sm,
-            fontSize: 11,
-            color: 'var(--text)',
-            background: selectedIds.includes(d.id) ? 'var(--panel-2)' : 'transparent',
-          }}
-        >
-          <span style={{ width: 10, height: 10, background: d.style.color, borderRadius: 2, flexShrink: 0 }} />
-          <span
+      {drawings.map((d) => {
+        const selected = selectedIds.includes(d.id);
+        return (
+          <div
+            key={d.id}
+            data-testid="object-row"
+            data-selected={selected}
+            onDoubleClick={() => useDrawingStore.getState().setSettingsFor(d.id)}
             style={{
-              flex: 1,
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '4px 6px',
+              borderRadius: radius.sm,
+              fontSize: 11,
+              // 选中态：TV 对象树为强调色实心行 + 白字白图标（与工具栏激活态/flyout 选中项同规范）；
+              // 浅色主题下旧实现（panel-2 底 + text-faint 图标）图标呈深灰，与深色主题观感不一致
+              color: selected ? 'var(--text-on-accent)' : 'var(--text)',
+              background: selected ? 'var(--accent)' : 'transparent',
             }}
-            onClick={(e) => {
-              // B7：Ctrl+点击行 = 加入/移出多选集合（与画布 Ctrl+点击同语义）
-              if (e.ctrlKey || e.metaKey) renderer.toggleDrawingSelection(d.id);
-              else renderer.selectDrawing(d.id);
-            }}
-            title={labelOf(d)}
           >
-            {labelOf(d)}
-          </span>
-          <button
-            style={miniBtn}
-            onClick={() => renderer.setDrawingOrder(d.id, 'front')}
-            title="置于顶层"
-            aria-label="置于顶层"
-          >
-            <ArrowUpToLine size={icon.sm} />
-          </button>
-          <button
-            style={miniBtn}
-            onClick={() => renderer.setDrawingOrder(d.id, 'forward')}
-            title="上移一层"
-            aria-label="上移一层"
-          >
-            <ChevronUp size={icon.sm} />
-          </button>
-          <button
-            style={miniBtn}
-            onClick={() => renderer.setDrawingOrder(d.id, 'backward')}
-            title="下移一层"
-            aria-label="下移一层"
-          >
-            <ChevronDown size={icon.sm} />
-          </button>
-          <button
-            style={miniBtn}
-            onClick={() => renderer.setDrawingOrder(d.id, 'back')}
-            title="置于底层"
-            aria-label="置于底层"
-          >
-            <ArrowDownToLine size={icon.sm} />
-          </button>
-          <button style={miniBtn} onClick={() => renderer.setDrawingVisible(d.id, !d.visible)} title="显示/隐藏">
-            {d.visible ? <Eye size={icon.md} /> : <EyeOff size={icon.md} />}
-          </button>
-          <button style={miniBtn} onClick={() => renderer.setDrawingLocked(d.id, !d.locked)} title="锁定">
-            {d.locked ? <Lock size={icon.md} /> : <Unlock size={icon.md} />}
-          </button>
-          <button
-            style={miniBtn}
-            onClick={() => useDrawingStore.getState().setSettingsFor(d.id)}
-            title="设置"
-            aria-label="画线设置"
-          >
-            <Settings size={icon.sm} />
-          </button>
-          <button style={miniBtn} onClick={() => renderer.removeDrawing(d.id)} title="删除">
-            <X size={icon.md} />
-          </button>
-          <button style={miniBtn} onClick={() => renderer.duplicateDrawing(d.id)} title="克隆" aria-label="克隆">
-            <Copy size={icon.sm} />
-          </button>
-        </div>
-      ))}
+            <span style={{ width: 10, height: 10, background: d.style.color, borderRadius: 2, flexShrink: 0 }} />
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+              }}
+              onClick={(e) => {
+                // B7：Ctrl+点击行 = 加入/移出多选集合（与画布 Ctrl+点击同语义）
+                if (e.ctrlKey || e.metaKey) renderer.toggleDrawingSelection(d.id);
+                else renderer.selectDrawing(d.id);
+              }}
+              title={labelOf(d)}
+            >
+              {labelOf(d)}
+            </span>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => renderer.setDrawingOrder(d.id, 'front')}
+              title="置于顶层"
+              aria-label="置于顶层"
+            >
+              <ArrowUpToLine size={icon.sm} />
+            </button>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => renderer.setDrawingOrder(d.id, 'forward')}
+              title="上移一层"
+              aria-label="上移一层"
+            >
+              <ChevronUp size={icon.sm} />
+            </button>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => renderer.setDrawingOrder(d.id, 'backward')}
+              title="下移一层"
+              aria-label="下移一层"
+            >
+              <ChevronDown size={icon.sm} />
+            </button>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => renderer.setDrawingOrder(d.id, 'back')}
+              title="置于底层"
+              aria-label="置于底层"
+            >
+              <ArrowDownToLine size={icon.sm} />
+            </button>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => renderer.setDrawingVisible(d.id, !d.visible)}
+              title="显示/隐藏"
+            >
+              {d.visible ? <Eye size={icon.md} /> : <EyeOff size={icon.md} />}
+            </button>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => renderer.setDrawingLocked(d.id, !d.locked)}
+              title="锁定"
+            >
+              {d.locked ? <Lock size={icon.md} /> : <Unlock size={icon.md} />}
+            </button>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => useDrawingStore.getState().setSettingsFor(d.id)}
+              title="设置"
+              aria-label="画线设置"
+            >
+              <Settings size={icon.sm} />
+            </button>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => renderer.removeDrawing(d.id)}
+              title="删除"
+            >
+              <X size={icon.md} />
+            </button>
+            <button
+              style={selected ? selectedMiniBtn : miniBtn}
+              onClick={() => renderer.duplicateDrawing(d.id)}
+              title="克隆"
+              aria-label="克隆"
+            >
+              <Copy size={icon.sm} />
+            </button>
+          </div>
+        );
+      })}
       {drawings.length > 0 && (
         <button
           style={{
@@ -240,3 +262,6 @@ const miniBtn: React.CSSProperties = {
   fontSize: 11,
   padding: '0 2px',
 };
+
+/** 选中行内的行 inline 按钮：图标随行转白（强调色底上的可读性） */
+const selectedMiniBtn: React.CSSProperties = { ...miniBtn, color: 'var(--text-on-accent)' };
