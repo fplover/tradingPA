@@ -41,24 +41,24 @@
 | **快捷键面板** | TV 头像 →「键盘快捷键」完整清单页（charting_library 注明 dialog 需自研） | 无快捷键面板 | 整体缺失；已实现快捷键散落无出处 | **P1** |
 | **快捷键覆盖** | Alt+A 警报 / Alt+N 注释 / Alt+G 前往日期 / Alt+R 重置视图 / Alt+L 对数 / Alt+P 百分比 / Alt+W 加入自选 / Ctrl+Alt+H 隐藏所有图形 / Shift+F 全屏 / Alt+S 快照 / 数字键切周期 / 字母键切品种 / Alt+Enter 最大化 / Alt+C 十字线 / Alt+I 反转 | 已有：`/`+Ctrl+K 搜索、Alt+T/H/J/V/F/Shift+R 画线、Ctrl+Z/Y、Delete、Enter、+/-、←/→、Esc | 高频缺 Alt+A/R/L/P/W（P1），其余（P2） | P1+P2 |
 | **指标对话框** | 左导航 180px 全宽行无强调条、输入/样式/可见范围三页签、实时生效、Defaults 按钮 | `IndicatorSettingsDialog.tsx`：结构已对齐（180px 导航/三页签/实时生效/应用默认值） | 样式页缺 plot 类型下拉（线/柱/面积等，TV 每 plot 均有）；输入页 number 用裸 `input[type=number]`（TV 为 stepper） | P2 |
-| **图表设置对话框** | 9 页签：商品代码/状态行/坐标和线条/画布/交易/一般/外观/警报/事件/模板；入口 3 个（顶栏齿轮/底部齿轮/双击价格线或 K 线） | `ChartSettingsDialog.tsx`：3 页签（坐标轴/状态栏/外观），坐标轴页仅 3 勾选，无网格四态（横/纵/双/无）、无价格坐标位置/模式、无时间坐标格式 | 深度差距大，是「设置」维度最大缺口 | **P1** |
+| **图表设置对话框** | 9 页签：商品代码/状态行/坐标和线条/画布/交易/一般/外观/警报/事件/模板；入口 3 个（顶栏齿轮/底部齿轮/双击价格线或 K 线） | `ChartSettingsDialog.tsx`：3 页签（坐标轴/状态栏/外观），坐标轴页仅 3 勾选，无网格四态（横/纵/双/无）、无价格坐标位置/模式、无时间坐标格式 | 深度差距收窄：价格坐标左/无位与时间坐标 12/24 小时制已交付（2026-10-08：chartPanes 三态几何 + PaneRenderer/InputController/drawAxes/crosshairOverlay/RenderPipeline chrome 层全链随侧，Scales 页启用左/无 + 时间制式分段控件；默认 right/24h 零像素变化，27 面黄金截图零 diff）；网格四态引擎早已支持（GridMode）。剩余：页签数 5 vs TV 9-10（交易/一般/警报/事件/模板页未做）；入口仅顶栏齿轮 + 双击价格线 | P1（收窄） |
 | **对话框动效** | 打开约 150ms 缩放淡入 | Radix 默认无动画 | 缺 data-state 进入/退出动效 | P2 |
 | **顶栏工具栏** | 品种按钮（含开闭市圆点）/周期/图表类型/指标/警报/注释/前往日期/布局/模板保存/快照/发布/撤销重做 | `App.tsx`：品种/周期/类型/回放/指标/模板保存加载/撤销重做/布局/设置/Pine/搜索/全屏/快照/刷新/主题 | 缺警报按钮、文本注释、前往日期、命名图表布局保存（区别于指标模板）；品种按钮缺市场状态圆点 | P1（警报/布局）/P2 |
 | **画线工具栏** | 52px 独立列；8 大类分组 + flyout；激活=强调色实心圆角块+白图标；底部 磁吸/保持/锁定/隐藏/移除 + caret 子菜单 | `DrawingToolbar.tsx`：52px 列、6 组+flyout、175/300ms 双定时器、磁吸两档、底部 5 控件+caret | flyout 展开时主按钮无持续高亮（TV 展开即高亮）；缺 Measure/Zoom-in 工具组（TV 底部有） | P2 |
 | **顶栏图标态** | default/hover(panel-2)/active(accent 实心+白字)/focus-visible/disabled/loading | `IconButton`（primitives.tsx）：default/hover/active/focus-visible 有；**disabled/loading 无**；hover 用 JS 内联 style 切换（瞬变无 150ms 过渡，且与 CSS 类抢优先级） | 补 disabled/loading 两态 + hover 过渡收敛到 CSS | P2 |
-| **图标尺寸体系** | TV：顶栏 ~16px / 画线 ~18px / 菜单 ~14px | 实际 5 档混用：13（菜单/watchlist）、14（顶栏 select caret）、15（顶栏按钮）、17（画线/右轨）、19（搜索图标） | 未收敛；建议并入 `tokens.ts`：14/16/18 三档 | P1 |
+| **图标尺寸体系** | TV：顶栏 ~16px / 画线 ~18px / 菜单 ~14px | ~~实际 5 档混用：13（菜单/watchlist）、14（顶栏 select caret）、15（顶栏按钮）、17（画线/右轨）、19（搜索图标）~~ **已收敛**（2026-10-08）：实测现存仅 12/14/16/18 四档（与 tokens.ts icon.sm/md/lg/xl 完全一致，上列「5 档混用」系 09-28 过期观测）；37 个 .tsx 的 144 处 `size={n}` + 7 处 CSS 图标槽全部改为 token 引用，逐值对应零像素变更 | ~~未收敛~~ 已完成；奇数值（loading 24、控件高度 18 等非图标尺寸）有意保留 | — |
 | **加载状态** | 初始载入时图表区有加载指示 | `App.tsx:377` 仅 error 态有覆盖层；`status='loading'/'idle'` 且 bars=0 时画布全空白 | 首次加载无任何反馈 | **P1** |
 | **空/错误状态** | 错误有具体原因+重试引导 | error 覆盖层有 `statusDetail` 具体文案（「无法载入 K 线」+原因）——符合反空洞占位；watchlist 空态有引导+链接；搜索有空态 | 已达标；错误态可加重试按钮 | P2 |
 | **Toast 反馈** | 操作成功反馈（已添加警报/已保存模板/已加入自选） | `zIndex.toast=70` 已预留但无 Toast 组件 | 缺全局 toast | P2 |
 | **深浅主题一致性** | crosshair label 底色随主题反转；UI tooltip 深色两主题一致 | canvas light `tooltipBg:#131722`（`theme.ts:58`）vs UI light `--tooltip-bg:#2a2e39`（global.css:89） | 两处 tooltip 底色不一致，应统一 token 值 | P2 |
 | **深浅主题一致性** | 浅色 elevated 表面与边框有层次 | light `--elevated:#e0e3eb` 与 `--border:#e0e3eb` 同值 | 平盘色块与边框同色，层次弱 | P2 |
 | **深浅主题一致性** | 主题切换画布即时重绘 | `Chart.tsx:309-313` themeName 变更即 redraw | 无差距 | — |
-| **圆角 Token** | TV：tooltip/轴标签 3px、菜单 6px、弹窗 6-8px | `tokens.ts` 定义 4/6/8；组件硬编码 3（tooltip/last-price）/4（7 处菜单）/6（flyout）/8（Modal/SymbolSearch）混用 | token 定义未被遵守；应收敛为 sm3/md6/lg8 并全量替换 | P1 |
+| **圆角 Token** | TV：tooltip/轴标签 3px、菜单 6px、弹窗 6-8px | `tokens.ts` 定义 xs3/sm4/md6/lg8 四档（与 TV 口径一致）；组件 34 处 `borderRadius` 硬编码**已全部收敛为 token 引用**（2026-10-08，逐值对应零像素变更） | 已完成；奇数值（0/1/7/2，直角/微圆角/色板圆点）无对应档位，有意保留 | — |
 | **阴影 Token** | TV 三级：flat/ring/raised | 仅 `shadow.menu` 一个 token；另硬编码 `0 2px 4px rgba(0,0,0,.2)`（flyout/IndicatorPanel）、`0 1px 4px rgba(0,0,0,.3)`（tooltip） | 收敛为 elev-flat/ring/raised 三档 | P1 |
 | **边框 Token** | 1px `--border` 统一 | 全部组件 `1px solid var(--border)` | 无差距 | — |
 | **原生控件** | 自定义勾选框（accent 底+白勾 radius 2-3）、自定义下拉、自定义色板 | 设置/指标对话框用原生 `input[type=checkbox]`、原生 `<select>`（lineWidth/精度/周期）、裸 `input[type=color]` 22px | 深色主题下原生控件样式出戏、select 弹系统菜单；ToolbarSelect 已有实现可复用为通用下拉 | **P1** |
 | **底部面板** | 时间范围预设条（1D/5D/1M/3M/6M/1Y/5Y/All）+ Go to date + 时区选择 + 齿轮；导航按钮（缩放/平移/重置） | `StatusBar.tsx`：UTC 标签 + 数据状态 + %/log/auto 三开关 | 缺预设时间范围条、前往日期、时区选择、底部齿轮入口、导航按钮 | P1 |
-| **画布级特性** | Watermark（代码+周期半透明）、Bid/Ask 标签、Symbol name label、High/Low 标签 | K 线收盘倒计时已交付（TV-ALIGNMENT B3：`engine/countdown.ts` + 51 条单测 + E2E 行为断言）；水印为死开关（设置 UI 就位、引擎未渲染）；其余均无 | TV 画布信息层缺失；水印对复刻辨识度影响大 | P2 |
+| **画布级特性** | Watermark（代码+周期半透明）、Bid/Ask 标签、Symbol name label、High/Low 标签 | K 线收盘倒计时已交付（TV-ALIGNMENT B3：`engine/countdown.ts` + 51 条单测 + E2E 行为断言）；**水印已交付**（2026-10-08：`engine/renderer/drawWatermark.ts` TV 式「代码 · 周期」主面板居中大号半透明，字号随面板缩放，RenderPipeline 接线读既有 watermarkVisible 开关，theme.watermark token 双主题等强度；默认关 → 27 面黄金截图零 diff）；其余（Bid/Ask、Symbol name label、High/Low 标签）仍无 | TV 画布信息层部分补齐；水印对复刻辨识度影响大——已闭环 | P2（水印关闭，其余维持） |
 | **字体字重** | TV Trebuchet MS，字重 400/600/700 | 项目 400/500/600/700 混用（如 watchlist 500 价格、symbol 700） | 微差；建议 400/600/700 三档 | P2 |
 
 ---

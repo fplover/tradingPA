@@ -1,7 +1,8 @@
 # tradingPA 技术债收尾施工蓝图（遗留 1-4）
 
-> 作者：首席架构师 高见远 ｜ 日期：2026-09-28 ｜ 状态：待施工
+> 作者：首席架构师 高见远 ｜ 日期：2026-09-28 ｜ 状态：**已交付完毕（2026-09-30，历史存档）**
 > 范围：SPEC-TV-ALIGNMENT v2.0 范围外的四项在案债务收尾（拆分 ×2 + 数据层 defer ×2）。
+> **交付记录**（以 git log 与 §12 变更记录为准）：遗留 1 seriesRenderers 拆分 = `ba761b5`（5 新模块 + barrel，12/12 函数字节级一致）；遗留 2 drawCrosshair 拆分 = `e89dce1`（legendTypes/drawLegend/crosshairOverlay + barrel）；遗留 3+4 数据层补实 = `3ae9d57`（aggregatePath 纯函数 + AggregateFeedPath 轮询/翻页，14 例单测）+ hook 装配（useChartSeries 285 行红线内）。同批 E2E 47/47（20 面黄金截图零 diff）、单测 413→427。本文保留为施工方案与验收方法学的历史记录，不再作为待办。
 > 方法：沿用 D 批次 ChartRenderer 拆分既定范式（docs/tech-refactor-assessment.md §2.1）：
 > 原文件变 barrel/薄 shim 重导出，调用点 diff 为 0，纯搬迁零行为变更。
 

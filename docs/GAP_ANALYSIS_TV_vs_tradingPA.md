@@ -17,7 +17,7 @@
 | `DEVELOPMENT_PLAN.md` 第 3 章 | 1:1 对照清单基线（图表类型 18 / 周期 22 / 指标 63 / 画线全套 / 平台功能）；勾选状态已于 2026-09-30 按代码回填（v1.2），不再滞后 |
 | `git log --oneline -30` | v1.0 调研时最近 10 个 commit 全部为 TV 细节对齐：图例交互、flyout 长按变体菜单、对话框 TV 化（指标四页签/图表设置左导航/TV tooltip）、对象树视觉顺序、磁吸两档、Pine v5 子集编译器；**v1.1 回填（2026-09-30）**：其后 TV-ALIGNMENT v2.0（B1–B8 + D 批次拆分）与 P1 六个批次提交在列（`119a3a5` feat(p1/A1) … `325a19d` docs(p1)） |
 | `src/types/market.ts` | 22 档周期（1s/5s/15s/30s、1m/2m/3m/5m/15m/30m/45m、1H/2H/3H/4H/6H/8H/12H、1D/3D/1W/1M）+ `registerTimeframe` 自定义间隔；18 种图表类型（补齐 step-line/line-markers/hlc-area/columns/high-low/volume-candles） |
-| `src/indicators/builtin/`（11 文件） | 63 个内置指标（P1-A 净增 30；Anchored VWAP 未实装，见 OPEN-DECISIONS）+ Volume Profile（ADR-001 kline 近似）+ Pine 子集自定义指标同管线 |
+| `src/indicators/builtin/`（20 文件，按族拆分） | 64 个内置指标（P1-A 净增 30 + P2-B Anchored VWAP）+ Volume Profile（ADR-001 kline 近似）+ Pine 子集自定义指标同管线 |
 | `src/engine/drawing/types.ts` | 17 种画线工具（12 基础 + 斐波那契家族 6 变体：fib/fib-extension/fib-fan/fib-arc/fib-timezone/fib-auto） |
 | `src/engine/renderer/ChartRenderer.ts`（5 行兼容 shim） | D 批次拆分后实现迁至 `ChartController.ts` 门面（535 行）+ `PaneRenderer`/`seriesRenderers`/`drawAxes` 等分族模块；缩放锚点/平移/LOD/磁吸两档/撤销重做/双击价格轴自动适配/双击画线开设置/截图/收盘倒计时接线 |
 | `src/store/syncBus.ts` | 多图表联动仅十字光标 + 视口（时间空间载荷，无品种/周期/画线同步） |
@@ -80,7 +80,7 @@
 
 | 功能模块 | TV 标准行为 | 当前项目状态 | 差距描述 | 优先级 | 预估工作量 |
 |---|---|---|---|---|---|
-| 内置指标数量 | TV 100+（charting library 官方）；评测称 400+（含社区脚本） | ~~32 个（`indicators/builtin/` 5 文件）~~ **已交付**：63 个（`indicators/builtin/` 11 文件，P1-A 净增 30） | ~~高频缺失（按用户使用率与 TV 默认收藏排序）：**Volume Profile、Anchored VWAP、Alligator、KST、Coppock、ROC/Momentum、TRIX、TSI、Vortex、Fisher Transform、Choppiness Index、Elder Ray、Mass Index、Chaikin Oscillator、Aroon Oscillator、Price Oscillator、Bollinger Width/NATR/Standard Deviation、Percent B、Correlation Coefficient、Linear Regression、McGinley Dynamic** 等约 30 个。声明式 schema + 窗口化计算框架已在，每个指标是纯计算函数 + 金标准用例~~ 原高频缺失清单约 30 个**已补齐**（P1-A 交付）；**Anchored VWAP 未实装**（OPEN-DECISIONS：TV 语义需锚定交互，随画线批次补）；TV 100+ 仍有长尾差距 | P1 | 10-15（30 个）已完成 |
+| 内置指标数量 | TV 100+（charting library 官方）；评测称 400+（含社区脚本） | ~~32 个（`indicators/builtin/` 5 文件）~~ **已交付**：64 个（`indicators/builtin/` 20 文件按族拆分，P1-A 净增 30 + P2-B Anchored VWAP） | ~~高频缺失（按用户使用率与 TV 默认收藏排序）：**Volume Profile、Anchored VWAP、Alligator、KST、Coppock、ROC/Momentum、TRIX、TSI、Vortex、Fisher Transform、Choppiness Index、Elder Ray、Mass Index、Chaikin Oscillator、Aroon Oscillator、Price Oscillator、Bollinger Width/NATR/Standard Deviation、Percent B、Correlation Coefficient、Linear Regression、McGinley Dynamic** 等约 30 个。声明式 schema + 窗口化计算框架已在，每个指标是纯计算函数 + 金标准用例~~ 原高频缺失清单约 30 个**已补齐**（P1-A 交付，Anchored VWAP 由 P2-B 交付）；TV 100+ 仍有长尾差距 | P1 | 10-15（30 个）已完成 |
 | Volume Profile / Session Volume Profile | 右侧/横置成交量分布直方图（POC/VAH/VAL），TV Premium 卖点 | ~~无~~ **已交付**（P1-F，ADR-001）：`engine/profile/volumeProfile.ts` kline 近似分桶 + 右对齐直方图（POC/VAH/VAL），IndicatorManager profile 分支（模板持久化自动兼容）+ 双主题 token | ~~需按价格分桶聚合可见区间成交量（Binance kline 近似）或 aggTrades；作为独立面板挂副图，复用副图框架~~ **已交付**（aggTrades 因请求预算 7-27% 配额否决，kline 近似为 TV 同语义降级方案；Session VP 时间分段未做） | P1 | ~~8-12~~ 已完成 |
 | 指标多周期（MTF） | 指标引用其他周期数据（TV `request.security`） | Pine 子集无 security；内置指标无 MTF 参数 | 需指标引擎支持跨周期序列输入 | P2 | 5-8 |
 | 指标模板/收藏/图例交互 | 模板存取、图例悬停按钮、右键菜单、收藏 | 已对齐（git log：`a487639` 图例交互对齐 TV、`053536f` 悬停按钮与收藏、`7bff966` 指标四页签对话框） | 已对齐 | — | — |
@@ -149,7 +149,7 @@
 | 时区切换 | 时间轴/状态栏时区可选（交易所本地/UTC/自定义） | 固定 UTC | 时间格式化层参数化（`data/format.ts`）+ 轴标签重绘 | P1 | 2-4 |
 | 数据窗口（Data Window） | Alt+D 弹窗：光标处全部指标/画线数值表 | 无（图例有 OHLCV + 叠加指标值） | 采集 renderer 当前光标快照 → 表格浮层 | P1 | 2-3 |
 | 截图能力 | 保存 PNG / 复制到剪贴板 / 生成分享 URL | 下载 PNG（`renderer.screenshot()`）+ 全屏按钮 | 复制到剪贴板（navigator.clipboard）低成本；分享 URL 需后端，不做 | P1 | 0.5-1 |
-| 顶栏完整度 | 品种/Compare/周期/类型/指标/警报/模板/回放/撤销重做/布局/设置/Pine/截图/全屏 | 品种/周期/类型/回放/指标/模板存取/撤销重做/布局/设置/Pine/搜索/全屏/截图/刷新/主题/命令面板（`App.tsx` 顶栏） | ~~缺 Compare 按钮（见 1.3）、警报入口（现藏在右键菜单与右面板，TV 顶栏有快讯管理）、保存布局（见 1.6）~~ 保存布局**已交付**（P0-8，Ctrl+S / `.`）；警报入口在 Alt+A/右键/右面板（TV 顶栏快讯管理形态未做）；仍缺 Compare 按钮（P2-D） | P1 | ~~1-2~~ 部分完成 |
+| 顶栏完整度 | 品种/Compare/周期/类型/指标/警报/模板/回放/撤销重做/布局/设置/Pine/截图/全屏 | 品种/周期/类型/回放/指标/模板存取/撤销重做/布局/设置/Pine/搜索/全屏/截图/刷新/主题/命令面板（`App.tsx` 顶栏） | ~~缺 Compare 按钮（见 1.3）、警报入口（现藏在右键菜单与右面板，TV 顶栏有快讯管理）、保存布局（见 1.6）~~ 保存布局**已交付**（P0-8，Ctrl+S / `.`）；Compare 按钮**已交付**（P2-D，单图布局叠加第二条序列）；警报入口在 Alt+A/右键/右面板（TV 顶栏快讯管理形态未做） | P1 | ~~1-2~~ 部分完成 |
 | 图例/marks | K 线上的除权、财报、新闻标记 | 无 | Events 体系依赖基本面数据源，与 Compare 同属 P1 数据面 | P2 | 3-5 |
 
 ### 1.11 Pine 脚本
