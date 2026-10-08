@@ -46,18 +46,18 @@ export function TvIcon({
 }
 
 /** 光标（游标工具）：标准指针箭头轮廓 */
-export function TvCursor({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvCursor({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <path d="M5 3.5v14l4.5-3.2 2.9 5.3 2.6-1.4-2.9-5.3h6.9L5 3.5z" />
     </TvIcon>
   );
 }
 
 /** 磁吸（吸附 OHLC）：U 形磁铁 + 两极横脚 */
-export function TvMagnet({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvMagnet({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <path d="M6.5 5v7.5a5.5 5.5 0 0 0 11 0V5" />
       <path d="M4 5h5M15 5h5" />
     </TvIcon>
@@ -65,9 +65,9 @@ export function TvMagnet({ size, strokeWidth }: TvIconProps): JSX.Element {
 }
 
 /** 保持绘图模式：指针箭头 + 底部基线（画完不退出工具的意象） */
-export function TvStayMode({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvStayMode({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <path d="M6 4v11.5l3.4-2.6 2.3 4.2 2.3-1.2-2.3-4.2H16L6 4z" />
       <path d="M4 20.5h16" />
     </TvIcon>
@@ -75,9 +75,9 @@ export function TvStayMode({ size, strokeWidth }: TvIconProps): JSX.Element {
 }
 
 /** 锁定：挂锁Body + 闭合锁梁 + 钥匙孔 */
-export function TvLock({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvLock({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <rect x="6" y="10.5" width="12" height="9.5" rx="1.5" />
       <path d="M9 10.5V8a3 3 0 0 1 6 0v2.5" />
       <circle cx="12" cy="15.2" r="1.2" />
@@ -86,9 +86,9 @@ export function TvLock({ size, strokeWidth }: TvIconProps): JSX.Element {
 }
 
 /** 解锁：挂锁Body + 右端翘起的开锁梁 */
-export function TvUnlock({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvUnlock({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <rect x="6" y="10.5" width="12" height="9.5" rx="1.5" />
       <path d="M9 10.5V8a3 3 0 0 1 5.6-1.5" />
       <circle cx="12" cy="15.2" r="1.2" />
@@ -97,9 +97,9 @@ export function TvUnlock({ size, strokeWidth }: TvIconProps): JSX.Element {
 }
 
 /** 显示所有绘图：眼睛轮廓 + 瞳孔 */
-export function TvEye({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvEye({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" />
       <circle cx="12" cy="12" r="2.8" />
     </TvIcon>
@@ -107,9 +107,9 @@ export function TvEye({ size, strokeWidth }: TvIconProps): JSX.Element {
 }
 
 /** 隐藏所有绘图：眼睛轮廓 + 反斜杠 */
-export function TvEyeOff({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvEyeOff({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12z" />
       <path d="M4 4l16 16" />
     </TvIcon>
@@ -117,9 +117,9 @@ export function TvEyeOff({ size, strokeWidth }: TvIconProps): JSX.Element {
 }
 
 /** 清空全部：垃圾桶（盖 + 提手 + 桶身 + 两条内棱） */
-export function TvTrash({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvTrash({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <path d="M4 7h16" />
       <path d="M9.5 7V4.5h5V7" />
       <path d="M6.5 7l1 13h9l1-13" />
@@ -129,9 +129,9 @@ export function TvTrash({ size, strokeWidth }: TvIconProps): JSX.Element {
 }
 
 /** caret（flyout/底部菜单开关）：右向 V 形箭头，展开时由调用方旋转 180° */
-export function TvCaret({ size, strokeWidth }: TvIconProps): JSX.Element {
+export function TvCaret({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
   return (
-    <TvIcon size={size} strokeWidth={strokeWidth}>
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
       <path d="M9.5 5.5 15.5 12l-6 6.5" />
     </TvIcon>
   );
