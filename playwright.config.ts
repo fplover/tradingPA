@@ -27,6 +27,9 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     viewport: { width: 1280, height: 800 },
+    // 首个用例会触发 dev server 冷编译（~60 模块），允许 1 次重试消解 flaky；
+    // 重试时留 trace，flaky 排查不必重跑全量
+    trace: 'on-first-retry',
   },
   projects: [
     // 使用系统 Chrome（本环境无法从 CDN 下载 Playwright 内置 chromium）

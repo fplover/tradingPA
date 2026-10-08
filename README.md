@@ -18,15 +18,16 @@ npm run dev          # http://localhost:5173
 | 命令 | 说明 |
 |---|---|
 | `npm run dev` | 开发服务器（HMR） |
-| `npm run build` | `tsc -b` + Vite 生产构建 |
+| `npm run build` | `tsc -b`（app + node 双项目）+ Vite 生产构建 |
 | `npm run preview` | 预览生产构建 |
-| `npm run typecheck` | 类型检查（含 `src` 与 `tests/unit`，开着 `noUnusedLocals`） |
+| `npm run typecheck` | 类型检查双项目：`tsconfig.json`（`src` + `tests/unit`，开着 `noUnusedLocals`）+ `tsconfig.node.json`（`vite.config.ts` / `playwright.config.ts` / `tests/e2e`） |
 | `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；0 错误；61 条警告为存量债务基线：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
 | `npm test` | Vitest 单测（65 文件 / 1145 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 | `npm run audit` | 依赖漏洞审计（**必须走官方 registry**：本机配置的 npmmirror 镜像不实现 `/-/npm/v1/security/*`，直接 `npm audit` 会报 NOT_IMPLEMENTED） |
+| `npm run verify` | 机器无关门禁一键跑：typecheck + lint + format:check + test（批次内快速闭环用） |
 
 ## 目录结构
 
@@ -60,7 +61,9 @@ docs/           Spec 与差距分析（见下）
 
 ## 质量门禁
 
-批次出口标准：`npm run typecheck && npm run lint && npm test && npm run test:e2e` 全绿 + `npm run build` 通过。
+批次出口标准：`npm run verify`（typecheck + lint + format:check + test 一键门禁）+ `npm run test:e2e` 全绿 + `npm run build` 通过。等价手工链：`npm run typecheck && npm run lint && npm run format:check && npm test && npm run test:e2e`。
+
+> E2E 在 Windows 上必须先自己起 dev server 再跑（见下节）；`verify` 只含机器无关门禁，可随时跑。
 
 当前实测基线（2026-10-08）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**）/ lint 0 错（**61 条警告**，oxlint 口径：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1，全部为在案债务基线）/ 单测 1145 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 456.61 kB（>500 kB 警告已消除）。
 
@@ -99,7 +102,7 @@ npm run test:e2e
 - **依赖漏洞 4 项 → 已清零（2026-10-03 复核）**：经依赖升级专项批次（vite 5→8、vitest 3→5、react 18→19、
   zustand 4→5、TS 5.6→6.0.3、eslint 9→10，见 git log `507be30`…`956fa1f`），`npm run audit` 报
   **found 0 vulnerabilities**。复查命令不变：`npm run audit`（必须走官方 registry）。
-- `jsdom@30` 声明要求 Node `^22.22.2`，当前环境 22.22.2 满足（旧环境 22.21.1 会打 `EBADENGINE` 警告）。
+- Node 版本要求已固化为 `engines: node >=22.22.2`（jsdom@30 的声明要求；npm 默认只警告不强制，旧环境 22.21.1 会打 `EBADENGINE` 警告）。
 - `git blame` 建议启用忽略清单：`git config blame.ignoreRevsFile .git-blame-ignore-revs`（跳过纯格式化提交）。
 
 已收口（2026-09-30）：无 lint 门禁 → 已引入 ESLint + `.editorconfig` + `.gitattributes`；单 chunk >500 kB → 已按 vendor 分块（最大应用块 445 kB）；canvas hex 无审计口径 → 已集中到 `palette.ts`，`.ts/.tsx` 中的 hex 259 → 90 且**使用点零字面量**（剩余全为 token/调色板定义、Pine 语言常量表与注释）；P2-B 画线家族无像素安全网 → 已补 6 面覆盖 25 个工具（黄金面 21 → 27）；Prettier 未全仓应用 → 已单批格式化（162 处内容变更，`format:check` 转绿，行为中性经 27 面黄金截图零 diff 证明）。

@@ -1,15 +1,25 @@
 {
+  // Node 侧项目（工具链配置 + E2E）：vite.config.ts / playwright.config.ts / tests/e2e。
+  // 2026-10-08 审计前本文件是从不被 tsc -b 构建的死配置（build/typecheck 只构建根
+  // tsconfig.json），三类文件实际不在类型检查范围内；现由
+  // `tsc -b tsconfig.json tsconfig.node.json`（typecheck/build 脚本）一并构建。
+  // DOM lib：e2e 的 page.evaluate 回调在浏览器上下文签名；@/ paths 与根配置对齐。
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
-    "strict": true
+    "strict": true,
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "playwright.config.ts", "tests/e2e"]
 }
