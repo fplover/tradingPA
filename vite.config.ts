@@ -4,6 +4,12 @@ import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
   plugins: [react()],
+  // GitHub Pages 基路径：Actions 环境由 GITHUB_REPOSITORY 推导（owner/repo → /repo/），
+  // 本地开发与普通构建保持 '/'。无 react-router，单页应用无 SPA 回退问题。
+  base: (() => {
+    const repo = process.env.GITHUB_REPOSITORY?.split('/')[1];
+    return process.env.GITHUB_ACTIONS && repo ? `/${repo}/` : '/';
+  })(),
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),

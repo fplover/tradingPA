@@ -1,0 +1,60 @@
+# tradingPA GitHub Pages 部署（build + deploy 两job）。
+#
+# 触发：push 到 main / 手动 dispatch。Pages 源设为 "GitHub Actions"
+# （仓库 Settings → Pages → Source，只需设一次）。
+#
+# base 路径由 vite.config.ts 在 Actions 环境自动推导（GITHUB_REPOSITORY →
+# /tradingPA/），产物即 https://<owner>.github.io/tradingPA/。
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时刻只允许一个 Pages 部署排队进行，新推送取消未完成的旧部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.2 # engines 下限（jsdom@30 要求）
+          cache: npm
+
+      - run: npm ci
+
+      # 机器无关门禁先行：typecheck + lint + format:check + 单测。
+      # 红则终止部署——Pages 产物永远来自全绿提交
+      - run: npm run verify
+
+      # tsc -b + vite build；base 由 GITHUB_REPOSITORY 自动推导
+      - run: npm run build
+
+      # .nojekyll：防止 Pages 的 Jekyll 处理忽略下划线文件（保险，当前产物无此类文件）
+      - run: touch dist/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

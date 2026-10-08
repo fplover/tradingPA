@@ -13,6 +13,16 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
+## GitHub Pages 部署
+
+推送即部署：`push` 到 `main`（或 Actions 页手动 `workflow_dispatch`）触发 `.github/workflows/deploy.yml`——先跑 `npm run verify`（typecheck + lint + format:check + 单测，红则终止部署），再 `npm run build` 并发布到 Pages。产物地址 `https://<owner>.github.io/tradingPA/`。
+
+**一次性仓库设置**（git push 无法代做）：仓库 **Settings → Pages → Source 选 “GitHub Actions”**。
+
+- base 路径由 `vite.config.ts` 在 Actions 环境自动推导（`GITHUB_REPOSITORY` → `/tradingPA/`），本地构建保持 `/`
+- 本地按 Pages base 预演：`npm run build:pages && npm run preview`
+- 单页应用无路由，无需 SPA 回退；数据源中新浪两条依赖 dev server 代理的路径在 Pages 上不可用（既有已知边界，退化为「暂无数据源」）
+
 ## 命令
 
 | 命令 | 说明 |
@@ -27,6 +37,7 @@ npm run dev          # http://localhost:5173
 | `npm test` | Vitest 单测（65 文件 / 1145 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 | `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
+| `npm run build:pages` | 按 Pages base（`/tradingPA/`）本地预演构建（配合 `npm run preview`） |
 | `npm run audit` | 依赖漏洞审计（**必须走官方 registry**：本机配置的 npmmirror 镜像不实现 `/-/npm/v1/security/*`，直接 `npm audit` 会报 NOT_IMPLEMENTED） |
 | `npm run verify` | 机器无关门禁一键跑：typecheck + lint + format:check + test（批次内快速闭环用） |
 
