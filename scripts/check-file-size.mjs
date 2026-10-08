@@ -13,6 +13,7 @@ import { parseSync } from 'oxc-parser';
  * ——它在任何排版下都"超标"，原来的 637 行只是手写长行的假象。
  * 反过来，`indicators/builtin/trend.ts` 只有 270 物理行（行数排名第 29），
  * 逻辑内容却排全仓第 4——旧口径完全看不到这类"密度型"大文件。
+ * （该文件已于 2026-10-08 拆分批按族拆分，历史事实保留于此。）
  *
  * ## 新口径
  * **逻辑单元数**：统计语法树中代表「一块逻辑/结构」的节点——
@@ -109,17 +110,12 @@ function countLogicalUnits(fileName, text) {
 
   (function visit(node, parent) {
     const t = node.type;
-    if (
-      (t.endsWith('Statement') || t.endsWith('Declaration')) &&
-      t !== 'BlockStatement' &&
-      t !== 'EmptyStatement'
-    ) {
+    if ((t.endsWith('Statement') || t.endsWith('Declaration')) && t !== 'BlockStatement' && t !== 'EmptyStatement') {
       // isStatement 面（含函数/类/变量/导入导出等声明语句）+1
       // `export const x` 的 TS 形态是带修饰符的 VariableStatement（计 1）；
       // export 包装节点不再计，由内层声明计入，保持平价
       const isWrappedDecl =
-        (t === 'ExportNamedDeclaration' || t === 'ExportDefaultDeclaration') &&
-        node.declaration != null;
+        (t === 'ExportNamedDeclaration' || t === 'ExportDefaultDeclaration') && node.declaration != null;
       if (!isWrappedDecl) n++;
     }
     // TS 对 FunctionDeclaration/ClassDeclaration 语句+声明各计一次

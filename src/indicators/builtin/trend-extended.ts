@@ -1,6 +1,6 @@
 import type { IndicatorDef } from '../core/types';
 import { wilder, closes, trueRange, rollingSum, linreg, combine } from '../core/math';
-import { Aroon } from './momentum';
+import { Aroon } from './momentum-adx';
 import { PALETTE } from '@/engine/palette';
 
 const num = (v: unknown) => Number(v);

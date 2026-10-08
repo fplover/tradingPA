@@ -81,7 +81,7 @@ export function cciSeries(bars: readonly Bar[], n: number): S {
   return out;
 }
 
-/** MFI：窗口内涨/跌资金流比（neg=0 → 100，pos=0 → 0） */
+/** MFI：窗口内涨/跌资金流比（neg=0 → 100，pos=0 → 0，双方为 0 → 中性 50；与内置 oscillators-range.ts 的 MFI 同口径） */
 export function mfiSeries(bars: readonly Bar[], n: number): S {
   const tp = bars.map((b) => (b.high + b.low + b.close) / 3);
   const flow = bars.map((b, i) => tp[i] * b.volume);

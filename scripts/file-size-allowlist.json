@@ -4,38 +4,8 @@
     {
       "file": "src/engine/renderer/ChartController.ts",
       "units": 546,
-      "reason": "图表控制器门面：公开 API 面 + host 装配字面量 + 视口编排，纯扁平委托无逻辑；已两次裁决「接受并记录」（§12 2026-09-29 门面裁决 / 09-30 拆分至 599 行下限）",
+      "reason": "图表控制器门面：公开 API 面 + host 装配字面量 + 视口编排，纯扁平委托无逻辑；已三次裁决「接受并记录」（§12 2026-09-29 门面裁决 / 09-30 拆分至 599 行下限 / 2026-10-08 拆分批 B 复评：结构分解 28 import + 31 字段 + 110 构造器（host 字面量 ~66 属性）+ 375 方法体，102 个方法中 73 个为 ≤2 语句薄委托，约八成为不可再削减的委托面；mixin/偏类需 private→protected 改封装契约、host 字面量外移工厂需放宽私有可见性违反公开 API 签名冻结且拆后仍 >300、collaborator 提取每个公开方法仍需委托行且引入回援循环依赖——维持零改动）",
       "registeredIn": "SPEC-TV-ALIGNMENT §12 + OPEN-DECISIONS 红线口径条目"
-    },
-    {
-      "file": "src/indicators/pine/taFunctions.ts",
-      "units": 384,
-      "reason": "Pine ta.* 函数表：每个条目是「参数校验 + 调用 taCore」的声明式数据，无控制流；按族拆分收益有限",
-      "registeredIn": "OPEN-DECISIONS 红线口径条目"
-    },
-    {
-      "file": "src/indicators/builtin/oscillators.ts",
-      "units": 380,
-      "reason": "震荡类指标定义集合（8 个 IndicatorDef 字面量）；可按子族拆分，待排期",
-      "registeredIn": "OPEN-DECISIONS 红线口径条目"
-    },
-    {
-      "file": "src/indicators/builtin/trend.ts",
-      "units": 373,
-      "reason": "趋势类指标定义集合（9 个 IndicatorDef 字面量）：物理行仅 270（排名第 29），旧口径完全看不到，新口径将其暴露——可按 MA 族/Ichimoku/Supertrend 拆分",
-      "registeredIn": "OPEN-DECISIONS 红线口径条目"
-    },
-    {
-      "file": "src/indicators/builtin/momentum.ts",
-      "units": 364,
-      "reason": "动量类指标定义集合（6 个 IndicatorDef 字面量）；可按 MACD-ADX 族拆分，待排期",
-      "registeredIn": "OPEN-DECISIONS 红线口径条目"
-    },
-    {
-      "file": "src/indicators/builtin/momentum-osc.ts",
-      "units": 305,
-      "reason": "动量震荡类指标定义集合（6 个 IndicatorDef 字面量，物理行仅 237）；可按族拆分，待排期",
-      "registeredIn": "OPEN-DECISIONS 红线口径条目"
     }
   ]
 }
