@@ -14,6 +14,8 @@ import {
 import { nextAutoplayIndex, useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { Menu, MenuItem } from '@/ui/primitives';
+import { DatePicker } from '@/ui/DatePicker';
+import { dateStrToTime } from '@/ui/calendar';
 import { icon } from '@/ui/tokens';
 import {
   barStyle,
@@ -25,7 +27,6 @@ import {
   sepStyle,
   selectStyle,
   datePopStyle,
-  dateInputStyle,
   hintStyle,
 } from './replayBarStyles';
 
@@ -100,8 +101,8 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
 
   const applyDate = () => {
     if (!dateValue) return;
-    const t = new Date(dateValue).getTime();
-    if (!isNaN(t)) {
+    const t = dateStrToTime(dateValue); // 'YYYY-MM-DD' → 当地零点（日粒度定位语义）
+    if (t !== null) {
       onSeekToTime(t);
       setDatePickerOpen(false);
     }
@@ -148,12 +149,9 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
         </Menu>
         {datePickerOpen && (
           <div style={datePopStyle}>
-            <input
-              type="datetime-local"
-              value={dateValue}
-              onChange={(e) => setDateValue(e.target.value)}
-              style={dateInputStyle}
-            />
+            {/* 自建日历选择器（与「前往日期」同组件；datetime-local 原生控件在部分
+                嵌入式浏览器不弹选择器，且日粒度定位只需日期） */}
+            <DatePicker value={dateValue} onChange={setDateValue} />
             <button
               style={{ ...btnStyle, background: 'var(--accent)', color: 'var(--text-on-accent)' }}
               onClick={applyDate}

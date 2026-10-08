@@ -27,6 +27,9 @@ export const centerGroupStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 6,
+  // 日期弹层（datePopStyle，absolute + bottom:100%）的包含块：缺了它弹层会
+  // 解析到初始包含块、渲染到视口上方外（y 为负，用户看到「不弹」）
+  position: 'relative',
 };
 
 export const btnStyle: React.CSSProperties = {
@@ -94,15 +97,6 @@ export const datePopStyle: React.CSSProperties = {
   borderRadius: 6,
   padding: 8,
   zIndex: 30,
-};
-
-export const dateInputStyle: React.CSSProperties = {
-  background: 'var(--bg)',
-  border: '1px solid var(--border)',
-  borderRadius: 4,
-  color: 'var(--text)',
-  padding: '4px 6px',
-  fontSize: 12,
 };
 
 export const hintStyle: React.CSSProperties = {

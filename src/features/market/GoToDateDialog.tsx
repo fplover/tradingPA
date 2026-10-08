@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Modal } from '@/ui/primitives';
+import { DatePicker } from '@/ui/DatePicker';
 import type { Bar } from '@/types/market';
 import { fmtDate, parseDateInput, resolveGoToDate } from './goToDate';
 import { fontSize, radius, space } from '@/ui/tokens';
@@ -57,14 +58,10 @@ export function GoToDateDialog({
     <Modal open={open} onOpenChange={(o) => !o && onClose()} title="前往日期" width={320}>
       <label style={fieldStyle}>
         <span style={labelStyle}>日期</span>
-        {/* 原生日期控件：点击弹出浏览器日历选择器（color-scheme 已随主题设置，
-            深浅色自动适配，零依赖）；min/max 收敛到数据范围，选择器内不可点越界日期 */}
         <input
-          type="date"
-          style={inputStyle}
+          style={{ ...inputStyle, flex: 1, minWidth: 0 }}
           value={text}
-          min={b.length > 0 ? fmtDate(b[0].time) : undefined}
-          max={b.length > 0 ? fmtDate(b[b.length - 1].time) : undefined}
+          placeholder="YYYY-MM-DD"
           aria-label="日期"
           autoFocus
           onChange={(e) => {
@@ -76,6 +73,18 @@ export function GoToDateDialog({
               e.preventDefault();
               submit();
             }
+          }}
+        />
+        {/* TV 形态：输入框 + 日历图标按钮；自建日历弹层（部分嵌入式浏览器不弹原生
+            date picker，且 TV 本就是自定义日历）。选中即回填文本输入 */}
+        <DatePicker
+          compact
+          value={parseDateInput(text) !== null ? text.trim() : ''}
+          min={b.length > 0 ? fmtDate(b[0].time) : undefined}
+          max={b.length > 0 ? fmtDate(b[b.length - 1].time) : undefined}
+          onChange={(v) => {
+            setText(v);
+            setError('');
           }}
         />
       </label>

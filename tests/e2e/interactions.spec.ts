@@ -159,3 +159,66 @@ test('研究图例中键删除与隐藏指标开关', async ({ page }) => {
     .click({ position: { x: 60, y: 40 }, button: 'middle' });
   await expect.poll(hasPineStudy).toBe(false);
 });
+
+/** 前往日期：自建日历弹层（替代原生 date input——部分嵌入式浏览器不弹原生选择器） */
+test('前往日期日历弹层', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  await page.keyboard.press('Alt+g');
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible();
+
+  // 点日历图标按钮 → 弹层出现（月导航 + 周行头 + 日期格）
+  await dialog.getByRole('button', { name: '选择日期' }).click();
+  await expect(page.getByRole('button', { name: '上个月' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '下个月' })).toBeVisible();
+  await expect(page.getByText('一', { exact: true })).toBeVisible();
+
+  // 选中数据首日（日历打开时预填末日，首日在界内可点）→ 回填文本输入 + 弹层关闭
+  const target = page.locator('button[aria-label^="2026-"]').first();
+  const label = await target.getAttribute('aria-label');
+  await target.click();
+  await expect(dialog.getByRole('textbox', { name: '日期' })).toHaveValue(label!);
+  await expect(page.getByRole('button', { name: '上个月' })).toBeHidden();
+
+  // 前往 → 对话框关闭（定位链路通）
+  await dialog.getByRole('button', { name: '前往' }).click();
+  await expect(dialog).toBeHidden();
+});
+
+/** 回放「选择日期」：自建日历弹层定位（包含块 regression——缺 relative 时弹层渲染到视口上方外） */
+test('回放选择日期日历弹层', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  // 进入回放选线 → 点一根 K 线 → 回放栏出现
+  await page.getByRole('button', { name: /回放：点击后/ }).click();
+  await page
+    .locator('canvas')
+    .first()
+    .click({ position: { x: 400, y: 300 } });
+  await page.getByRole('button', { name: '选择K线' }).click();
+  await page.getByRole('menuitem', { name: '选择日期' }).click();
+
+  // DatePicker 触发按钮在视口内（回放栏上方的日期弹层）
+  const trigger = page.getByRole('button', { name: '选择日期' });
+  await expect(trigger).toBeVisible();
+  const box = await trigger.boundingBox();
+  const viewport = page.viewportSize()!;
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y).toBeLessThan(viewport.height);
+
+  // 日历格可见且在视口内（弹层向上展开进图表区）
+  await trigger.click();
+  const day = page.locator('button[aria-label^="2026-"]').first();
+  await expect(day).toBeVisible();
+  const dayBox = (await day.boundingBox())!;
+  expect(dayBox.y).toBeGreaterThanOrEqual(0);
+  expect(dayBox.y).toBeLessThan(viewport.height);
+
+  // 选一天 → 跳转 → 弹层收起
+  await day.click();
+  await page.getByRole('button', { name: '跳转' }).click();
+  await expect(trigger).toBeHidden();
+});
