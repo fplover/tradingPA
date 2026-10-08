@@ -42,6 +42,12 @@ function loadBarPos(): BarPos | null {
   return null;
 }
 
+/** 自动播放步进裁决：返回下一根 index；已在最后一根（barCount-1）时返回 null 表示停止播放 */
+export function nextAutoplayIndex(index: number, barCount: number): number | null {
+  const next = index + 1;
+  return next >= barCount ? null : next;
+}
+
 export const useReplayStore = create<ReplayStore>((set) => ({
   index: null,
   playing: false,

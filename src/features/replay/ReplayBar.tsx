@@ -11,7 +11,7 @@ import {
   Shuffle,
   X,
 } from 'lucide-react';
-import { useReplayStore } from '@/store/replayStore';
+import { nextAutoplayIndex, useReplayStore } from '@/store/replayStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { Menu, MenuItem } from '@/ui/primitives';
 import {
@@ -74,12 +74,12 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
   const [dateValue, setDateValue] = useState('');
   const [qty, setQty] = useState('0.01');
 
-  // 播放：按倍速推进
+  // 播放：按倍速推进；可到达最后一根（barCount-1），到位后停止
   useEffect(() => {
     if (!playing || index === null || barCount < 2) return;
     const id = window.setInterval(() => {
-      const next = index + 1;
-      if (next >= barCount - 1) {
+      const next = nextAutoplayIndex(index, barCount);
+      if (next === null) {
         setPlaying(false);
         return;
       }
