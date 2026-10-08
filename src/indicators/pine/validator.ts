@@ -1,11 +1,13 @@
-import type { Expr, PineError, PineProgram, Stmt } from './ast';
+import type { Expr, FundefStmt, PineError, PineProgram, Stmt } from './ast';
 import { FNS, PINE_FN_NAMES } from './taFunctions';
 
 /**
  * Pine 子集编译期静态校验与 lookback 估算：
  * - 标识符必须为内置源 / input 参数 / 脚本内声明（含块内与函数参数）
  * - 函数必须为注册的 ta/math 函数或脚本内用户函数，且参数数量匹配
- * - lookback 取 ta/math 调用中的最大字面量周期（基线 100，装配层封顶 2000）
+ * - lookback 取 ta/math 调用中的最大周期：字面量取字面值，参数化周期取
+ *   input 的 maxval 上界（未声明则默认值）——与内置指标「固定大 lookback
+ *   覆盖最大可设长度」同口径，避免用户把周期调大后脚本左侧整段 undefined
  */
 
 const SOURCE_NAMES = new Set(['open', 'high', 'low', 'close', 'volume', 'hl2', 'hlc3', 'ohlc4']);
@@ -113,42 +115,131 @@ export function validateProgram(prog: PineProgram, errors: PineError[]): void {
   for (const a of prog.alerts) validateExpr(a.cond, known, prog.funcs, errors, a.line);
 }
 
-export function collectLookbackExpr(e: Expr, acc: { max: number }): void {
+/** 参数化周期估值表：input.int 参数 → 用户可设的最大周期（maxval 上界，未声明则默认值） */
+function paramPeriods(prog: PineProgram): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const p of prog.params) {
+    if (p.type !== 'number') continue;
+    const v = p.max ?? p.default;
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0) m.set(p.key, v);
+  }
+  return m;
+}
+
+/** 周期实参估值：字面量取字面值，input 参数/函数形参绑定取估值；序列实参不计入 */
+function periodOf(e: Expr, periods?: Map<string, number>): number | undefined {
+  if (e.t === 'num') return e.v;
+  if (e.t === 'ident') return periods?.get(e.name);
+  return undefined;
+}
+
+/** 用户函数调用点的周期实参表：函数名 → 形参位置 → 周期估值（多调用点取最大） */
+type CallPeriods = Map<string, Map<number, number>>;
+
+const EMPTY_PERIODS: Map<string, number> = new Map();
+
+/** 记录用户函数调用点各形参位置的周期实参（供函数体作用域绑定形参） */
+function recordCallPeriods(fn: string, args: Expr[], periods: Map<string, number>, calls: CallPeriods): void {
+  let pos = calls.get(fn);
+  if (!pos) {
+    pos = new Map();
+    calls.set(fn, pos);
+  }
+  args.forEach((a, i) => {
+    const p = periodOf(a, periods);
+    if (p !== undefined) pos!.set(i, Math.max(pos!.get(i) ?? 0, p));
+  });
+}
+
+export function collectLookbackExpr(
+  e: Expr,
+  acc: { max: number },
+  periods?: Map<string, number>,
+  calls?: CallPeriods,
+): void {
   if (e.t === 'call') {
-    if (/^(ta|math)\./.test(e.fn) && e.args.length >= 2 && e.args[1].t === 'num') {
-      acc.max = Math.max(acc.max, e.args[1].v);
+    if (/^(ta|math)\./.test(e.fn) && e.args.length >= 2) {
+      const p = periodOf(e.args[1], periods);
+      if (p !== undefined) acc.max = Math.max(acc.max, p);
+    } else if (calls) {
+      recordCallPeriods(e.fn, e.args, periods ?? EMPTY_PERIODS, calls);
     }
-    for (const a of e.args) collectLookbackExpr(a, acc);
+    for (const a of e.args) collectLookbackExpr(a, acc, periods, calls);
   } else if (e.t === 'bin') {
-    collectLookbackExpr(e.l, acc);
-    collectLookbackExpr(e.r, acc);
+    collectLookbackExpr(e.l, acc, periods, calls);
+    collectLookbackExpr(e.r, acc, periods, calls);
   } else if (e.t === 'un') {
-    collectLookbackExpr(e.e, acc);
+    collectLookbackExpr(e.e, acc, periods, calls);
   }
 }
 
-export function collectLookbackStmts(stmts: Stmt[], acc: { max: number }): void {
+export function collectLookbackStmts(
+  stmts: Stmt[],
+  acc: { max: number },
+  periods?: Map<string, number>,
+  calls?: CallPeriods,
+): void {
   for (const st of stmts) {
     switch (st.t) {
       case 'assign':
       case 'var':
       case 'tuple':
       case 'expr':
-        collectLookbackExpr(st.expr, acc);
+        collectLookbackExpr(st.expr, acc, periods, calls);
         break;
       case 'if':
-        collectLookbackExpr(st.cond, acc);
-        collectLookbackStmts(st.then, acc);
-        if (st.els) collectLookbackStmts(st.els, acc);
+        collectLookbackExpr(st.cond, acc, periods, calls);
+        collectLookbackStmts(st.then, acc, periods, calls);
+        if (st.els) collectLookbackStmts(st.els, acc, periods, calls);
         break;
       case 'for':
-        collectLookbackExpr(st.from, acc);
-        collectLookbackExpr(st.to, acc);
-        if (st.by) collectLookbackExpr(st.by, acc);
-        collectLookbackStmts(st.body, acc);
+        collectLookbackExpr(st.from, acc, periods, calls);
+        collectLookbackExpr(st.to, acc, periods, calls);
+        if (st.by) collectLookbackExpr(st.by, acc, periods, calls);
+        collectLookbackStmts(st.body, acc, periods, calls);
+        break;
+      case 'fundef':
+        // 用户函数体（prog.funcs 持有，不在 body 里）：函数体内的周期同样计入
+        collectLookbackStmts(st.body, acc, periods, calls);
         break;
       default:
         break;
     }
   }
+}
+
+/** 函数体作用域：input 参数估值 + 形参按调用点周期实参绑定 */
+function fundefPeriods(f: FundefStmt, periods: Map<string, number>, calls: CallPeriods): Map<string, number> {
+  const pos = calls.get(f.name);
+  if (!pos) return periods;
+  const m = new Map(periods);
+  f.params.forEach((p, i) => {
+    const v = pos.get(i);
+    if (v !== undefined) m.set(p, v);
+  });
+  return m;
+}
+
+/** 全程序 lookback 估算：函数体 + 顶层语句 + plot/hline/绘图指令条件一并纳入。
+ *  两遍遍历：第一遍顺带记录用户函数调用点的周期实参，第二遍按绑定后的形参
+ *  重扫函数体（形参周期才能计入）。 */
+export function collectLookback(prog: PineProgram): number {
+  const acc = { max: 100 };
+  const periods = paramPeriods(prog);
+  const calls: CallPeriods = new Map();
+  collectLookbackStmts(prog.body, acc, periods, calls);
+  for (const p of prog.plots) collectLookbackExpr(p.expr, acc, periods, calls);
+  for (const h of prog.hlines) collectLookbackExpr(h.price, acc, periods, calls);
+  for (const p of prog.paints) if (p.cond) collectLookbackExpr(p.cond, acc, periods, calls);
+  for (const s of prog.shapes) {
+    collectLookbackExpr(s.cond, acc, periods, calls);
+    if (s.price) collectLookbackExpr(s.price, acc, periods, calls);
+  }
+  for (const a of prog.alerts) collectLookbackExpr(a.cond, acc, periods, calls);
+  for (const f of prog.funcs.values()) {
+    // 先按未绑定形参扫一遍（记录函数体内的嵌套调用点），再按调用点绑定形参重扫
+    collectLookbackStmts(f.body, acc, periods, calls);
+    collectLookbackStmts(f.body, acc, fundefPeriods(f, periods, calls));
+  }
+  return acc.max;
 }

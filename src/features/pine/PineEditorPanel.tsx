@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Play, Save, Plus, X } from 'lucide-react';
-import { usePineStore } from '@/store/pineStore';
-import { fontSize, space } from '@/ui/tokens';
+import { AlertTriangle, ChevronDown, ChevronUp, Play, Save, Plus, X } from 'lucide-react';
+import { usePineStore, DRAFT_ID } from '@/store/pineStore';
+import { usePineRuntimeError } from './usePineRuntimeErrors';
+import { fontSize, icon, space } from '@/ui/tokens';
 
 /** Pine 编辑器：TV 底部 dock 形态——编辑区 + 控制台，实时编译注册为指标 */
 export function PineEditorPanel() {
@@ -17,6 +18,8 @@ export function PineEditorPanel() {
   const loadIntoEditor = usePineStore((s) => s.loadIntoEditor);
   const setPanelOpen = usePineStore((s) => s.setPanelOpen);
   const [collapsed, setCollapsed] = useState(false);
+  // 草稿运行期错误（参数在运行期才暴露，编译期 dry-run 发现不了）
+  const runtimeError = usePineRuntimeError(DRAFT_ID);
 
   return (
     <div
@@ -126,7 +129,7 @@ export function PineEditorPanel() {
               overflow: 'auto',
             }}
           />
-          {errors.length > 0 && (
+          {(errors.length > 0 || runtimeError) && (
             <div
               className="tv-scroll"
               style={{
@@ -136,6 +139,21 @@ export function PineEditorPanel() {
                 padding: `${space.xs}px ${space.sm}px`,
               }}
             >
+              {runtimeError && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: space.xs,
+                    color: 'var(--warn)',
+                    fontSize: fontSize.sm,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  <AlertTriangle size={icon.sm} />
+                  运行期错误：{runtimeError}
+                </div>
+              )}
               {errors.map((e, i) => (
                 <div key={i} style={{ color: 'var(--down)', fontSize: fontSize.sm, lineHeight: 1.7 }}>
                   第 {e.line} 行：{e.message}

@@ -18,7 +18,7 @@
  * ta.* 32 个、math.* 10 个。运行期错误编译期 dry-run 前置拦截（AC-B2）。
  */
 
-export { compilePine, pinePaint, pineRuntimeError } from './program';
+export { compilePine, pinePaint, pineRuntimeError, pineRuntimeErrors, subscribePineRuntimeErrors } from './program';
 export { pineAlertsOf, type PineAlertMeta } from './alerts';
 export type { PineError, CompileResult, PaintDirective, ShapeDirective, AlertDirective } from './ast';
 export const DEFAULT_PINE_SCRIPT = `//@version=5

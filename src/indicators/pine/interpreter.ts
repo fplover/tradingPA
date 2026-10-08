@@ -7,6 +7,9 @@ import { callFunction, type TaCtx } from './taFunctions';
  * Pine 子集解释器：向量化（序列对齐 bars，逐元素运算）语义。
  * - if/for 在分支掩码（mask）下执行：掩码为真的 bar 上赋值生效，
  *   其余 bar 保留变量原值（对齐 TV「分支未命中保持前值」语义）。
+ * - if 条件按 Pine 语义取真假：na（undefined）与 NaN 均为假。
+ * - 标识符解析顺序为用户定义变量/函数参数优先，内置源序列兜底
+ *   （脚本内 close = ... 不再被内置 close 序列遮蔽）。
  * - 用户函数调用在子作用域求值（可读全局，写入仅限本作用域），限深 32。
  * - for 循环限次 1000（超限抛错 → 编译期 dry-run 前置拦截，见 program.ts）。
  */
@@ -57,10 +60,11 @@ function evalExpr(e: Expr, scope: Scope, ctx: InterpCtx, allowTuple = false): S 
       return toSeries(e.v, ctx.n);
     case 'ident': {
       if (e.name.startsWith('str:')) return toSeries(NaN, ctx.n);
-      const src = sourceSeries(ctx.taCtx.bars, e.name);
-      if (src) return src;
+      // 用户定义变量/函数参数优先，内置源序列仅作兜底（Pine 作用域语义）
       const v = scope.lookup(e.name);
       if (v) return v;
+      const src = sourceSeries(ctx.taCtx.bars, e.name);
+      if (src) return src;
       throw new Error(`未定义的标识符「${e.name}」`);
     }
     case 'un': {
@@ -146,7 +150,8 @@ function execStmts(stmts: Stmt[], scope: Scope, mask: S | null, ctx: InterpCtx):
       }
       case 'if': {
         const cond = evalExpr(st.cond, scope, ctx);
-        const trueM = cond.map((v) => (v !== undefined && v !== 0 ? 1 : 0));
+        // Pine 语义：na（undefined）与 NaN 均为假，不走真分支
+        const trueM = cond.map((v) => (v !== undefined && !Number.isNaN(v) && v !== 0 ? 1 : 0));
         execStmts(st.then, scope, andMask(mask, trueM), ctx);
         if (st.els) execStmts(st.els, scope, andMask(mask, notMask(trueM)), ctx);
         break;

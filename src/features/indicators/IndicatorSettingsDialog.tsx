@@ -10,6 +10,8 @@ import { isCustomIntervalId } from '@/features/market/customInterval';
 import { CheckRow, Checkbox, NumberStepper } from '@/ui/controls';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { fontSize, space } from '@/ui/tokens';
+import { usePineRuntimeError } from '@/features/pine/usePineRuntimeErrors';
+import { PineRuntimeNotice } from './PineRuntimeNotice';
 import type { PlotKind } from '@/indicators/core/types';
 import {
   overlayStyle,
@@ -71,6 +73,8 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
   const updateInstance = useIndicatorStore((s) => s.updateInstance);
   const setSettingsFor = useIndicatorStore((s) => s.setSettingsFor);
   const [tab, setTab] = useState<Tab>('输入');
+  // Pine 脚本运行期错误（图例齿轮入口的可见出口）：compute 兜底捕获后在此展示
+  const runtimeError = usePineRuntimeError(id);
 
   if (!def || !active) return null;
 
@@ -187,6 +191,7 @@ export function IndicatorSettingsDialog({ id }: { id: string }) {
 
               {tab === '输入' && (
                 <>
+                  {runtimeError && <PineRuntimeNotice message={runtimeError} />}
                   {def.params.length === 0 && <div style={emptyStyle}>该指标无可调参数</div>}
                   {def.params
                     .filter((p) => {

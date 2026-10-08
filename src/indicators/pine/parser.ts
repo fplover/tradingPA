@@ -215,7 +215,8 @@ class StmtParser {
         label,
         type: 'number',
         default: def,
-        min: kwNum(rhs, 'minval'),
+        // 未声明 minval 时兜底 1：周期类参数取 0/负会在运行期抛错（旧行为为指标静默空白）
+        min: kwNum(rhs, 'minval') ?? 1,
         max: kwNum(rhs, 'maxval'),
         step: kwNum(rhs, 'step') ?? 1,
       });
