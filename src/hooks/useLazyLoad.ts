@@ -10,5 +10,5 @@ export function useLazyLoad(rendererRef: { current: ChartRenderer | null }, onNe
       if (renderer && renderer.viewportFirst < 30) onNeedsMoreHistory();
     }, 500);
     return () => clearInterval(id);
-  }, [onNeedsMoreHistory]);
+  }, [rendererRef, onNeedsMoreHistory]);
 }

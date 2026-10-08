@@ -49,28 +49,28 @@ export function useChartCommands(options: ChartCommandsOptions): void {
 
   useEffect(() => {
     rendererRef.current?.setLegend({ symbol, interval, decimals, exchange, timeframeId, market });
-  }, [symbol, interval, decimals, exchange, timeframeId, market]);
+  }, [rendererRef, symbol, interval, decimals, exchange, timeframeId, market]);
 
   // 日历桶时区：market 决定（crypto=UTC / CN=本地），驱动周/月收盘倒计时与数据层归桶口径一致
   useEffect(() => {
     rendererRef.current?.setCalendarTzOffset(market === undefined ? 0 : calendarTzOffsetMinutes(market));
-  }, [market]);
+  }, [rendererRef, market]);
 
   useEffect(() => {
     rendererRef.current?.setChartType(chartType);
-  }, [chartType]);
+  }, [rendererRef, chartType]);
 
   useEffect(() => {
     rendererRef.current?.setLogScale(logScale);
-  }, [logScale]);
+  }, [rendererRef, logScale]);
 
   useEffect(() => {
     rendererRef.current?.setActiveTool(activeTool as Parameters<ChartRenderer['setActiveTool']>[0]);
-  }, [activeTool]);
+  }, [rendererRef, activeTool]);
 
   useEffect(() => {
     rendererRef.current?.setMagnet(magnet);
-  }, [magnet]);
+  }, [rendererRef, magnet]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -92,25 +92,26 @@ export function useChartCommands(options: ChartCommandsOptions): void {
       if (!cur) renderer.addIndicator(des.id, options);
       else renderer.updateIndicator(cur.uid, options);
     }
-  }, [activeIndicators]);
+  }, [rendererRef, activeIndicators]);
 
   useEffect(() => {
     rendererRef.current?.setTradeVisual(useTradeStore.getState().visual());
-  }, [tradeVersion]);
+  }, [rendererRef, tradeVersion]);
 
   useEffect(() => {
     rendererRef.current?.setReplayIndex(replayIndex);
-  }, [replayIndex]);
+  }, [rendererRef, replayIndex]);
 
   useEffect(() => {
-    rendererRef.current?.setBarSelectMode(replaySelectMode, (idx) => {
+    const renderer = rendererRef.current;
+    renderer?.setBarSelectMode(replaySelectMode, (idx) => {
       setReplayIndexStore(idx);
       setReplaySelectMode(false);
     });
-    return () => rendererRef.current?.setBarSelectMode(false, null);
-  }, [replaySelectMode, setReplayIndexStore, setReplaySelectMode]);
+    return () => renderer?.setBarSelectMode(false, null);
+  }, [rendererRef, replaySelectMode, setReplayIndexStore, setReplaySelectMode]);
 
   useEffect(() => {
     rendererRef.current?.redraw();
-  }, [themeName]);
+  }, [rendererRef, themeName]);
 }

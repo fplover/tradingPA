@@ -12,10 +12,11 @@ import { useTradeStore } from '@/features/trading/tradeStore';
 import { useOrderMenuStore } from '@/store/orderMenuStore';
 import { syncBus } from '@/store/syncBus';
 import { registerChartRenderer, unregisterChartRenderer } from '@/hooks/useTvShortcuts';
+import { BackToLatestButton } from '@/hooks/BackToLatestButton';
+import { useBackToLatest } from '@/hooks/useBackToLatest';
 import { useChartCommands } from '@/hooks/useChartCommands';
 import { useLazyLoad } from '@/hooks/useLazyLoad';
 import { useLiveTick } from '@/hooks/useLiveTick';
-import { BackToLatestButton, useBackToLatest } from '@/hooks/useBackToLatest';
 import { isPurePrepend, seriesKey } from './chartPrepend';
 
 interface ChartProps {
@@ -151,7 +152,19 @@ export function Chart({
   // 懒加载检测：视口接近数据左边缘时通知外部
   useLazyLoad(rendererRef, onNeedsMoreHistory);
 
-  // 交易可视化：交互回调（引擎 → store 写回）
+  // 交易可视化：交互回调（引擎 → store 写回）。四个菜单 prop 由 ChartWorkspace 每次渲染
+  // 以内联函数下发（底层都是 store setter，身份稳定）：直接入依赖会让整套首帧注册的
+  // 回调每渲染重摘重绑；经 latest-ref 在事件期读最新回调，行为与首帧捕获完全一致。
+  const menuCallbacksRef = useRef({
+    onChartContextMenu,
+    onLegendMenu,
+    onDrawingMenu,
+    onSelectionPopup,
+  });
+  useEffect(() => {
+    menuCallbacksRef.current = { onChartContextMenu, onLegendMenu, onDrawingMenu, onSelectionPopup };
+  });
+
   useEffect(() => {
     rendererRef.current?.setTradeCallbacks({
       onOrderMove: (id, price) => useTradeStore.getState().updateOrderPrice(id, price),
@@ -169,7 +182,7 @@ export function Chart({
       useOrderMenuStore.getState().openMenu(price, time, clientX, clientY);
     });
     rendererRef.current?.setContextMenuCallback((price, _time, clientX, clientY) => {
-      onChartContextMenu?.(price, _time, clientX, clientY);
+      menuCallbacksRef.current.onChartContextMenu?.(price, _time, clientX, clientY);
     });
     rendererRef.current?.setPaneActionCallback((action, indicatorId) => {
       if (action === 'settings') useIndicatorStore.getState().setSettingsFor(indicatorId);
@@ -214,11 +227,13 @@ export function Chart({
       useDrawingStore.getState().setSettingsFor(drawingId),
     );
     // 图例区右键 → 图例菜单
-    rendererRef.current?.setLegendMenuCallback((x, y) => onLegendMenu?.(x, y));
+    rendererRef.current?.setLegendMenuCallback((x, y) => menuCallbacksRef.current.onLegendMenu?.(x, y));
     // 右键画线 → 画线菜单
-    rendererRef.current?.setDrawingMenuCallback((drawingId, x, y) => onDrawingMenu?.(drawingId, x, y));
+    rendererRef.current?.setDrawingMenuCallback((drawingId, x, y) =>
+      menuCallbacksRef.current.onDrawingMenu?.(drawingId, x, y),
+    );
     // 选中画线/指标 → 浮动工具栏锚点（TV 行为；引擎在取消选中时发 null）
-    rendererRef.current?.setSelectionPopupCallback((info) => onSelectionPopup?.(info));
+    rendererRef.current?.setSelectionPopupCallback((info) => menuCallbacksRef.current.onSelectionPopup?.(info));
     return () => {
       rendererRef.current?.setTradeCallbacks({});
       rendererRef.current?.setChartClickCallback(null);

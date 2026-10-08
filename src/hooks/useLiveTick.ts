@@ -26,5 +26,5 @@ export function useLiveTick(
       renderer.updateBar(updated);
     }, liveTickMs);
     return () => clearInterval(id);
-  }, [liveTickMs]);
+  }, [rendererRef, lastBarRef, liveTickMs]);
 }

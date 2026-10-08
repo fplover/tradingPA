@@ -52,7 +52,11 @@ export interface TvShortcutsOptions {
  *  Alt+Enter 在多图表布局下 = 最大化/还原聚焦单元格（TV 行为），单图保持全屏切换。 */
 export function useTvShortcuts(options: TvShortcutsOptions) {
   const optsRef = useRef(options);
-  optsRef.current = options;
+  // latest-value 同步：keydown 处理器与 applyInterval 在事件期读 optsRef.current，
+  // 必须在 effect 内更新（渲染期写 ref 会触发 react-hooks/refs）
+  useEffect(() => {
+    optsRef.current = options;
+  });
   /** 打开周期浮层时暂存的焦点图表（多图表下周期作用于聚焦单元格） */
   const chartFocusRef = useRef<Element | null>(null);
 
