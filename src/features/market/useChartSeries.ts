@@ -136,6 +136,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
       const feed = new LiveDataFeed({
         symbol: inst.code,
         interval: toBinanceInterval(timeframe),
+        cacheKey: inst.id,
         handlers: {
           onHistory: (bars, info) => {
             if (disposed) return;
@@ -155,7 +156,12 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
                 endTime: bar.time - intervalMs,
               })
                 .then((missing) => {
-                  if (!disposed && missing.length > 0) setHistory(klineCache.merge(barsRef.current, missing));
+                  if (!disposed && missing.length > 0) {
+                    const merged = klineCache.merge(barsRef.current, missing);
+                    setHistory(merged);
+                    // 补拉的缺失区间也是一次获取，同样进缓存
+                    void klineCache.put(inst.id, timeframe, merged);
+                  }
                 })
                 .catch(() => {
                   /* 补拉失败就等下一次推送 */
@@ -285,7 +291,10 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
             return;
           }
           pageFailsRef.current = 0;
-          setHistory((h) => klineCache.merge(older, h));
+          // 翻页取回的更早历史与前视图合并落缓存：下次打开同品种可整体即时渲染
+          const merged = klineCache.merge(older, barsRef.current);
+          setHistory(merged);
+          void klineCache.put(inst.id, tfRef.current.id, merged);
         })
         .catch(fail)
         .finally(() => {

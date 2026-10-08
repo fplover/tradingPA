@@ -95,6 +95,8 @@ export function createCompareFeed(
         bars = klineCache.merge(bars, fresh);
         on.onBars(bars);
         on.onStatus('live');
+        // 对比序列的拉取与主图共享同一缓存键（同品种同周期），互为预热
+        void klineCache.put(instrument.id, timeframe, bars);
       })
       .catch(() => {
         if (!disposed) on.onStatus('error');
@@ -132,6 +134,8 @@ export function createCompareFeed(
           pageFails = 0;
           bars = klineCache.merge(older, bars);
           on.onBars(bars);
+          // 翻页取回的更早历史同样进缓存（与主图共享键）
+          void klineCache.put(instrument.id, timeframe, bars);
         })
         .catch(() => {
           if (!disposed) fail();

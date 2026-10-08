@@ -24,11 +24,16 @@ export class LiveDataFeed {
     return this.opts.interval;
   }
 
+  /** 缓存键：上层传入品种全局 id 时与其余市场统一，缺省退回裸 symbol（兼容既有缓存） */
+  private get cacheKey(): string {
+    return this.opts.cacheKey ?? this.opts.symbol;
+  }
+
   /** 启动：先读缓存立即渲染，再拉历史 + 连 WS */
   async start(): Promise<void> {
     const { symbol, interval, handlers } = this.opts;
     handlers.onStatus('loading', '读取本地缓存');
-    const cached = await klineCache.get(symbol, interval);
+    const cached = await klineCache.get(this.cacheKey, interval);
     if (cached.length > 0) {
       this.earliestTime = cached[0].time;
       handlers.onHistory(cached, { prepend: false });
@@ -39,7 +44,7 @@ export class LiveDataFeed {
     const merged = klineCache.merge(cached, fresh);
     this.earliestTime = merged[0]?.time ?? Infinity;
     handlers.onHistory(merged, { prepend: false });
-    void klineCache.put(symbol, interval, merged);
+    void klineCache.put(this.cacheKey, interval, merged);
 
     this.ws = new BinanceKlineWS(
       symbol,
@@ -78,8 +83,8 @@ export class LiveDataFeed {
       if (older.length > 0) {
         this.earliestTime = older[0].time;
         this.opts.handlers.onHistory(older, { prepend: true });
-        const cached = await klineCache.get(this.opts.symbol, this.opts.interval);
-        void klineCache.put(this.opts.symbol, this.opts.interval, klineCache.merge(cached, older));
+        const cached = await klineCache.get(this.cacheKey, this.opts.interval);
+        void klineCache.put(this.cacheKey, this.opts.interval, klineCache.merge(cached, older));
         return older.length;
       }
       return 0;
