@@ -137,10 +137,8 @@ export function pineAlertSamples(
 export function useAlertWatcher(symbol: string | undefined, bars: Bar[], price: number): void {
   const alerts = useAlertStore((s) => s.alerts);
   const activeIndicators = useIndicatorStore((s) => s.active);
-  const checkRef = useRef(useAlertStore.getState().check);
-  checkRef.current = useAlertStore.getState().check;
-  const updateRef = useRef(useAlertStore.getState().update);
-  updateRef.current = useAlertStore.getState().update;
+  // check/update 是 store 创建时定义的稳定方法：effect 内直接 getState() 直调即取现值，
+  // 无需渲染期写 ref 中转（那会触发 react-hooks/refs），也不存在陈旧闭包问题
   const instancesRef = useRef(new Map<string, IndicatorInstance>());
 
   useEffect(() => {
@@ -204,7 +202,7 @@ export function useAlertWatcher(symbol: string | undefined, bars: Bar[], price: 
     if (lineAlerts.length > 0) {
       const levels = hlinePrices(currentDrawings());
       for (const sync of lineThresholdSyncs(lineAlerts, levels))
-        updateRef.current(sync.id, { threshold: sync.threshold });
+        useAlertStore.getState().update(sync.id, { threshold: sync.threshold });
       if (Number.isFinite(price) && price > 0) {
         for (const a of lineAlerts) {
           if (!levels.has(a.source.drawingId)) continue;
@@ -213,6 +211,6 @@ export function useAlertWatcher(symbol: string | undefined, bars: Bar[], price: 
       }
     }
 
-    if (samples.length > 0) checkRef.current(symbol, samples);
+    if (samples.length > 0) useAlertStore.getState().check(symbol, samples);
   }, [symbol, price, bars, alerts, activeIndicators]);
 }

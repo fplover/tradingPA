@@ -158,7 +158,14 @@ export function TopBar({
   const chartType = useChartConfigStore((s) => s.chartType);
   const setChartType = useChartConfigStore((s) => s.setChartType);
   const customVer = useUiStore((s) => s.customVer);
-  const tfOptions = useMemo(buildTfOptions, [customVer]);
+  // 自定义周期注册表是模块态（TIMEFRAMES + localStorage），无响应性：customVer 只作
+  // 缓存失效令牌——增删自定义周期时 uiStore bump 它，迫使下方重算（buildTfOptions
+  // 内部读 localStorage，不能改成每渲染重算）。factory 内显式引用令牌以免
+  // unnecessary-dependency 告警；计算本身不读该值。
+  const tfOptions = useMemo(() => {
+    void customVer;
+    return buildTfOptions();
+  }, [customVer]);
   const tf = getTimeframe(timeframe);
   const replayActive = useReplayStore((s) => s.index !== null || s.selectMode);
 

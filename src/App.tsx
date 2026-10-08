@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Instrument } from '@/types/instrument';
@@ -59,7 +59,7 @@ export default function App() {
     }
     if (activeInstrument) map.set(activeInstrument.id, activeInstrument);
     return [...map.values()];
-  }, [lists, activeListId, activeInstrument?.id]);
+  }, [lists, activeListId, activeInstrument]);
   useQuotePolling(polled);
 
   const activeQuote = useQuoteStore((s) => (activeInstrument ? s.quotes[activeInstrument.id] : undefined));
@@ -114,14 +114,18 @@ export default function App() {
     else void document.documentElement.requestFullscreen();
   };
 
-  const handleScreenshot = () => {
-    const r = rendererRef.current;
-    if (!r) return;
+  // 截图直接读 renderer state（handleRendererReady 内与 rendererRef 同步赋值）：
+  // 经 ref 读取会被 react-hooks/refs 判定为「渲染期可能读 ref」而告警；
+  // 截图只由命令面板/快捷键/顶栏点击等用户事件触发，state 读数与 ref 逐字等价。
+  // useCallback 包裹：传给 buildCommands 的普通闭包会被编译器保守视为「可能在渲染期
+  // 执行」，其内的 Date.now() 随之触发 purity 告警；memo 化回调即表明延迟执行语义。
+  const handleScreenshot = useCallback(() => {
+    if (!renderer) return;
     const a = document.createElement('a');
-    a.href = r.screenshot();
+    a.href = renderer.screenshot();
     a.download = `tradingpa-${activeInstrument?.symbol ?? 'chart'}-${Date.now()}.png`;
     a.click();
-  };
+  }, [renderer, activeInstrument]);
 
   // P1-E：命令注册表——周期/类型/布局档位从常量表派生，store 类动作直接调 store
   const commands = buildCommands({

@@ -12,7 +12,8 @@ import { usePineStore } from '@/store/pineStore';
 import { useQuoteStore } from '@/store/quoteStore';
 import { useReplayStore } from '@/store/replayStore';
 import type { ChartSeries } from '@/features/market/useChartSeries';
-import { buildCompareLegend, CompareSymbolPicker, useCompareSeries } from '@/features/market/useCompareSeries';
+import { buildCompareLegend, useCompareSeries } from '@/features/market/compareModel';
+import { CompareSymbolPicker } from '@/features/market/useCompareSeries';
 import { notifyDrawingsChanged, setDrawingsGetter } from '@/features/alerts/useAlertWatcher';
 import type { SelectionPopupInfo } from '@/engine/renderer/selectionPopup';
 import { SelectionToolbar } from '@/features/indicators/SelectionToolbar';
@@ -78,11 +79,15 @@ export function ChartWorkspace({
   // 主图左缘懒加载（useLazyLoad 500ms 轮询触发）：主 series 与对比序列同步向左翻页，
   // 各自携带 inflight / 无更多守卫，互不等待。经 ref 间接调用保住回调身份稳定——
   // 否则每次渲染都重建 useLazyLoad 的轮询 effect，高频 tick 下左缘检测会被反复重置。
+  // ref 写在提交后的 effect 里（渲染期写会触发 react-hooks/refs）：onNeedsMoreHistory
+  // 只由 useLazyLoad 的 500ms setInterval 调用，同步 effect 必已先于任何一次 tick 跑完。
   const needsMoreRef = useRef<() => void>(() => {});
-  needsMoreRef.current = () => {
-    series.loadMore();
-    compare.loadMore();
-  };
+  useEffect(() => {
+    needsMoreRef.current = () => {
+      series.loadMore();
+      compare.loadMore();
+    };
+  });
   const handleNeedsMoreHistory = useCallback(() => needsMoreRef.current(), []);
 
   const settingsFor = useIndicatorStore((s) => s.settingsFor);
@@ -99,8 +104,14 @@ export function ChartWorkspace({
 
   // 选中画线/指标浮动工具栏（需求③）：引擎经 setSelectionPopupCallback 上报锚点，
   // 删除后引擎发 null 自动消失；renderer 重建（布局切换/重挂）时就地清除陈旧锚点。
+  // 按 React 官方「prop 变化时渲染期调整状态」模式实现（替代 setState-in-effect）：
+  // renderer 换新的当次渲染即清空，不等提交后的 effect，旧实现下反而会多绘一帧陈旧锚点。
   const [selectionPopup, setSelectionPopup] = useState<SelectionPopupInfo | null>(null);
-  useEffect(() => setSelectionPopup(null), [renderer]);
+  const [lastRenderer, setLastRenderer] = useState(renderer);
+  if (renderer !== lastRenderer) {
+    setLastRenderer(renderer);
+    setSelectionPopup(null);
+  }
 
   // 底部状态栏 / 左工具栏开关 → 渲染器（配置在 chartConfigStore，此处只做命令式下发）
   useEffect(() => {
@@ -156,6 +167,13 @@ export function ChartWorkspace({
     }
     useReplayStore.getState().setIndex(Math.max(0, ans));
   };
+
+  // 回放当前 bar 缺失（如回放中 reload 清空 bars 的瞬态）时的墙钟占位，供 ReplayBar
+  // 徽章与 TradePanel 下单时间戳兜底。有意在渲染期读当前时间；改为 effect+state 同步
+  // 会触发 set-state-in-effect 且首帧拿到旧值，从 store/末柱派生则会改变该瞬态的显示值，
+  // 均不满足行为零变更，故保留并注明理由。
+  // eslint-disable-next-line react-hooks/purity -- 见上：瞬态墙钟占位，纯派生方案均改变行为
+  const replayNow = Date.now();
 
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -252,14 +270,14 @@ export function ChartWorkspace({
           barCount={bars.length}
           intervalLabel={tf.label}
           price={bars[replayIndex ?? 0]?.close ?? 0}
-          time={bars[replayIndex ?? 0]?.time ?? Date.now()}
+          time={bars[replayIndex ?? 0]?.time ?? replayNow}
           onSeekToTime={handleSeekToTime}
         />
       )}
       {replayIndex !== null && (
         <TradePanel
           price={bars[replayIndex]?.close ?? 0}
-          time={bars[replayIndex]?.time ?? Date.now()}
+          time={bars[replayIndex]?.time ?? replayNow}
           onReport={() => setReportOpen(true)}
         />
       )}

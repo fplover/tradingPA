@@ -5,12 +5,7 @@ import { theme } from '@/engine/theme';
 import type { Bar } from '@/types/market';
 import { makeInstrument, type Instrument } from '@/types/instrument';
 import { dataRegistry } from '@/data/sources/registry';
-import {
-  alignByTime,
-  buildCompareLegend,
-  createCompareFeed,
-  type CompareSeries,
-} from '@/features/market/useCompareSeries';
+import { alignByTime, buildCompareLegend, createCompareFeed, type CompareSeries } from '@/features/market/compareModel';
 import { compareDomain, drawCompareOverlay, toPercent } from '@/engine/renderer/drawCompare';
 import { drawLegendBlock } from '@/engine/renderer/drawCrosshair';
 import type { CompareLegendInfo, LegendStudyValues, StudyLegendRect } from '@/engine/renderer/legendTypes';

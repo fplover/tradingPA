@@ -44,7 +44,12 @@ export const useQuoteStore = create<QuoteStore>((set) => ({
 export function useQuotePolling(instruments: Instrument[], intervalMs = 5000): void {
   const refresh = useQuoteStore((s) => s.refresh);
   const ref = useRef(instruments);
-  ref.current = instruments;
+  // 渲染期写 ref 会触发 react-hooks/refs；改在提交后同步。tick 只由 setInterval /
+  // visibilitychange 事件调用，且下方 effect 在挂载时的首次 tick 必晚于本同步 effect
+  // （同组件 effect 按声明序执行），读到的永不是尚未同步的旧值。
+  useEffect(() => {
+    ref.current = instruments;
+  });
   const key = instruments.map((i) => i.id).join('|');
 
   useEffect(() => {
