@@ -27,7 +27,15 @@ export function useGroupHold(activeTool: string | null, onActivate: (item: Toolb
     openTimer.current = null;
   };
 
-  useEffect(() => clearTimers, []);
+  useEffect(() => {
+    // 窗口失焦（alt-tab 等）后指针事件不再到达按钮，同样撤销未决定时器
+    const onBlur = () => clearTimers();
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('blur', onBlur);
+      clearTimers();
+    };
+  }, []);
 
   const openFlyout = (gi: number, rect: DOMRect) => {
     setFlyout({ group: gi, x: rect.right + 1, y: rect.top - 6 });
@@ -85,5 +93,17 @@ export function useGroupHold(activeTool: string | null, onActivate: (item: Toolb
     if (!activatedWhileHeld.current) onActivate(shownOf(group, activeTool));
   };
 
-  return { flyout, openFlyout, closeFlyout, onFlyoutOpenChange, onGroupPointerDown, onGroupPointerUp };
+  /** 指针移出/被系统取消（pointerleave/pointercancel）：移出后 pointerup 不再到达
+   *  按钮，不清理会在松手落点之外误激活变体，并在 300ms 弹出 flyout */
+  const onGroupPointerLeave = () => clearTimers();
+
+  return {
+    flyout,
+    openFlyout,
+    closeFlyout,
+    onFlyoutOpenChange,
+    onGroupPointerDown,
+    onGroupPointerUp,
+    onGroupPointerLeave,
+  };
 }

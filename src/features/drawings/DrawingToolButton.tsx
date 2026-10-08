@@ -11,6 +11,8 @@ interface DrawingToolButtonProps {
   onActivate: (item: ToolbarItem) => void;
   onMainPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void;
   onMainPointerUp: (e: React.PointerEvent<HTMLButtonElement>) => void;
+  /** 指针移出/取消：撤销长按定时器（useGroupHold.onGroupPointerLeave） */
+  onMainPointerLeave: () => void;
   onOpenFlyout: (rect: DOMRect) => void;
   onCloseFlyout: () => void;
 }
@@ -25,6 +27,7 @@ export function DrawingToolButton({
   onActivate,
   onMainPointerDown,
   onMainPointerUp,
+  onMainPointerLeave,
   onOpenFlyout,
   onCloseFlyout,
 }: DrawingToolButtonProps) {
@@ -42,6 +45,8 @@ export function DrawingToolButton({
         aria-haspopup={hasFlyout ? 'menu' : undefined}
         onPointerDown={onMainPointerDown}
         onPointerUp={onMainPointerUp}
+        onPointerLeave={onMainPointerLeave}
+        onPointerCancel={onMainPointerLeave}
         onClick={(e) => {
           // 键盘激活（Enter/Space，detail=0）与单变体组走 click
           if (!hasFlyout || e.detail === 0) onActivate(shown);

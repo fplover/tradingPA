@@ -38,10 +38,15 @@ export function DrawingToolbar({
   const [bottomMenu, setBottomMenu] = useState<BottomMenuState | null>(null);
   const [hovered, setHovered] = useState<HoverTarget | null>(null);
 
-  const { flyout, openFlyout, closeFlyout, onFlyoutOpenChange, onGroupPointerDown, onGroupPointerUp } = useGroupHold(
-    activeTool,
-    activate,
-  );
+  const {
+    flyout,
+    openFlyout,
+    closeFlyout,
+    onFlyoutOpenChange,
+    onGroupPointerDown,
+    onGroupPointerUp,
+    onGroupPointerLeave,
+  } = useGroupHold(activeTool, activate);
 
   // TV 热键：Alt+T/H/J/V/F、Alt+Shift+R 直接选工具
   useEffect(() => {
@@ -86,6 +91,7 @@ export function DrawingToolbar({
           onActivate={activate}
           onMainPointerDown={(e) => onGroupPointerDown(gi, group, e)}
           onMainPointerUp={(e) => onGroupPointerUp(gi, group, e)}
+          onMainPointerLeave={onGroupPointerLeave}
           onOpenFlyout={(rect) => openFlyout(gi, rect)}
           onCloseFlyout={closeFlyout}
         />

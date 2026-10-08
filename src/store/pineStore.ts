@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { compilePine, DEFAULT_PINE_SCRIPT, type PineError } from '@/indicators/pine/compile';
+import { clearPineAlerts } from '@/indicators/pine/alerts';
 import { registerCustomDef, unregisterCustomDef } from '@/indicators/registry';
 import { useIndicatorStore } from '@/store/indicatorStore';
 
@@ -102,6 +103,10 @@ export const usePineStore = create<PineStore>((set, get) => ({
     persist(next);
     const { def: savedDef } = compilePine(editorSource, id);
     if (savedDef) registerCustomDef(savedDef);
+    // 草稿登记即陈旧：alertcondition 元数据已随新 id 重新登记，清掉 DRAFT_ID 残留
+    // （后续草稿使用 run/addDraftToChart 会重新登记；已入图草稿指标的报警触发走
+    //  computeExtra 旁路采样，不依赖本注册表）
+    clearPineAlerts(DRAFT_ID);
     set({ scripts: next, errors: [], draftName: def.name });
   },
 
