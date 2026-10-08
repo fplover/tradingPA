@@ -25,7 +25,7 @@ npm run dev          # http://localhost:5173
 | `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；0 错误；61 条警告为存量债务基线：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（52 文件 / 999 例） |
+| `npm test` | Vitest 单测（62 文件 / 1090 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 | `npm run audit` | 依赖漏洞审计（**必须走官方 registry**：本机配置的 npmmirror 镜像不实现 `/-/npm/v1/security/*`，直接 `npm audit` 会报 NOT_IMPLEMENTED） |
 
@@ -40,8 +40,11 @@ src/
     scale/ viewport/ crosshair/ canvas/ theme.ts countdown.ts
   indicators/   指标引擎
     core/         声明式 schema + 窗口化/脏缓存计算
-    builtin/      64 个内置指标定义（12 文件）
-    pine/         Pine 子集编译器与解释器（tokenizer → parser → interpreter → taFunctions）
+    builtin/      64 个内置指标定义（按族分文件：trend-ma/trend-ichimoku/trend-supertrend、
+                  momentum-macd/momentum-adx/momentum-atr、oscillators-rsi/oscillators-range/
+                  oscillators-momentum、momentum-osc-smooth/momentum-osc-fisher/momentum-osc-roc…）
+    pine/         Pine 子集编译器与解释器（tokenizer → parser → interpreter → taFunctions；
+                  taFunctions 按族拆为 ta-shared/ta-overlap/ta-momentum/ta-math）
   data/         数据层
     sources/      多市场数据源路由（binance / tencent / sina / eastmoney）
     feed/         Binance REST + WS 实时通道
@@ -51,8 +54,8 @@ src/
   ui/           设计 token 与基础组件（primitives / controls / tokens）
   components/ hooks/ types/ styles/
 tests/
-  unit/         Vitest（49 文件，node 环境为主，需 DOM 的文件用 `// @vitest-environment jsdom`）
-  e2e/          Playwright（7 spec / 48 例）+ __screenshots__ 黄金基线
+  unit/         Vitest（62 文件，node 环境为主，需 DOM 的文件用 `// @vitest-environment jsdom`）
+  e2e/          Playwright（7 spec / 54 例）+ __screenshots__ 黄金基线
 docs/           Spec 与差距分析（见下）
 ```
 
@@ -60,7 +63,7 @@ docs/           Spec 与差距分析（见下）
 
 批次出口标准：`npm run typecheck && npm run lint && npm run check:size && npm test && npm run test:e2e` 全绿 + `npm run build` 通过。
 
-当前实测基线（2026-10-03）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**）/ lint 0 错（**61 条警告**，oxlint 口径：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1，全部为在案债务基线）/ 单测 1002 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 448.75 kB（>500 kB 警告已消除）。
+当前实测基线（2026-10-08）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**）/ lint 0 错（**61 条警告**，oxlint 口径：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1，全部为在案债务基线）/ 单测 1090 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 453.49 kB（>500 kB 警告已消除）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令原样兼容（已探针验证）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。
@@ -84,10 +87,10 @@ npm run test:e2e
   UI 走 `--text-on-accent` / `--on-updown` / `--on-warn` 等 CSS 变量
 - 渲染循环与 React 解耦：高频行情不触发 React 重渲染；跨图表联动走 `store/syncBus.ts`（sourceId 防环 + 限频）
 - 单文件 ≤ **300 逻辑单元**（AST 计数，与排版无关；原「≤300 行」口径因 Prettier 折行使文件数凭空翻倍而废弃）。
-  另有物理行 ≤900 的宽松护栏。存量超标 6 项列于 `scripts/file-size-allowlist.json`（每项带理由与登记出处），
-  门禁只拦**新增**超标：`npm run check:size`
+  另有物理行 ≤900 的宽松护栏。存量超标仅剩 1 项（`ChartController`，纯委托门面三次裁决不拆）列于
+  `scripts/file-size-allowlist.json`（每项带理由与登记出处）；门禁只拦**新增**超标：`npm run check:size`
 - 引擎侧框架无关：不得 import React / zustand
-- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 999 单测 + 54 E2E）
+- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1090 单测 + 54 E2E）
 
 ## 已知状态与待办
 
