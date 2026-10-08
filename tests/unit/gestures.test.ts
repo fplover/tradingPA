@@ -110,15 +110,69 @@ describe('PanZoomGesture：平移/价格拖拽/缩放', () => {
     return { g: new PanZoomGesture(host), viewport, panes, invalidate, publishViewport, layout };
   }
 
-  it('beginPan + panTo：横向移视口（first 变化 = -dx/spacing），纵向锁 manual', () => {
+  it('beginPan + panTo：横向移视口（first 变化 = -dx/spacing），纯水平不动 autoscale', () => {
     const { g, viewport, panes, invalidate } = setup();
     const first0 = viewport.first;
+    const range0 = { ...panes[0].priceScale.range };
     g.beginPan(300, 300);
     expect(g.panning).toBe(true);
     g.panTo(200, 300, 300); // dx = -100, dy = 0
     expect(viewport.first - first0).toBeCloseTo(100 / viewport.spacing, 6);
-    expect(panes[0].manual).toBe(true);
+    expect(panes[0].manual).toBe(false); // dy = 0 → 不锁价格域
+    expect(panes[0].priceScale.range.min).toBe(range0.min);
+    expect(panes[0].priceScale.range.max).toBe(range0.max);
     expect(invalidate).toHaveBeenCalled();
+  });
+
+  it('panTo 纵向分量（dy≠0）：移价格域并锁定 manual', () => {
+    const { g, viewport, panes } = setup();
+    const first0 = viewport.first;
+    const range0 = { ...panes[0].priceScale.range };
+    g.beginPan(300, 300);
+    g.panTo(300, 380, 300); // dx = 0, dy = +80
+    expect(viewport.first).toBe(first0);
+    expect(panes[0].manual).toBe(true);
+    expect(panes[0].priceScale.range.min).not.toBe(range0.min);
+  });
+
+  it('panTo 跨面板拖动：首次移动锁定 A，指针进入 B 面板仍只作用 A', () => {
+    const { g, panes } = setup();
+    const rangeA0 = { ...panes[0].priceScale.range };
+    const rangeB0 = { ...panes[1].priceScale.range };
+    g.beginPan(300, 300);
+    g.panTo(250, 350, 300); // 首次移动 y=300 ∈ A → 锁定 A
+    g.panTo(250, 650, 650); // 指针已进入 B（y=650），目标面板不切换
+    expect(panes[0].manual).toBe(true);
+    expect(panes[0].priceScale.range.min).not.toBe(rangeA0.min);
+    expect(panes[1].manual).toBe(false);
+    expect(panes[1].priceScale.range.min).toBe(rangeB0.min);
+    expect(panes[1].priceScale.range.max).toBe(rangeB0.max);
+  });
+
+  it('priceDragTo 跨面板拖动：按下时锁定 A，指针进入 B 仍只作用 A', () => {
+    const { g, panes } = setup();
+    const rangeA0 = { ...panes[0].priceScale.range };
+    const rangeB0 = { ...panes[1].priceScale.range };
+    g.beginPriceDrag(300); // A 面板价格轴处按下
+    g.priceDragTo(700); // 指针已进入 B 面板价格轴区域
+    expect(panes[0].manual).toBe(true);
+    expect(panes[0].priceScale.range.min).not.toBe(rangeA0.min);
+    expect(panes[1].manual).toBe(false);
+    expect(panes[1].priceScale.range.min).toBe(rangeB0.min);
+  });
+
+  it('end 后重新平移：锁定面板随之重置，按新的指针位置重新锁定', () => {
+    const { g, panes } = setup();
+    g.beginPan(300, 300);
+    g.panTo(250, 350, 300); // 锁定 A
+    g.end();
+    g.beginPan(300, 700);
+    const rangeA1 = { ...panes[0].priceScale.range };
+    const rangeB1 = { ...panes[1].priceScale.range };
+    g.panTo(250, 750, 700); // 新拖拽从 B（y=700）开始 → 锁定 B
+    expect(panes[1].manual).toBe(true);
+    expect(panes[1].priceScale.range.min).not.toBe(rangeB1.min);
+    expect(panes[0].priceScale.range.min).toBe(rangeA1.min); // A 不再被作用
   });
 
   it('panTo 位移超 3px 置位 movedFar；consumeMoveFlag 读取后清零', () => {

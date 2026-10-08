@@ -46,6 +46,8 @@ export class PanZoomGesture {
   private paneResizeStartHeight = 0;
   /** 本次按下期间指针是否移动超阈值（研究行按钮点击 vs 拖动的判据） */
   private movedFar = false;
+  /** 本次拖拽锁定的目标面板：按下/首次移动时确定，跨面板拖动不随指针换面板 */
+  private lockedPane: PanZoomPane | null = null;
 
   constructor(private host: PanZoomHost) {}
 
@@ -84,10 +86,11 @@ export class PanZoomGesture {
     this.paneResizeStartHeight = this.host.panes()[index].height;
   }
 
-  /** 价格轴按下：纵向拖拽改价格域 */
+  /** 价格轴按下：纵向拖拽改价格域（按下即锁定所在面板） */
   beginPriceDrag(y: number): void {
     this.priceDragging = true;
     this.priceYAtDragStart = y;
+    this.lockedPane = this.host.paneAt(y);
   }
 
   /** 图表空白处按下：视口平移 + 价格域纵向平移 */
@@ -95,6 +98,7 @@ export class PanZoomGesture {
     this.dragging = true;
     this.lastPointerX = clientX;
     this.lastPointerY = clientY;
+    this.lockedPane = null; // 首次 panTo 时按指针所在面板锁定
   }
 
   /** 价格轴“自动”按钮命中 → 恢复自动适配（未命中返回 false） */
@@ -134,7 +138,8 @@ export class PanZoomGesture {
     this.host.invalidate();
   }
 
-  /** 平移拖拽：横向移视口，纵向移价格域（上下拖动锁定 manual） */
+  /** 平移拖拽：横向移视口；仅纵向分量（dy≠0）才移价格域并锁定 manual。
+   *  面板在拖拽开始时锁定（首次移动取指针所在面板），过程中不随指针跨面板切换 */
   panTo(clientX: number, clientY: number, y: number): void {
     const dx = clientX - this.lastPointerX;
     const dy = clientY - this.lastPointerY;
@@ -143,19 +148,22 @@ export class PanZoomGesture {
     this.lastPointerY = clientY;
     const vs = this.host.viewport;
     vs.panByBars(-dx / vs.spacing);
-    const pane = this.host.paneAt(y);
-    const { min, max } = pane.priceScale.range;
-    const span = max - min;
-    const shift = (dy / Math.max(1, pane.height)) * span;
-    pane.manual = true; // 上下拖动 → 锁定价格域
-    pane.priceScale.shift(shift);
+    if (this.lockedPane === null) this.lockedPane = this.host.paneAt(y);
+    const pane = this.lockedPane;
+    if (dy !== 0) {
+      const { min, max } = pane.priceScale.range;
+      const span = max - min;
+      const shift = (dy / Math.max(1, pane.height)) * span;
+      pane.manual = true; // 纵向分量实际作用价格轴 → 锁定
+      pane.priceScale.shift(shift);
+    }
     this.host.invalidate();
   }
 
-  /** 价格轴拖拽：纵向改价格域（与平移的纵向同规则，符号相反） */
+  /** 价格轴拖拽：纵向改价格域（与平移的纵向同规则，符号相反）；面板按下时已锁定 */
   priceDragTo(y: number): void {
     const dy = y - this.priceYAtDragStart;
-    const pane = this.host.paneAt(y);
+    const pane = this.lockedPane ?? this.host.paneAt(y);
     const { min, max } = pane.priceScale.range;
     const span = max - min;
     const shift = -(dy / Math.max(1, pane.height)) * span;
@@ -187,5 +195,6 @@ export class PanZoomGesture {
     this.dragging = false;
     this.priceDragging = false;
     this.paneResizeIndex = null;
+    this.lockedPane = null;
   }
 }

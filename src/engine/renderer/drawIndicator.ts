@@ -70,35 +70,39 @@ export function drawIndicator(
       if (!other) continue;
       ctx.fillStyle = style.color;
       ctx.beginPath();
-      let started = false;
-      let firstX = 0;
-      for (let i = from; i <= to; i++) {
+      // 逐连续段填充：上/下带任一 undefined 即断开（不再回退 0 价），下一有效点
+      // moveTo 开新段；段内上带正向走到底后，下带原路折返，closePath 闭合。
+      let i = from;
+      while (i <= to) {
         const v = values[i - ctxFrom];
         const w = other[i - ctxFrom];
         if (v === undefined || w === undefined) {
-          started = false;
+          i++;
           continue;
         }
-        const x = viewport.indexToX(i);
-        const y = priceScale.priceToY(v);
-        if (!started) {
-          ctx.moveTo(x, y);
-          firstX = x;
-          started = true;
-        } else {
-          ctx.lineTo(x, y);
+        // 段右界 j：上/下带同时有效的最大连续 index
+        let j = i;
+        while (j < to) {
+          const nv = values[j + 1 - ctxFrom];
+          const nw = other[j + 1 - ctxFrom];
+          if (nv === undefined || nw === undefined) break;
+          j++;
         }
-      }
-      if (started) {
-        for (let i = to; i >= from; i--) {
-          const w = other[i - ctxFrom];
-          if (w === undefined) continue;
-          ctx.lineTo(viewport.indexToX(i), priceScale.priceToY(w));
+        ctx.moveTo(viewport.indexToX(i), priceScale.priceToY(v));
+        for (let k = i + 1; k <= j; k++) {
+          const kv = values[k - ctxFrom];
+          if (kv === undefined) break;
+          ctx.lineTo(viewport.indexToX(k), priceScale.priceToY(kv));
         }
-        ctx.lineTo(firstX, priceScale.priceToY(other[from - ctxFrom] ?? 0));
+        for (let k = j; k >= i; k--) {
+          const kw = other[k - ctxFrom];
+          if (kw === undefined) break;
+          ctx.lineTo(viewport.indexToX(k), priceScale.priceToY(kw));
+        }
         ctx.closePath();
-        ctx.fill();
+        i = j + 1;
       }
+      ctx.fill();
       continue;
     }
 

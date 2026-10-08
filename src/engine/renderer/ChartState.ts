@@ -176,6 +176,7 @@ export class ChartState {
     this.baseSeries.replace(bars);
     this.brickOpts = brickOptions(bars);
     this.resetPriceScale();
+    this.crosshair.clear(); // 全量替换入口：旧序列身份失效，清常驻十字光标（第四轮审查①）
     this.applyData(true);
   }
 
@@ -190,15 +191,27 @@ export class ChartState {
   prependData(bars: Bar[]): void {
     this.baseSeries.prepend(bars);
     this.applyData(false);
+    // 前插使索引整体平移 bars.length：常驻十字光标同步平移，保持吸附同一根 bar
+    // （调用方同步平移视口，视觉位置不变）；砖块类显示序列重建后映射不可预测 → 清除
+    if (this.crosshair.visible) {
+      if (TRANSFORM_TYPES.includes(this.chartType)) this.crosshair.clear();
+      else this.crosshair.barIndex += bars.length;
+    }
   }
 
   setChartType(type: ChartTypeId): void {
     this.chartType = type;
     this.resetPriceScale();
+    this.crosshair.clear(); // 替换入口：显示序列重建，旧吸附 bar 失效（第四轮审查①）
     this.applyData(true);
   }
 
-  /** 数据/图表类型变化后：重建 displaySeries 并重置视口 */
+  /**
+   * 数据/图表类型变化后：重建 displaySeries 并重置视口。
+   * 不在此处清十字光标——实时 tick（updateBar）与前插（prependData）每拍都经此入口，
+   * 无条件 clear 会让鼠标不动时的十字光标与两条轴标签被反复抹掉且不自恢复；
+   * 清除只发生在真正的序列替换入口（setData / setChartType）与前插重映射（见 prependData）。
+   */
   applyData(resetView: boolean): void {
     this.vp.dataEpoch++; // VP 缓存签名：数据替换/实时跳动/图表类型切换全失效
     if (TRANSFORM_TYPES.includes(this.chartType)) {
@@ -224,7 +237,6 @@ export class ChartState {
     this.timeBasedChart = CHART_TYPES.find((t) => t.id === this.chartType)?.timeBased ?? true;
     this.viewport.setBarCount(this.displaySeries.length);
     if (resetView && this.displaySeries.length > 0) this.viewport.scrollToRealtime();
-    this.crosshair.clear();
     this.countdown.setLastBar(this.lastBarTime); // 新 bar / 数据替换 → 重算收盘时刻
     this.invalidate();
   }
