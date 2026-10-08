@@ -31,10 +31,10 @@ npm run dev          # http://localhost:5173
 | `npm run build` | `tsc -b`（app + node 双项目）+ Vite 生产构建 |
 | `npm run preview` | 预览生产构建 |
 | `npm run typecheck` | 类型检查双项目：`tsconfig.json`（`src` + `tests/unit`，开着 `noUnusedLocals`）+ `tsconfig.node.json`（`vite.config.ts` / `playwright.config.ts` / `tests/e2e`） |
-| `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；0 错误；61 条警告为存量债务基线：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
+| `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；0 错误；55 条警告为存量债务基线：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（65 文件 / 1145 例） |
+| `npm test` | Vitest 单测（66 文件 / 1154 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 | `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
 | `npm run build:pages` | 按 Pages base（`/tradingPA/`）本地预演构建（配合 `npm run preview`） |
@@ -66,7 +66,7 @@ src/
   ui/           设计 token 与基础组件（primitives / controls / tokens）
   components/ hooks/ types/ styles/
 tests/
-  unit/         Vitest（65 文件，node 环境为主，需 DOM 的文件用 `// @vitest-environment jsdom`）
+  unit/         Vitest（66 文件，node 环境为主，需 DOM 的文件用 `// @vitest-environment jsdom`）
   e2e/          Playwright（7 spec / 54 例）+ __screenshots__ 黄金基线
 docs/           Spec 与差距分析（见下）
 ```
@@ -77,7 +77,7 @@ docs/           Spec 与差距分析（见下）
 
 > E2E 在 Windows 上必须先自己起 dev server 再跑（见下节）；`verify` 只含机器无关门禁，可随时跑。
 
-当前实测基线（2026-10-08）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**）/ lint 0 错（**61 条警告**，oxlint 口径：exhaustive-deps 19 / refs 14 / only-export-components 13 / set-state-in-effect 11 / purity 3 / use-memo 1，全部为在案债务基线）/ 单测 1145 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 456.61 kB（>500 kB 警告已消除）。
+当前实测基线（2026-10-08）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint 0 错（**55 条警告**，oxlint 口径：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1，全部为在案债务基线）/ 单测 1154 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 456.61 kB（>500 kB 警告已消除）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令原样兼容（已探针验证）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。
@@ -107,7 +107,7 @@ npm run test:e2e
   `parseShapeDirective` 70 / `PaneRenderer.draw` 64）经 `.oxlintrc.json` overrides 放宽至 120 并登记；
   放宽是提阈值而非关闭，>120 的新函数仍被拦
 - 引擎侧框架无关：不得 import React / zustand
-- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1145 单测 + 54 E2E）
+- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1154 单测 + 54 E2E）
 
 ## 已知状态与待办
 

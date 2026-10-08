@@ -1,49 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal } from '@/ui/primitives';
 import type { Bar } from '@/types/market';
+import { fmtDate, parseDateInput, resolveGoToDate } from './goToDate';
 import { fontSize, radius, space } from '@/ui/tokens';
 
-function pad(n: number): string {
-  return String(n).padStart(2, '0');
-}
-
-function fmtDate(t: number): string {
-  const d = new Date(t);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-/** 解析 YYYY-MM-DD（兼容 - / . 分隔与单位数），返回当地零点的毫秒时间；非法返回 null */
-export function parseDateInput(raw: string): number | null {
-  const m = /^\s*(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s*$/.exec(raw);
-  if (!m) return null;
-  const y = Number(m[1]);
-  const mo = Number(m[2]);
-  const d = Number(m[3]);
-  const dt = new Date(y, mo - 1, d);
-  //  round-trip 校验，挡掉 2026-02-30 这类非法日期
-  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
-  return dt.getTime();
-}
-
-/** 二分查找第一个 >= time 的 bar 下标（调用方保证 time 在数据范围内） */
-export function firstBarAtOrAfter(bars: Bar[], time: number): number {
-  let lo = 0;
-  let hi = bars.length - 1;
-  let ans = bars.length - 1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    if (bars[mid].time >= time) {
-      ans = mid;
-      hi = mid - 1;
-    } else {
-      lo = mid + 1;
-    }
-  }
-  return ans;
-}
-
-/** 前往日期（Alt+G）：输入日期 → 范围校验 → 二分定位 → onGoToDate 居中显示。
- *  日期按当地时区解释（与时间轴标签一致）；超出数据范围时浮层内提示。 */
+/** 前往日期（Alt+G）：日期选择器选日 → 范围裁决（goToDate.ts 纯函数）→ 居中显示。
+ *  日期按当地时区解释（与时间轴标签一致）；越界时浮层内提示。 */
 export function GoToDateDialog({
   open,
   onClose,
@@ -74,36 +36,34 @@ export function GoToDateDialog({
       setError('日期格式不正确，请使用 YYYY-MM-DD');
       return;
     }
-    const b = barsRef.current;
-    if (b.length === 0) {
-      setError('暂无 K 线数据');
+    // 提交走 barsRef（事件处理器，拿最新 bars；渲染期数据用 props，见下）
+    const r = resolveGoToDate(barsRef.current, t);
+    if ('error' in r) {
+      setError(r.error);
       return;
     }
-    const first = b[0].time;
-    const last = b[b.length - 1].time;
-    if (t > last) {
-      setError(`超出数据范围：晚于最后一根 K 线（${fmtDate(last)}）`);
-      return;
-    }
-    if (t < first) {
-      setError(`超出数据范围：早于第一根 K 线（${fmtDate(first)}）`);
-      return;
-    }
-    onGoToDate(firstBarAtOrAfter(b, t));
+    onGoToDate(r.index);
     onClose();
   };
 
-  const b = barsRef.current;
+  // 渲染期数据取 bars prop（当前帧的数据，随行情自然更新）；barsRef 只服务于
+  // 提交时的事件处理器（拿最新 bars 而不受开屏 effect 重置输入的影响）——
+  // 渲染期读 ref 会触发 react(refs) 警告，属基线纪律
+  const b = bars;
   const rangeHint = b.length > 0 ? `数据范围：${fmtDate(b[0].time)} 至 ${fmtDate(b[b.length - 1].time)}` : '暂无数据';
 
   return (
     <Modal open={open} onOpenChange={(o) => !o && onClose()} title="前往日期" width={320}>
       <label style={fieldStyle}>
         <span style={labelStyle}>日期</span>
+        {/* 原生日期控件：点击弹出浏览器日历选择器（color-scheme 已随主题设置，
+            深浅色自动适配，零依赖）；min/max 收敛到数据范围，选择器内不可点越界日期 */}
         <input
+          type="date"
           style={inputStyle}
           value={text}
-          placeholder="YYYY-MM-DD"
+          min={b.length > 0 ? fmtDate(b[0].time) : undefined}
+          max={b.length > 0 ? fmtDate(b[b.length - 1].time) : undefined}
           aria-label="日期"
           autoFocus
           onChange={(e) => {
