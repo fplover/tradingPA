@@ -1,5 +1,6 @@
 import type { Bar, Timeframe } from '@/types/market';
 import type { Quote } from './sources/types';
+import { dayBucketStart, isMultiDayTimeframe } from '@/data/aggregate';
 
 /**
  * 用实时报价维护最后一根 K 线。
@@ -8,8 +9,11 @@ import type { Quote } from './sources/types';
  */
 
 /** 报价时间对齐到所属 K 线的开盘时间。
- *  日/周/月按 tzOffsetMinutes 时区的日历对齐（与各源返回的 bar 时间戳语义一致：
- *  crypto=UTC，CN 源=交易所本地墙上时间），其余按绝对时间取整（与时区无关）。 */
+ *  多日档（1D/3D/自定义 N 日）与周/月按 tzOffsetMinutes 时区的日历对齐（与各源返回的
+ *  bar 时间戳语义一致：crypto=UTC，CN 源=交易所本地墙上时间），秒级/小时档按绝对时间
+ *  取整（与时区无关）。
+ *  多日档复用 aggregate.dayBucketStart：聚合桶起点与报价对齐值必须同源，否则末柱时间戳
+ *  永不相等、报价被静默丢弃或错插新柱（tz 分裂修复，见 data/tz.ts）。 */
 export function alignBarTime(time: number, tf: Timeframe, tzOffsetMinutes = 0): number {
   const t = time + tzOffsetMinutes * 60_000;
   const d = new Date(t);
@@ -18,7 +22,7 @@ export function alignBarTime(time: number, tf: Timeframe, tzOffsetMinutes = 0): 
     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - dow) - tzOffsetMinutes * 60_000;
   }
   if (tf.calendar === 'month') return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) - tzOffsetMinutes * 60_000;
-  if (tf.id === '1D') return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) - tzOffsetMinutes * 60_000;
+  if (isMultiDayTimeframe(tf)) return dayBucketStart(time, tf, tzOffsetMinutes);
   const ms = Math.max(tf.seconds, 1) * 1000;
   return Math.floor(time / ms) * ms;
 }

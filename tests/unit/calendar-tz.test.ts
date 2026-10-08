@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Bar } from '@/types/market';
 import { getTimeframe } from '@/types/market';
 import { aggregateBars } from '@/data/aggregate';
+import { createCustomInterval } from '@/features/market/customInterval';
 import { alignBarTime, applyQuote } from '@/data/liveBar';
 import { calendarTzOffsetMinutes, localTzOffsetMinutes } from '@/data/tz';
 import { CloseCountdown, formatCountdown, nextCalendarClose } from '@/engine/countdown';
@@ -186,6 +187,67 @@ describe('日历桶时区：nextCalendarClose / CloseCountdown', () => {
     expect(cd.textAt(now)).toBe(formatCountdown(Date.UTC(2024, 0, 1) - now)); // UTC 周一 00:00 止，剩 4h
     cd.reset();
     expect(cd.textAt(now)).toBeNull();
+  });
+});
+
+describe('多日档时区归桶（1D / 3D / 自定义 N 日，第四轮审查数据层修复）', () => {
+  /** UTC+8 本地日 K：从本地 12/31 00:00 起 6 根（跨 3D 桶边界） */
+  function localSixDays(): Bar[] {
+    const start = Date.UTC(2023, 11, 30, 16); // 本地 12/31 00:00
+    return Array.from({ length: 6 }, (_, i) => ({
+      time: start + i * 86_400_000,
+      open: 100 + i,
+      high: 101 + i,
+      low: 99 + i,
+      close: 100.5 + i,
+      volume: 1,
+    }));
+  }
+
+  it('tz=+480：3D 按本地自然日 3 日归桶，桶起点=本地 00:00（旧口径纪元对齐落在本地 08:00）', () => {
+    const out = aggregateBars(localSixDays(), getTimeframe('3D'), TZ8);
+    expect(out.length).toBe(2);
+    expect(out[0].time).toBe(Date.UTC(2023, 11, 30, 16)); // 本地 12/31 00:00
+    expect(out[0].volume).toBe(3);
+    expect(out[0].open).toBe(100); // 12/31 open
+    expect(out[1].time).toBe(Date.UTC(2024, 0, 2, 16)); // 本地 1/3 00:00
+    expect(out[1].volume).toBe(3);
+    expect(out[1].close).toBe(105.5); // 1/5 close
+  });
+
+  it('tz=+480：自定义 N 日（createCustomInterval(4320)=3 日）与内置 3D 同源', () => {
+    const custom = createCustomInterval(4320);
+    expect(custom.seconds).toBe(259_200);
+    const out = aggregateBars(localSixDays(), custom, TZ8);
+    expect(out.map((b) => b.time)).toEqual(aggregateBars(localSixDays(), getTimeframe('3D'), TZ8).map((b) => b.time));
+  });
+
+  it('tz=0（crypto）：3D 保持纪元对齐，行为不回退', () => {
+    // 纪元 3 日边界 = 可被 3 整除的 UTC 日（19719=12/28、19722=12/31、19725=1/3）：
+    // 本地午夜的 6 根在 UTC 口径下落入 12/28（残桶 1 根）/ 12/31（3 根）/ 1/3（2 根）
+    const out = aggregateBars(localSixDays(), getTimeframe('3D'));
+    expect(out.length).toBe(3);
+    expect(out[0].time).toBe(Date.UTC(2023, 11, 28));
+    expect(out[0].volume).toBe(1); // 本地 12/31 那根（UTC 12/30 16:00）泄入上一个 UTC 桶
+    expect(out[1].time).toBe(Date.UTC(2023, 11, 31));
+    expect(out[2].time).toBe(Date.UTC(2024, 0, 3));
+  });
+
+  it('tz=+480：alignBarTime 3D 与聚合桶起点同源（末柱时间戳可对上）', () => {
+    const t = Date.UTC(2024, 0, 3, 12); // 本地 1/3 20:00
+    expect(alignBarTime(t, getTimeframe('3D'), TZ8)).toBe(Date.UTC(2024, 0, 2, 16)); // 本地 1/3 00:00
+    // 默认 tz=0：1D 按 UTC 午夜、3D 按 3 日纪元边界（1/3 00:00 UTC 本身即边界）
+    expect(alignBarTime(t, getTimeframe('3D'))).toBe(Date.UTC(2024, 0, 3));
+    expect(alignBarTime(t, getTimeframe('1D'))).toBe(Date.UTC(2024, 0, 3));
+  });
+
+  it('CN 3D（tz=+480）：日内报价更新当前 3 日 K 线，不错插新柱', () => {
+    const bars: Bar[] = [
+      { time: Date.UTC(2024, 0, 2, 16), open: 100, high: 101, low: 99, close: 100, volume: 5 }, // 本地 1/3 00:00 起
+    ];
+    const out = applyQuote(bars, quoteAt(Date.UTC(2024, 0, 4, 12), 105), getTimeframe('3D'), TZ8);
+    expect(out.length).toBe(1);
+    expect(out[0].close).toBe(105);
   });
 });
 

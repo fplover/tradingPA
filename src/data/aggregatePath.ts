@@ -53,7 +53,11 @@ export function tailChanged(prev: Bar[], next: Bar[]): boolean {
 /** 合并 + 重聚合：incoming 放 fresh 位（klineCache.merge 后者赢——同 time 键后写覆盖），
  *  保证交易所修订过的同 time 基期 bar 与更完整的边界桶覆盖旧值。
  *  全量重聚合而非分段聚合 + merge：初始窗口起点落在桶中间时，前插更早基期后
- *  重聚合能修正首桶的 open/high/low/volume，翻页接缝不留永久残桶。 */
+ *  重聚合能修正首桶的 open/high/low/volume，翻页接缝不留永久残桶。
+ *  tzOffsetMinutes 取默认 0（UTC）：本路径只服务 crypto（Binance bar.time 为真 UTC
+ *  时间戳），且 nativeBaseInterval 只对「不整除一天的周期」返回非 null，多日档
+ *  （1D/3D）在 crypto 侧由 LiveDataFeed 直接取源原生日/3日线，不走这里。
+ *  CN/美股源的本地归桶聚合在 tencent.ts / sina.ts 内完成（传 localTzOffsetMinutes）。 */
 export function mergeAndAggregate(baseBars: Bar[], incomingBase: Bar[], tf: Timeframe): Bar[] {
   const merged = klineCache.merge(baseBars, incomingBase);
   return aggregateBars(merged, tf);
