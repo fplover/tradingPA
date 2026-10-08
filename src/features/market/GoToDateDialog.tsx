@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Modal } from '@/ui/primitives';
 import type { Bar } from '@/types/market';
 import { fmtDate, parseDateInput, resolveGoToDate } from './goToDate';
@@ -19,16 +19,18 @@ export function GoToDateDialog({
 }) {
   const [text, setText] = useState('');
   const [error, setError] = useState('');
-  // bars 每次行情更新都是新数组，只应在开/关时重置，避免冲掉用户输入
-  const barsRef = useRef(bars);
-  barsRef.current = bars;
+  const [lastOpen, setLastOpen] = useState(open);
 
-  useEffect(() => {
-    if (!open) return;
-    const b = barsRef.current;
-    setText(b.length > 0 ? fmtDate(b[b.length - 1].time) : '');
-    setError('');
-  }, [open]);
+  // 开屏重置：React 官方的「prop 变化时渲染期调整状态」模式——open 翻转时同步
+  // 预填末日与清错。不用 useEffect+ref：effect 版要么把 bars 写进依赖（每拍行情
+  // 重跑、冲掉用户输入），要么读 ref（渲染期写 ref 触发 react(refs) 警告）
+  if (open !== lastOpen) {
+    setLastOpen(open);
+    if (open) {
+      setText(bars.length > 0 ? fmtDate(bars[bars.length - 1].time) : '');
+      setError('');
+    }
+  }
 
   const submit = () => {
     const t = parseDateInput(text);
@@ -36,8 +38,7 @@ export function GoToDateDialog({
       setError('日期格式不正确，请使用 YYYY-MM-DD');
       return;
     }
-    // 提交走 barsRef（事件处理器，拿最新 bars；渲染期数据用 props，见下）
-    const r = resolveGoToDate(barsRef.current, t);
+    const r = resolveGoToDate(bars, t);
     if ('error' in r) {
       setError(r.error);
       return;
