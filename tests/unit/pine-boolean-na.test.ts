@@ -27,6 +27,17 @@ const OR_EXPECTED: Array<Array<number | undefined>> = [
   /* 1      */ [1, 1, 1, 1],
 ];
 
+/**
+ * eq 期望矩阵：TV Pine v5——na == na = true，na == x = false（比较不产出 na）。
+ * NaN 与 na 同口径。
+ */
+const EQ_EXPECTED: Array<Array<number | undefined>> = [
+  /* NaN    */ [1, 1, 0, 0],
+  /* na     */ [1, 1, 0, 0],
+  /* 0      */ [0, 0, 1, 0],
+  /* 1      */ [0, 0, 0, 1],
+];
+
 describe('ops 布尔族：NaN / undefined（na）全组合', () => {
   it('not：na / NaN / 0 为 1，非零为 0', () => {
     expect(INPUTS.map((x) => ops.not([x])[0])).toEqual([1, 1, 1, 0]);
@@ -42,6 +53,11 @@ describe('ops 布尔族：NaN / undefined（na）全组合', () => {
     const actual = INPUTS.map((x) => INPUTS.map((y) => ops.or([x], [y])[0]));
     expect(actual).toEqual(OR_EXPECTED);
   });
+
+  it('eq：4×4 组合矩阵（na == na = true；na == x = false，比较不产出 na）', () => {
+    const actual = INPUTS.map((x) => INPUTS.map((y) => ops.eq([x], [y])[0]));
+    expect(actual).toEqual(EQ_EXPECTED);
+  });
 });
 
 describe('布尔运算的序列对齐：洞不被静默变成数值', () => {
@@ -51,6 +67,13 @@ describe('布尔运算的序列对齐：洞不被静默变成数值', () => {
     expect(ops.and(a, b)).toEqual([undefined, 0, 0, undefined, undefined]);
     expect(ops.or(a, b)).toEqual([1, undefined, undefined, 1, 1]);
     expect(ops.not(a)).toEqual([0, 1, 1, 1, 0]);
+  });
+
+  it('eq 逐 bar：洞与 NaN 均参与比较（na == na = 1，x == na = 0），无洞产出', () => {
+    const a: S = [1, 0, undefined, NaN, 1];
+    const b: S = [1, undefined, 0, NaN, 2];
+    expect(ops.eq(a, b)).toEqual([1, 0, 0, 1, 0]);
+    expect(ops.eq(a, a)).toEqual([1, 1, 1, 1, 1]);
   });
 });
 
@@ -140,5 +163,17 @@ describe('脚本级：!= 复用 not（TV v5：x != na 为真）', () => {
   it('plot(ta.sma(close, 3) != 11)：窗口未满处 na != 11 为真', () => {
     // bar2/4 的 sma=11 → 0；其余定义 bar → 1；bar0/1 sma 为 na → not(eq) = 1
     expect(plotValues('plot(ta.sma(close, 3) != 11)')).toEqual([1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1]);
+  });
+});
+
+describe('脚本级：== 的 na 语义（TV v5：na == na = true，na == x = false）', () => {
+  it('plot(ta.sma(close, 3) == 11)：窗口未满处 na == 11 为假（不再是 na）', () => {
+    // bar0/1 sma 为 na → 0（旧实现为 undefined）；bar2/4 sma=11 → 1；其余定义 bar → 0
+    expect(plotValues('plot(ta.sma(close, 3) == 11)')).toEqual([0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it('plot(ta.sma(close, 3) == close / 0)：na == na 为真，定义处为假', () => {
+    // close/0 恒为 na；bar0/1 sma 为 na → na == na = 1；bar2+ sma 已定义 → x == na = 0
+    expect(plotValues('plot(ta.sma(close, 3) == close / 0)')).toEqual([1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   });
 });

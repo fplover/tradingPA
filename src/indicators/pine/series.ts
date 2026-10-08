@@ -61,6 +61,18 @@ export function toSeries(v: S | number, n: number): S {
   return v;
 }
 
+/**
+ * eq：TV Pine v5 语义——na == na = true，na == x = false（比较不产出 na）。
+ * NaN 与 na 同口径（NaN == NaN = true，x == NaN = false）。
+ */
+function eqVal(x: number | undefined, y: number | undefined): number {
+  const nx = isNa(x);
+  const ny = isNa(y);
+  if (nx && ny) return 1;
+  if (nx || ny) return 0;
+  return x === y ? 1 : 0;
+}
+
 export const ops = {
   add: (a: S, b: S) => bin(a, b, (x, y) => x + y),
   sub: (a: S, b: S) => bin(a, b, (x, y) => x - y),
@@ -70,7 +82,7 @@ export const ops = {
   lt: (a: S, b: S) => bin(a, b, (x, y) => (x < y ? 1 : 0)),
   gte: (a: S, b: S) => bin(a, b, (x, y) => (x >= y ? 1 : 0)),
   lte: (a: S, b: S) => bin(a, b, (x, y) => (x <= y ? 1 : 0)),
-  eq: (a: S, b: S) => bin(a, b, (x, y) => (x === y ? 1 : 0)),
+  eq: (a: S, b: S) => binBool(a, b, eqVal),
   and: (a: S, b: S) => binBool(a, b, andVal),
   or: (a: S, b: S) => binBool(a, b, orVal),
   neg: (a: S) => lift(a, (x) => -x),
