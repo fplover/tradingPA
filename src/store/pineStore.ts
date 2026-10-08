@@ -111,9 +111,14 @@ export const usePineStore = create<PineStore>((set, get) => ({
   },
 
   remove: (id) => {
-    const next = get().scripts.filter((s) => s.id !== id);
+    const { scripts } = get();
+    // 删除不存在的 id：直接返回，不动任何登记（避免误清同 id 的既有元数据）
+    if (!scripts.some((s) => s.id === id)) return;
+    const next = scripts.filter((s) => s.id !== id);
     persist(next);
     unregisterCustomDef(id);
+    // 与 save 路径同源：脚本删除后其 alertcondition 登记一并注销
+    clearPineAlerts(id);
     useIndicatorStore.getState().remove(id);
     set({ scripts: next });
   },

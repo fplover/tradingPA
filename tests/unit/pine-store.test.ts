@@ -92,3 +92,56 @@ describe('pineStore.save() 清理 DRAFT_ID 陈旧登记', () => {
     expect(raw[0]).toMatchObject({ name: '阳线指示', source: SRC });
   });
 });
+
+/**
+ * pineStore.remove() 清理被删脚本的 pine alerts 登记（OPEN-DECISIONS 在案项）：
+ * 删除已保存脚本时 unregisterCustomDef 不清 pine alerts 注册表，被删脚本 id 的
+ * alertcondition 登记残留 → 删除成功后同样注销该 id 的登记（save 路径同源处理）。
+ */
+
+describe('pineStore.remove() 清理被删脚本的 pine alerts 登记', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    usePineStore.setState({ scripts: [], editorSource: '', errors: [], draftName: null });
+    clearPineAlerts(DRAFT_ID);
+  });
+
+  it('删除已保存脚本：登记随注销指标一并清除', () => {
+    usePineStore.getState().setEditorSource(SRC);
+    usePineStore.getState().save();
+    const id = usePineStore.getState().scripts[0].id;
+    expect(pineAlertsOf(id)).toHaveLength(1);
+
+    usePineStore.getState().remove(id);
+    expect(usePineStore.getState().scripts).toHaveLength(0);
+    expect(pineAlertsOf(id)).toEqual([]);
+  });
+
+  it('删除不存在的 id：脚本列表与其他脚本登记均不动', () => {
+    usePineStore.getState().setEditorSource(SRC);
+    usePineStore.getState().save();
+    const id = usePineStore.getState().scripts[0].id;
+
+    usePineStore.getState().remove('pine_不存在的_id');
+    expect(usePineStore.getState().scripts).toHaveLength(1);
+    expect(pineAlertsOf(id)).toHaveLength(1);
+  });
+
+  it('删其中一个脚本不影响其他脚本的登记', () => {
+    usePineStore.getState().setEditorSource(SRC);
+    usePineStore.getState().save();
+    const id1 = usePineStore.getState().scripts[0].id;
+
+    // 同名覆盖走既有 id；换个 indicator 名另存得新 id
+    usePineStore.getState().setEditorSource(SRC.replace('阳线指示', '阴线指示'));
+    usePineStore.getState().save();
+    const id2 = usePineStore.getState().scripts[1].id;
+    expect(pineAlertsOf(id1)).toHaveLength(1);
+    expect(pineAlertsOf(id2)).toHaveLength(1);
+
+    usePineStore.getState().remove(id1);
+    expect(usePineStore.getState().scripts.map((s) => s.id)).toEqual([id2]);
+    expect(pineAlertsOf(id1)).toEqual([]);
+    expect(pineAlertsOf(id2)).toHaveLength(1);
+  });
+});

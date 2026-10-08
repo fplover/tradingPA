@@ -19,6 +19,42 @@ function lift(a: S, f: (x: number) => number): S {
   return a.map((v) => (v === undefined ? undefined : f(v)));
 }
 
+/** 布尔语境取真假：undefined（na）与 NaN 均为假（与 interpreter 的 if 条件同口径） */
+function isNa(x: number | undefined): boolean {
+  return x === undefined || Number.isNaN(x);
+}
+
+/** not：TV Pine 语义 not na = true（NaN 与 na 同口径） */
+function notVal(x: number | undefined): number {
+  return isNa(x) || x === 0 ? 1 : 0;
+}
+
+/**
+ * and：TV Pine 语义——false and na = false（短路于假，洞不被预传播吞掉）；
+ * true and na = na（条件语境为假）。NaN 与 na 同口径。
+ */
+function andVal(x: number | undefined, y: number | undefined): number | undefined {
+  if (!isNa(x) && x === 0) return 0;
+  if (!isNa(y) && y === 0) return 0;
+  if (isNa(x) || isNa(y)) return undefined;
+  return 1;
+}
+
+/** or：TV Pine 语义——true or na = true（短路于真）；false or na = na。NaN 与 na 同口径 */
+function orVal(x: number | undefined, y: number | undefined): number | undefined {
+  if (!isNa(x) && x !== 0) return 1;
+  if (!isNa(y) && y !== 0) return 1;
+  if (isNa(x) || isNa(y)) return undefined;
+  return 0;
+}
+
+/** 布尔运算逐点求值：不预传播 undefined，na 的归宿由 and/or 自行决定 */
+function binBool(a: S, b: S, f: (x: number | undefined, y: number | undefined) => number | undefined): S {
+  const out = undef(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = f(a[i], b[i]);
+  return out;
+}
+
 /** 将操作数统一为序列（标量广播） */
 export function toSeries(v: S | number, n: number): S {
   if (typeof v === 'number') return new Array<number | undefined>(n).fill(v);
@@ -35,10 +71,10 @@ export const ops = {
   gte: (a: S, b: S) => bin(a, b, (x, y) => (x >= y ? 1 : 0)),
   lte: (a: S, b: S) => bin(a, b, (x, y) => (x <= y ? 1 : 0)),
   eq: (a: S, b: S) => bin(a, b, (x, y) => (x === y ? 1 : 0)),
-  and: (a: S, b: S) => bin(a, b, (x, y) => (x !== 0 && y !== 0 ? 1 : 0)),
-  or: (a: S, b: S) => bin(a, b, (x, y) => (x !== 0 || y !== 0 ? 1 : 0)),
+  and: (a: S, b: S) => binBool(a, b, andVal),
+  or: (a: S, b: S) => binBool(a, b, orVal),
   neg: (a: S) => lift(a, (x) => -x),
-  not: (a: S) => lift(a, (x) => (x === 0 ? 1 : 0)),
+  not: (a: S) => a.map(notVal),
 };
 
 function rolling(a: S, n: number, f: (win: number[]) => number): S {
