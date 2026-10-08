@@ -1,10 +1,32 @@
 import type { Bar } from '@/types/market';
 import type { FeedStatus } from './types';
 
-const REST_BASE = 'https://api.binance.com';
-const WS_BASE = 'wss://stream.binance.com:9443/ws';
+/** REST 主机候选：api.binance.com 被墙/不可达时退官方公共行情镜像 data-api.binance.vision
+ *  （仅行情数据、同 API 形状，实测带 Access-Control-Allow-Origin: *）。 */
+const REST_HOSTS = ['https://api.binance.com', 'https://data-api.binance.vision'];
+/** WS 主机候选：主站与行情镜像（data-stream.binance.vision），重连时轮换 */
+const WS_HOSTS = ['wss://stream.binance.com:9443/ws', 'wss://data-stream.binance.vision/ws'];
 /** REST 请求超时：挂起时及时失败，便于上层降级到模拟数据 */
 const REST_TIMEOUT_MS = 10_000;
+
+/** Binance REST 请求（多主机回退：主站失败自动换镜像重试一次） */
+export async function fetchBinanceJson<T>(path: string, timeoutMs = REST_TIMEOUT_MS): Promise<T> {
+  let lastError: unknown = null;
+  for (const host of REST_HOSTS) {
+    const ctrl = new AbortController();
+    const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${host}${path}`, { signal: ctrl.signal });
+      if (!res.ok) throw new Error(`REST ${res.status}`);
+      return (await res.json()) as T;
+    } catch (err) {
+      lastError = err;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+  throw lastError ?? new Error('Binance REST 全部主机失败');
+}
 
 /** 拉取历史 K 线（分页） */
 export async function fetchKlines(
@@ -15,23 +37,15 @@ export async function fetchKlines(
   const params = new URLSearchParams({ symbol, interval, limit: String(opts.limit ?? 1000) });
   if (opts.endTime) params.set('endTime', String(opts.endTime));
   if (opts.startTime) params.set('startTime', String(opts.startTime));
-  const ctrl = new AbortController();
-  const timer = window.setTimeout(() => ctrl.abort(), REST_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${REST_BASE}/api/v3/klines?${params}`, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`REST ${res.status}`);
-    const raw = (await res.json()) as unknown[][];
-    return raw.map((k) => ({
-      time: k[0] as number,
-      open: Number(k[1]),
-      high: Number(k[2]),
-      low: Number(k[3]),
-      close: Number(k[4]),
-      volume: Number(k[5]),
-    }));
-  } finally {
-    window.clearTimeout(timer);
-  }
+  const raw = await fetchBinanceJson<unknown[][]>(`/api/v3/klines?${params}`);
+  return raw.map((k) => ({
+    time: k[0] as number,
+    open: Number(k[1]),
+    high: Number(k[2]),
+    low: Number(k[3]),
+    close: Number(k[4]),
+    volume: Number(k[5]),
+  }));
 }
 
 /** Binance K 线 WebSocket 订阅（自动重连 + 指数退避；多次失败转 REST 轮询） */
@@ -61,7 +75,9 @@ export class BinanceKlineWS {
 
   private open(): void {
     const stream = `${this.symbol.toLowerCase()}@kline_${this.interval}`;
-    this.ws = new WebSocket(`${WS_BASE}/${stream}`);
+    // 主机按重试次数轮换：主站被墙时第二次重连自动落到镜像
+    const base = WS_HOSTS[this.retries % WS_HOSTS.length];
+    this.ws = new WebSocket(`${base}/${stream}`);
     this.ws.onopen = () => {
       this.retries = 0;
       this.onStatus('live');

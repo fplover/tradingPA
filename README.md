@@ -3,7 +3,7 @@
 TradingView 图表平台的 1:1 复刻：React 18 + TypeScript + Vite + Zustand，图表渲染是**自研 Canvas 2D 引擎**（框架无关，不依赖任何图表库）。
 
 - 图表类型 18 种 · 时间周期 22 档（含自定义间隔）· 内置指标 64 个 · 画线工具 30 个
-- 多市场数据源：加密（Binance）/ A 股·港股·美股·指数（腾讯）/ 美股分钟·国内期货·外盘期货（新浪，script 标签 JSONP 直连）/ 全市场搜索（东财）
+- 多市场数据源：加密（Binance 多主机回退 + Gate 回退）/ A 股·港股·美股·指数（腾讯）/ 美股分钟·国内期货·外盘期货（新浪，script 标签 JSONP 直连）/ 全市场搜索（东财）
 - 平台能力：多图表布局 1/2/4/6/8、跨图联动、自选股、价格警报、复盘回放、模拟交易、Pine 子集 DSL、Compare 叠加
 
 ## 快速开始
@@ -34,7 +34,7 @@ npm run dev          # http://localhost:5173
 | `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；**0 错误 0 警告**——2026-10-08 存量 55 条警告基线全额清偿，仅剩 1 条带理由的 disable；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（68 文件 / 1177 例） |
+| `npm test` | Vitest 单测（69 文件 / 1188 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 | `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
 | `npm run build:pages` | 按 Pages base（`/tradingPA/`）本地预演构建（配合 `npm run preview`） |
@@ -77,7 +77,7 @@ docs/           Spec 与差距分析（见下）
 
 > E2E 在 Windows 上必须先自己起 dev server 再跑（见下节）；`verify` 只含机器无关门禁，可随时跑。
 
-当前实测基线（2026-10-08）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1，仅剩 1 条带理由 disable）/ 单测 1177 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 456.61 kB（>500 kB 警告已消除）。
+当前实测基线（2026-10-08）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1，仅剩 1 条带理由 disable）/ 单测 1188 全过 / E2E 53 过 + 1 例网络 flaky（重试通过，**27 面黄金截图零 diff**）/ 构建 7 chunk、最大应用块 456.61 kB（>500 kB 警告已消除）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令原样兼容（已探针验证）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。

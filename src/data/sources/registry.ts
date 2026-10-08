@@ -4,6 +4,7 @@ import type { AssetClass, Instrument, MarketId } from '@/types/instrument';
 import { tencentSource } from './tencent';
 import { binanceSource, cryptoSearch } from './binance';
 import { sinaSource } from './sina';
+import { gateSource } from './gate';
 import { eastmoneySearch, futuresQuotes, futuresSearch, futuresUniverse } from './eastmoney';
 import { NoHistoryError, type MarketSource, type Quote, type SearchHit } from './types';
 
@@ -39,7 +40,8 @@ const BARS_BY_MARKET: Record<MarketId, MarketSource[]> = {
   // 国内/外盘期货：新浪 script 标签 JSONP 直连，开发与生产均可用
   'cn-fut': [sinaSource],
   'global-fut': [sinaSource],
-  crypto: [binanceSource],
+  // 加密：Binance 主源（REST 多主机回退到官方镜像）+ Gate 回退（主站被墙时同对供数）
+  crypto: [binanceSource, gateSource],
 };
 
 /** 市场 → 报价数据源 */
