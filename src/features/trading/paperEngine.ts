@@ -62,6 +62,8 @@ export interface TradeSummary {
   totalTrades: number;
   winTrades: number;
   loseTrades: number;
+  /** 保本单数量（pnl === 0，不计胜负；典型为「止损价 = 开仓均价」的保本止损） */
+  breakEvenTrades: number;
   winRate: number;
   profitFactor: number;
   maxDrawdownPct: number;
@@ -127,8 +129,19 @@ export class PaperTradingEngine {
       this.fill(order, refPrice, time);
     }
     this.orders.unshift(order);
-    if (this.orders.length > 100) this.orders.length = 100;
+    this.trimOrders();
     return order;
+  }
+
+  /**
+   * 订单表截断（上限 100）：只淘汰最老的终态订单（已成交/已撤销）。
+   * pending 挂单是用户真实委托，不因截断消失——终态淘汰完仍超限时保留全部
+   * pending（上限对挂单让位：用户自挂的单不应被静默丢掉，用户口径 2026-10-08）。
+   */
+  private trimOrders(): void {
+    for (let i = this.orders.length - 1; i >= 0 && this.orders.length > 100; i--) {
+      if (this.orders[i].status !== 'pending') this.orders.splice(i, 1);
+    }
   }
 
   cancel(id: string): void {
@@ -151,21 +164,35 @@ export class PaperTradingEngine {
     this.position.stopLoss = sl ?? undefined;
   }
 
-  /** 每根 K 线检查止盈止损触发（多：触 TP 平多/触 SL 平多；空反之） */
-  private checkTpSl(bar: { high: number; low: number; time: number }): void {
+  /**
+   * 每根 K 线检查止盈止损触发（与 orderTrigger 同构的 gap 语义 + 保守优先，用户裁决 2026-10-03）：
+   * - 开盘跳穿：止损按开盘价成交（更差价，不低估亏损）；止盈按开盘价成交（更优价，真实成交语义）
+   * - 同 bar 双触：先判止损（保守）——旧实现永远先判 TP 偏乐观
+   */
+  private checkTpSl(bar: { open: number; high: number; low: number; time: number }): void {
     const p = this.position;
     if (!p) return;
     const long = p.side === 'long';
-    if (p.takeProfit !== undefined) {
-      const hit = long ? bar.high >= p.takeProfit : bar.low <= p.takeProfit;
+    if (p.stopLoss !== undefined) {
+      const gap = long ? bar.open <= p.stopLoss : bar.open >= p.stopLoss;
+      if (gap) {
+        this.closePosition(bar.open, bar.time);
+        return;
+      }
+      const hit = long ? bar.low <= p.stopLoss : bar.high >= p.stopLoss;
       if (hit) {
-        this.closePosition(p.takeProfit, bar.time);
+        this.closePosition(p.stopLoss, bar.time);
         return;
       }
     }
-    if (p.stopLoss !== undefined) {
-      const hit = long ? bar.low <= p.stopLoss : bar.high >= p.stopLoss;
-      if (hit) this.closePosition(p.stopLoss, bar.time);
+    if (p.takeProfit !== undefined) {
+      const gap = long ? bar.open >= p.takeProfit : bar.open <= p.takeProfit;
+      if (gap) {
+        this.closePosition(bar.open, bar.time);
+        return;
+      }
+      const hit = long ? bar.high >= p.takeProfit : bar.low <= p.takeProfit;
+      if (hit) this.closePosition(p.takeProfit, bar.time);
     }
   }
 
@@ -267,8 +294,11 @@ export class PaperTradingEngine {
   summary(): TradeSummary {
     const finalEquity = this.equity;
     const netPnL = finalEquity - this.balance;
+    // 保本单（pnl === 0，典型为「止损价 = 开仓均价」的 break-even stop）不构成
+    // 真实亏损：亏损统计只计 pnl < 0，保本单单独计数供 UI 明示（用户口径 2026-10-08）
     const wins = this.trades.filter((t) => t.pnl > 0);
-    const losses = this.trades.filter((t) => t.pnl <= 0);
+    const losses = this.trades.filter((t) => t.pnl < 0);
+    const breakEvens = this.trades.filter((t) => t.pnl === 0);
     const grossProfit = wins.reduce((s, t) => s + t.pnl, 0);
     const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnl, 0));
     let peak = this.balance;
@@ -286,8 +316,12 @@ export class PaperTradingEngine {
       totalTrades: this.trades.length,
       winTrades: wins.length,
       loseTrades: losses.length,
+      breakEvenTrades: breakEvens.length,
       winRate: this.trades.length > 0 ? (wins.length / this.trades.length) * 100 : 0,
-      profitFactor: grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0,
+      // 无亏损交易（grossLoss === 0，含全胜与全部保本）时给确定值 0：Infinity 经
+      // JSON 序列化会变 null 且不可比较，0 可序列化；UI 以「无亏损」明示该语义，
+      // 此处的 0 不是「盈亏比为零」而是「无亏损交易、比值不适用」（用户口径 2026-10-08）
+      profitFactor: grossLoss > 0 ? grossProfit / grossLoss : 0,
       maxDrawdownPct: maxDd * 100,
       avgWin: wins.length > 0 ? grossProfit / wins.length : 0,
       avgLoss: losses.length > 0 ? -grossLoss / losses.length : 0,

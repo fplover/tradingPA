@@ -216,6 +216,47 @@ describe('PaperTradingEngine gap 开盘跳价（TV 语义）', () => {
   });
 });
 
+describe('PaperTradingEngine 止盈止损 gap + 保守优先（用户裁决 2026-10-03）', () => {
+  it('多单开盘跳空跌破 SL：按更差的开盘价成交（不按 SL 理想价，不低估亏损）', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.setPositionTPSL(null, 95);
+    e.onBar(bar(2, 90, 91, 88, 89)); // 开盘 90 < 95 → 按开盘 90 成交
+    expect(e.position).toBeNull();
+    expect(e.trades[0].exitPrice).toBe(90);
+    expect(e.trades[0].pnl).toBeCloseTo(-10, 10);
+  });
+
+  it('多单开盘跳空越过 TP：按开盘价成交（更优价，真实成交语义）', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.setPositionTPSL(110, null);
+    e.onBar(bar(2, 115, 116, 112, 113)); // 开盘 115 > 110 → 按开盘 115 成交
+    expect(e.trades[0].exitPrice).toBe(115);
+    expect(e.trades[0].pnl).toBeCloseTo(15, 10);
+  });
+
+  it('多单同 bar 双触（high 到 TP、low 到 SL）：保守优先按止损成交', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.setPositionTPSL(110, 95);
+    e.onBar(bar(2, 100, 111, 94, 100)); // high ≥ 110 且 low ≤ 95 → 先判 SL
+    expect(e.position).toBeNull();
+    expect(e.trades[0].exitPrice).toBe(95);
+    expect(e.trades[0].pnl).toBeCloseTo(-5, 10);
+  });
+
+  it('空单同 bar 双触同样先判止损', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'sell', qty: 1 }, 100, 1);
+    e.setPositionTPSL(90, 110);
+    e.onBar(bar(2, 100, 111, 89, 100)); // 空单：high ≥ 110 触 SL、low ≤ 90 触 TP → 先判 SL
+    expect(e.position).toBeNull();
+    expect(e.trades[0].exitPrice).toBe(110);
+    expect(e.trades[0].pnl).toBeCloseTo(-10, 10);
+  });
+});
+
 describe('PaperTradingEngine 无效单拒绝', () => {
   it('数量非正拒绝', () => {
     const e = new PaperTradingEngine(10_000);
@@ -285,5 +326,79 @@ describe('PaperTradingEngine 总结报告', () => {
     expect(e.position).toBeNull();
     expect(e.equityCurve.length).toBe(0);
     expect(e.balance).toBe(50_000);
+  });
+});
+
+describe('PaperTradingEngine 订单表截断（只淘汰终态，pending 不丢，用户口径 2026-10-08）', () => {
+  it('超 100 条时淘汰最老的终态单，最老的 pending 挂单保留', () => {
+    const e = new PaperTradingEngine(10_000);
+    // 最先挂一笔限价买单（pending，表尾最老）
+    const oldest = e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: 90 }, 100, 1)!;
+    // 再灌 100 笔市价单（立即成交 = 终态），总数 101 触发截断
+    for (let i = 0; i < 100; i++) e.place({ type: 'market', side: 'buy', qty: 1 }, 100, i + 2);
+    expect(e.orders.length).toBe(100); // 只淘汰了 1 条最老终态单
+    expect(e.pendingOrders.map((o) => o.id)).toContain(oldest.id);
+    expect(e.pendingOrders.length).toBe(1);
+  });
+
+  it('撤销单可被淘汰；全部 pending 时截断让位（挂单不因上限消失）', () => {
+    const e = new PaperTradingEngine(10_000);
+    for (let i = 0; i < 101; i++) e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: 90 }, 100, i + 1);
+    expect(e.orders.length).toBe(101); // 无终态可淘汰：全部保留
+    expect(e.pendingOrders.length).toBe(101);
+    // 撤销最老的 2 笔（pendingOrders 按表序，末尾最老）后再挂 1 笔 → 102 条触发截断
+    const ids = e.pendingOrders.map((o) => o.id);
+    e.cancel(ids[ids.length - 1]);
+    e.cancel(ids[ids.length - 2]);
+    e.place({ type: 'limit', side: 'buy', qty: 1, limitPrice: 90 }, 100, 1000);
+    expect(e.orders.length).toBe(100); // 淘汰 2 条最老撤销单
+    expect(e.pendingOrders.length).toBe(100);
+  });
+});
+
+describe('PaperTradingEngine 保本单与盈亏比口径（用户裁决 2026-10-08）', () => {
+  it('保本止损（SL=开仓价）触发：pnl=0 不计亏损，盈亏比为确定值 0 且可序列化', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.setPositionTPSL(null, 100); // 保本止损：止损价 = 开仓均价
+    e.onBar(bar(2, 100, 101, 99, 100)); // low 触及 100 → 按 100 平仓
+    expect(e.trades[0].pnl).toBe(0);
+    const s = e.summary();
+    expect(s.winTrades).toBe(0);
+    expect(s.loseTrades).toBe(0);
+    expect(s.breakEvenTrades).toBe(1);
+    expect(s.avgLoss).toBe(0);
+    // 全保本无亏损：profitFactor = 0（不是 Infinity），JSON 往返不丢
+    expect(s.profitFactor).toBe(0);
+    expect(Number.isFinite(s.profitFactor)).toBe(true);
+    expect(JSON.parse(JSON.stringify({ profitFactor: s.profitFactor })).profitFactor).toBe(0);
+  });
+
+  it('全胜无亏损：profitFactor 为 0（可序列化），不再返回 Infinity', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.closePosition(110, 2); // +10
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 3);
+    e.closePosition(105, 4); // +5
+    const s = e.summary();
+    expect(s.winTrades).toBe(2);
+    expect(s.loseTrades).toBe(0);
+    expect(s.profitFactor).toBe(0);
+  });
+
+  it('保本单不进亏损分母：盈亏比 = 总盈利 / 真实亏损', () => {
+    const e = new PaperTradingEngine(10_000);
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 1);
+    e.closePosition(110, 2); // +10
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 3);
+    e.closePosition(100, 4); // 0 保本
+    e.place({ type: 'market', side: 'buy', qty: 1 }, 100, 5);
+    e.closePosition(95, 6); // -5
+    const s = e.summary();
+    expect(s.totalTrades).toBe(3);
+    expect(s.breakEvenTrades).toBe(1);
+    expect(s.loseTrades).toBe(1);
+    expect(s.avgLoss).toBeCloseTo(-5, 6);
+    expect(s.profitFactor).toBeCloseTo(10 / 5, 6);
   });
 });

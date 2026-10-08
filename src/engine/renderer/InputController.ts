@@ -292,8 +292,12 @@ export class InputController {
     }
     this.host.ensurePaneScaleReady(pane);
     const price = pane.priceScale.yToPrice(y - pane.y);
-    const idx = Math.round(this.host.viewport.xToIndex(x));
-    const bar = this.host.displaySeries().barAt(idx);
+    // 时间钳到最近一根 bar（用户裁决 2026-10-03：保留越界下单交互并对齐 bar）——
+    // 越界时间会掉出 series.indexOfTime 的精确二分，进出场标记将永不绘制
+    const series = this.host.displaySeries();
+    const raw = Math.round(this.host.viewport.xToIndex(x));
+    const idx = Math.max(0, Math.min(raw, series.length - 1));
+    const bar = series.barAt(idx);
     contextMenu(price, bar?.time ?? Date.now(), e.clientX, e.clientY);
   };
 }

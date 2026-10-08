@@ -24,8 +24,17 @@ export function SummaryReport({ onClose }: { onClose: () => void }) {
           color={pnlColor(s.returnPct)}
         />
         <Stat label="交易次数" value={String(s.totalTrades)} />
-        <Stat label="胜率" value={`${s.winRate.toFixed(1)}%`} hint={`胜 ${s.winTrades} / 负 ${s.loseTrades}`} />
-        <Stat label="盈亏比" value={s.profitFactor === Infinity ? '∞' : s.profitFactor.toFixed(2)} />
+        <Stat
+          label="胜率"
+          value={`${s.winRate.toFixed(1)}%`}
+          hint={`胜 ${s.winTrades} / 负 ${s.loseTrades}${s.breakEvenTrades > 0 ? ` / 保本 ${s.breakEvenTrades}` : ''}`}
+        />
+        {/* 盈亏比 0 = 无亏损交易（比值不适用，非「盈亏比为零」）；Infinity 不可序列化已弃用 */}
+        <Stat
+          label="盈亏比"
+          value={s.totalTrades === 0 ? '—' : s.loseTrades === 0 ? '无亏损' : s.profitFactor.toFixed(2)}
+          hint={s.totalTrades > 0 && s.loseTrades === 0 ? '无亏损交易，比值不适用' : undefined}
+        />
         <Stat label="最大回撤" value={`${s.maxDrawdownPct.toFixed(2)}%`} color="var(--down)" />
         <Stat label="平均盈利" value={s.avgWin.toFixed(2)} color="var(--up)" />
         <Stat label="平均亏损" value={s.avgLoss.toFixed(2)} color="var(--down)" />
