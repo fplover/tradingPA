@@ -15,6 +15,11 @@ import { WatchlistSettingsMenu } from './WatchlistSettingsMenu';
 import { QUOTE_FIELD, iconBtnStyle } from './watchlistShared';
 import { control, fontSize, icon, space } from '@/ui/tokens';
 
+/** 列表缺失时的空 items 兜底：模块级常量保证引用稳定（行内 `?? []` 会每次渲染
+ *  生成新数组，使下游 useMemo 的 items 依赖永远失效）。lists 至少保底一个列表，
+ *  该兜底实际不可达，仅为类型与防御服务 */
+const EMPTY_ITEMS: Instrument[] = [];
+
 function sortItems(
   items: Instrument[],
   key: SortKey,
@@ -59,7 +64,7 @@ export function WatchlistPanel() {
   } = useWatchlistStore.getState();
 
   const list = lists.find((l) => l.id === activeListId) ?? lists[0];
-  const items = list?.items ?? [];
+  const items = list?.items ?? EMPTY_ITEMS;
 
   const [flagFilter, setFlagFilter] = useState(false);
   const [renaming, setRenaming] = useState(false);

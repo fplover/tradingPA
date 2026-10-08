@@ -16,19 +16,22 @@ interface CommandPaletteProps {
 export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
+  const [lastOpen, setLastOpen] = useState(open);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => filterCommands(commands, query), [commands, query]);
 
-  // 每次打开重置查询与选中；查询变化时选中回落第一项
-  useEffect(() => {
+  // 每次打开重置查询与选中：渲染期按 prev open 调整状态（open 只由 Ctrl/P 与执行
+  // 动作翻转，开合期间 query 不变）。查询变化时选中回落第一项由输入事件直接完成——
+  // query 的唯一变更点就是该 onChange，无需 effect 中转
+  if (open !== lastOpen) {
+    setLastOpen(open);
     if (open) {
       setQuery('');
       setActive(0);
     }
-  }, [open]);
-  useEffect(() => setActive(0), [query]);
+  }
 
   // 键盘选中项滚入可视区
   useEffect(() => {
@@ -68,7 +71,10 @@ export function CommandPalette({ open, onOpenChange, commands }: CommandPaletteP
               ref={inputRef}
               autoFocus
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setActive(0);
+              }}
               placeholder="输入命令…（↑/↓ 选择，Enter 执行，Esc 关闭）"
               aria-label="搜索命令"
               style={inputStyle}

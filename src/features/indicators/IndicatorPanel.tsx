@@ -28,6 +28,13 @@ export function IndicatorPanel() {
   }, []);
 
   const q = query.trim().toLowerCase();
+  // 查询词变化时选中回落首行：渲染期按 prev 值调整状态（对应原 [q] effect 的
+  // setSel(0)；q 只由输入 onChange 产生，开屏时 q 与 lastQ 同为 '' 不触发）
+  const [lastQ, setLastQ] = useState(q);
+  if (q !== lastQ) {
+    setLastQ(q);
+    setSel(0);
+  }
   const items = useMemo(() => {
     const matched = allDefs.filter((d) => !q || d.name.toLowerCase().includes(q) || d.id.toLowerCase().includes(q));
     return matched.sort((a, b) => {
@@ -37,10 +44,6 @@ export function IndicatorPanel() {
       return a.name.localeCompare(b.name, 'zh-Hans-CN');
     });
   }, [allDefs, q, favorites]);
-
-  useEffect(() => {
-    setSel(0);
-  }, [q]);
 
   const choose = (def: IndicatorDef) => add(def.id);
 

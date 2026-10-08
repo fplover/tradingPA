@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAlertStore, type PriceAlert } from '@/store/alertStore';
 import {
   CONDITION_OPTIONS,
@@ -30,26 +30,21 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
   const [frequency, setFrequency] = useState<AlertFrequency>('once');
   const [cooldownIdx, setCooldownIdx] = useState(0);
   const [expiryIdx, setExpiryIdx] = useState(0);
+  const [lastAlert, setLastAlert] = useState(alert);
 
-  useEffect(() => {
-    if (!alert) return;
-    setThreshold(String(alert.threshold));
-    setCondition(alert.condition);
-    setFrequency(alert.frequency);
-    const ci = COOLDOWN_OPTIONS.findIndex((o) => Number(o.value) === alert.cooldownMs);
-    setCooldownIdx(ci >= 0 ? ci : 0);
-    const remaining = alert.expiresAt !== undefined ? alert.expiresAt - Date.now() : 0;
-    // 过期档位取「剩余时长」最近的非零档；已过期/无过期归零
-    let ei = 0;
-    if (remaining > 0) {
-      ei = EXPIRY_OPTIONS.findIndex((o) => {
-        const ms = Number(o.value);
-        return ms > 0 && Math.abs(ms - remaining) < ms / 2;
-      });
-      if (ei < 0) ei = EXPIRY_OPTIONS.length - 1;
+  // 打开/切换警报时把表单重置为该警报的当前值：渲染期按 prev prop 调整状态（同组件
+  // 渲染期 setState 合法）。与原 [alert] effect 同触发条件——alert 对象身份变化即重置，
+  // alert 为 null（未在编辑）时只跟踪不填充；档位反查下沉到模块函数，推导语义不变
+  if (alert !== lastAlert) {
+    setLastAlert(alert);
+    if (alert) {
+      setThreshold(String(alert.threshold));
+      setCondition(alert.condition);
+      setFrequency(alert.frequency);
+      setCooldownIdx(cooldownIndexFor(alert));
+      setExpiryIdx(expiryIndexFor(alert));
     }
-    setExpiryIdx(ei);
-  }, [alert]);
+  }
 
   if (!alert) return null;
   const open = Boolean(alert);
@@ -147,4 +142,26 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
       </div>
     </Modal>
   );
+}
+
+/** 冷却档位反查：按 alert.cooldownMs 找下拉下标，未命中归零 */
+function cooldownIndexFor(alert: PriceAlert): number {
+  const ci = COOLDOWN_OPTIONS.findIndex((o) => Number(o.value) === alert.cooldownMs);
+  return ci >= 0 ? ci : 0;
+}
+
+/** 过期档位取「剩余时长」最近的非零档；已过期/无过期归零。
+ *  Date.now() 收在模块函数内：渲染期直接调用 impure 全局会触发 react(purity)，
+ *  而本推导与开屏重置同时机求值一次（alert 身份变化时），语义与原 effect 一致 */
+function expiryIndexFor(alert: PriceAlert): number {
+  const remaining = alert.expiresAt !== undefined ? alert.expiresAt - Date.now() : 0;
+  let ei = 0;
+  if (remaining > 0) {
+    ei = EXPIRY_OPTIONS.findIndex((o) => {
+      const ms = Number(o.value);
+      return ms > 0 && Math.abs(ms - remaining) < ms / 2;
+    });
+    if (ei < 0) ei = EXPIRY_OPTIONS.length - 1;
+  }
+  return ei;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Modal } from '@/ui/primitives';
 import { fontSize, icon, radius, space } from '@/ui/tokens';
@@ -38,14 +38,19 @@ export function CustomIntervalDialog({
   const [unit, setUnit] = useState<CustomIntervalUnit>('m');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState<Timeframe[]>([]);
+  const [lastOpen, setLastOpen] = useState(open);
 
-  // 每次打开重置，避免上次输入残留
-  useEffect(() => {
-    if (!open) return;
-    setText('');
-    setError('');
-    setSaved(loadCustomIntervals());
-  }, [open]);
+  // 每次打开重置，避免上次输入残留：渲染期按 prev open 调整状态。loadCustomIntervals()
+  // 读 localStorage 是幂等只读，与 effect 版同一时机（开屏一次）；关闭期间的增删在
+  // 下次开屏时自然可见
+  if (open !== lastOpen) {
+    setLastOpen(open);
+    if (open) {
+      setText('');
+      setError('');
+      setSaved(loadCustomIntervals());
+    }
+  }
 
   const range = unit === 'H' ? CUSTOM_HOUR_RANGE : CUSTOM_MINUTE_RANGE;
 
