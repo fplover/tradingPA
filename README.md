@@ -26,6 +26,7 @@ npm run dev          # http://localhost:5173
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
 | `npm test` | Vitest 单测（65 文件 / 1145 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
+| `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
 | `npm run audit` | 依赖漏洞审计（**必须走官方 registry**：本机配置的 npmmirror 镜像不实现 `/-/npm/v1/security/*`，直接 `npm audit` 会报 NOT_IMPLEMENTED） |
 | `npm run verify` | 机器无关门禁一键跑：typecheck + lint + format:check + test（批次内快速闭环用） |
 
@@ -99,9 +100,15 @@ npm run test:e2e
 
 ## 已知状态与待办
 
-- **依赖漏洞 4 项 → 已清零（2026-10-03 复核）**：经依赖升级专项批次（vite 5→8、vitest 3→5、react 18→19、
+- **依赖漏洞 → 0（2026-10-08 复核）**：经依赖升级专项批次（vite 5→8、vitest 3→5、react 18→19、
   zustand 4→5、TS 5.6→6.0.3、eslint 9→10，见 git log `507be30`…`956fa1f`），`npm run audit` 报
   **found 0 vulnerabilities**。复查命令不变：`npm run audit`（必须走官方 registry）。
+  2026-10-08 二次审计：传递依赖 `source-map-js`（jsdom→css-tree / vite→postcss 链）出现 1 项
+  high（GHSA-68fv-2mgg-jv7q），已 `npm audit fix --registry=...` 升至 1.2.2 修复；同批清理死
+  依赖 `oxc-parser`（唯一消费者 check-file-size.mjs 已退役）并更新 semver 兼容依赖
+  （radix minors / lucide 1.52 / plugin-react 6.1.2 / vite 8.3.3 / oxlint 1.87 / jsdom 30.1.2），
+  全量门禁 + E2E 54/54（27 面黄金截图零 diff）实证行为中性。残留 outdated 仅跨主版本
+  （@types/node 26 线对 Node 26、jsdom 29 线低于已装的 30）——按 engines 锁定 22 线不动。
 - Node 版本要求已固化为 `engines: node >=22.22.2`（jsdom@30 的声明要求；npm 默认只警告不强制，旧环境 22.21.1 会打 `EBADENGINE` 警告）。
 - `git blame` 建议启用忽略清单：`git config blame.ignoreRevsFile .git-blame-ignore-revs`（跳过纯格式化提交）。
 

@@ -16,6 +16,8 @@
     "moduleDetection": "force",
     "noEmit": true,
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "types": ["node"],
     "paths": {
       "@/*": ["./src/*"]
