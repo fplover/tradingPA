@@ -78,7 +78,7 @@ docs/           Spec 与差距分析（见下）
 
 > E2E 在 Windows 上必须先自己起 dev server 再跑（见下节）；`verify` 只含机器无关门禁，可随时跑。
 
-当前实测基线（2026-10-09 复跑，二期收官后 + 形态家族画线回归修复 + rAF 帧循环加固）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1，仅剩 1 条带理由 disable）/ format:check 绿 / 单测 **81 文件 1305 例全过** / E2E **57 例：56 过 + 1 例网络 flaky**（`期货分类可搜到合约`，重试通过——依赖外网搜索源）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 495.47 kB（gzip 141.16 kB，合计 gzip 253.9 kB，>500 kB 警告未触发）。
+当前实测基线（2026-10-09 复跑，二期收官后 + 形态家族画线回归修复 + rAF 帧循环加固 + E2E 去 flaky）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1，仅剩 1 条带理由 disable）/ format:check 绿 / 单测 **81 文件 1305 例全过** / E2E **57 例全过**（`--retries=0` 实测零失败——基线已确定化，外网依赖已切断，见下条待办记录）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 495.47 kB（gzip 141.16 kB，合计 gzip 253.9 kB，>500 kB 警告未触发）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令原样兼容（已探针验证）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。
@@ -112,7 +112,8 @@ npm run test:e2e
 
 ## 已知状态与待办
 
-- **E2E 日历用例已修（2026-10-09）**：`interactions.spec.ts` 两处「日历弹层」用例原以 `button[aria-label^="2026-"]` 的 `.first()` 取日格，当日历首行含上/下月补位或区间外日期时命中 `disabled` 格导致点击永久等待——根因是 mock 数据区间由 `Date.now()` 逐日漂移（非应用回归）。现改为 `getByRole('button', { name: /^\d{4}-\d{2}-\d{2}$/, disabled: false })`：可访问名即 ISO 日期串（该形态只有日期格具备，导航/触发按钮不带），且不再依赖年份字面量。残留 flaky：`watchlist.spec.ts:62 期货分类可搜到合约` 依赖东财搜索外网，重试即过。
+- **E2E 日历用例已修（2026-10-09）**：`interactions.spec.ts` 两处「日历弹层」用例原以 `button[aria-label^="2026-"]` 的 `.first()` 取日格，当日历首行含上/下月补位或区间外日期时命中 `disabled` 格导致点击永久等待——根因是 mock 数据区间由 `Date.now()` 逐日漂移（非应用回归）。现改为 `getByRole('button', { name: /^\d{4}-\d{2}-\d{2}$/, disabled: false })`：可访问名即 ISO 日期串（该形态只有日期格具备，导航/触发按钮不带），且不再依赖年份字面量。
+- **E2E 去 flaky 已收口（2026-10-09）**：`watchlist.spec.ts 期货分类可搜到合约` 此前偶发 30s 超时、重试即过，登记为「依赖外网搜索源」——实跑定位后根因是**用例缺就绪门**：`/` 是 window keydown 快捷键（`useTvShortcuts` 的 effect 挂载后才有监听），用例在 `goto('/')` 之后立即按键，按键偶发丢失 → 弹层根本没开，等待的是弹层里的「国内期货」按钮，而非搜索结果。现补上与其他用例一致的就绪断言（`/[1-9][0-9,]* 根/` 可见）再按键。同时把东财合约全集与搜索联想改为 `page.route` 固定桩：期货分类搜索的语义是「本地按合约全集过滤」，网络只负责供料，钉死供料后断言只考察应用逻辑；这还顺带修掉一个定时炸弹——原断言写死 `/rb26/`，真实合约随主力换月会消失，桩数据不会。验证：`--repeat-each=4 --retries=0` 四连过；全量 `--retries=0` **57 例全过**（黄金截图 27 面零 diff）。
 - **形态家族画线已修（2026-10-09）**：谐波四工具（gartley/bat/butterfly/crab）的比率标签无条件索引 `pts[4]`，而放置中的 `__preview` 走同一渲染路径，锚点不足 5 个时抛 TypeError；异常从 `pipeline.draw()` 逃出后 `ChartController` 的 rAF 循环不再自我重挂，**整张画布永久冻结**——用户侧表现为「ABCD 分类下其他划线工具没效果」，刷新页面才恢复。现整段比率标签以 `pts.length >= HARMONIC_LABELS.length` 守卫（不足时只画已有折线与锚点字母，同时避免越界点的 price 兜底 0 算出假比率）。回归：`tests/unit/drawing-pattern-render.test.ts`（9 工具 × 1..5 锚点逐档不抛错）。
 - **rAF 帧循环已加固（2026-10-09）**：`ChartController.start()` 原把 `requestAnimationFrame(loop)` 排在帧体之后，帧体（尤其 `pipeline.draw()`）一次抛错就再也不挂帧 → 整张画布永久冻结，须刷新页面。现改为「先挂下一帧再干活」，单帧异常只丢这一帧。不吞异常：错误仍上抛到 `window.onerror`（syncBus 的 console.error 口径只用于隔离外部 handler，本处是引擎自身缺陷，需要响亮暴露）。回归双跑：`tests/unit/chart-raf-loop.test.ts`（假帧队列逐帧驱动，6 例——含「连续 5 帧异常不终止」「dispose 后不再挂帧」「重复 start 不叠加」）+ `tests/e2e/drawing.spec.ts` 真浏览器注入异常用例。两者按旧顺序实测均失败（旧实现第 1 帧抛错即死），非空断言。
 

@@ -1,4 +1,69 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+
+/**
+ * 期货合约全集与搜索联想的固定桩。
+ * 原用例走东财真实接口（外网），是本机 E2E 唯一残留 flaky（25s 超时偶发）——
+ * 期货分类搜索的语义是「本地按合约全集过滤」，网络只负责供料，故在此把供料钉死，
+ * 让断言只考察应用逻辑（代码/名称过滤、去重、弹层交互），不再受外网抖动影响。
+ */
+const FUT_LIST_ROWS: Record<string, unknown[]> = {
+  // 113 = 上期所（SHFE）
+  '113': [
+    {
+      dm: 'rb2601',
+      name: '螺纹钢2601',
+      p: 3210,
+      zde: 12,
+      zdf: 0.37,
+      o: 3200,
+      h: 3225,
+      l: 3195,
+      vol: 123456,
+      ccl: 789012,
+    },
+    {
+      dm: 'rb2610',
+      name: '螺纹钢2610',
+      p: 3185,
+      zde: -8,
+      zdf: -0.25,
+      o: 3190,
+      h: 3205,
+      l: 3170,
+      vol: 98765,
+      ccl: 456789,
+    },
+    {
+      dm: 'cu2601',
+      name: '沪铜2601',
+      p: 78650,
+      zde: 300,
+      zdf: 0.38,
+      o: 78400,
+      h: 78900,
+      l: 78200,
+      vol: 54321,
+      ccl: 123456,
+    },
+  ],
+};
+
+async function stubFuturesSources(page: Page): Promise<void> {
+  // 合约全集/报价：fetchJson 直连，按交易所分片
+  await page.route(/futsseapi\.eastmoney\.com\/list/, async (route) => {
+    const mkt = new URL(route.request().url()).pathname.split('/').pop() ?? '';
+    const list = FUT_LIST_ROWS[mkt] ?? [];
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ total: list.length, list }) });
+  });
+  // 搜索联想：无 CORS 头走 JSONP，响应体须包上 URL 里的回调名
+  await page.route(/searchapi\.eastmoney\.com\/api\/suggest/, async (route) => {
+    const cb = new URL(route.request().url()).searchParams.get('cb') ?? 'cb';
+    await route.fulfill({
+      contentType: 'application/javascript',
+      body: `${cb}({"QuotationCodeTable":{"Data":[]}})`,
+    });
+  });
+}
 
 /** 自选股面板：默认停靠、真实报价、涨跌幅 pill */
 test('自选股面板显示多市场实时报价', async ({ page }) => {
@@ -58,13 +123,20 @@ test('搜索弹窗加号模式只加入列表', async ({ page }) => {
   await expect(page.getByRole('button', { name: '002594 比亚迪', exact: true })).toBeHidden();
 });
 
-/** 期货分类搜索走合约全集 */
+/** 期货分类搜索走合约全集（固定桩供料，断言本地过滤语义，不依赖外网） */
 test('期货分类可搜到合约', async ({ page }) => {
+  await stubFuturesSources(page);
   await page.goto('/');
+  // 就绪门：`/` 是 window keydown 快捷键，useTvShortcuts 的 effect 未挂上时按键会静默丢失
+  // ——此前用例直接按键，偶发弹层没开，表现为「waiting for 国内期货」30s 超时（真 flaky 根因）
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
   await page.keyboard.press('/');
   await page.getByRole('button', { name: '国内期货', exact: true }).click();
   await page.getByRole('textbox', { name: '搜索品种' }).fill('螺纹');
-  await expect(page.getByRole('option', { name: /rb26/ }).first()).toBeVisible({ timeout: 25_000 });
+  // 命中按名称过滤：螺纹钢两合约都在，同交易所的沪铜被排除（证明过滤的是查询而非全量列表）
+  await expect(page.getByRole('option', { name: /rb2601/ })).toBeVisible();
+  await expect(page.getByRole('option', { name: /rb2610/ })).toBeVisible();
+  await expect(page.getByRole('option', { name: /沪铜/ })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('textbox', { name: '搜索品种' })).toBeHidden();
 });
