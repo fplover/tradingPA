@@ -32,6 +32,7 @@ const MARKET_SESSIONS: Record<MarketId, Sessions | 'crypto' | 'weekday24h'> = {
   'cn-index': A_SHARE,
   'cn-fut': CN_FUT_DAY,
   'global-fut': 'weekday24h', // 外盘期货近乎全天，周末休市
+  forex: 'weekday24h', // 外汇 5×24（周末休市），工作日全天连续
   crypto: 'crypto', // 7×24
 };
 

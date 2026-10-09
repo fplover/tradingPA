@@ -186,7 +186,10 @@ function pairFromCache(): Instrument[] {
 
 /** Gate 本地搜索：交易对目录按 base/整对过滤。Binance 校验通道失败时的加密搜索回退。 */
 export async function gateSearch(query: string): Promise<SearchHit[]> {
-  const q = query.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const q = query
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '');
   if (q.length < 2) return [];
   const all = await gateUniverse();
   const out: SearchHit[] = [];

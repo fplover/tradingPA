@@ -29,7 +29,9 @@ export const binanceSource: MarketSource = {
   async quotes(instruments) {
     const syms = instruments.filter((i) => i.market === 'crypto').map((i) => i.code.toUpperCase());
     if (syms.length === 0) return [];
-    const rows = await fetchBinanceJson<Ticker24h[]>(`${TICKER_PATH}?symbols=${encodeURIComponent(JSON.stringify(syms))}`);
+    const rows = await fetchBinanceJson<Ticker24h[]>(
+      `${TICKER_PATH}?symbols=${encodeURIComponent(JSON.stringify(syms))}`,
+    );
     const byId = new Map(instruments.map((i) => [i.code.toUpperCase(), i.id]));
     return rows
       .filter((r) => byId.has(r.symbol))
@@ -76,7 +78,10 @@ export async function cryptoSearch(query: string): Promise<SearchHit[]> {
   if (q.length < 2) return [];
   const candidates = QUOTE_ASSETS.some((a) => q.endsWith(a)) ? [q] : QUOTE_ASSETS.map((a) => `${q}${a}`);
   try {
-    const rows = await fetchBinanceJson<PriceRow[]>(`${PRICE_PATH}?symbols=${encodeURIComponent(JSON.stringify(candidates))}`, 6000);
+    const rows = await fetchBinanceJson<PriceRow[]>(
+      `${PRICE_PATH}?symbols=${encodeURIComponent(JSON.stringify(candidates))}`,
+      6000,
+    );
     const valid = new Set(rows.map((r) => r.symbol));
     return candidates
       .filter((sym) => valid.has(sym))

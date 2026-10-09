@@ -56,9 +56,24 @@ describe('周期计划：原生直取 / 非原生聚合 / 自定义', () => {
   });
 
   it('自定义周期归一化与 sina/tencent 同口径', () => {
-    expect(planFor('custom:45' as TimeframeId)).toEqual({ kind: 'bars', interval: '15m', baseSeconds: 900, aggregate: true });
-    expect(planFor('custom:30' as TimeframeId)).toEqual({ kind: 'bars', interval: '30m', baseSeconds: 1800, aggregate: false });
-    expect(planFor('custom:7' as TimeframeId)).toEqual({ kind: 'bars', interval: '1m', baseSeconds: 60, aggregate: true });
+    expect(planFor('custom:45' as TimeframeId)).toEqual({
+      kind: 'bars',
+      interval: '15m',
+      baseSeconds: 900,
+      aggregate: true,
+    });
+    expect(planFor('custom:30' as TimeframeId)).toEqual({
+      kind: 'bars',
+      interval: '30m',
+      baseSeconds: 1800,
+      aggregate: false,
+    });
+    expect(planFor('custom:7' as TimeframeId)).toEqual({
+      kind: 'bars',
+      interval: '1m',
+      baseSeconds: 60,
+      aggregate: true,
+    });
     expect(planFor('custom:37' as TimeframeId)).toEqual({ kind: 'none' });
   });
 });

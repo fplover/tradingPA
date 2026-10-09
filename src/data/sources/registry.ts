@@ -40,6 +40,8 @@ const BARS_BY_MARKET: Record<MarketId, MarketSource[]> = {
   // 国内/外盘期货：新浪 script 标签 JSONP 直连，开发与生产均可用
   'cn-fut': [sinaSource],
   'global-fut': [sinaSource],
+  // 外汇：新浪 ForexService（script 标签 JSONP 直连）；日线全品种，分钟线仅主流对
+  forex: [sinaSource],
   // 加密：Binance 主源（REST 多主机回退到官方镜像）+ Gate 回退（主站被墙时同对供数）
   crypto: [binanceSource, gateSource],
 };
@@ -56,6 +58,7 @@ const QUOTES_BY_MARKET: Record<MarketId, 'source' | 'futures'> = {
   'cn-index': 'source',
   'cn-fut': 'futures',
   'global-fut': 'futures',
+  forex: 'source',
   crypto: 'source',
 };
 

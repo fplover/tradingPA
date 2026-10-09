@@ -16,6 +16,7 @@ export type MarketId =
   | 'cn-index'
   | 'cn-fut'
   | 'global-fut'
+  | 'forex'
   | 'crypto';
 
 export interface Instrument {
@@ -57,6 +58,7 @@ export const MARKETS: Record<MarketId, MarketDef> = {
   'cn-index': { id: 'cn-index', label: '指数', asset: 'index', region: 'CN', decimals: 2 },
   'cn-fut': { id: 'cn-fut', label: '国内期货', asset: 'futures', region: 'CN', decimals: 1 },
   'global-fut': { id: 'global-fut', label: '外盘期货', asset: 'futures', region: 'US', decimals: 2 },
+  forex: { id: 'forex', label: '外汇', asset: 'forex', region: '—', decimals: 4 },
   crypto: { id: 'crypto', label: '加密货币', asset: 'crypto', region: '—', decimals: 2 },
 };
 

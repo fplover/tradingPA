@@ -8,13 +8,15 @@ import { fetchVarJsonp } from './http';
 import { NoHistoryError, type BarsRequest, type MarketSource } from './types';
 
 /**
- * 新浪财经：国内期货 / 外盘期货 / 美股 的历史 K 线。
+ * 新浪财经：国内期货 / 外盘期货 / 美股 / 外汇 的历史 K 线。
  * 三组接口同为 jsonp.php / jsonp_v2.php 形态——回调「变量名」嵌在 URL 路径里，
  * 经 script 标签执行赋值，不受 CORS 与 Referer 限制，开发与生产（GitHub Pages）均可直连，
  * 无需 dev server 代理（2026-10-08 实测：相关端点不带 Referer 也返回数据）。
  *
  * 数据量：分钟线固定回 1023 根（1m≈2 个交易日，60m≈2 个月）；日线回上市以来全部。
  * 外盘期货成交量字段常年为 0（新浪不提供），成交量副图对外盘为空属数据源边界。
+ * 外汇同理：日/分钟线均无成交量；分钟线仅部分品种有数据（EURUSD 等主流对有，
+ * USDCNH 返回 "data is empty"），日线全品种可用（1980 年代起全历史）。
  */
 
 const INNER_JSONP = 'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/{cb}/InnerFuturesNewService';
@@ -22,6 +24,7 @@ const GLOBAL_DAILY_JSONP =
   'https://stock2.finance.sina.com.cn/futures/api/jsonp.php/{cb}/GlobalFuturesService.getGlobalFuturesDailyKLine?symbol=';
 const GLOBAL_MIN_JSONP = 'https://gu.sina.cn/ft/api/jsonp.php/{cb}/GlobalService.getMinK?symbol=';
 const US_JSONP = 'https://stock.finance.sina.com.cn/usstock/api/jsonp_v2.php/{cb}/US_MinKService';
+const FOREX_JSONP = 'https://vip.stock.finance.sina.com.cn/forex/api/jsonp.php/{cb}/NewForexService';
 
 /** 内盘期货：东财主连「rbm」→ 新浪「RB0」；合约代码恒以数字结尾，M 结尾即主连 */
 function innerSinaSymbol(inst: Instrument): string {
@@ -31,8 +34,18 @@ function innerSinaSymbol(inst: Instrument): string {
 
 /** 外盘期货期货月份代码 → 月序号（F=1 … Z=12，跳过不用字母） */
 const MONTH_LETTER: Record<string, string> = {
-  F: '01', G: '02', H: '03', J: '04', K: '05', M: '06',
-  N: '07', Q: '08', U: '09', V: '10', X: '11', Z: '12',
+  F: '01',
+  G: '02',
+  H: '03',
+  J: '04',
+  K: '05',
+  M: '06',
+  N: '07',
+  Q: '08',
+  U: '09',
+  V: '10',
+  X: '11',
+  Z: '12',
 };
 
 /**
@@ -69,6 +82,12 @@ export function globalDailyUrl(symbol: string): string {
 
 export function globalMinuteUrl(symbol: string, type: number): string {
   return `${GLOBAL_MIN_JSONP}${symbol}&type=${type}`;
+}
+
+export function forexUrl(kind: 'daily' | 'minute', symbol: string, type: number): string {
+  return kind === 'daily'
+    ? `${FOREX_JSONP}.getDayKLine?symbol=${symbol}`
+    : `${FOREX_JSONP}.getOldMinKline?symbol=${symbol}&scale=${type}&datalen=1023`;
 }
 
 interface SinaBar {
@@ -163,6 +182,26 @@ export function unwrapBars(data: unknown): SinaBar[] {
   return out;
 }
 
+/**
+ * 外汇日 K：负载是单个字符串 "date,open,low,high,close,|date,…"（行内 5 个逗号，末位恒空）。
+ * 字段顺序为 开、低、高、收——2026-10-08 用 USDCNH 全历史 3109 行做 OHLC 合法性
+ * （l ≤ min(o,c)、h ≥ max(o,c)）校验定案：该顺序 0 违规，o,c,h,l 等 4 种候选均 3093+ 违规。
+ * 外汇无成交量，v 恒为 0。错误负载（{"msg":…}）/脏行过滤为空数组。
+ */
+export function unwrapForexDaily(data: unknown): SinaBar[] {
+  if (typeof data !== 'string') return [];
+  const out: SinaBar[] = [];
+  for (const row of data.split('|')) {
+    const f = row.split(',');
+    if (f.length < 5) continue;
+    const [d, o, l, h, c] = f;
+    if (!/^\d{4}-\d{2}-\d{2}/.test(d)) continue;
+    if ([o, l, h, c].some((x) => !Number.isFinite(Number(x)))) continue;
+    out.push({ d, o, h, l, c, v: '0' });
+  }
+  return out;
+}
+
 /** 品种 + 周期 → 请求 URL。市场不归本源或代码映射失败返回 null。 */
 function serviceFor(inst: Instrument, plan: ActivePlan): string | null {
   if (inst.market === 'cn-fut') {
@@ -176,12 +215,15 @@ function serviceFor(inst: Instrument, plan: ActivePlan): string | null {
   if (inst.market.startsWith('us-')) {
     return usUrl(plan.kind, inst.code.toUpperCase(), plan.kind === 'minute' ? plan.type : 0);
   }
+  if (inst.market === 'forex') {
+    return forexUrl(plan.kind, inst.code.toUpperCase(), plan.kind === 'minute' ? plan.type : 0);
+  }
   return null;
 }
 
 export const sinaSource: MarketSource = {
   name: '新浪财经',
-  markets: ['cn-fut', 'global-fut', 'us-nasdaq', 'us-nyse', 'us-amex'],
+  markets: ['cn-fut', 'global-fut', 'us-nasdaq', 'us-nyse', 'us-amex', 'forex'],
 
   async bars({ instrument, timeframe }: BarsRequest): Promise<Bar[]> {
     const plan = planFor(timeframe);
@@ -190,7 +232,9 @@ export const sinaSource: MarketSource = {
     if (!url) throw new NoHistoryError(instrument, timeframe);
 
     const payload = await fetchVarJsonp<unknown>(url, 15_000);
-    const rows = unwrapBars(payload);
+    // 外汇日线是字符串负载（"date,o,l,h,c,|…"），分钟线与其余市场同为对象数组
+    const rows =
+      instrument.market === 'forex' && plan.kind === 'daily' ? unwrapForexDaily(payload) : unwrapBars(payload);
     if (rows.length === 0) throw new NoHistoryError(instrument, timeframe);
 
     const bars: Bar[] = rows.map((r) => ({

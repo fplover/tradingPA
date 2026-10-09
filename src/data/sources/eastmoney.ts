@@ -133,6 +133,7 @@ function stockInstrument(item: SuggestItem): Instrument | null {
     return makeInstrument(market, code, name, { exchange: isIndex ? 'SZSE' : bj ? 'BSE' : 'SZSE' });
   }
   if (mkt === '116') return makeInstrument('hk', code, name, { exchange: 'HKEX' });
+  if (mkt === '133') return makeInstrument('forex', code, name);
   if (mkt === '105') return makeInstrument('us-nasdaq', code, name, { exchange: 'NASDAQ' });
   if (mkt === '106') return makeInstrument('us-nyse', code, name, { exchange: 'NYSE' });
   if (mkt === '107') return makeInstrument('us-amex', code, name, { exchange: 'AMEX' });
@@ -153,6 +154,7 @@ const ASSET_OF_CLASS: Record<string, AssetClass> = {
   Fund: 'fund',
   Bond: 'bond',
   Forex: 'forex',
+  FOREX: 'forex',
 };
 
 /** 期货合约全集：搜索与报价共用，按交易所懒加载 */

@@ -3,7 +3,7 @@
 TradingView 图表平台的 1:1 复刻：React 18 + TypeScript + Vite + Zustand，图表渲染是**自研 Canvas 2D 引擎**（框架无关，不依赖任何图表库）。
 
 - 图表类型 18 种 · 时间周期 22 档（含自定义间隔）· 内置指标 64 个 · 画线工具 30 个
-- 多市场数据源：加密（Binance 多主机回退 + Gate 回退）/ A 股·港股·美股·指数（腾讯）/ 美股分钟·国内期货·外盘期货（新浪，script 标签 JSONP 直连）/ 全市场搜索（东财）
+- 多市场数据源：加密（Binance 多主机回退 + Gate 回退）/ A 股·港股·美股·指数（腾讯）/ 美股分钟·国内期货·外盘期货·外汇（新浪，script 标签 JSONP 直连）/ 全市场搜索（东财）
 - 平台能力：多图表布局 1/2/4/6/8、跨图联动、自选股、价格警报、复盘回放、模拟交易、Pine 子集 DSL、Compare 叠加
 
 ## 快速开始
@@ -34,7 +34,7 @@ npm run dev          # http://localhost:5173
 | `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；**0 错误 0 警告**——2026-10-08 存量 55 条警告基线全额清偿，仅剩 1 条带理由的 disable；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（69 文件 / 1188 例） |
+| `npm test` | Vitest 单测（70 文件 / 1193 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 | `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
 | `npm run build:pages` | 按 Pages base（`/tradingPA/`）本地预演构建（配合 `npm run preview`） |

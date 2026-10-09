@@ -19,6 +19,7 @@ export const TABS: TabDef[] = [
   { id: 'cnfut', label: '国内期货', asset: 'futures', markets: ['cn-fut'] },
   { id: 'globalfut', label: '外盘期货', asset: 'futures', markets: ['global-fut'] },
   { id: 'index', label: '指数', asset: 'index', markets: ['cn-index'] },
+  { id: 'forex', label: '外汇', asset: 'forex', markets: ['forex'] },
   { id: 'crypto', label: '加密', asset: 'crypto', markets: ['crypto'] },
 ];
 

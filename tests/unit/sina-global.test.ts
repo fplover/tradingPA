@@ -74,7 +74,9 @@ describe('unwrapBars：三类负载归一', () => {
   });
 
   it('外盘日线形态 {date,open,…} 字段名兼容，v 缺省补 0', () => {
-    const rows = unwrapBars([{ date: '2026-10-02', open: '4204.6', high: '4259.0', low: '4153.8', close: '4172.1', volume: '164881' }]);
+    const rows = unwrapBars([
+      { date: '2026-10-02', open: '4204.6', high: '4259.0', low: '4153.8', close: '4172.1', volume: '164881' },
+    ]);
     expect(rows).toEqual([{ d: '2026-10-02', o: '4204.6', h: '4259.0', l: '4153.8', c: '4172.1', v: '164881' }]);
   });
 
