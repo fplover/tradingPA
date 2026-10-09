@@ -34,7 +34,7 @@ npm run dev          # http://localhost:5173
 | `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；**0 错误 0 警告**——2026-10-08 存量 55 条警告基线全额清偿，仅剩 1 条带理由的 disable；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（70 文件 / 1193 例） |
+| `npm test` | Vitest 单测（71 文件 / 1199 例） |
 | `npm run test:e2e` | Playwright E2E（54 例，含 **27 面黄金截图**） |
 | `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
 | `npm run build:pages` | 按 Pages base（`/tradingPA/`）本地预演构建（配合 `npm run preview`） |

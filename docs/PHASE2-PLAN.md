@@ -43,6 +43,8 @@
 - **方案 B1（已裁决采用，无后端）**：轮询优化——自适应间隔（盘中 3s / 盘外停轮）、页面可见性联动（已有 document.hidden 门控复用）、报价失败退避。收益：体验平滑、省流量；天花板：仍是秒级轮询。B2（自建后端推送）三期评估。
 - 验收（B1）：非 crypto 图表末柱刷新延迟 P95 ≤ 5s，盘外零请求；（B2）A股末柱推送延迟 ≤ 1s。
 
+> **交付记录（2026-10-09）**：B1 已落地——决策核 `src/store/pollSchedule.ts`（纯函数，6 例单测钉住）：盘中 3s（P95 ≤ 5s 口径的结构性保证）、连续失败 ×2 退避封顶 60s（成功归零）、盘外/隐藏零网络请求仅挂 30s 本地重估闹钟（开市判定 isMarketOpen 为纯本地时间计算）。`useQuotePolling` 改 setTimeout 链式调度（await 后重读 hidden，无堆叠），refresh 返回成功布尔供退避计数（lastError UI 语义不变）；LiveDataFeed REST 降级轮询与 compareModel 30s 轮询补 document.hidden 门控（aggregatePath 原已有）。混合市场列表语义：任一市场开市即整批轮询（报价按批拉取无法拆单），全闭市才停轮。门禁：typecheck/lint/format 全绿，71 文件 1199 例，build 通过。
+
 ### 二期-C · 画线工具收尾（无架构依赖，可并行）
 
 | 项      | 内容                                                                                                    |

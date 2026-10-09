@@ -56,11 +56,13 @@ export class LiveDataFeed {
     this.ws.connect();
   }
 
-  /** WS 连续失败后的 REST 轮询降级（3s 拉最新 2 根） */
+  /** WS 连续失败后的 REST 轮询降级（3s 拉最新 2 根；页面隐藏时静默跳过该拍） */
   private startPolling(): void {
     if (this.pollTimer) return;
     this.opts.handlers.onStatus('reconnecting', 'WS 不可用，已降级为 REST 轮询');
     this.pollTimer = window.setInterval(() => {
+      // 页面可见性联动（二期-B1）：后台标签页不发请求，回前台下一拍自然恢复
+      if (typeof document !== 'undefined' && document.hidden) return;
       void fetchKlines(this.opts.symbol, this.opts.interval, { limit: 2 })
         .then((bars) => {
           for (const bar of bars) this.opts.handlers.onLive(bar);

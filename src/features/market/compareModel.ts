@@ -113,8 +113,12 @@ export function createCompareFeed(
       on.onBars([]); // 换品种/周期：先清空，避免轮询合并把两个品种的柱并在一起
       on.onStatus('loading');
       load();
-      // 轮询刷新：对比序列不建 WS 通道（通道归主 series 所有），按固定间隔重拉对齐末柱
-      timer = setInterval(load, COMPARE_POLL_MS);
+      // 轮询刷新：对比序列不建 WS 通道（通道归主 series 所有），按固定间隔重拉对齐末柱；
+      // 页面可见性联动（二期-B1）：隐藏时静默跳过该拍，回前台下一拍自然恢复
+      timer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        load();
+      }, COMPARE_POLL_MS);
     },
     loadMore() {
       if (!instrument || paging || noMore || bars.length === 0) return;
