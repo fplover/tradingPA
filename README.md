@@ -141,6 +141,7 @@ npm run test:e2e
 | [docs/SPEC-P1.md](docs/SPEC-P1.md) / [docs/SPEC-P2.md](docs/SPEC-P2.md) | P1（功能广度）/ P2（收官批次）规格与交付记录 |
 | [docs/PHASE2-PLAN.md](docs/PHASE2-PLAN.md) | 二期（PHASE-2）七批次规格与交付记录；§3 二期「明确不做」清单、§5 决策点 D1/D2/D3 裁决（D1 不引入后端） |
 | [docs/decisions/OPEN-DECISIONS.md](docs/decisions/OPEN-DECISIONS.md) | 未决项登记册（只追加 + 就地关闭） |
+| [docs/PHASE3-D1-BACKEND.md](docs/PHASE3-D1-BACKEND.md) | **三期 D1 决策材料**：自建后端的收益/代价对照与分档（档 0–3）——供裁决用，不改变现行「不引入后端」裁定 |
 | [docs/decisions/ADR-001-volume-profile-kline-approx.md](docs/decisions/ADR-001-volume-profile-kline-approx.md) | Volume Profile kline 近似裁决 |
 | [docs/GAP_ANALYSIS_TV_vs_tradingPA.md](docs/GAP_ANALYSIS_TV_vs_tradingPA.md) / [docs/UI_GAP_ANALYSIS_pixel.md](docs/UI_GAP_ANALYSIS_pixel.md) | 功能维度 / UI 像素维度差距分析 |
 | [.workbuddy/memory/](.workbuddy/memory/) | 工作日志与踩坑记录（`pitfalls.jsonl`，未入版本库） |
