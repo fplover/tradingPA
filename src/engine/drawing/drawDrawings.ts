@@ -15,6 +15,8 @@ import { drawPercentLine, hitTestPercentLine } from './percentRender';
 import { drawShapes, hitTestShapes } from './shapeRender';
 import { drawGann, hitTestGann } from './gannRender';
 import { drawElliott, hitTestElliott } from './elliottRender';
+import { drawPatterns, hitTestPatterns } from './patternRender';
+import { drawFibChannel, drawFibSpiral, hitTestFibChannel, hitTestFibSpiral } from './fibTailRender';
 import { drawLineFamily } from './lineRender';
 import { drawHandles, strokeLine } from './drawingChrome';
 import { pointToPixel, type DrawContext } from './coords';
@@ -136,6 +138,22 @@ export function hitTestDrawing(
     // P2-B：艾略特波浪（折线段）
     case 'elliott-wave':
       return hitTestElliott(pts, x, y) ? { part: 'body' } : null;
+    // 二期-C1：形态家族（折线段 + 三角边界延长段）
+    case 'abc-pattern':
+    case 'gartley':
+    case 'bat':
+    case 'butterfly':
+    case 'crab':
+    case 'head-shoulders':
+    case 'head-shoulders-inverse':
+    case 'triangle-pattern':
+    case 'triangle-expanding':
+      return hitTestPatterns(drawing, pts, ctx, x, y) ? { part: 'body' } : null;
+    // 二期-C1：斐波那契补尾（通道各档线 / 螺旋采样折线）
+    case 'fib-channel':
+      return hitTestFibChannel(drawing, ctx, x, y) ? { part: 'body' } : null;
+    case 'fib-spiral':
+      return hitTestFibSpiral(pts, x, y) ? { part: 'body' } : null;
     default:
       return null;
   }
@@ -285,6 +303,25 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
     // P2-B：艾略特波浪（5-3 标注组）
     case 'elliott-wave':
       drawElliott(ctx, pts);
+      break;
+    // 二期-C1：形态家族（谐波/头肩/三角；ABCD 与谐波同折线范式，无比率标签）
+    case 'abc-pattern':
+    case 'gartley':
+    case 'bat':
+    case 'butterfly':
+    case 'crab':
+    case 'head-shoulders':
+    case 'head-shoulders-inverse':
+    case 'triangle-pattern':
+    case 'triangle-expanding':
+      drawPatterns(ctx, d, pts, dctx);
+      break;
+    // 二期-C1：斐波那契补尾（平行通道组 / 对数螺旋）
+    case 'fib-channel':
+      drawFibChannel(ctx, d, dctx);
+      break;
+    case 'fib-spiral':
+      drawFibSpiral(ctx, pts);
       break;
   }
   ctx.setLineDash([]);

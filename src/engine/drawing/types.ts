@@ -1,5 +1,6 @@
 import { FIB_EXTENSION_LEVELS, FIB_RETRACEMENT_LEVELS } from './fibMath';
 import { PERCENT_LEVELS } from './percentMath';
+import { FIB_CHANNEL_LEVELS } from './fibTailMath';
 import { PALETTE } from '@/engine/palette';
 
 /** 画线锚点：世界坐标（时间 + 价格），与缩放平移无关 */
@@ -44,7 +45,20 @@ export type DrawingTypeId =
   | 'gann-line'
   | 'gann-box'
   // P2-B 艾略特波浪：5-3 标注组（5 上 3 下锚点）
-  | 'elliott-wave';
+  | 'elliott-wave'
+  // 二期-C1 形态家族：ABCD / XABCD 谐波 4 种（比率校验，patternMath）/ 头肩顶底 / 三角收敛扩散
+  | 'abc-pattern'
+  | 'gartley'
+  | 'bat'
+  | 'butterfly'
+  | 'crab'
+  | 'head-shoulders'
+  | 'head-shoulders-inverse'
+  | 'triangle-pattern'
+  | 'triangle-expanding'
+  // 二期-C1 斐波那契补尾：通道（档位平行通道组）/ 螺旋（对数螺旋，TV 简化口径登记）
+  | 'fib-channel'
+  | 'fib-spiral';
 
 export interface DrawingStyle {
   color: string;
@@ -169,15 +183,28 @@ export const DRAWING_TOOLS: DrawingToolDef[] = [
   },
   // P2-B 艾略特波浪：5-3 标注组 = 8 锚点（5 上 + 3 下）
   { id: 'elliott-wave', label: '艾略特波浪', points: 8, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  // 二期-C1 形态家族：锚点顺序见 patternMath 头注；谐波默认色同 TV 图式组灰
+  { id: 'abc-pattern', label: 'ABCD 形态', points: 4, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'gartley', label: '加特莱', points: 5, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'bat', label: '蝙蝠', points: 5, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'butterfly', label: '蝴蝶', points: 5, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'crab', label: '螃蟹', points: 5, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'head-shoulders', label: '头肩顶', points: 5, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'head-shoulders-inverse', label: '头肩底', points: 5, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'triangle-pattern', label: '三角收敛', points: 5, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'triangle-expanding', label: '三角扩散', points: 5, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  // 二期-C1 斐波那契补尾：通道档位可自定义（level=1 基准档恰过第三锚点）；螺旋两点
+  { id: 'fib-channel', label: '斐波那契通道', points: 3, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  { id: 'fib-spiral', label: '斐波那契螺旋', points: 2, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
 ];
 
 export function getToolDef(id: DrawingTypeId): DrawingToolDef {
   return DRAWING_TOOLS.find((t) => t.id === id) ?? DRAWING_TOOLS[0];
 }
 
-/** 工具默认分割档位（百分比小数；仅 fib / fib-extension / percent-line 支持自定义，其余返回 null）。
- *  与渲染层回退常量同源（fibMath / percentMath）：d.levels 为 undefined 时渲染即用此处默认值。
- *  注：fib-auto 与 fib 共用回撤渲染，但按需求仅上述三个工具在设置对话框暴露「分割线」分区。 */
+/** 工具默认分割档位（百分比小数；仅 fib / fib-extension / percent-line / fib-channel 支持自定义，其余返回 null）。
+ *  与渲染层回退常量同源（fibMath / percentMath / fibTailMath）：d.levels 为 undefined 时渲染即用此处默认值。
+ *  注：fib-auto 与 fib 共用回撤渲染，但按需求仅下列四个工具在设置对话框暴露「分割线」分区。 */
 export function defaultLevelsFor(id: DrawingTypeId): number[] | null {
   switch (id) {
     case 'fib':
@@ -186,6 +213,8 @@ export function defaultLevelsFor(id: DrawingTypeId): number[] | null {
       return [...FIB_EXTENSION_LEVELS];
     case 'percent-line':
       return [...PERCENT_LEVELS];
+    case 'fib-channel':
+      return [...FIB_CHANNEL_LEVELS];
     default:
       return null;
   }

@@ -41,7 +41,7 @@ describe('艾略特波浪工具注册', () => {
   it('8 锚点工具', () => {
     expect(getToolDef('elliott-wave').points).toBe(8);
     expect(getToolDef('elliott-wave').label).toBe('艾略特波浪');
-    expect(DRAWING_TOOLS).toHaveLength(30);
+    expect(DRAWING_TOOLS).toHaveLength(41);
   });
 });
 

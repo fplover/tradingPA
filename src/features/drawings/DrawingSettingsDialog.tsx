@@ -10,8 +10,13 @@ import { DrawingLevelsEditor } from './DrawingLevelsEditor';
 
 const LINE_WIDTH_OPTIONS: ToolbarOption[] = [1, 2, 3, 4].map((w) => ({ value: String(w), label: `${w}px` }));
 
-/** 支持自定义分割档位的工具（TV fib 设置 levels 页）：回撤 / 扩展 / 百分比线 */
-const LEVELS_TOOLS: ReadonlySet<DrawingTypeId> = new Set<DrawingTypeId>(['fib', 'fib-extension', 'percent-line']);
+/** 支持自定义分割档位的工具（TV fib 设置 levels 页）：回撤 / 扩展 / 百分比线 / 通道 */
+const LEVELS_TOOLS: ReadonlySet<DrawingTypeId> = new Set<DrawingTypeId>([
+  'fib',
+  'fib-extension',
+  'percent-line',
+  'fib-channel',
+]);
 
 /** 画线设置（TV 双击画线打开）：样式实时生效，无确定按钮 */
 export function DrawingSettingsDialog({ renderer }: { renderer: ChartRenderer | null }) {
