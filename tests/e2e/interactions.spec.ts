@@ -175,8 +175,9 @@ test('前往日期日历弹层', async ({ page }) => {
   await expect(page.getByRole('button', { name: '下个月' })).toBeVisible();
   await expect(page.getByText('一', { exact: true })).toBeVisible();
 
-  // 选中数据首日（日历打开时预填末日，首日在界内可点）→ 回填文本输入 + 弹层关闭
-  const target = page.locator('button[aria-label^="2026-"]').first();
+  // 首个界内可点日格（可访问名为 `YYYY-MM-DD` 的按钮只在日期格上；`disabled: false` 排除补位/区间外格，
+  // 且 mock 区间随 Date.now() 漂移，故不按年份字面量挑）→ 回填文本输入 + 弹层关闭
+  const target = page.getByRole('button', { name: /^\d{4}-\d{2}-\d{2}$/, disabled: false }).first();
   const label = await target.getAttribute('aria-label');
   await target.click();
   await expect(dialog.getByRole('textbox', { name: '日期' })).toHaveValue(label!);
@@ -211,7 +212,7 @@ test('回放选择日期日历弹层', async ({ page }) => {
 
   // 日历格可见且在视口内（弹层向上展开进图表区）
   await trigger.click();
-  const day = page.locator('button[aria-label^="2026-"]').first();
+  const day = page.getByRole('button', { name: /^\d{4}-\d{2}-\d{2}$/, disabled: false }).first();
   await expect(day).toBeVisible();
   const dayBox = (await day.boundingBox())!;
   expect(dayBox.y).toBeGreaterThanOrEqual(0);
