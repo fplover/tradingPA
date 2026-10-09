@@ -27,7 +27,7 @@ import {
 import { formatCompact } from '@/data/format';
 import { theme, TV_FONT } from '../theme';
 import { isTimeBasedChartType, vpRuntimeOf } from './ChartState';
-import { drawVolumeProfile } from './drawVolumeProfile';
+import { drawSessionVolumeProfile, drawVolumeProfile } from './drawVolumeProfile';
 import { drawCompareOverlay } from './drawCompare';
 import type { CompareLegendInfo } from './legendTypes';
 
@@ -106,18 +106,21 @@ export class PaneRenderer {
       // 仅时间轴类图表绘制（变换类无价格连续性），隐藏指标开关一并生效
       const vp = vpRuntimeOf(this.host.viewport);
       if (vp?.on && !this.host.hideStudies() && isTimeBasedChartType(this.host.chartType())) {
-        drawVolumeProfile(
-          ctx,
-          this.host.series().raw(),
+        // 会话模式（二期-G）：UTC 日逐段分布；区间模式：右缘单分布
+        const vpArgs = {
+          bars: this.host.series().raw(),
           from,
           to,
-          pane.priceScale,
+          viewport: this.host.viewport,
+          priceScale: pane.priceScale,
           geo,
-          vp.model,
-          vp.params,
-          vp.dataEpoch,
-          this.host.decimals(),
-        );
+          model: vp.model,
+          params: vp.params,
+          dataEpoch: vp.dataEpoch,
+          decimals: this.host.decimals(),
+        };
+        if (vp.params.mode === 'session') drawSessionVolumeProfile(ctx, vpArgs);
+        else drawVolumeProfile(ctx, vpArgs);
       }
       // 主图叠加指标
       for (const inst of pane.indicators) {

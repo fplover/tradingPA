@@ -14,13 +14,15 @@ export interface VolumeProfileParams {
   vaPercent: number;
   /** 量源：volume=按 K 线涨跌整笔归边；delta=按买卖量差近似拆分 */
   source: 'volume' | 'delta';
+  /** 计算模式（二期-G）：range=可见区间单分布（缺省）；session=按 UTC 日分会话逐段分布 */
+  mode?: 'range' | 'session';
   /** 可选颜色覆盖（缺省跟随主题 token，绘制层读取） */
   upColor?: string;
   downColor?: string;
   pocColor?: string;
 }
 
-export const DEFAULT_VP_PARAMS: VolumeProfileParams = { rowCount: 24, vaPercent: 70, source: 'volume' };
+export const DEFAULT_VP_PARAMS: VolumeProfileParams = { rowCount: 24, vaPercent: 70, source: 'volume', mode: 'range' };
 
 /** 单价格行：up/down 分色累计量与行总量 */
 export interface ProfileRow {
@@ -50,6 +52,7 @@ function clamp(v: number, lo: number, hi: number): number {
 export function coerceVpParams(raw: Record<string, string | number | boolean> | undefined): VolumeProfileParams {
   const src = raw?.source;
   const source = src === 'delta' ? 'delta' : 'volume';
+  const mode = raw?.mode === 'session' ? 'session' : 'range';
   const rowCount = clamp(
     Math.round(Number(raw?.rowCount ?? DEFAULT_VP_PARAMS.rowCount)) || DEFAULT_VP_PARAMS.rowCount,
     10,
@@ -60,6 +63,7 @@ export function coerceVpParams(raw: Record<string, string | number | boolean> | 
     rowCount,
     vaPercent: clamp(vaPercent, 50, 95),
     source,
+    mode,
   };
   for (const key of ['upColor', 'downColor', 'pocColor'] as const) {
     const v = raw?.[key];
@@ -149,7 +153,66 @@ export function computeProfile(
   return { rows, poc: (pocRow.low + pocRow.high) / 2, vah: rows[hi].high, val: rows[lo].low, total };
 }
 
-/** 缓存签名：可视区间（平移/缩放/复盘）+ 参数 + 数据纪元（applyData 自增）全覆盖 */
+// ---------- 会话分段（二期-G Session Volume Profile） ----------
+
+/** 单会话分布：UTC 日键 + bar 索引区间（供绘制层横向锚定） + 该段分布结果 */
+export interface SessionProfile {
+  /** UTC 日键（floor(time / 86400000)，与 ta.vwap 会话口径同源） */
+  dayKey: number;
+  /** 段内 bar 索引区间（含端点，基于传入 bars 的绝对下标） */
+  from: number;
+  to: number;
+  result: ProfileResult;
+}
+
+/** UTC 日键（与会话 VWAP 同口径：按 bar.time 的 UTC 日界切分） */
+export function utcDayKey(time: number): number {
+  return Math.floor(time / 86_400_000);
+}
+
+/**
+ * 会话分段分桶：把可见区间 [from, to] 按 UTC 日切段，逐段走 computeProfile。
+ * 段内 bar 数 ≤1（日及以上周期）或分布退化（null）时跳过该段。
+ * 返回按时间升序的段列表（可能为空数组）。
+ */
+export function computeSessionProfiles(
+  bars: readonly Bar[],
+  from: number,
+  to: number,
+  params: VolumeProfileParams,
+): SessionProfile[] {
+  const out: SessionProfile[] = [];
+  if (to < from) return out;
+  let segStart = from;
+  let key = bars[from] ? utcDayKey(bars[from].time) : Number.NaN;
+  for (let i = from + 1; i <= to; i++) {
+    const k = bars[i] ? utcDayKey(bars[i].time) : Number.NaN;
+    if (k !== key) {
+      emit(out, bars, segStart, i - 1, key, params);
+      segStart = i;
+      key = k;
+    }
+  }
+  emit(out, bars, segStart, to, key, params);
+  return out;
+}
+
+function emit(
+  out: SessionProfile[],
+  bars: readonly Bar[],
+  from: number,
+  to: number,
+  dayKey: number,
+  params: VolumeProfileParams,
+): void {
+  if (!Number.isFinite(dayKey)) return;
+  if (to - from + 1 < 2) return; // 单 bar 段（日及以上周期）：无段内分布意义，跳过
+  const result = computeProfile(bars, from, to, params);
+  if (!result) return;
+  out.push({ dayKey, from, to, result });
+}
+
+/** 缓存签名：可视区间（平移/缩放/复盘）+ 参数（含模式）+ 数据纪元（applyData 自增）全覆盖 */
 interface VPSignature {
   from: number;
   to: number;
@@ -157,12 +220,16 @@ interface VPSignature {
   rowCount: number;
   vaPercent: number;
   source: 'volume' | 'delta';
+  mode: 'range' | 'session';
 }
 
-/** 帧级缓存模型：签名命中直接复用上次结果，避免每帧重算 */
+/** 帧级缓存模型：签名命中直接复用上次结果，避免每帧重算。
+ *  range / session 两模式各持独立签名与缓存槽（互不驱逐）。 */
 export class VolumeProfileModel {
   private sig: VPSignature | null = null;
   private cache: ProfileResult | null = null;
+  private sigSession: VPSignature | null = null;
+  private cacheSessions: SessionProfile[] = [];
 
   getProfile(
     bars: readonly Bar[],
@@ -180,13 +247,58 @@ export class VolumeProfileModel {
       s.dataEpoch === dataEpoch &&
       s.rowCount === params.rowCount &&
       s.vaPercent === params.vaPercent &&
-      s.source === params.source
+      s.source === params.source &&
+      s.mode === (params.mode ?? 'range')
     ) {
       return this.cache;
     }
     const result = computeProfile(bars, from, to, params);
-    this.sig = { from, to, dataEpoch, rowCount: params.rowCount, vaPercent: params.vaPercent, source: params.source };
+    this.sig = {
+      from,
+      to,
+      dataEpoch,
+      rowCount: params.rowCount,
+      vaPercent: params.vaPercent,
+      source: params.source,
+      mode: params.mode ?? 'range',
+    };
     this.cache = result;
+    return result;
+  }
+
+  /** 会话模式取数：签名同构 getProfile，缓存段数组（签名未变返回同一引用） */
+  getSessions(
+    bars: readonly Bar[],
+    from: number,
+    to: number,
+    params: VolumeProfileParams,
+    dataEpoch: number,
+  ): SessionProfile[] {
+    const s = this.sigSession;
+    if (
+      this.cacheSessions.length > 0 &&
+      s &&
+      s.from === from &&
+      s.to === to &&
+      s.dataEpoch === dataEpoch &&
+      s.rowCount === params.rowCount &&
+      s.vaPercent === params.vaPercent &&
+      s.source === params.source &&
+      s.mode === (params.mode ?? 'range')
+    ) {
+      return this.cacheSessions;
+    }
+    const result = computeSessionProfiles(bars, from, to, params);
+    this.sigSession = {
+      from,
+      to,
+      dataEpoch,
+      rowCount: params.rowCount,
+      vaPercent: params.vaPercent,
+      source: params.source,
+      mode: params.mode ?? 'range',
+    };
+    this.cacheSessions = result;
     return result;
   }
 }

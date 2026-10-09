@@ -28,6 +28,16 @@ export const VOLUME_PROFILE: IndicatorDef = {
         { label: '买卖量差', value: 'delta' },
       ],
     },
+    {
+      key: 'mode',
+      label: '模式',
+      type: 'select',
+      default: 'range',
+      options: [
+        { label: '可见区间', value: 'range' },
+        { label: '会话（日内）', value: 'session' },
+      ],
+    },
     { key: 'upColor', label: '涨方颜色', type: 'color', default: theme.profileUp },
     { key: 'downColor', label: '跌方颜色', type: 'color', default: theme.profileDown },
     { key: 'pocColor', label: 'POC 颜色', type: 'color', default: theme.profilePoc },

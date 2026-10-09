@@ -80,6 +80,8 @@ entering channel 条件、警报按品种分组、警报触发历史（本地持
 
 百万根 K 线虚拟化渲染验证（当前 10 万根 3–9ms，目标 1M 同体验）、E2E 扩面到非 crypto 数据路径、TS7 宿主环境问题跟踪（当前 CI 用 TS6 降级验证）、Session Volume Profile（P1-F 遗留，时间分段）。
 
+> **交付记录（2026-10-09，二期-G）**：**Session Volume Profile 落地**——`volumeProfile.ts` 增 `mode: 'range'|'session'` 参数与 `computeSessionProfiles`（按 UTC 日分段，与会话 VWAP 同口径；单 bar 段/退化段跳过，日及以上周期自动为空即无会话分布）；`VolumeProfileModel` 双缓存槽（range/session 各自签名互不驱逐）；`drawVolumeProfile.ts` 抽共享绘制原语（drawProfileRows/drawLevel/drawPoc，range 路径逐像素等价）+ 新 `drawSessionVolumeProfile`（每段直方图右对齐段内最后一根 bar，POC/VAH/VAL 只在段横向范围内，段宽收敛下限 20px）；两绘制入口收为 `VpDrawArgs` 结构体（max-params 红线）；profile 指标设置页增「模式」下拉（可见区间/会话）。**1M 根数据面验证（机械证据）**：Node 探针（million-bars.test.ts 固化为回归预算 + 独立脚本实测）——1M 根构建 364ms、BarSeries 装载引用赋值（0.02ms）、1 万次二分查找 13.1ms（单次 ≈1.3µs，O(log n)）、1500 根视口切片 + VP 分桶 0.19ms（O(可见窗口)）；渲染管线本就 O(可见 bar)（LOD+视口切片，10 万根 3–9ms/帧），数据面无 1M 级退化路径，**画布全管线 1M 视口压测需浏览器 E2E 环境，登记为边界**。**E2E 扩面（非 crypto）**：维持文档化决策——E2E 黄金截图基线为 mock 数据面（市场无关），非 crypto 真实源（新浪/东财）端到端 E2E 依赖外网稳定性，与二期-A 同口径以单测收口。**TS7**：持续跟踪中，typecheck/build 以 TS6 降级等效验证（既有登记不变）。单测 +9（session-vp 8 + million-bars 1）；全量 79 文件 1288 例绿；门禁全绿。
+
 ## 3. 明确不做（二期范围锁死）
 
 | 不做                          | 原因                                    | 时机                  |
