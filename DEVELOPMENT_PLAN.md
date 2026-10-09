@@ -1,9 +1,10 @@
 # TradingView 图表平台 1:1 复刻 — 开发计划
 
-> 版本：v1.3 ｜ 日期：2026-09-30
+> 版本：v1.4 ｜ 日期：2026-10-09
 > 目标：以完整平台形态，1:1 复刻 TradingView 的图表功能（图表类型 / 周期 / 指标 / 画线工具 / 实时行情 / 平台能力）。
 > v1.2 回填说明（2026-09-30）：§3 清单按代码现状勾选——M0-M7 之后，TV-ALIGNMENT v2.0（P0 八项）与 P1 六个批次（A–F）已交付：指标 63 个、图表类型 18 种、周期 22 档 + 自定义间隔、Pine 迁 `src/indicators/pine/`（12 模块）。
 > v1.3 回填说明（2026-09-30 复核）：**P2 收官批次（A/B/C/D）已全部交付并入版本库**（6056eb4+1e194fc ／ d77b8b7 ／ 5cd9f5e ／ 23294a8），详见 docs/SPEC-P2.md §7 与 docs/SPEC-TV-ALIGNMENT.md §12；§3 清单据此重新勾选。本版复核实测：内置指标 64 个、图表类型 18 种、周期 22 档、画线工具 30 个；门禁 typecheck 0 错 + lint 0 错 + 单测 959 + E2E 54（27 面黄金截图零 diff）+ 构建 8 chunk（最大应用块 445 kB，合计 gzip 224.31KB）。
+> v1.4 回填说明（2026-10-09 复核）：**二期（PHASE-2）七个批次 A／B1／C1／C2／D／E／F／G 已全部交付**（901d5fe…d1b2e64），详见 docs/PHASE2-PLAN.md §2 各批交付记录；§3 清单原留空的画线形态家族与「图标与表情」两项已由二期-C 关闭，至此 §3 无未勾项。本版复核实测：画线工具 30 → **45**、指标 64、图表类型 18、周期 22 档 + 自定义间隔；门禁 typecheck 0 错 + lint 0 错 0 警告 + **单测 79 文件 1288 例全过** + E2E 56 例（55 过 + 1 例网络 flaky 重试即过，**27 面黄金截图零 diff**；复跑中发现并修掉 1 例用例脆弱：`interactions.spec.ts` 两处日历用例按年份字面量取日格，mock 区间随 `Date.now()` 漂移后命中 `disabled` 补位格致永久等待，已改按可访问名 ISO 形态 + `disabled: false` 选取——非应用回归）+ build 通过。三个决策点 D1/D2/D3 已于 2026-10-08 裁决锁定（**D1 不引入自建后端** → 分享落地页／云同步／B2 推送维持「明确不做」，后端立项放三期评估），见 docs/PHASE2-PLAN.md §5。
 
 ## 进度
 
@@ -62,6 +63,15 @@
   - P2-C 平台补全（5cd9f5e）：syncBus 三通道（品种/周期/画线同步）／单元格最大化（Alt+Enter、双击）／布局边缘拖拽调比／control_bar 五按钮／符号搜索键盘导航 + 收藏分组；App.tsx 650→237
   - P2-D Compare 叠加 + 画线水平线警报（23294a8）
   - 批次门禁：typecheck + 单测 830/830（P2-D 时点，其后增至 959）+ E2E 48/48 + build
+- [x] **二期（PHASE-2）七批次已完成（2026-10-08 ~ 10-09；本条 v1.4 回填）**（docs/PHASE2-PLAN.md，三个决策点 D1/D2/D3 已裁决锁定）
+  - 二期-A 数据面扩展（901d5fe）：外汇——新浪 `NewForexService` 直连 JSONP，日 K 行格式 `date,open,low,high,close` 经 USDCNH 全历史 3109 行双重校验实证定案；场内 ETF 零代码即可用（东财 suggest → 腾讯全链路，510300 端到端实测）；可转债不在东财 suggest 索引、净值基金无免费源——不做
+  - 二期-B1 实时性（116400d）：轮询调度改造（决策核 `store/pollSchedule.ts` 纯函数）——盘中 3s、连续失败 ×2 退避封顶 60s、盘外/页面隐藏**零网络请求**（仅挂 30s 本地重估闹钟）；`useQuotePolling` 改 setTimeout 链式避免堆叠，LiveDataFeed 降级轮询与 compare 补 hidden 门控。B2（自建后端推送）依 D1 裁决不放二期
+  - 二期-C 画线收尾（C1 1e15104 ／ C2 08b5ac4）：**画线工具 30 → 45**。C1 形态家族 9 种（ABCD／谐波 gartley·bat·butterfly·crab 带四腿比率校验／头肩顶底／三角收敛扩散）+ fib 通道·螺旋；C2 预测形态／圆形／价格注记／图标标记（D3 口径：SVG 矢量 8 种，`iconMarks.ts` 单一 path 源供 canvas Path2D 与选择器共用，非 emoji）+ Shift+空白 Marquee 框选多选。每新家族独立 math/render 模块
+  - 二期-D Pine 扩展（b598611）：`switch`（subject 与条件双形态、臂体按语句解析）／`varip ≡ var`（向量化离线模型无实时回滚，语法层保留）／strategy 骨架（新 `pine/strategy.ts` StratSim：entry/close/exit 三调用、向量化逐 bar 结算、`strategy.position_size/netprofit/equity` 内置序列）／ta 扩充 `pivothigh`·`pivotlow`·`vwap`（UTC 日界重置）。完整回测维持 SPEC-TV-ALIGNMENT「不做」裁定，本批为最小骨架
+  - 二期-E 警报增强（1155466）：entering/exiting channel 条件（穿越族语义、`threshold2`=上沿）／警报按品种分组／触发历史（新 `alerts/alertHistory.ts`，localStorage 独立键 100 条 FIFO）／通知去重聚合（`notifyPlan`：同警报 60s 去重、多触发合并单条，仅作用于通知层）
+  - 二期-F 平台体验（e74b260）：依 D1「无后端」裁决收敛为移动端 chrome 断点适配（新 `hooks/useViewport.ts` `useNarrowViewport`，matchMedia ≤768px）——右侧面板改固定覆盖层、顶栏次要入口收起；**桌面宽户口径零像素变化**。快照分享落地页与云同步维持不做
+  - 二期-G 工程与性能（d1b2e64）：Session Volume Profile（`volumeProfile.ts` 增 `mode: range|session` + `computeSessionProfiles`，Model 双缓存槽，`drawSessionVolumeProfile` 段末 bar 右对齐）／1M 根数据面探针（`million-bars.test.ts` 固化为回归预算：构建 364ms、万次二分 13.1ms、1500 根视口+VP 0.19ms；画布全管线 1M 压测需浏览器环境，登记边界）
+  - 批次门禁：typecheck 0 错 + lint 0 错 0 警告 + 单测 79 文件 1288 例全过 + build（二期 D–G 四批按此四项收口）；E2E 全量复跑于 2026-10-09（56 例，见上条 v1.4 实测）
 
 ---
 
