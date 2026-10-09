@@ -39,6 +39,7 @@ import { IndicatorPanel } from '@/features/indicators/IndicatorPanel';
 import { IconButton } from '@/ui/primitives';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { decimalsFor } from '@/data/format';
+import { useNarrowViewport } from '@/hooks/useViewport';
 import { fontSize, icon, radius, space, zIndex } from '@/ui/tokens';
 
 /**
@@ -84,8 +85,9 @@ function ThemeButton() {
   );
 }
 
-/** 顶栏品种按钮：点击打开符号搜索，与 TradingView 图表左上角品种名一致 */
-function SymbolButton({ instrument }: { instrument: Instrument | null }) {
+/** 顶栏品种按钮：点击打开符号搜索，与 TradingView 图表左上角品种名一致。
+ *  窄屏（二期-F）compact：只留品种代码（名称/市场/现价收起）。 */
+function SymbolButton({ instrument, compact }: { instrument: Instrument | null; compact: boolean }) {
   const openSearch = useSymbolSearchStore((s) => s.openSearch);
   const quote = useQuoteStore((s) => (instrument ? s.quotes[instrument.id] : undefined));
   if (!instrument) {
@@ -107,10 +109,12 @@ function SymbolButton({ instrument }: { instrument: Instrument | null }) {
     >
       <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
         <span style={{ fontSize: fontSize.xl, fontWeight: 700, color: 'var(--text)' }}>{instrument.symbol}</span>
-        <span style={{ fontSize: fontSize.sm, color: 'var(--text-faint)' }}>
-          {instrument.name} · {MARKETS[instrument.market].label}
-        </span>
-        {quote && (
+        {!compact && (
+          <span style={{ fontSize: fontSize.sm, color: 'var(--text-faint)' }}>
+            {instrument.name} · {MARKETS[instrument.market].label}
+          </span>
+        )}
+        {quote && !compact && (
           <span style={{ fontSize: fontSize.md, color: dir, fontWeight: 600 }}>
             {quote.price.toFixed(decimalsFor(quote.price, instrument.decimals))}
           </span>
@@ -173,6 +177,8 @@ export function TopBar({
   const setPanelOpen = useIndicatorStore((s) => s.setPanelOpen);
   const pineOpen = usePineStore((s) => s.panelOpen);
   const setPineOpen = usePineStore((s) => s.setPanelOpen);
+  // 窄屏（二期-F）：≤768px 隐藏次要入口（品牌文案/对比/复原重做/全屏/截图），保功能主干
+  const narrow = useNarrowViewport();
 
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen();
@@ -181,9 +187,9 @@ export function TopBar({
 
   return (
     <div style={topBarStyle}>
-      <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 4 }}>TradingPA</strong>
-      <SymbolButton instrument={activeInstrument} />
-      {layout === 1 && <CompareButton />}
+      {!narrow && <strong style={{ color: 'var(--text)', fontSize: 13, marginRight: 4 }}>TradingPA</strong>}
+      <SymbolButton instrument={activeInstrument} compact={narrow} />
+      {layout === 1 && !narrow && <CompareButton />}
       {layout === 1 && (
         <>
           <ToolbarSelect
@@ -233,7 +239,7 @@ export function TopBar({
         )}
       </div>
       <span style={{ flex: 1 }} />
-      {layout === 1 && (
+      {layout === 1 && !narrow && (
         <>
           <IconButton onClick={() => rendererRef.current?.undoDrawing()} title="复原">
             <Undo2 size={icon.lg} />
@@ -257,12 +263,16 @@ export function TopBar({
       <IconButton onClick={() => useUiStore.getState().setCommandOpen(true)} title="命令面板（Ctrl+P）">
         <Command size={icon.lg} />
       </IconButton>
-      <IconButton onClick={toggleFullscreen} title="全屏模式">
-        <Maximize2 size={icon.lg} />
-      </IconButton>
-      <IconButton onClick={onScreenshot} title="生成快照">
-        <Camera size={icon.lg} />
-      </IconButton>
+      {!narrow && (
+        <IconButton onClick={toggleFullscreen} title="全屏模式">
+          <Maximize2 size={icon.lg} />
+        </IconButton>
+      )}
+      {!narrow && (
+        <IconButton onClick={onScreenshot} title="生成快照">
+          <Camera size={icon.lg} />
+        </IconButton>
+      )}
       {layout === 1 && (
         <IconButton onClick={series.reload} title={series.mode === 'mock' ? '重新连接实时数据' : '重新加载历史数据'}>
           <RefreshCw size={icon.lg} />

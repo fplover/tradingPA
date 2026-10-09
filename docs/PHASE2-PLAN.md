@@ -74,6 +74,8 @@ entering channel 条件、警报按品种分组、警报触发历史（本地持
 
 移动端响应式布局（触控手势已具备，chrome 层断点适配）、图表快照分享（Canvas 导出已有，补分享落地页/链接）、布局/自选/警报云同步（B2 后端）。预估视 D1 裁决 3–10 人日。
 
+> **交付记录（2026-10-09，二期-F）**：D1 裁定不引入后端 → 快照分享链接与云同步维持「明确不做」（§3 锁死，Canvas 本地导出下载已具备），本批次范围收敛为 chrome 层移动端断点适配，全部改动经 `useNarrowViewport`（新 `src/hooks/useViewport.ts`，matchMedia ≤768px + useSyncExternalStore；宿主无 matchMedia 时按桌面口径回退）门控——**桌面宽户口径零像素变化**（hook 恒 false，样式透传逐字一致）。**右侧面板**：窄屏由内联占位改为固定覆盖层（不再挤压图表；锚定顶栏下/图标轨左，宽度钳 ≤85vw，覆盖阴影），隐藏拖拽调宽热区；几何收敛为纯函数 `rightPanelLayout.rightPanelBox`（单测钉住桌面透传逐字段一致）。**顶栏**：窄屏隐藏品牌文案、对比品种、复原/重做、全屏、截图五类次要入口，品种按钮 compact 化（只留品种代码，名称/市场/现价收起）；周期/类型/指标/布局/设置/Pine/搜索/命令/主题保留。单测 +4（responsive-chrome）；全量 76 文件 1279 例绿；门禁全绿（TS6 typecheck / oxlint / prettier / vite build）。边界：覆盖层在真机触控下的手势细节（如滑动收起）未做，属后续迭代；E2E 黄金截图为桌面视口，本批次天然零 diff。
+
 ### 二期-G · 工程与性能（持续批）
 
 百万根 K 线虚拟化渲染验证（当前 10 万根 3–9ms，目标 1M 同体验）、E2E 扩面到非 crypto 数据路径、TS7 宿主环境问题跟踪（当前 CI 用 TS6 降级验证）、Session Volume Profile（P1-F 遗留，时间分段）。

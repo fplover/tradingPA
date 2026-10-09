@@ -1,7 +1,9 @@
 import { Bell, Layers, List } from 'lucide-react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useAlertStore } from '@/store/alertStore';
+import { useNarrowViewport } from '@/hooks/useViewport';
 import { useRightDockStore, type RightPanelId } from './rightPanelStore';
+import { rightPanelBox } from './rightPanelLayout';
 import { WatchlistPanel } from '@/features/watchlist/WatchlistPanel';
 import { ObjectTree } from '@/features/drawings/ObjectTree';
 import { AlertPanel } from '@/features/alerts/AlertPanel';
@@ -20,7 +22,8 @@ interface RightSideProps {
   alertPrice: number;
 }
 
-/** 右侧区域 = 停靠面板 + 图标轨。面板挤压图表宽度，不覆盖图表。 */
+/** 右侧区域 = 停靠面板 + 图标轨。桌面：面板挤压图表宽度，不覆盖图表。
+ *  窄屏（二期-F）：面板改为固定覆盖层（不挤压图表），隐藏拖拽调宽热区。 */
 export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps) {
   const panel = useRightDockStore((s) => s.panel);
   const width = useRightDockStore((s) => s.width);
@@ -28,6 +31,7 @@ export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps)
   const toggle = useRightDockStore((s) => s.toggle);
   const close = useRightDockStore((s) => s.close);
   const alertCount = useAlertStore((s) => s.alerts.length);
+  const narrow = useNarrowViewport();
 
   const startResize = (e: React.PointerEvent) => {
     e.preventDefault();
@@ -47,23 +51,33 @@ export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps)
   return (
     <div style={{ display: 'flex', flexShrink: 0, height: '100%' }}>
       {panel && (
-        <div style={{ position: 'relative', width, flexShrink: 0, height: '100%' }}>
-          {/* 左边缘拖拽调宽热区 */}
-          <div
-            onPointerDown={startResize}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="拖拽调整面板宽度"
-            style={{
-              position: 'absolute',
-              left: -2,
-              top: 0,
-              width: 5,
-              height: '100%',
-              cursor: 'col-resize',
-              zIndex: 2,
-            }}
-          />
+        <div
+          style={{
+            ...rightPanelBox(narrow, width),
+            background: 'var(--panel)',
+            borderLeft: '1px solid var(--border)',
+            zIndex: narrow ? zIndex.dropdown : undefined,
+            boxShadow: narrow ? '0 0 12px rgba(0,0,0,0.35)' : undefined,
+          }}
+        >
+          {/* 左边缘拖拽调宽热区（窄屏隐藏：覆盖层触控下拖拽易与滚动冲突） */}
+          {!narrow && (
+            <div
+              onPointerDown={startResize}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="拖拽调整面板宽度"
+              style={{
+                position: 'absolute',
+                left: -2,
+                top: 0,
+                width: 5,
+                height: '100%',
+                cursor: 'col-resize',
+                zIndex: 2,
+              }}
+            />
+          )}
           <div
             className="tv-scroll"
             style={{
@@ -71,8 +85,6 @@ export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps)
               height: '100%',
               overflowY: 'auto',
               overflowX: 'hidden',
-              background: 'var(--panel)',
-              borderLeft: '1px solid var(--border)',
               display: 'flex',
               flexDirection: 'column',
             }}
