@@ -15,6 +15,20 @@ export interface AlertsPayload {
 
 const LEGACY_DIRECTION: Record<string, AlertCondition> = { above: 'greater', below: 'less' };
 
+const CONDITIONS: ReadonlySet<string> = new Set([
+  'greater',
+  'less',
+  'crossUp',
+  'crossDown',
+  'enterChannel',
+  'exitChannel',
+]);
+
+/** 通道条件须携带有效上沿 threshold2，否则条目无效丢弃 */
+function isChannel(c: string): boolean {
+  return c === 'enterChannel' || c === 'exitChannel';
+}
+
 /** v1 条目 {price, direction} → v2；行为与旧实现一致（阈值一侧即触发 + 仅一次） */
 function migrateLegacyAlert(raw: Record<string, unknown>): PriceAlert | null {
   const price = raw.price;
@@ -46,14 +60,21 @@ function normalizeAlert(raw: Record<string, unknown>): PriceAlert | null {
   if (src.type === 'pine' && (typeof src.indicatorId !== 'string' || typeof src.key !== 'string')) return null;
   if (src.type === 'line' && typeof src.drawingId !== 'string') return null;
   const condition = raw.condition;
-  if (condition !== 'greater' && condition !== 'less' && condition !== 'crossUp' && condition !== 'crossDown')
-    return null;
+  if (typeof condition !== 'string' || !CONDITIONS.has(condition)) return null;
+  let threshold2: number | undefined;
+  if (isChannel(condition)) {
+    if (typeof raw.threshold2 !== 'number' || !Number.isFinite(raw.threshold2)) return null;
+    threshold2 = raw.threshold2;
+  } else if (typeof raw.threshold2 === 'number' && Number.isFinite(raw.threshold2)) {
+    threshold2 = raw.threshold2;
+  }
   return {
     id: raw.id,
     symbol: raw.symbol,
     source: src,
     threshold: raw.threshold,
-    condition,
+    threshold2,
+    condition: condition as AlertCondition,
     active: raw.active !== false,
     triggered: raw.triggered === true,
     createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : 0,

@@ -68,6 +68,8 @@ switch 语句、varip 声明、strategy 骨架（`strategy.entry/exit` 最小语
 
 entering channel 条件、警报按品种分组、警报触发历史（本地持久化列表）、推送通知去重与聚合。预估 3–4 人日。
 
+> **交付记录（2026-10-09，二期-E）**：四项全落地。**通道条件**：`enterChannel`/`exitChannel`（进入/离开区间，TV Entering/Exiting Channel 口径）——穿越族语义（无上一采样不触发，与 crossUp/crossDown 同防误报口径）、闭区间、上下沿任意输入序归一（`threshold`=下沿、新 `threshold2`=上沿，describe/判定/持久化/编辑浮层全链路贯通；v2 条目通道条件缺有效 threshold2 即丢弃防呆）。**按品种分组**：`groupAlertsBySymbol` 纯函数（首现顺序），列表按品种聚合展示（组头 = 品种 + 数量）。**触发历史**（新 `alertHistory.ts`）：localStorage 独立键持久化、上限 100 条新进旧出、useSyncExternalStore 快照订阅，面板展示最近 8 条（时间/描述/值）+ 清空按钮；与警报本体存储分离（清警报/清触发标志不影响历史）。**通知去重聚合**：`notifyPlan` 纯函数——同警报 60s 内重复触发不发系统通知（去重仅作用于通知层，触发/历史/声音语义不变）、多触发合并单条通知（正文至多 3 行 + 「…等 N 条」）。单测 +16（通道判定全矩阵 / runAlertCheck 触发与冷却 / 分组 / notifyPlan 去重聚合 / 历史持久化与上限）；全量 76 文件 1275 例绿；门禁全绿（TS6 typecheck / oxlint / prettier / vite build）。
+
 ### 二期-F · 平台体验（依赖 D1）
 
 移动端响应式布局（触控手势已具备，chrome 层断点适配）、图表快照分享（Canvas 导出已有，补分享落地页/链接）、布局/自选/警报云同步（B2 后端）。预估视 D1 裁决 3–10 人日。

@@ -1,5 +1,5 @@
 import { useMemo, useSyncExternalStore, useState } from 'react';
-import { Bell, Pause, Pencil, Play, Plus, X } from 'lucide-react';
+import { Bell, Pause, Pencil, Play, Plus, Trash2, X } from 'lucide-react';
 import { useAlertStore, type PriceAlert } from '@/store/alertStore';
 import { useIndicatorStore } from '@/store/indicatorStore';
 import { getIndicatorDef } from '@/indicators/registry';
@@ -10,11 +10,14 @@ import {
   FREQUENCY_OPTIONS,
   describeCondition,
   describeSource,
+  groupAlertsBySymbol,
+  isChannelCondition,
   resolveIndicatorAlertSource,
   type AlertCondition,
   type AlertFrequency,
   type AlertSource,
 } from './alertLogic';
+import { alertHistory, clearAlertHistory, subscribeAlertHistory } from './alertHistory';
 import { AlertEditDialog } from './AlertEditDialog';
 import { PineConditionSection } from './PineConditionSection';
 import { currentHlines, subscribeDrawings } from './useAlertWatcher';
@@ -54,6 +57,7 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
   const [plotKey, setPlotKey] = useState('');
   const [condition, setCondition] = useState<AlertCondition>('greater');
   const [threshold, setThreshold] = useState('');
+  const [threshold2, setThreshold2] = useState('');
   const [frequency, setFrequency] = useState<AlertFrequency>('once');
   const [cooldownIdx, setCooldownIdx] = useState(0);
   const [expiryIdx, setExpiryIdx] = useState(0);
@@ -69,23 +73,32 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
   const indicatorSource = sourceId === PRICE_SOURCE ? null : resolveIndicatorAlertSource(sourceId, plotKey, def);
   const noPlotOutput = sourceId !== PRICE_SOURCE && indicatorSource === null;
   const effPlotKey = indicatorSource?.plotKey ?? '';
+  const channelMode = isChannelCondition(condition);
 
   const submit = () => {
     const t = Number(threshold);
     if (!Number.isFinite(t) || threshold.trim() === '') return;
     if (noPlotOutput) return; // 无可用输出：UI 已明示，不创建也不降级为价格警报
+    // 通道条件须提供有效上沿；非通道条件不带 threshold2
+    let t2: number | undefined;
+    if (channelMode) {
+      t2 = Number(threshold2);
+      if (!Number.isFinite(t2) || threshold2.trim() === '') return;
+    }
     const source: AlertSource = indicatorSource ?? { type: 'price' };
     const expiryMs = Number(EXPIRY_OPTIONS[expiryIdx]?.value ?? 0);
     add({
       symbol,
       source,
       threshold: t,
+      threshold2: t2,
       condition,
       frequency,
       cooldownMs: Number(COOLDOWN_OPTIONS[cooldownIdx]?.value ?? 0) || undefined,
       expiresAt: expiryMs > 0 ? Date.now() + expiryMs : undefined,
     });
     setThreshold('');
+    setThreshold2('');
   };
 
   return (
@@ -135,11 +148,22 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
         />
         <input
           type="number"
-          placeholder={def ? '指标值' : '价格'}
+          placeholder={def ? '指标值' : channelMode ? '区间下沿' : '价格'}
           value={threshold}
           onChange={(e) => setThreshold(e.target.value)}
           style={inputStyle}
+          aria-label={channelMode ? '区间下沿' : '触发阈值'}
         />
+        {channelMode && (
+          <input
+            type="number"
+            placeholder="区间上沿"
+            value={threshold2}
+            onChange={(e) => setThreshold2(e.target.value)}
+            style={inputStyle}
+            aria-label="区间上沿"
+          />
+        )}
         <button
           style={{ ...btnStyle, ...(noPlotOutput ? { opacity: 0.5, cursor: 'not-allowed' } : null) }}
           disabled={noPlotOutput}
@@ -182,23 +206,87 @@ export function AlertPanel({ symbol, currentPrice }: AlertPanelProps) {
       <HlineAlertSection symbol={symbol} frequency={frequency} cooldownIdx={cooldownIdx} expiryIdx={expiryIdx} />
 
       {alerts.length === 0 && <div style={{ color: 'var(--text-faint)', fontSize: 11 }}>暂无警报</div>}
-      {alerts.map((a) => (
-        <AlertRow
-          key={a.id}
-          alert={a}
-          onRemove={() => remove(a.id)}
-          onTogglePause={() => togglePause(a.id)}
-          onEdit={() => setEditingId(a.id)}
-        />
+      {groupAlertsBySymbol(alerts).map((g) => (
+        <div key={g.symbol}>
+          {/* 品种分组头（二期-E）：跨品种警报按品种聚合展示 */}
+          <div
+            style={{
+              color: 'var(--text-faint)',
+              fontSize: 10,
+              margin: '4px 0 2px',
+              display: 'flex',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span>{g.symbol}</span>
+            <span>{g.items.length}</span>
+          </div>
+          {g.items.map((a) => (
+            <AlertRow
+              key={a.id}
+              alert={a}
+              onRemove={() => remove(a.id)}
+              onTogglePause={() => togglePause(a.id)}
+              onEdit={() => setEditingId(a.id)}
+            />
+          ))}
+        </div>
       ))}
       {alerts.some((a) => a.triggered) && (
         <button style={{ ...btnStyle, width: '100%', marginTop: 6 }} onClick={clearTriggered}>
           清除已触发
         </button>
       )}
+      <AlertHistorySection />
       <AlertEditDialog alert={alerts.find((a) => a.id === editingId) ?? null} onClose={() => setEditingId(null)} />
     </div>
   );
+}
+
+/** 触发历史分区（二期-E）：最近触发的警报记录（本地持久化，上限 100 条，展示最新 8 条） */
+function AlertHistorySection() {
+  const history = useSyncExternalStore(subscribeAlertHistory, alertHistory);
+  if (history.length === 0) return null;
+  const recent = history.slice(-8).reverse();
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: 'var(--text-faint)',
+          fontSize: 10,
+          margin: '2px 0',
+        }}
+      >
+        <span>触发历史（{history.length}）</span>
+        <button
+          style={{ ...miniBtn, width: 'auto', padding: '0 4px' }}
+          onClick={clearAlertHistory}
+          title="清空触发历史"
+          aria-label="清空触发历史"
+        >
+          <Trash2 size={icon.sm} />
+        </button>
+      </div>
+      {recent.map((h) => (
+        <div key={h.id} style={{ ...rowStyle, color: 'var(--text-faint)' }} title={`${h.message}（${h.value}）`}>
+          <span style={{ flexShrink: 0 }}>{fmtClock(h.time)}</span>
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {h.message}
+          </span>
+          <span style={{ flexShrink: 0 }}>{h.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function fmtClock(ts: number): string {
+  const d = new Date(ts);
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  return d.toDateString() === new Date().toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
 }
 
 /** 画线水平线分区（P2-D②）：列出当前图表水平线及其价格，单选建警报。
@@ -273,7 +361,7 @@ function AlertRow({
       <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {alert.source.type === 'pine'
           ? `${describeSource(alert.source)} 条件为真`
-          : `${describeSource(alert.source)} ${describeCondition(alert.condition, alert.threshold)}`}
+          : `${describeSource(alert.source)} ${describeCondition(alert.condition, alert.threshold, alert.threshold2)}`}
         {alert.frequency === 'every' && (
           <span style={{ color: 'var(--text-faint)' }} aria-label="重复触发">
             ·循环

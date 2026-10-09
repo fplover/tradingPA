@@ -7,6 +7,7 @@ import {
   EXPIRY_OPTIONS,
   FREQUENCY_OPTIONS,
   describeSource,
+  isChannelCondition,
   type AlertCondition,
   type AlertFrequency,
 } from './alertLogic';
@@ -26,6 +27,7 @@ const labelStyle: React.CSSProperties = { width: 52, fontSize: 11, color: 'var(-
 export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
   const update = useAlertStore((s) => s.update);
   const [threshold, setThreshold] = useState('');
+  const [threshold2, setThreshold2] = useState('');
   const [condition, setCondition] = useState<AlertCondition>('greater');
   const [frequency, setFrequency] = useState<AlertFrequency>('once');
   const [cooldownIdx, setCooldownIdx] = useState(0);
@@ -39,6 +41,7 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
     setLastAlert(alert);
     if (alert) {
       setThreshold(String(alert.threshold));
+      setThreshold2(alert.threshold2 !== undefined ? String(alert.threshold2) : '');
       setCondition(alert.condition);
       setFrequency(alert.frequency);
       setCooldownIdx(cooldownIndexFor(alert));
@@ -49,11 +52,18 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
   if (!alert) return null;
   const open = Boolean(alert);
   const isPine = alert.source.type === 'pine';
+  const channelMode = isChannelCondition(condition);
 
   const save = () => {
     if (!isPine) {
       const t = Number(threshold);
       if (!Number.isFinite(t) || threshold.trim() === '') return;
+    }
+    // 通道条件须携带有效上沿；非通道条件清掉 threshold2
+    let t2: number | undefined;
+    if (!isPine && channelMode) {
+      t2 = Number(threshold2);
+      if (!Number.isFinite(t2) || threshold2.trim() === '') return;
     }
     const expiryMs = Number(EXPIRY_OPTIONS[expiryIdx]?.value ?? 0);
     const cooldownMs =
@@ -62,7 +72,9 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
         : alert.cooldownMs;
     update(alert.id, {
       // Pine 条件源：触发方式固定「条件为真」（阈值 1 + greater），仅可改频率/冷却/过期
-      ...(isPine ? {} : { threshold: Number(threshold), condition }),
+      ...(isPine
+        ? {}
+        : { threshold: Number(threshold), condition, threshold2: channelMode ? Number(threshold2) : undefined }),
       frequency,
       cooldownMs,
       expiresAt: expiryMs > 0 ? Date.now() + expiryMs : undefined,
@@ -96,11 +108,20 @@ export function AlertEditDialog({ alert, onClose }: AlertEditDialogProps) {
           />
           <input
             type="number"
-            aria-label="编辑阈值"
+            aria-label={channelMode ? '编辑区间下沿' : '编辑阈值'}
             value={threshold}
             onChange={(e) => setThreshold(e.target.value)}
             style={inputStyle}
           />
+          {channelMode && (
+            <input
+              type="number"
+              aria-label="编辑区间上沿"
+              value={threshold2}
+              onChange={(e) => setThreshold2(e.target.value)}
+              style={inputStyle}
+            />
+          )}
         </div>
       )}
       <div style={fieldStyle}>

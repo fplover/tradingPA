@@ -3,14 +3,17 @@ import {
   DEFAULT_COOLDOWN_MS,
   clampCooldown,
   describeAlert,
+  notifyPlan,
   parseAlertsPayload,
   runAlertCheck,
   type AlertCondition,
   type AlertFrequency,
   type AlertSample,
   type AlertSource,
+  type FiredAlert,
   type PriceAlert,
 } from '@/features/alerts/alertLogic';
+import { recordAlertFires } from '@/features/alerts/alertHistory';
 import { playAlertBeep } from '@/features/alerts/sound';
 
 export type {
@@ -28,6 +31,8 @@ export interface NewAlertInput {
   symbol: string;
   source: AlertSource;
   threshold: number;
+  /** 通道条件上沿（enterChannel/exitChannel） */
+  threshold2?: number;
   condition: AlertCondition;
   frequency: AlertFrequency;
   cooldownMs?: number;
@@ -70,16 +75,37 @@ function persist(alerts: PriceAlert[], soundEnabled: boolean): void {
 /** 运行时穿越检测缓存（跨品种采样键隔离；不持久化——刷新后首轮不触发穿越属预期） */
 let lastSeen: Record<string, number> = {};
 
-function notify(alert: PriceAlert, value: number): void {
+/** 通知层去重表（alertId → 最近通知时间；纯内存，重启即清零） */
+let lastNotifiedAt: Record<string, number> = {};
+
+/** 发送系统通知（单条；发送失败静默） */
+function sendNotification(title: string, body: string): void {
   try {
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(`价格警报 ${alert.symbol}`, {
-        body: `${describeAlert(alert)}（当前 ${value}）`,
-      });
+      new Notification(title, { body });
     }
   } catch {
     /* 通知不可用时静默 */
   }
+}
+
+/**
+ * 触发通知出口（二期-E：去重 + 聚合）。同警报 60s 内重复触发不发系统通知
+ * （notifyPlan 纯函数，去重窗口不影响触发/历史/声音语义）；多触发合并为一条
+ * 通知（正文至多 NOTIFY_MAX_LINES 行，余量折叠为「等 N 条」）。
+ */
+function notifyBatch(fired: readonly FiredAlert[]): void {
+  if (fired.length === 0) return;
+  const plan = notifyPlan(fired, lastNotifiedAt, Date.now());
+  lastNotifiedAt = plan.lastNotifiedAt;
+  if (plan.items.length === 0) return;
+  const lines = plan.items.map((f) => `${describeAlert(f.alert)}（当前 ${f.value}）`);
+  if (plan.items.length === 1 && plan.more === 0) {
+    sendNotification(`价格警报 ${plan.items[0].alert.symbol}`, lines[0]);
+    return;
+  }
+  const more = plan.more > 0 ? `\n…等 ${plan.items.length + plan.more} 条` : '';
+  sendNotification(`价格警报（${plan.items.length + plan.more} 条触发）`, lines.join('\n') + more);
 }
 
 export const useAlertStore = create<AlertStore>((set, get) => {
@@ -96,6 +122,7 @@ export const useAlertStore = create<AlertStore>((set, get) => {
             symbol: input.symbol,
             source: input.source,
             threshold: input.threshold,
+            threshold2: input.threshold2,
             condition: input.condition,
             active: true,
             triggered: false,
@@ -155,7 +182,8 @@ export const useAlertStore = create<AlertStore>((set, get) => {
         persist(res.alerts, soundEnabled);
         set({ alerts: res.alerts });
       }
-      for (const f of res.fired) notify(f.alert, f.value);
+      recordAlertFires(res.fired, Date.now());
+      notifyBatch(res.fired);
       if (res.fired.length > 0 && soundEnabled) playAlertBeep();
       return res.fired.map((f) => f.alert);
     },
