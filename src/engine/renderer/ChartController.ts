@@ -417,6 +417,10 @@ export class ChartController {
     if (this.rafId || this.disposed) return;
     const loop = () => {
       if (this.disposed) return;
+      // 先挂下一帧再干活：帧体（尤其 pipeline.draw()）抛错时 requestAnimationFrame 已登记，
+      // 循环不会断——否则一次绘制越界就把整张画布冻死、须刷新才恢复（二期-C1 谐波比率标签事故）。
+      // 不吞异常：错误仍冒到全局供 devtools 定位，本帧降级为「这一帧没画」。
+      this.rafId = requestAnimationFrame(loop);
       // 拖拽画线合帧广播：每帧至多一次（P2-D③）
       this.drawingsNotify.flush(() => this.notifyDrawings());
       if (this.dirty) {
@@ -428,7 +432,6 @@ export class ChartController {
         // （Date.now 为纪元毫秒，与 bar time 同一时钟；performance.now 是页面相对时间，不可用）
         this.dirty = true;
       }
-      this.rafId = requestAnimationFrame(loop);
     };
     this.rafId = requestAnimationFrame(loop);
   }

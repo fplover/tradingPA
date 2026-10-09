@@ -1,5 +1,61 @@
 import { test, expect } from '@playwright/test';
 
+/** DEV 调试句柄窄接口（Chart.tsx 在 dev 构建挂 window.__chartRenderer） */
+interface ChartRendererLike {
+  pipeline: { draw: () => void };
+  invalidate(): void;
+}
+
+interface FaultProbe {
+  has: boolean;
+  throws: number;
+  okFrames: number;
+}
+
+/**
+ * 二期-C1 事故的浏览器级回归：谐波比率标签越界抛错时，rAF 循环把
+ * `requestAnimationFrame` 排在帧体之后，一次异常就永久冻死整张画布——
+ * 用户侧表现为「ABCD 分类下所有画线工具没效果」，须刷新页面。
+ * 这里在真实浏览器里注入绘制异常，验证循环存活且后续帧照常绘制（单测走假帧队列，此处补真帧）。
+ */
+test('绘制异常不冻结画布：注入帧内抛错后 rAF 循环仍继续', async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (e) => pageErrors.push(String(e)));
+
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  const probe = await page.evaluate<FaultProbe>(async () => {
+    const r = (window as unknown as { __chartRenderer?: ChartRendererLike }).__chartRenderer;
+    if (!r) return { has: false, throws: 0, okFrames: 0 };
+    const pipeline = r.pipeline;
+    const orig = pipeline.draw;
+    const THROWS = 3;
+    let throws = 0;
+    let okFrames = 0;
+    // 前 THROWS 帧抛错、之后放行：异常不得吞（上抛到 window.onerror），循环必须继续挂帧并恢复绘制
+    pipeline.draw = () => {
+      if (throws < THROWS) {
+        throws++;
+        throw new TypeError('e2e 注入：绘制越界');
+      }
+      orig.call(pipeline);
+      okFrames++;
+    };
+    // 持续施加重绘压力（等价行情推送）：dirty 一次性消费，不补 invalidate 帧体不会反复进入 draw
+    const pump = setInterval(() => r.invalidate(), 20);
+    await new Promise((res) => setTimeout(res, 900));
+    clearInterval(pump);
+    pipeline.draw = orig;
+    return { has: true, throws, okFrames };
+  });
+
+  test.skip(!probe.has, '无 DEV 调试句柄（仅 dev 构建暴露 window.__chartRenderer）');
+  expect(probe.throws).toBe(3); // 连续 3 帧确实抛了（第一帧抛错即旧实现的死点）
+  expect(probe.okFrames).toBeGreaterThan(0); // 循环没断：后续帧照常绘制完成
+  expect(pageErrors.length).toBeGreaterThanOrEqual(3); // 异常未被静默吞
+});
+
 /** 左工具栏 flyout：TV 交互模型——按住 300ms 展开、已激活组单击展开、caret 即时开关、热键选工具 */
 test('画线工具 flyout 交互与 TV 一致', async ({ page }) => {
   await page.goto('/');
