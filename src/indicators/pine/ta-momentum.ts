@@ -1,10 +1,10 @@
-import { ops, ta as baseTa, toSeries } from './series';
+import { ops, sourceSeries, ta as baseTa, toSeries, type S } from './series';
 import * as barsTa from './taCore';
 import { bbT, type FnDef, intArg, macdT, scalar, undef } from './ta-shared';
 
 /**
  * ta.* K 线依赖族 + 多输出元组族注册表（tr/atr/adx/cci/mfi/wpr/psar/supertrend/
- * macd/bb/bbands/kc/donchian）。
+ * macd/bb/bbands/kc/donchian/pivothigh/pivotlow/vwap）。
  * 依赖 OHLCV 的实现在 taCore.ts，序列运算复用 series.ts 与 ta-shared.ts；
  * 条目为声明式数据，装配与统一分发在 taFunctions.ts。
  */
@@ -90,5 +90,34 @@ export const FNS_MOMENTUM: Record<string, FnDef> = {
       }
       return [mid, upper, lower];
     },
+  },
+  // 二期-D：枢轴点与 VWAP
+  'ta.pivothigh': {
+    min: 2,
+    max: 3,
+    tuple: false,
+    fn: (a, c) => {
+      const hasSrc = a.length === 3;
+      const src = hasSrc ? a[0] : (sourceSeries(c.bars, 'high') as S);
+      const base = hasSrc ? 1 : 0;
+      return barsTa.pivotSeries(src, intArg(a, 'ta.pivothigh', base), intArg(a, 'ta.pivothigh', base + 1), true);
+    },
+  },
+  'ta.pivotlow': {
+    min: 2,
+    max: 3,
+    tuple: false,
+    fn: (a, c) => {
+      const hasSrc = a.length === 3;
+      const src = hasSrc ? a[0] : (sourceSeries(c.bars, 'low') as S);
+      const base = hasSrc ? 1 : 0;
+      return barsTa.pivotSeries(src, intArg(a, 'ta.pivotlow', base), intArg(a, 'ta.pivotlow', base + 1), false);
+    },
+  },
+  'ta.vwap': {
+    min: 0,
+    max: 1,
+    tuple: false,
+    fn: (a, c) => barsTa.vwapSeries(c.bars, a.length > 0 ? a[0] : null),
   },
 };

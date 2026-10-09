@@ -61,13 +61,31 @@ export type Expr =
 
 // ---------- 语句 AST ----------
 
+/** switch 臂：pattern=null 为默认臂（`=>` 左侧为空） */
+export interface SwitchArm {
+  pattern: Expr | null;
+  body: Stmt[];
+}
+
 export type Stmt =
   | { t: 'assign'; key: string; expr: Expr; line: number }
-  /** var 声明（向量化子集下与普通赋值同义，语法层区分保留） */
+  /** var / varip 声明（向量化离线子集下与普通赋值同义：varip 无实时回滚，语法层保留区分） */
   | { t: 'var'; key: string; expr: Expr; line: number }
   /** 元组解构赋值：[a, b, c] = ta.macd(...) */
   | { t: 'tuple'; keys: string[]; expr: Expr; line: number }
   | { t: 'if'; cond: Expr; then: Stmt[]; els: Stmt[] | null; line: number }
+  /** switch：subject 形态（switch x）与条件形态（switch）；空 pattern 臂为默认臂 */
+  | { t: 'switch'; subject: Expr | null; arms: SwitchArm[]; line: number }
+  /** strategy 骨架语句：entry/close/exit 最小语义（见 strategy.ts StratSim） */
+  | {
+      t: 'strategy';
+      op: 'entry' | 'close' | 'exit';
+      id: string;
+      dir: 1 | -1 | null;
+      stop: Expr | null;
+      limit: Expr | null;
+      line: number;
+    }
   | { t: 'for'; varName: string; from: Expr; to: Expr; by: Expr | null; body: Stmt[]; line: number }
   /** 用户函数定义：f(x) => 块；body 最后一条必须是裸表达式（返回值） */
   | { t: 'fundef'; name: string; params: string[]; body: Stmt[]; line: number }

@@ -2,16 +2,18 @@ import type { Bar } from '@/types/market';
 import type { Expr, PineProgram, Stmt } from './ast';
 import { ops, sourceSeries, toSeries, type S } from './series';
 import { callFunction, type TaCtx } from './taFunctions';
+import { STRATEGY_BUILTINS, StratSim } from './strategy';
 
 /**
  * Pine 子集解释器：向量化（序列对齐 bars，逐元素运算）语义。
- * - if/for 在分支掩码（mask）下执行：掩码为真的 bar 上赋值生效，
+ * - if/switch/for 在分支掩码（mask）下执行：掩码为真的 bar 上赋值生效，
  *   其余 bar 保留变量原值（对齐 TV「分支未命中保持前值」语义）。
- * - if 条件按 Pine 语义取真假：na（undefined）与 NaN 均为假。
- * - 标识符解析顺序为用户定义变量/函数参数优先，内置源序列兜底
- *   （脚本内 close = ... 不再被内置 close 序列遮蔽）。
+ * - if/switch 条件按 Pine 语义取真假：na（undefined）与 NaN 均为假。
+ * - 标识符解析顺序为用户定义变量/函数参数优先，strategy.* 内置序列次之
+ *   （仅脚本体结束后可用），内置源序列兜底。
  * - 用户函数调用在子作用域求值（可读全局，写入仅限本作用域），限深 32。
  * - for 循环限次 1000（超限抛错 → 编译期 dry-run 前置拦截，见 program.ts）。
+ * - strategy.entry/close/exit 记录至 StratSim，脚本体执行完毕后统一逐 bar 结算。
  */
 
 export const MAX_LOOP_ITER = 1000;
@@ -33,6 +35,7 @@ interface InterpCtx {
   funcs: PineProgram['funcs'];
   taCtx: TaCtx;
   depth: number;
+  strat: StratSim;
 }
 
 // ---------- 掩码工具 ----------
@@ -60,9 +63,10 @@ function evalExpr(e: Expr, scope: Scope, ctx: InterpCtx, allowTuple = false): S 
       return toSeries(e.v, ctx.n);
     case 'ident': {
       if (e.name.startsWith('str:')) return toSeries(NaN, ctx.n);
-      // 用户定义变量/函数参数优先，内置源序列仅作兜底（Pine 作用域语义）
+      // 用户定义变量/函数参数优先，strategy.* 内置序列次之，内置源序列仅作兜底
       const v = scope.lookup(e.name);
       if (v) return v;
+      if (STRATEGY_BUILTINS.has(e.name)) return ctx.strat.value(e.name);
       const src = sourceSeries(ctx.taCtx.bars, e.name);
       if (src) return src;
       throw new Error(`未定义的标识符「${e.name}」`);
@@ -150,10 +154,37 @@ function execStmts(stmts: Stmt[], scope: Scope, mask: S | null, ctx: InterpCtx):
       }
       case 'if': {
         const cond = evalExpr(st.cond, scope, ctx);
-        // Pine 语义：na（undefined）与 NaN 均为假，不走真分支
-        const trueM = cond.map((v) => (v !== undefined && !Number.isNaN(v) && v !== 0 ? 1 : 0));
-        execStmts(st.then, scope, andMask(mask, trueM), ctx);
-        if (st.els) execStmts(st.els, scope, andMask(mask, notMask(trueM)), ctx);
+        execStmts(st.then, scope, andMask(mask, truthyMask(cond)), ctx);
+        if (st.els) execStmts(st.els, scope, andMask(mask, notMask(truthyMask(cond))), ctx);
+        break;
+      }
+      case 'switch': {
+        // 逐臂首中即停（掩码链与 if/else 同构：命中臂吃掉对应 bar，其余 bar 传给后续臂）
+        const subj = st.subject ? evalExpr(st.subject, scope, ctx) : null;
+        let rest = mask;
+        for (const arm of st.arms) {
+          if (!arm.pattern) {
+            execStmts(arm.body, scope, rest, ctx); // 默认臂：到达即命中
+            break;
+          }
+          const pat = evalExpr(arm.pattern, scope, ctx);
+          // subject 形态按相等匹配（ops.eq：na==na=1 口径）；条件形态按真假
+          const matched = subj ? ops.eq(subj, pat) : truthyMask(pat);
+          execStmts(arm.body, scope, andMask(rest, matched), ctx);
+          rest = andMask(rest, notMask(matched));
+        }
+        break;
+      }
+      case 'strategy': {
+        if (st.op === 'entry') ctx.strat.entry(st.dir === -1 ? -1 : 1, st.id, mask);
+        else if (st.op === 'close') ctx.strat.close(st.id, mask);
+        else
+          ctx.strat.exit(
+            st.id,
+            mask,
+            st.stop ? evalExpr(st.stop, scope, ctx) : null,
+            st.limit ? evalExpr(st.limit, scope, ctx) : null,
+          );
         break;
       }
       case 'for': {
@@ -187,6 +218,11 @@ function execStmts(stmts: Stmt[], scope: Scope, mask: S | null, ctx: InterpCtx):
   return last;
 }
 
+/** 布尔语境掩码：na（undefined）与 NaN 均为假（if/switch 条件同口径） */
+function truthyMask(cond: S): S {
+  return cond.map((v) => (v !== undefined && !Number.isNaN(v) && v !== 0 ? 1 : 0));
+}
+
 function lastNum(a: S, what: string): number {
   const v = a[a.length - 1];
   if (typeof v !== 'number' || !Number.isFinite(v)) throw new Error(`${what}需为常量`);
@@ -217,8 +253,10 @@ export function runProgram(prog: PineProgram, bars: readonly Bar[], params: Reco
       if (src) scope.vars.set(k, src);
     }
   }
-  const ctx: InterpCtx = { n, funcs: prog.funcs, taCtx: { bars }, depth: 0 };
+  const ctx: InterpCtx = { n, funcs: prog.funcs, taCtx: { bars }, depth: 0, strat: new StratSim() };
   execStmts(prog.body, scope, null, ctx);
+  // strategy 骨架结算：内置序列（position_size/netprofit/equity）此后才可解析
+  ctx.strat.finalize(bars);
   return {
     plots: prog.plots.map((p) => evalExpr(p.expr, scope, ctx)),
     hlines: prog.hlines.map((h) => evalExpr(h.price, scope, ctx)),

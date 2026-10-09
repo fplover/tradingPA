@@ -1,4 +1,4 @@
-import type { PineProgram, Stmt } from './ast';
+import type { Expr, PineProgram, Stmt, SwitchArm } from './ast';
 import { parseExprSrc } from './expr';
 import {
   parseAlertDirective,
@@ -10,9 +10,11 @@ import {
 
 /**
  * Pine v5 子集语句解析器（行制 + 缩进块）。
- * 顶层：indicator/study 头、input.* 赋值、普通/var 赋值、元组解构赋值、
- * 用户函数 f(x) => 块、plot/hline/bgcolor/barcolor/plotshape/plotchar/alertcondition 指令。
- * 块内：赋值、if/else/else if、for..to..by、裸表达式（函数体返回值）。
+ * 顶层：indicator/study/strategy 头、input.* 赋值、普通/var/varip 赋值、
+ * 元组解构赋值、用户函数 f(x) => 块、plot/hline/bgcolor/barcolor/plotshape/
+ * plotchar/alertcondition 指令。
+ * 块内：赋值、if/else/else if、switch（subject/条件两形态）、for..to..by、
+ * strategy.entry/close/exit 骨架调用、裸表达式（函数体返回值）。
  * 注释（//）与空行跳过，行号按源行计。
  */
 
@@ -100,7 +102,8 @@ class StmtParser {
   }
 
   private dispatch(_ln: SrcLine, indent: number, nested: boolean, text: string, line: number): ParsedStmt {
-    if (/^(indicator|study)\s*\(/.test(text)) {
+    // strategy("name") 头与 indicator/study 同位（骨架：仅取名称与 overlay）
+    if (/^(indicator|study|strategy)\s*\(/.test(text)) {
       if (nested) throw new Error('indicator() 只能出现在顶层');
       const m = text.match(/^\w+\s*\(\s*"([^"]*)"/);
       if (m) this.prog.name = m[1];
@@ -157,6 +160,19 @@ class StmtParser {
       const els = this.parseElse(indent);
       return { kind: 'stmt', stmt: { t: 'if', cond, then, els, line } };
     }
+    if (/^switch\b/.test(text)) {
+      const subjectText = text.replace(/^switch\b/, '').trim();
+      this.i++;
+      const subject = subjectText ? parseExprSrc(subjectText) : null;
+      const arms = this.parseSwitchArms(indent, line);
+      return { kind: 'stmt', stmt: { t: 'switch', subject, arms, line } };
+    }
+    const stratM = text.match(/^strategy\.(entry|close|exit)\s*\(/);
+    if (stratM) {
+      const st = parseStrategyStmt(text, line);
+      this.i++;
+      return { kind: 'stmt', stmt: st };
+    }
     const forM = text.match(/^for\s+([A-Za-z_]\w*)\s*=\s*(.+?)\s+to\s+(.+?)(?:\s+by\s+(.+))?$/);
     if (forM) {
       const [, varName, fromS, toS, byS] = forM;
@@ -174,6 +190,12 @@ class StmtParser {
           line,
         },
       };
+    }
+    const varipM = text.match(/^varip\s+([A-Za-z_]\w*)\s*=(?!=)\s*(.+)$/);
+    if (varipM) {
+      // varip ≡ var（向量化离线模型无实时回滚），语法层保留区分
+      this.i++;
+      return { kind: 'stmt', stmt: { t: 'var', key: varipM[1], expr: parseExprSrc(varipM[2]), line } };
     }
     const varM = text.match(/^var\s+([A-Za-z_]\w*)\s*=(?!=)\s*(.+)$/);
     if (varM) {
@@ -236,6 +258,29 @@ class StmtParser {
     return true;
   }
 
+  /** switch 臂解析：`模式 => 单行表达式` 或 `模式 =>` + 缩进块；空模式（=>）为默认臂 */
+  private parseSwitchArms(parentIndent: number, lineNo: number): SwitchArm[] {
+    const first = this.lines[this.i];
+    if (!first || first.indent <= parentIndent) {
+      throw new Error(`第 ${lineNo} 行：switch 缺少缩进臂块`);
+    }
+    const base = first.indent;
+    const arms: SwitchArm[] = [];
+    while (this.i < this.lines.length && this.lines[this.i].indent === base) {
+      const ln = this.lines[this.i];
+      const m = ln.text.match(/^(.*?)=>(.*)$/);
+      if (!m) throw new Error(`第 ${ln.no} 行：switch 臂需为「模式 => 语句」`);
+      const patternText = m[1].trim();
+      const bodyText = m[2].trim();
+      const pattern = patternText ? parseExprSrc(patternText) : null;
+      this.i++;
+      // 内联臂体按语句解析（赋值/strategy 调用/裸表达式），不推进行游标
+      const body = bodyText ? [parseInlineStmt(bodyText, ln.no)] : this.parseBlock(base, ln.no);
+      arms.push({ pattern, body });
+    }
+    return arms;
+  }
+
   private parseFundef(m: RegExpMatchArray, indent: number, line: number): void {
     const [, name, paramsSrc, inlineBody] = m;
     const params = paramsSrc
@@ -274,6 +319,84 @@ class StmtParser {
 function kwNum(rhs: string, key: string): number | undefined {
   const m = rhs.match(new RegExp(`${key}\\s*=\\s*(-?[0-9.]+)`, 'i'));
   return m ? Number(m[1]) : undefined;
+}
+
+/** switch 内联臂体语句解析：赋值 / strategy 调用 / 裸表达式（不推进行游标） */
+function parseInlineStmt(text: string, line: number): Stmt {
+  const assign = text.match(/^([A-Za-z_]\w*)\s*=(?!=)\s*(.+)$/);
+  if (assign) return { t: 'assign', key: assign[1], expr: parseExprSrc(assign[2]), line };
+  if (/^strategy\.(entry|close|exit)\s*\(/.test(text)) return parseStrategyStmt(text, line);
+  return { t: 'expr', expr: parseExprSrc(text), line };
+}
+
+/** strategy.* 骨架调用语句（见 strategy.ts 语义边界说明） */
+function parseStrategyStmt(text: string, line: number): Stmt {
+  const entryM = text.match(/^strategy\.entry\s*\(\s*"([^"]*)"\s*,\s*(strategy\.long|strategy\.short)\s*\)$/);
+  if (entryM) {
+    return {
+      t: 'strategy',
+      op: 'entry',
+      id: entryM[1],
+      dir: entryM[2] === 'strategy.long' ? 1 : -1,
+      stop: null,
+      limit: null,
+      line,
+    };
+  }
+  const closeM = text.match(/^strategy\.close\s*\(\s*"([^"]*)"\s*\)$/);
+  if (closeM) {
+    return { t: 'strategy', op: 'close', id: closeM[1], dir: null, stop: null, limit: null, line };
+  }
+  const exitM = text.match(/^strategy\.exit\s*\((.*)\)\s*$/);
+  if (exitM) {
+    const parts = splitArgs(exitM[1]);
+    if (parts.length < 1 || !/^"[^"]*"$/.test(parts[0])) {
+      throw new Error('strategy.exit 第 1 参数需为字符串 id');
+    }
+    let stop: Expr | null = null;
+    let limit: Expr | null = null;
+    for (const p of parts.slice(1)) {
+      const nm = p.match(/^(stop|limit)\s*=\s*(.+)$/);
+      if (!nm) throw new Error('strategy.exit 骨架仅支持具名参数 stop=/limit=');
+      if (nm[1] === 'stop') stop = parseExprSrc(nm[2]);
+      else limit = parseExprSrc(nm[2]);
+    }
+    if (!stop && !limit) throw new Error('strategy.exit 骨架需至少提供 stop= 或 limit=');
+    return { t: 'strategy', op: 'exit', id: parts[0].slice(1, -1), dir: null, stop, limit, line };
+  }
+  throw new Error(
+    'strategy.* 骨架仅支持 strategy.entry("id", strategy.long|strategy.short) / strategy.close("id") / strategy.exit("id", stop=, limit=)',
+  );
+}
+
+/** 顶层逗号切分（括号/字符串感知），用于 strategy.exit 具名参数解析 */
+function splitArgs(src: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let cur = '';
+  let quote: string | null = null;
+  for (const ch of src) {
+    if (quote) {
+      cur += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      cur += ch;
+      continue;
+    }
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) {
+      out.push(cur.trim());
+      cur = '';
+      continue;
+    }
+    cur += ch;
+  }
+  if (cur.trim()) out.push(cur.trim());
+  return out;
 }
 
 export function parseProgram(source: string): PineProgram {

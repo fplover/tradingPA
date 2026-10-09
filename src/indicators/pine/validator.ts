@@ -1,9 +1,11 @@
 import type { Expr, FundefStmt, PineError, PineProgram, Stmt } from './ast';
 import { FNS, PINE_FN_NAMES } from './taFunctions';
+import { STRATEGY_BUILTINS } from './strategy';
 
 /**
  * Pine 子集编译期静态校验与 lookback 估算：
- * - 标识符必须为内置源 / input 参数 / 脚本内声明（含块内与函数参数）
+ * - 标识符必须为内置源 / strategy.* 内置序列 / input 参数 / 脚本内声明
+ *   （含块内与函数参数）
  * - 函数必须为注册的 ta/math 函数或脚本内用户函数，且参数数量匹配
  * - lookback 取 ta/math 调用中的最大周期：字面量取字面值，参数化周期取
  *   input 的 maxval 上界（未声明则默认值）——与内置指标「固定大 lookback
@@ -25,6 +27,9 @@ function collectDeclared(stmts: Stmt[], known: Set<string>): void {
       case 'if':
         collectDeclared(st.then, known);
         if (st.els) collectDeclared(st.els, known);
+        break;
+      case 'switch':
+        for (const arm of st.arms) collectDeclared(arm.body, known);
         break;
       case 'for':
         known.add(st.varName);
@@ -65,9 +70,8 @@ function validateExpr(
     validateExpr(e.e, known, funcs, errors, line);
   } else if (e.t === 'ident') {
     if (e.name.startsWith('str:')) return;
-    if (!SOURCE_NAMES.has(e.name) && !known.has(e.name)) {
-      errors.push({ line, message: '未定义的标识符: ' + e.name });
-    }
+    if (SOURCE_NAMES.has(e.name) || STRATEGY_BUILTINS.has(e.name) || known.has(e.name)) return;
+    errors.push({ line, message: '未定义的标识符: ' + e.name });
   }
 }
 
@@ -83,6 +87,17 @@ function validateStmts(stmts: Stmt[], known: Set<string>, prog: PineProgram, err
         validateExpr(st.cond, known, prog.funcs, errors, st.line);
         validateStmts(st.then, known, prog, errors);
         if (st.els) validateStmts(st.els, known, prog, errors);
+        break;
+      case 'switch':
+        if (st.subject) validateExpr(st.subject, known, prog.funcs, errors, st.line);
+        for (const arm of st.arms) {
+          if (arm.pattern) validateExpr(arm.pattern, known, prog.funcs, errors, st.line);
+          validateStmts(arm.body, known, prog, errors);
+        }
+        break;
+      case 'strategy':
+        if (st.stop) validateExpr(st.stop, known, prog.funcs, errors, st.line);
+        if (st.limit) validateExpr(st.limit, known, prog.funcs, errors, st.line);
         break;
       case 'for':
         validateExpr(st.from, known, prog.funcs, errors, st.line);
@@ -158,7 +173,13 @@ export function collectLookbackExpr(
   calls?: CallPeriods,
 ): void {
   if (e.t === 'call') {
-    if (/^(ta|math)\./.test(e.fn) && e.args.length >= 2) {
+    // pivothigh/pivotlow 的 lookback = left + right（取末两个数值实参之和）
+    if (/^ta\.pivot(high|low)$/.test(e.fn)) {
+      const tail = e.args.slice(-2).map((x) => periodOf(x, periods));
+      if (tail.every((v) => v !== undefined)) {
+        acc.max = Math.max(acc.max, (tail[0] as number) + (tail[1] as number));
+      }
+    } else if (/^(ta|math)\./.test(e.fn) && e.args.length >= 2) {
       const p = periodOf(e.args[1], periods);
       if (p !== undefined) acc.max = Math.max(acc.max, p);
     } else if (calls) {
@@ -191,6 +212,17 @@ export function collectLookbackStmts(
         collectLookbackExpr(st.cond, acc, periods, calls);
         collectLookbackStmts(st.then, acc, periods, calls);
         if (st.els) collectLookbackStmts(st.els, acc, periods, calls);
+        break;
+      case 'switch':
+        if (st.subject) collectLookbackExpr(st.subject, acc, periods, calls);
+        for (const arm of st.arms) {
+          if (arm.pattern) collectLookbackExpr(arm.pattern, acc, periods, calls);
+          collectLookbackStmts(arm.body, acc, periods, calls);
+        }
+        break;
+      case 'strategy':
+        if (st.stop) collectLookbackExpr(st.stop, acc, periods, calls);
+        if (st.limit) collectLookbackExpr(st.limit, acc, periods, calls);
         break;
       case 'for':
         collectLookbackExpr(st.from, acc, periods, calls);

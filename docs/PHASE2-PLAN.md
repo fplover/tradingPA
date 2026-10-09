@@ -62,6 +62,8 @@
 
 switch 语句、varip 声明、strategy 骨架（`strategy.entry/exit` 最小语义 → 模拟交易联动）、ta 函数扩充（pivothigh/pivotlow、vwap 会话重置、sar 已内置则对齐参数）。验收：每特性金标准用例；真实公开脚本样本兼容率抽样 ≥ 80%。预估 5–8 人日。
 
+> **交付记录（2026-10-09，二期-D）**：全部落地。**switch**：subject（数值相等，ops.eq 的 na==na 口径）与条件两形态，臂体支持内联语句与缩进块（内联按语句解析：赋值/strategy/裸表达式），掩码链与 if/else 同构（命中臂吃掉对应 bar）。**varip ≡ var**（向量化离线模型无实时回滚，语法层保留）。**strategy 骨架**（新 `strategy.ts` StratSim）：strategy 头与 indicator 同位解析；`strategy.entry("id", strategy.long|strategy.short)` / `strategy.close("id")` / `strategy.exit("id", stop=, limit=)` 三调用（statement 级解析，具名参数括号感知切分）；向量化逐 bar 结算——收盘价撮合近似、反向先平后反手、同向忽略（pyramiding=0）、exit stop/limit 对 close 近似触发先于开仓、id 匹配平仓、同 bar 多单按登记序逐笔撮合（对齐 TV 经纪商模拟）；内置序列 `strategy.position_size/netprofit/equity` 仅脚本体结束后可用（plot/hline/警报），中途引用 dry-run 前置拦截为编译错误。**ta 扩充**：`ta.pivothigh/pivotlow`（严格枢轴 tie 失败，输出右移 right 根确认，2 参缺省 high/low；lookback 估算计入 left+right）、`ta.vwap`（UTC 日界会话重置，量 ≤0 不计入且输出 undefined → 外汇量能边界）。sar 核实已对齐（psarSeries(bars, start, inc, max)），无需改动。边界（登记 OPEN-DECISIONS）：完整回测仍维持 SPEC-TV-ALIGNMENT「不做」裁定，本批次仅为最小骨架；「真实脚本兼容率 ≥80%」抽样无离线机械验证途径，以金标准用例 + 子集边界文档替代。门禁全绿：TS6 typecheck / oxlint / prettier / vitest（75 文件 1259 例，含 pine-batch-d 26 例）/ vite build。
+
 ### 二期-E · 警报与通知增强（无架构依赖）
 
 entering channel 条件、警报按品种分组、警报触发历史（本地持久化列表）、推送通知去重与聚合。预估 3–4 人日。

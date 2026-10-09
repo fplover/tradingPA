@@ -56,7 +56,8 @@ src/
                   momentum-macd/momentum-adx/momentum-atr、oscillators-rsi/oscillators-range/
                   oscillators-momentum、momentum-osc-smooth/momentum-osc-fisher/momentum-osc-roc…）
     pine/         Pine 子集编译器与解释器（tokenizer → parser → interpreter → taFunctions；
-                  taFunctions 按族拆为 ta-shared/ta-overlap/ta-momentum/ta-math）
+                  taFunctions 按族拆为 ta-shared/ta-overlap/ta-momentum/ta-math；
+                  strategy.ts strategy 骨架模拟器 StratSim）
   data/         数据层
     sources/      多市场数据源路由（binance / tencent / sina / eastmoney）
     feed/         Binance REST + WS 实时通道

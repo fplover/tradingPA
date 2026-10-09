@@ -2,7 +2,8 @@ import type { Bar } from '@/types/market';
 import { wilder as coreWilder } from '../core/math';
 
 /**
- * 依赖 K 线 OHLCV 的 ta.* 纯函数实现（tr/atr/adx/cci/mfi/wpr/psar/supertrend/fisher）。
+ * 依赖 K 线 OHLCV 的 ta.* 纯函数实现（tr/atr/adx/cci/mfi/wpr/psar/supertrend/
+ * fisher/pivot/vwap）。
  * 输出与输入等长对齐；窗口/种子未就绪处为 undefined。
  * TR/ATR/ADX 的 Wilder 平滑复用 core/math.wilder（与内置指标引擎同源）。
  */
@@ -203,6 +204,54 @@ export function fisherSeries(src: S, n: number): S {
     prevX = x;
     prevF = f;
     out[i] = f;
+  }
+  return out;
+}
+
+/** Pine ta.pivothigh/pivotlow：严格枢轴点（邻点相等即失败），输出右移 right 根
+ *  （枢轴在其右侧第 right 根确认 bar 上才有值，其余 undefined） */
+export function pivotSeries(src: S, left: number, right: number, isHigh: boolean): S {
+  const out = undef(src.length);
+  for (let i = right; i < src.length; i++) {
+    const p = i - right;
+    if (p - left < 0) continue;
+    const v = src[p];
+    if (v === undefined) continue;
+    let ok = true;
+    for (let k = p - left; k <= p + right; k++) {
+      if (k === p) continue;
+      const w = src[k];
+      if (w === undefined || (isHigh ? w >= v : w <= v)) {
+        ok = false;
+        break;
+      }
+    }
+    if (ok) out[i] = v;
+  }
+  return out;
+}
+
+/** Pine ta.vwap：按 UTC 日界会话重置的累计 VWAP（src 缺省 hlc3，量取 bars.volume）。
+ *  量 ≤ 0 或价未就绪的 bar 输出 undefined 且不计入累计（外汇量能为 0 → 整段 undefined）。 */
+export function vwapSeries(bars: readonly Bar[], src: S | null): S {
+  const source = src ?? bars.map((b) => (b.high + b.low + b.close) / 3);
+  const out = undef(bars.length);
+  let day = Number.NaN;
+  let cumPV = 0;
+  let cumV = 0;
+  for (let i = 0; i < bars.length; i++) {
+    const d = Math.floor(bars[i].time / 86_400_000); // UTC 日界
+    if (d !== day) {
+      day = d;
+      cumPV = 0;
+      cumV = 0;
+    }
+    const p = source[i];
+    const v = bars[i].volume;
+    if (p === undefined || !Number.isFinite(v) || v <= 0) continue;
+    cumPV += p * v;
+    cumV += v;
+    out[i] = cumPV / cumV;
   }
   return out;
 }
