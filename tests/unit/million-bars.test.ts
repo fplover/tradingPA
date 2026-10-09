@@ -9,7 +9,8 @@ import type { Bar } from '@/types/market';
  * 1M 根的增量压力全在数据面——本探针在 Node 侧机械验证：
  * 1M 根构建、BarSeries 二分查找（O(log n)）、时间→小数 index 插值、
  * 视口切片与 VP 分桶（O(可见窗口)）的时间预算。
- * 画布全管线 1M 视口验证需浏览器 E2E（登记 PHASE2-PLAN 交付记录边界）。
+ * 画布全管线 1M 视口验证已落为浏览器用例：tests/e2e/perf-million-bars.spec.ts
+ * （视野 1500 根时 0.5ms/帧，与千根基线同量级；1M 根全压进一屏中位 ~130ms，属可见 bar 线性代价）。
  */
 
 const N = 1_000_000;
