@@ -24,23 +24,27 @@ function drawZigzag(ctx: CanvasRenderingContext2D, pts: readonly Pix[]): void {
 /** 谐波：X→A→B→C→D 折线 + 各腿中点比率标签（带内绿 / 越带红）+ 锚点字母标注 */
 function drawHarmonic(ctx: CanvasRenderingContext2D, d: Drawing, pts: readonly Pix[]): void {
   drawZigzag(ctx, pts);
-  const checks = harmonicCheck(d.type as HarmonicKind, d.points);
   ctx.font = `10px ${TV_FONT}`;
   ctx.textAlign = 'left';
-  // 三条腿比率标签画在腿中点：AB、BC、CD；AD/XA 画在 A→D 连线中点
-  const legs: Array<[number, number, number]> = [
-    [1, 2, 0],
-    [2, 3, 1],
-    [3, 4, 2],
-    [1, 4, 3],
-  ];
-  for (const [ai, bi, ci] of legs) {
-    const c = checks[ci];
-    if (!c) continue;
-    const a = pts[ai];
-    const b = pts[bi];
-    ctx.fillStyle = c.ok ? PALETTE.green : PALETTE.red;
-    ctx.fillText(`${c.leg} ${c.value.toFixed(2)}`, (a.x + b.x) / 2 + 4, (a.y + b.y) / 2 - 4);
+  // 比率标签需满 5 锚点：放置中的 __preview 走同一渲染路径，锚点不足时 harmonicCheck 会拿
+  // 越界点（price 兜底 0）算出假比率，且 pts[4] 取空会抛错打断 rAF 循环致画布冻结——整段跳过
+  if (pts.length >= HARMONIC_LABELS.length) {
+    const checks = harmonicCheck(d.type as HarmonicKind, d.points);
+    // 三条腿比率标签画在腿中点：AB、BC、CD；AD/XA 画在 A→D 连线中点
+    const legs: Array<[number, number, number]> = [
+      [1, 2, 0],
+      [2, 3, 1],
+      [3, 4, 2],
+      [1, 4, 3],
+    ];
+    for (const [ai, bi, ci] of legs) {
+      const c = checks[ci];
+      if (!c) continue;
+      const a = pts[ai];
+      const b = pts[bi];
+      ctx.fillStyle = c.ok ? PALETTE.green : PALETTE.red;
+      ctx.fillText(`${c.leg} ${c.value.toFixed(2)}`, (a.x + b.x) / 2 + 4, (a.y + b.y) / 2 - 4);
+    }
   }
   ctx.fillStyle = theme.axisText;
   HARMONIC_LABELS.forEach((label, i) => {

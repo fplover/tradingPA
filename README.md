@@ -34,7 +34,7 @@ npm run dev          # http://localhost:5173
 | `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；**0 错误 0 警告**——2026-10-08 存量 55 条警告基线全额清偿，仅剩 1 条带理由的 disable；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（79 文件 / 1288 例） |
+| `npm test` | Vitest 单测（80 文件 / 1299 例） |
 | `npm run test:e2e` | Playwright E2E（56 例，含 **27 面黄金截图**） |
 | `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
 | `npm run build:pages` | 按 Pages base（`/tradingPA/`）本地预演构建（配合 `npm run preview`） |
@@ -78,7 +78,7 @@ docs/           Spec 与差距分析（见下）
 
 > E2E 在 Windows 上必须先自己起 dev server 再跑（见下节）；`verify` 只含机器无关门禁，可随时跑。
 
-当前实测基线（2026-10-09 复跑，二期收官后）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1，仅剩 1 条带理由 disable）/ format:check 绿 / 单测 **79 文件 1288 例全过** / E2E **56 例：55 过 + 1 例网络 flaky**（`期货分类可搜到合约`，重试通过——依赖外网搜索源）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 495.45 kB（gzip 141.15 kB，合计 gzip 253.5 kB，>500 kB 警告未触发）。
+当前实测基线（2026-10-09 复跑，二期收官后 + 形态家族画线回归修复）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1，仅剩 1 条带理由 disable）/ format:check 绿 / 单测 **80 文件 1299 例全过** / E2E **56 例：55 过 + 1 例网络 flaky**（`期货分类可搜到合约`，重试通过——依赖外网搜索源）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 495.47 kB（gzip 141.17 kB，合计 gzip 253.9 kB，>500 kB 警告未触发）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令原样兼容（已探针验证）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。
@@ -108,11 +108,13 @@ npm run test:e2e
   `parseShapeDirective` 70 / `PaneRenderer.draw` 64）经 `.oxlintrc.json` overrides 放宽至 120 并登记；
   放宽是提阈值而非关闭，>120 的新函数仍被拦
 - 引擎侧框架无关：不得 import React / zustand
-- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1288 单测 + 56 E2E）
+- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1299 单测 + 56 E2E）
 
 ## 已知状态与待办
 
 - **E2E 日历用例已修（2026-10-09）**：`interactions.spec.ts` 两处「日历弹层」用例原以 `button[aria-label^="2026-"]` 的 `.first()` 取日格，当日历首行含上/下月补位或区间外日期时命中 `disabled` 格导致点击永久等待——根因是 mock 数据区间由 `Date.now()` 逐日漂移（非应用回归）。现改为 `getByRole('button', { name: /^\d{4}-\d{2}-\d{2}$/, disabled: false })`：可访问名即 ISO 日期串（该形态只有日期格具备，导航/触发按钮不带），且不再依赖年份字面量。残留 flaky：`watchlist.spec.ts:62 期货分类可搜到合约` 依赖东财搜索外网，重试即过。
+- **形态家族画线已修（2026-10-09）**：谐波四工具（gartley/bat/butterfly/crab）的比率标签无条件索引 `pts[4]`，而放置中的 `__preview` 走同一渲染路径，锚点不足 5 个时抛 TypeError；异常从 `pipeline.draw()` 逃出后 `ChartController` 的 rAF 循环不再自我重挂，**整张画布永久冻结**——用户侧表现为「ABCD 分类下其他划线工具没效果」，刷新页面才恢复。现整段比率标签以 `pts.length >= HARMONIC_LABELS.length` 守卫（不足时只画已有折线与锚点字母，同时避免越界点的 price 兜底 0 算出假比率）。回归：`tests/unit/drawing-pattern-render.test.ts`（9 工具 × 1..5 锚点逐档不抛错）。
+- **待办：rAF 循环加固**（本次未做）：单次绘制异常仍能让整张画布冻结。下一步在 `ChartController.start()` 的 loop 里保证 `requestAnimationFrame` 在 `pipeline.draw()` 抛错后仍然重挂，使局部渲染故障降级为「这一帧没画」而非「整页死掉」。
 
 - **依赖漏洞 → 0（2026-10-08 复核）**：经依赖升级专项批次（vite 5→8、vitest 3→5、react 18→19、
   zustand 4→5、TS 5.6→6.0.3、eslint 9→10，见 git log `507be30`…`956fa1f`），`npm run audit` 报
