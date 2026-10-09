@@ -1,6 +1,6 @@
 # tradingPA
 
-TradingView 图表平台的 1:1 复刻：React 18 + TypeScript + Vite + Zustand，图表渲染是**自研 Canvas 2D 引擎**（框架无关，不依赖任何图表库）。
+TradingView 图表平台的 1:1 复刻：React 19 + TypeScript + Vite + Zustand，图表渲染是**自研 Canvas 2D 引擎**（框架无关，不依赖任何图表库）。
 
 - 图表类型 18 种 · 时间周期 22 档（含自定义间隔）· 内置指标 64 个 · 画线工具 45 个
 - 多市场数据源：加密（Binance 多主机回退 + Gate 回退）/ A 股·港股·美股·指数（腾讯）/ 美股分钟·国内期货·外盘期货·外汇（新浪，script 标签 JSONP 直连）/ 全市场搜索（东财）
@@ -117,6 +117,7 @@ npm run test:e2e
 - **形态家族画线已修（2026-10-09）**：谐波四工具（gartley/bat/butterfly/crab）的比率标签无条件索引 `pts[4]`，而放置中的 `__preview` 走同一渲染路径，锚点不足 5 个时抛 TypeError；异常从 `pipeline.draw()` 逃出后 `ChartController` 的 rAF 循环不再自我重挂，**整张画布永久冻结**——用户侧表现为「ABCD 分类下其他划线工具没效果」，刷新页面才恢复。现整段比率标签以 `pts.length >= HARMONIC_LABELS.length` 守卫（不足时只画已有折线与锚点字母，同时避免越界点的 price 兜底 0 算出假比率）。回归：`tests/unit/drawing-pattern-render.test.ts`（9 工具 × 1..5 锚点逐档不抛错）。
 - **rAF 帧循环已加固（2026-10-09）**：`ChartController.start()` 原把 `requestAnimationFrame(loop)` 排在帧体之后，帧体（尤其 `pipeline.draw()`）一次抛错就再也不挂帧 → 整张画布永久冻结，须刷新页面。现改为「先挂下一帧再干活」，单帧异常只丢这一帧。不吞异常：错误仍上抛到 `window.onerror`（syncBus 的 console.error 口径只用于隔离外部 handler，本处是引擎自身缺陷，需要响亮暴露）。回归双跑：`tests/unit/chart-raf-loop.test.ts`（假帧队列逐帧驱动，6 例——含「连续 5 帧异常不终止」「dispose 后不再挂帧」「重复 start 不叠加」）+ `tests/e2e/drawing.spec.ts` 真浏览器注入异常用例。两者按旧顺序实测均失败（旧实现第 1 帧抛错即死），非空断言。
 
+- **TS7 迁移缺口已收口（2026-10-09，判定为文档口径缺口而非代码缺口）**：二期各批交付记录里的「TS6 typecheck 降级等效验证」是从 2026-10-08 一次**宿主环境故障**（TS7 原生二进制拒绝加载 bcrypt.dll → panic + exit 2，当次以 `npx -p typescript@6.0.3 tsc` 等效验证）复制来的措辞，被后续批次当模板沿用。实测现状：`typescript` 单依赖 = 7.0.2（无 `npm:` 别名）、平台二进制 `@typescript/typescript-win32-x64/lib/tsc.exe` 就位、`tsc --version` = 7.0.2、`npm run typecheck` 0 错（1.96s）/ `npm run build` 内联同一条 tsc 0 错，`--verbose` 重跑 stderr 无 panic → 门禁一直跑的就是 TS7 原生，本节上条基线声明为真。TS JS API 消费者为零（lint=oxlint、转译=Vite 8/Rolldown、E2E=Playwright 自带转译；`typescript` 包的 `exports["."]` 只指向 `lib/version.cjs`）。**易误判点**：`.oxlintrc.json` 的 `"@typescript-eslint/no-unused-vars": "off"` 是 oxlint 的规则命名空间（不是旧 npm 包，也不是死键）——探针证实它确实压制 TS 文件的 core `no-unused-vars`，未使用代码改由 tsc `noUnusedLocals/noUnusedParameters` 把关，删除会让门禁口径改变。**宿主故障复现判据**：TS7 的失败形态是 panic 打 stderr 且 exit 2，不得按「有输出即放行」处理；等效替代链在 TS7 单依赖下已不存在（无 tsc6 二进制），需要临时验证时用 `npx -y -p typescript@6.0.3 tsc -b tsconfig.json tsconfig.node.json --noEmit`。详见 `docs/PHASE2-PLAN.md` 二期-G 交付记录与 OPEN-DECISIONS 登记行。
 - **依赖漏洞 → 0（2026-10-08 复核）**：经依赖升级专项批次（vite 5→8、vitest 3→5、react 18→19、
   zustand 4→5、TS 5.6→6.0.3、eslint 9→10，见 git log `507be30`…`956fa1f`），`npm run audit` 报
   **found 0 vulnerabilities**。复查命令不变：`npm run audit`（必须走官方 registry）。

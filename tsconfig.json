@@ -15,8 +15,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    // 不设 baseUrl：TS 6 起 baseUrl 已弃用（TS 7 将失效），paths 直接以本文件为基准
-    // —— 去掉它同时为将来升级 TS 7 铺路
+    // 不设 baseUrl：TS 6 起 baseUrl 已弃用（TS 7 失效），paths 直接以本文件为基准
+    // —— 去掉它是 TS 7 升级的铺路项，2026-10-03 起编译器即 TS 7 原生 tsc（见 OPEN-DECISIONS）
     "paths": {
       "@/*": ["./src/*"]
     }

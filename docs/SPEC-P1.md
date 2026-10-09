@@ -38,6 +38,8 @@
 
 React 18.3.1 / TS 5.6.3 / Vite 5.4.11 / Zustand 4.5.5 / Radix + lucide-react 1.47.0 / Vitest + Playwright。
 
+> 版本行是 P1 开批时的快照，已过时：2026-10-03 的依赖升级专项批次（含同日 TS 7 收尾批与 oxlint 迁移批）把六条主线全部上移（react 19 / TS 7 原生 `tsc` / vite 8 + Rolldown / vitest 5 / zustand 5 / lint 换 oxlint），现行版本号以 `package.json` 与 README「质量门禁」为准，升级证据与判据见 OPEN-DECISIONS。本文件其余条款（P0 规则等）不受影响。
+
 **P0 规则（全程有效）**：
 1. 图标一律 lucide-react / SVG path，禁字符/emoji 图标（尺寸 14/16/18）
 2. 颜色一律 CSS 变量/Token，禁硬编码 hex（例外 #fff/#000）

@@ -1,6 +1,6 @@
 # TradingView 图表平台 1:1 复刻 — 开发计划
 
-> 版本：v1.8 ｜ 日期：2026-10-09
+> 版本：v1.9 ｜ 日期：2026-10-09
 > 目标：以完整平台形态，1:1 复刻 TradingView 的图表功能（图表类型 / 周期 / 指标 / 画线工具 / 实时行情 / 平台能力）。
 > v1.2 回填说明（2026-09-30）：§3 清单按代码现状勾选——M0-M7 之后，TV-ALIGNMENT v2.0（P0 八项）与 P1 六个批次（A–F）已交付：指标 63 个、图表类型 18 种、周期 22 档 + 自定义间隔、Pine 迁 `src/indicators/pine/`（12 模块）。
 > v1.3 回填说明（2026-09-30 复核）：**P2 收官批次（A/B/C/D）已全部交付并入版本库**（6056eb4+1e194fc ／ d77b8b7 ／ 5cd9f5e ／ 23294a8），详见 docs/SPEC-P2.md §7 与 docs/SPEC-TV-ALIGNMENT.md §12；§3 清单据此重新勾选。本版复核实测：内置指标 64 个、图表类型 18 种、周期 22 档、画线工具 30 个；门禁 typecheck 0 错 + lint 0 错 + 单测 959 + E2E 54（27 面黄金截图零 diff）+ 构建 8 chunk（最大应用块 445 kB，合计 gzip 224.31KB）。
@@ -9,6 +9,7 @@
 > v1.6 回填说明（2026-10-09 加固）：v1.5 遗留项已收口——**rAF 帧循环抗异常**。`ChartController.start()` 把 `requestAnimationFrame(loop)` 从帧体之后移到之前（「先挂下一帧再干活」），帧体抛错不再永久冻死画布；不吞异常，错误仍上抛到 `window.onerror`（与 syncBus 的 console.error 隔离口径刻意不同：后者隔离的是外部订阅者，此处是引擎自身缺陷，需要响亮暴露）。顺带消除旧顺序的一个竞态：若在帧体内 `dispose()`，原实现仍会在末尾再挂一帧（该回调靠 `disposed` 守卫立即 return，不会绘制，但 `stop()` 之后 `rafId` 被重新写活，语义上「已停的循环」又多出一帧待执行）。回归双跑：`tests/unit/chart-raf-loop.test.ts`（假帧队列逐帧驱动 6 例）+ `tests/e2e/drawing.spec.ts`「绘制异常不冻结画布」（真浏览器注入抛错，断言连续 3 帧异常后循环仍挂帧、后续帧恢复绘制、pageerror 未被吞）。**两条回归按旧顺序实测均失败（旧实现第 1 帧抛错即死），非空断言**。复核实测：单测 **81 文件 1305 例全过**（+1 文件 +6 例）、typecheck 0 错、lint 0 错 0 警告、format:check 绿、E2E **57 例 = 56 过 + 1 外网 flaky**、**27 面黄金截图零 diff**、build 7 chunk（最大应用块 495.47 kB / gzip 141.16 kB，合计 gzip 253.9 kB）。
 > v1.7 回填说明（2026-10-09 E2E 确定化）：**E2E 基线去 flaky，`--retries=0` 全绿**。`watchlist.spec.ts 期货分类可搜到合约` 长期登记为「依赖东财外网、重试即过」，实跑定位后根因不在网络而在**用例缺就绪门**：`/` 是 window keydown 快捷键（`useTvShortcuts` effect 挂载后才有监听），用例 `goto('/')` 后立即按键，按键偶发丢失 → 弹层未开，等待的是弹层内的「国内期货」按钮（30s 超时签名与此完全吻合）。修法两条并行：① 补与其他用例一致的就绪断言（`/[1-9][0-9,]* 根/` 可见）再按键；② 东财合约全集与搜索联想改 `page.route` 固定桩（期货分类搜索语义是「本地按合约全集过滤」，网络只供料；顺带拆掉写死 `/rb26/` 的定时炸弹——真实合约随主力换月会消失）。桩的离线自证：临时把非 localhost 请求全部 abort 后用例仍过（被断的是腾讯报价链，合约全集由桩供）。验证：`--repeat-each=4 --retries=0` 四连过；全量 `--retries=0` **57 例全过**、27 面黄金截图零 diff。至此 E2E 无 flaky，可作 CI 硬门禁。
 > v1.8 回填说明（2026-10-09 边界收口）：**二期-G 登记的「画布全管线 1M 视口压测需浏览器环境」边界已闭合**。新增 `tests/e2e/perf-million-bars.spec.ts`：页面内现造 1M 根、`setData` 装载、逐帧读 `lastFrameMs`，两例分工——① 三种视口姿态的每帧预算（全域铺满 / 历史深处 1500 根 / 常规 1500 根）；② **同视野对照**（千根基线 vs 1M，视野同为 1500 根），这才是「管线 O(可见 bar) 而非 O(总 bar)」的直接证据。本机六轮实测：造 1M 根 40–51ms、setData 0.0–0.2ms、1500 根视野 0.5–0.6ms/帧（比值 1.6–3.8×）、极端姿态「1M 根全压进一屏」中位 119–146ms、最差单帧 ~233ms。结论：常规交互姿态无任何 1M 级退化；唯一昂贵的是把 1M 根全铺一屏（可见 bar=1M 的线性代价，非退化路径）。门槛按数量级设（常规 16.7ms、全域 400ms、比值 10×）——退化必红、CI 抖动必绿，与 Node 探针同一哲学。复核实测：typecheck 0 错 / lint 0 错 0 警告 / format:check 绿 / 单测 81 文件 1305 例 / **E2E 59 例 `--retries=0` 全过**、27 面黄金截图零 diff / build 7 chunk。
+> v1.9 回填说明（2026-10-09 TS7 收口）：**二期-G 的「TS7 宿主环境问题跟踪」登记关闭，且判定为文档口径缺口——代码零改动**。此前四批交付记录写「TS6 typecheck」，是从 2026-10-08 一次宿主故障（TS7 原生二进制拒绝加载 bcrypt.dll → panic + exit 2，当次以 `typescript@6.0.3` 等效验证）复制来的措辞被后续批次沿用；本机复测：`typescript` = 7.0.2 单依赖无 `npm:` 别名、`@typescript/typescript-win32-x64/lib/tsc.exe`（24,520,544 字节）就位、`tsc --version` = 7.0.2、`npm run typecheck` 0 错（1.96s）、`npm run build`（内联同一条 tsc）0 错、`tsc -b --verbose` 的 stderr 无 panic → 门禁一直跑的是 TS7 原生。TS JS API 消费者为零（lint=oxlint / 转译=Vite 8 Rolldown / E2E=Playwright 自带转译；`typescript` 的 `exports["."]` 只指向 `lib/version.cjs`）。核查中排掉一个误判：`.oxlintrc.json` 的 `@typescript-eslint/no-unused-vars` 是 oxlint 的规则命名空间（非旧 npm 包、非死键），探针证实它确实压制 TS 文件的 core `no-unused-vars`，删它会改门禁口径，故保留。§1 技术选型表同步为 React 19 + TS 7（此前仍写 React 18，与 `package.json` 的 react@19.3.0 矛盾；README 首行同改）。历史交付记录内的「TS6 typecheck」按登记册「只追加 + 就地关闭」口径保留原文。复核实测：typecheck 0 错（TS7）/ lint 0 错 0 警告 / format:check 绿 / 单测 81 文件 1305 例。
 
 ## 进度
 
@@ -83,7 +84,7 @@
 
 | 决策项 | 选型 | 理由 |
 |---|---|---|
-| 前端框架 | React 18 + TypeScript | 生态最丰富，TradingView 自身前端亦用 React |
+| 前端框架 | React 19 + TypeScript 7（原生 `tsc`） | 生态最丰富，TradingView 自身前端亦用 React。版本随依赖升级专项批次上移（react 18→19、TS 5.6→6→7，见 git log `507be30`…`956fa1f` 与 OPEN-DECISIONS），选型方向不变 |
 | 构建工具 | Vite | 冷启动快，HMR 友好 |
 | 图表渲染 | **自研 Canvas 2D 引擎**（框架无关） | 只有自研才能完全掌控坐标换算、图层、画线交互，实现 1:1 |
 | 状态管理 | Zustand（UI 层）+ 引擎内部订阅制（渲染态不进 React） | 高频行情更新不能触发 React 重渲染 |
