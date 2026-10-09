@@ -177,6 +177,16 @@ export class RenderPipeline {
         legend.decimals,
       );
     }
+    // Marquee 框选（二期-C2）：虚线选框（与放置预览同层，面板局部坐标）
+    const mq = this.host.drawing.marqueeRect;
+    if (mq) {
+      ctx.save();
+      ctx.strokeStyle = theme.crosshair;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(Math.min(mq.x0, mq.x1), Math.min(mq.y0, mq.y1), Math.abs(mq.x1 - mq.x0), Math.abs(mq.y1 - mq.y0));
+      ctx.restore();
+    }
     ctx.restore();
 
     const hoveredPane = st.panes.find((p) => p.id === st.hoveredPaneId) ?? st.panes[0];

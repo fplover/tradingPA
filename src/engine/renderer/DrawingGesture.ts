@@ -8,6 +8,7 @@ import { DragBroadcast, draggedHlinePrice } from '../drawing/dragBroadcast';
 import { computeDragPoints } from '../drawing/drawDrag';
 import { detectVisibleSwing } from '../drawing/fibMath';
 import { hitDrawings, type DrawingHit } from './hitTest';
+import { marqueeSelectIds, type MarqueeRect } from '../drawing/marqueeSelect';
 import { syncDrawingSelection, type SelectionPopupTracker } from './selectionPopup';
 
 /**
@@ -62,6 +63,8 @@ export class DrawingGesture {
   private previewPoint: DrawingPoint | null = null;
   private dragDrawing: DrawingDrag | null = null;
   private pendingClone: PendingClone | null = null;
+  /** Marquee 框选（二期-C2）：Shift+空白拖拽的选框（面板局部坐标；null = 非框选态） */
+  private marquee: MarqueeRect | null = null;
   /** 画线悬停光标：body=move、handle=pointer（决策纯函数在 cursor.ts） */
   private hover = '';
   /** 拖拽广播门襟（P2-D③）：水平线价格实际变化才请求合帧广播 */
@@ -83,6 +86,10 @@ export class DrawingGesture {
   }
   get preview(): DrawingPoint | null {
     return this.previewPoint;
+  }
+  /** Marquee 选框（渲染层画虚线框用；null = 无框选） */
+  get marqueeRect(): MarqueeRect | null {
+    return this.marquee;
   }
   get hoverCursor(): string {
     return this.hover;
@@ -138,6 +145,34 @@ export class DrawingGesture {
   deselect(): void {
     this.layer.select(null);
     this.syncSelection();
+  }
+
+  // ---------- Marquee 框选多选（Shift+空白拖拽；决策纯函数在 marqueeSelect.ts） ----------
+
+  /** 开始框选（InputController 空白 Shift+按下时调用，替代平移） */
+  beginMarquee(x: number, y: number): void {
+    this.marquee = { x0: x, y0: y, x1: x, y1: y };
+    this.host.invalidate();
+  }
+
+  /** 框选拖拽（面板局部坐标） */
+  updateMarquee(x: number, y: number): void {
+    if (!this.marquee) return;
+    this.marquee = { ...this.marquee, x1: x, y1: y };
+    this.host.invalidate();
+  }
+
+  /** 松柄：命中集合整组替换多选；零尺寸选框（单击）视为取消 */
+  endMarquee(): void {
+    if (!this.marquee) return;
+    const rect = this.marquee;
+    this.marquee = null;
+    const dctx = this.host.drawingCtx();
+    const ids = marqueeSelectIds(this.layer.list(), rect, dctx, this.host.chartW(), dctx.geo.chartH);
+    this.layer.setSelection(ids);
+    if (ids.length > 0) this.host.notifyDrawings();
+    this.syncSelection();
+    this.host.invalidate();
   }
 
   /** 画布级画线命中（锁定态守卫 + 上下文装配；逐对象判定在 hitTest.ts） */
@@ -230,6 +265,10 @@ export class DrawingGesture {
 
   // ---------- 内部：指针迁移 / 拖拽广播 / 多边形顶点编辑 / Auto Fib ----------
   onPointerMove(x: number, y: number, paneY: number, shift: boolean): boolean {
+    if (this.marquee) {
+      this.updateMarquee(x, y - paneY);
+      return true;
+    }
     if (this.pendingClone) {
       // B7：Ctrl+拖动——首次移动超过 2px 阈值即懒克隆并进入克隆体拖拽（原对象不动）
       const dctx = this.host.drawingCtx();
@@ -284,6 +323,11 @@ export class DrawingGesture {
 
   /** 松柄：无移动的 Ctrl+点击 = 多选切换（TV）；移动过的已在 move 懒克隆并清空 */
   onPointerUp(): void {
+    // Marquee 松柄：按选框命中整组选中（拖拽路径未经过 beginDrag，无克隆/拖拽态）
+    if (this.marquee) {
+      this.endMarquee();
+      return;
+    }
     if (this.pendingClone) {
       this.layer.toggleSelect(this.pendingClone.id);
       this.host.notifyDrawings();

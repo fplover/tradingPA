@@ -105,8 +105,8 @@ describe('P2-B 文字类工具注册', () => {
     expect(getToolDef('arrow-mark').defaultStyle.text).toBe('标记');
     expect(getToolDef('price-label').defaultStyle.color).toBe('#787b86'); // TV 灰
   });
-  it('DRAWING_TOOLS 总数 41 且新工具追加在既有 17 之后', () => {
-    expect(DRAWING_TOOLS).toHaveLength(41);
+  it('DRAWING_TOOLS 总数 45 且新工具追加在既有 17 之后', () => {
+    expect(DRAWING_TOOLS).toHaveLength(45);
     expect(DRAWING_TOOLS[17].id).toBe('note');
     expect(DRAWING_TOOLS[20].id).toBe('arrow-mark');
     expect(DRAWING_TOOLS[22].id).toBe('percent-line'); // 百分比线追加在 measure 之后

@@ -112,3 +112,44 @@ export function TvFibSpiral({ size, strokeWidth, ...rest }: TvIconProps): JSX.El
     </TvIcon>
   );
 }
+
+/** 二期-C2 杂项四工具图标 */
+
+/** 预测形态：实线锚段 + 虚线投影箭头 */
+export function TvForecast({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
+  return (
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
+      <path d="M3 19l6-8" />
+      <path d="M9 11l9-6" strokeDasharray="2.5 2.5" />
+      <path d="M18 5l2.5 1-1 2.5" />
+    </TvIcon>
+  );
+}
+
+/** 圆形：正圆 + 中线 */
+export function TvCircle({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
+  return (
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
+      <circle cx="12" cy="12" r="8" />
+    </TvIcon>
+  );
+}
+
+/** 价格注记：旗标 + 右向虚线 */
+export function TvPriceNote({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
+  return (
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
+      <path d="M4 12h16" strokeDasharray="2.5 2.5" />
+      <path d="M8 12l-3-3.5h6z" />
+    </TvIcon>
+  );
+}
+
+/** 图标标记：星形（SVG 矢量图标集代表，非 emoji） */
+export function TvIconMark({ size, strokeWidth, ...rest }: TvIconProps): JSX.Element {
+  return (
+    <TvIcon size={size} strokeWidth={strokeWidth} {...rest}>
+      <path d="M12 3l2.7 5.8 6.3.8-4.6 4.3 1.2 6.1L12 17l-5.6 3 1.2-6.1L3 9.6l6.3-.8z" />
+    </TvIcon>
+  );
+}

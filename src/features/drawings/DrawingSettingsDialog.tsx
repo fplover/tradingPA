@@ -6,6 +6,7 @@ import { Checkbox } from '@/ui/controls';
 import { ToolbarSelect, type ToolbarOption } from '@/ui/ToolbarSelect';
 import { fontSize, radius, space } from '@/ui/tokens';
 import { defaultLevelsFor, type DrawingTypeId } from '@/engine/drawing/types';
+import { ICON_MARK_PATHS, iconMarkKeyOf } from '@/engine/drawing/iconMarks';
 import { DrawingLevelsEditor } from './DrawingLevelsEditor';
 
 const LINE_WIDTH_OPTIONS: ToolbarOption[] = [1, 2, 3, 4].map((w) => ({ value: String(w), label: `${w}px` }));
@@ -32,12 +33,57 @@ export function DrawingSettingsDialog({ renderer }: { renderer: ChartRenderer | 
     force();
   };
 
-  // 分割档位（fib / 扩展 / 百分比线）：自定义 levels 优先，undefined 时展示工具默认档
+  // 分割档位（fib / 扩展 / 百分比线 / 通道）：自定义 levels 优先，undefined 时展示工具默认档
   const supportsLevels = LEVELS_TOOLS.has(drawing.type);
   const effectiveLevels = drawing.levels ?? defaultLevelsFor(drawing.type) ?? [];
+  // 图标标记（二期-C2）：图标键存 style.text，选择器与画布渲染共用同一 SVG path 数据源
+  const isIconMark = drawing.type === 'icon-mark';
 
   return (
     <Modal open onOpenChange={(o) => !o && setSettingsFor(null)} title="画线设置" width={supportsLevels ? 320 : 300}>
+      {isIconMark && (
+        <Row label="图标">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: space.xs }}>
+            {Object.entries(ICON_MARK_PATHS).map(([key, def]) => {
+              const active = iconMarkKeyOf(drawing.style.text) === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  title={def.label}
+                  aria-label={def.label}
+                  onClick={() => setStyle({ text: key })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 3,
+                    border: '1px solid var(--border)',
+                    borderRadius: radius.sm,
+                    background: active ? 'var(--border)' : 'none',
+                    color: 'var(--text)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d={def.d} />
+                  </svg>
+                </button>
+              );
+            })}
+          </div>
+        </Row>
+      )}
       {supportsLevels && (
         <DrawingLevelsEditor
           levels={effectiveLevels}

@@ -70,6 +70,11 @@ export class DrawingLayer {
       : [...this.selectedIds, id];
   }
 
+  /** 整组替换多选集合（marquee 框选松柄时调用；末尾为主锚） */
+  setSelection(ids: readonly string[]): void {
+    this.selectedIds = [...ids];
+  }
+
   private snapshot(): void {
     this.undoStack.push(this.drawings.map((d) => ({ ...d, points: d.points.map((p) => ({ ...p })) })));
     if (this.undoStack.length > 50) this.undoStack.shift();

@@ -80,7 +80,7 @@ function drawArrowMark(ctx: CanvasRenderingContext2D, d: Drawing, p: Pix): void 
 }
 
 /** 末端箭头（既是有箭头工具也是箭头标记的公共图元） */
-function arrowHead(ctx: CanvasRenderingContext2D, from: Pix, to: Pix, size: number): void {
+export function arrowHead(ctx: CanvasRenderingContext2D, from: Pix, to: Pix, size: number): void {
   const angle = Math.atan2(to.y - from.y, to.x - from.x);
   ctx.beginPath();
   ctx.moveTo(to.x, to.y);

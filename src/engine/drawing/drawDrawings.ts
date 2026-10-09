@@ -17,6 +17,16 @@ import { drawGann, hitTestGann } from './gannRender';
 import { drawElliott, hitTestElliott } from './elliottRender';
 import { drawPatterns, hitTestPatterns } from './patternRender';
 import { drawFibChannel, drawFibSpiral, hitTestFibChannel, hitTestFibSpiral } from './fibTailRender';
+import {
+  drawCircle,
+  drawForecast,
+  drawIconMark,
+  drawPriceNote,
+  hitTestCircle,
+  hitTestForecast,
+  hitTestIconMark,
+  hitTestPriceNote,
+} from './miscRender';
 import { drawLineFamily } from './lineRender';
 import { drawHandles, strokeLine } from './drawingChrome';
 import { pointToPixel, type DrawContext } from './coords';
@@ -154,6 +164,15 @@ export function hitTestDrawing(
       return hitTestFibChannel(drawing, ctx, x, y) ? { part: 'body' } : null;
     case 'fib-spiral':
       return hitTestFibSpiral(pts, x, y) ? { part: 'body' } : null;
+    // 二期-C2：杂项四工具
+    case 'forecast':
+      return hitTestForecast(pts, x, y) ? { part: 'body' } : null;
+    case 'circle':
+      return hitTestCircle(pts, x, y) ? { part: 'body' } : null;
+    case 'price-note':
+      return hitTestPriceNote(pts, ctx, x, y) ? { part: 'body' } : null;
+    case 'icon-mark':
+      return hitTestIconMark(pts, x, y) ? { part: 'body' } : null;
     default:
       return null;
   }
@@ -322,6 +341,19 @@ function drawOne(ctx: CanvasRenderingContext2D, d: Drawing, dctx: DrawContext, d
       break;
     case 'fib-spiral':
       drawFibSpiral(ctx, pts);
+      break;
+    // 二期-C2：杂项四工具（预测 / 圆形 / 价格注记 / 图标标记）
+    case 'forecast':
+      drawForecast(ctx, pts);
+      break;
+    case 'circle':
+      drawCircle(ctx, d, pts);
+      break;
+    case 'price-note':
+      drawPriceNote(ctx, d, pts, dctx, decimals);
+      break;
+    case 'icon-mark':
+      drawIconMark(ctx, d, pts);
       break;
   }
   ctx.setLineDash([]);

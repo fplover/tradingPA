@@ -181,6 +181,12 @@ export class InputController {
     }
     // 交易可视化命中：挂单线拖动改价 / 撤单 / 持仓详情块拖动设 TP-SL
     if (this.trade.onPointerDown(this.chartX(x), y, pane)) return;
+    // Marquee 框选多选（二期-C2）：Shift+空白按下 = 框选而非平移（口径登记 OPEN-DECISIONS）
+    if (e.shiftKey) {
+      this.drawing.deselect();
+      this.drawing.beginMarquee(this.chartX(x), y - pane.y);
+      return;
+    }
     this.drawing.deselect();
     if (this.popup) selectStudyAt(this.host, this.popup, this.chartX(x), y); // 指标选中（互斥单选；空白点击即清除）
     this.panzoom.beginPan(e.clientX, e.clientY);

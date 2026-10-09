@@ -58,7 +58,13 @@ export type DrawingTypeId =
   | 'triangle-expanding'
   // 二期-C1 斐波那契补尾：通道（档位平行通道组）/ 螺旋（对数螺旋，TV 简化口径登记）
   | 'fib-channel'
-  | 'fib-spiral';
+  | 'fib-spiral'
+  // 二期-C2 杂项：预测形态（锚段实线 + 投影虚线箭头）/ 圆形（两点定径）/
+  // 价格注记（锚价旗标 + 右向延伸）/ 图标标记（SVG 矢量图标，D3 裁决非 emoji）
+  | 'forecast'
+  | 'circle'
+  | 'price-note'
+  | 'icon-mark';
 
 export interface DrawingStyle {
   color: string;
@@ -196,6 +202,21 @@ export const DRAWING_TOOLS: DrawingToolDef[] = [
   // 二期-C1 斐波那契补尾：通道档位可自定义（level=1 基准档恰过第三锚点）；螺旋两点
   { id: 'fib-channel', label: '斐波那契通道', points: 3, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
   { id: 'fib-spiral', label: '斐波那契螺旋', points: 2, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  // 二期-C2 杂项四工具：图标标记的 style.text 存图标键（iconMarks.ts 注册表）
+  { id: 'forecast', label: '预测形态', points: 3, defaultStyle: { color: PALETTE.blue, lineWidth: 2 } },
+  {
+    id: 'circle',
+    label: '圆形',
+    points: 2,
+    defaultStyle: { color: PALETTE.blue, lineWidth: 1, fillColor: PALETTE.blue22 },
+  },
+  { id: 'price-note', label: '价格注记', points: 1, defaultStyle: { color: PALETTE.gray, lineWidth: 1 } },
+  {
+    id: 'icon-mark',
+    label: '图标标记',
+    points: 1,
+    defaultStyle: { color: PALETTE.amber, lineWidth: 2, text: 'flag' },
+  },
 ];
 
 export function getToolDef(id: DrawingTypeId): DrawingToolDef {

@@ -26,6 +26,7 @@ import {
   TvHeadShoulders,
   TvHeadShouldersInverse,
   TvHline,
+  TvIconMark,
   TvInfoLine,
   TvMagnet,
   TvMeasure,
@@ -34,6 +35,7 @@ import {
   TvPercentLine,
   TvPolygon,
   TvPriceLabel,
+  TvPriceNote,
   TvRay,
   TvRect,
   TvTriangleExpanding,
@@ -41,6 +43,8 @@ import {
   TvAbcPattern,
   TvText,
   TvTrendline,
+  TvCircle,
+  TvForecast,
   TvVline,
   type TvIconComponent,
 } from './tvIconSet';
@@ -103,6 +107,11 @@ export const ICONS: Record<ToolbarItem, TvIconComponent> = {
   // 二期-C1 斐波那契补尾
   'fib-channel': TvFibChannel,
   'fib-spiral': TvFibSpiral,
+  // 二期-C2 杂项
+  forecast: TvForecast,
+  circle: TvCircle,
+  'price-note': TvPriceNote,
+  'icon-mark': TvIconMark,
   magnet: TvMagnet,
 };
 
@@ -136,9 +145,9 @@ export const GROUPS: ToolGroup[] = [
     ],
     title: '江恩和斐波那契工具',
   },
-  { items: ['rect', 'ellipse', 'path', 'polygon', 'arc', 'curve'], title: '几何形状' },
-  { items: ['text', 'anchored-text', 'note', 'price-label', 'arrow-mark'], title: '文本工具' },
-  { items: ['measure'], title: '预测和测量工具' },
+  { items: ['rect', 'ellipse', 'path', 'polygon', 'arc', 'curve', 'circle'], title: '几何形状' },
+  { items: ['text', 'anchored-text', 'note', 'price-label', 'price-note', 'arrow-mark'], title: '文本工具' },
+  { items: ['measure', 'forecast'], title: '预测和测量工具' },
   { items: ['elliott-wave'], title: '艾略特波浪' },
   // 二期-C1：形态家族（TV「图式」组；谐波 4 变体带比率校验）
   {
@@ -155,6 +164,8 @@ export const GROUPS: ToolGroup[] = [
     ],
     title: '形态工具',
   },
+  // 二期-C2：图标标记（D3 裁决：SVG 矢量图标，非 emoji）
+  { items: ['icon-mark'], title: '图标标记' },
 ];
 
 export const TOOL_LABELS: Record<ToolbarItem, string> = {
@@ -196,6 +207,10 @@ export const TOOL_LABELS: Record<ToolbarItem, string> = {
   'triangle-expanding': '三角扩散',
   'fib-channel': '斐波那契通道',
   'fib-spiral': '斐波那契螺旋',
+  forecast: '预测形态',
+  circle: '圆形',
+  'price-note': '价格注记',
+  'icon-mark': '图标标记',
   rect: '矩形',
   ellipse: '椭圆',
   path: '路径',

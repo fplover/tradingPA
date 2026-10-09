@@ -56,6 +56,8 @@
 
 预估 8–12 人日（最大单批，可拆 C1 形态 / C2 杂项两批）。
 
+> **交付记录（2026-10-09，C1 `1e15104` + C2）**：画线工具 30 → 45。**C1**：形态家族 9 种（ABCD；谐波 4 变体带四腿比率校验；头肩顶底；三角收敛扩散）+ fib 通道/螺旋；**C2**：预测形态 / 圆形 / 价格注记 / 图标标记（D3 口径：SVG 矢量图标 8 种，iconMarks.ts 单一 path 数据源供 canvas Path2D 与选择器共用）+ Marquee 框选多选（Shift+空白拖拽，绑定与命中口径登记 OPEN-DECISIONS）；fib 螺旋简化口径同步登记。每新家族独立 math/render 模块（patternMath/patternRender/fibTailMath/fibTailRender/miscRender/iconMarks/marqueeSelect），单测 +34（形态 15 / fib 补尾 8 / marquee+杂项 11），§3 未勾项全部关闭。
+
 ### 二期-D · Pine 覆盖面扩展（无架构依赖）
 
 switch 语句、varip 声明、strategy 骨架（`strategy.entry/exit` 最小语义 → 模拟交易联动）、ta 函数扩充（pivothigh/pivotlow、vwap 会话重置、sar 已内置则对齐参数）。验收：每特性金标准用例；真实公开脚本样本兼容率抽样 ≥ 80%。预估 5–8 人日。
