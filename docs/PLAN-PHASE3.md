@@ -1,6 +1,6 @@
 # 三期开发规划（PLAN-PHASE3）
 
-> 状态：**草案，待裁决**。本文的批次 A–G 可先行讨论排期，但 §4 的三个决策点（D1 自建后端 / D4 MTF 多周期 / D6 取向）未裁决前不启动对应批次。
+> 状态：**草案，待裁决**。本文的批次 A–G 可先行讨论排期，但 §4 的三个决策点（D1 自建后端 / D4 MTF 多周期 / D6 取向）未裁决前不启动对应批次。**三期-H** 为批次 A 回传项，2026-10-12 由用户裁决立项，无裁决依赖。
 > **批次进度（2026-10-12）**：三期-A 已交付（见 §2-A 交付记录，零功能变更）；B/C/D/F 待 D6 取向裁决后排期，G 待 D1 裁决。
 > 取证日期：2026-10-09。所有「现状」论断带出处（`路径:行号` 或文档小节 + 行号）；工时为**估算**（单人，含单测与门禁适配，不含商务/托管申请），已标注。
 > 工具链基线：TS 7 原生 `tsc` / oxlint / Vite 8 Rolldown（见 README「质量门禁」）。
@@ -49,7 +49,24 @@
 3. **承重键旁注**：`@typescript-eslint/no-unused-vars` 键上方加注释 + README 记录探针结论（`npx oxlint -c` 双配置对照：core 规则置 `error` 时带键 0 错 / 去键 1 错）。**JSONC 兼容性实证**：带 `//` 注释的配置被 oxlint 正常解析（bogus 规则名探针反证解析失败会硬报错），`prettier --check` 通过。
 4. **历史规格陈旧标注**：`docs/SPEC-PHASE1-FEATURE-BREADTH.md` 标注 blockquote 已在位，按规划「不改写历史」登记为已处置；TS7 panic 判据无需改动。顺带勘正本文 §1 目标 3 的 `qxlintrc` 笔误。
 
-**门禁（2026-10-12 实跑）**：`npm run verify` 全绿——typecheck 0 错 / oxlint **0 错 0 警告**（366 文件，含带 `//` 注释的 `.oxlintrc.json`）/ format:check 绿 / 单测 **81 文件 1305 例全过**；`npm run test:e2e -- --retries=0` **59 例全过**（2.3 分钟，27 面黄金截图零 diff，dev server 手动起）；`npm run build` 通过，7 chunk、最大应用块 495.47 kB（gzip 141.16 kB，未触发 >500 kB 警告）。**差集为零**：本批次只改 README / `.oxlintrc.json` 注释 / 两份文档，源码与测试未动，用例数与截图面数与二期收官基线一致。**下一步**：批次 A 无遗留动作；②③ 两条 OPEN 行不阻塞 B/C/D，但 B 之前建议先裁决「latest-ref 渲染期同步」是否列为有意例外（否则遮蔽清单会随该文件改动继续增长）。
+**门禁（2026-10-12 实跑）**：`npm run verify` 全绿——typecheck 0 错 / oxlint **0 错 0 警告**（366 文件，含带 `//` 注释的 `.oxlintrc.json`）/ format:check 绿 / 单测 **81 文件 1305 例全过**；`npm run test:e2e -- --retries=0` **59 例全过**（2.3 分钟，27 面黄金截图零 diff，dev server 手动起）；`npm run build` 通过，7 chunk、最大应用块 495.47 kB（gzip 141.16 kB，未触发 >500 kB 警告）。**差集为零**：本批次只改 README / `.oxlintrc.json` 注释 / 两份文档，源码与测试未动，用例数与截图面数与二期收官基线一致。**下一步**：批次 A 无遗留动作。回传的 ②（oxlint 指令抑制半径机制）仍为 OPEN 待查，不阻塞 B/C/D。①的门禁盲区经用户裁决（2026-10-12）为**立项改造**（不写死为有意例外），已立 **§2-H 三期-H · useChartSeries 门禁盲区清偿**，退出判据为该文件 disable 注释归零 + 单文件 lint 0/0 + 行为零变更。
+
+### 三期-H · useChartSeries 门禁盲区清偿（1–1.5 人日，估；2026-10-12 由用户裁决「立项改造」新立）
+
+**来源**：三期-A 交付记录回传的门禁盲区（`docs/decisions/OPEN-DECISIONS.md` 2026-10-12 两行）。`src/features/market/useChartSeries.ts:223` 一条 `react-hooks/exhaustive-deps` 指令连带遮蔽了同文件 **6 条 `react(refs)` + 1 条 `react(set-state-in-effect)`**，该文件的「0 警告」是指令锚定而非分析归零。
+
+**目标（退出判据，可机械验收）**：该文件 **disable 注释归零**且 `npx oxlint src/features/market/useChartSeries.ts` 0 错 0 警告——即三条诊断各自被真正的代码结构解决，不再靠指令抑制；行为零变更。
+
+| 项 | 现状（出处） | 动作 | 风险与护栏 |
+|---|---|---|---|
+| 渲染期同步 latest-ref（3 写） | `:40 instRef.current = instrument` / `:42 barsRef.current = history` / `:57 tfRef.current = tf` | 移入声明在**消费 effect 之前**的同步 effect（React effect 按声明序执行，消费方在 `:60` 起，故写入必先于读取）；`instrument` 对象标识逐渲染可变，deps 仍按 `id`/`timeframe` 收窄不变 | 消费点全在异步回调与 effect 体内（`loadMore`/`onBars`/`onStatus`），首帧读旧值的窗口需逐点核对；护栏：新增单测钉「切品种/切周期后首次异步回调取到的是新 inst」 |
+| 渲染期读 ref（`:231` useMemo 内 `instRef.current?.market`，报 3 条） | `bars` 的 `useMemo` 在渲染期读 ref | 把 `market` 改为**参与渲染的数据**（由 `instrument?.market` 直取，或让 `bars` memo 依赖 `market` 值）——渲染期不再碰 ref | memo 依赖面扩大一档（market 变化时重算，本就是预期语义）；护栏：`tests/unit` 补末柱报价合成用例锁定 tz 派生不变 |
+| effect 内同步 setState | `:109 setStatusDetail(\`拉取 ${base} 基期 K 线并聚合\`）` | 改为派生文案：聚合路径的 detail 由状态派生（`base`/`ratio` 已在同一渲染内可得），或用既有 `status` 通道承载，去掉这一处同步写 | 先做**去遮蔽重测**——移除遮蔽后同一 hook 的 `:63-65/:91-93` 同步 setState 是否也进入诊断（当前探针只见 1 条，疑为去重），据实扩围；此项不得凭现有计数下结论 |
+| exhaustive-deps 本身 | `:223` 指令 + 依赖缺 `tf`/`tf.seconds` | `const tf = useMemo(() => getTimeframe(timeframe), [timeframe])` 后把 `tf` 纳入依赖——标识仅随 `timeframe` 变，而 `timeframe` 已在依赖里，**可证为 no-op**；随后删除指令 | 需确认 `getTimeframe` 返回稳定引用（现为每渲染新建对象，故必须包 memo）；护栏：E2E `--retries=0` 59 例 + 27 面黄金截图零 diff 验证实时通道未反复重挂 |
+
+**排期定位**：本批次是**债务清偿**而非功能扩展，不依赖 D1/D4/D6 任一裁决，可与 B/C/D 并行；建议紧随三期-A 之后执行（A 已把遮蔽清单登记在案，越晚改动该文件，清单越易失真）。
+
+**不做**：不借此批改造 React Compiler 规则本身、不为过门禁加 `.oxlintrc.json` 规则级豁免、不动 `Chart.tsx:108` 与 `ChartWorkspace.tsx:175` 两条（二者经删除探针证实**只抑制自身那一行**，无连带遮蔽，属真·有意例外）。
 
 ### 三期-B · 设置对话框页级补齐与控件深化（6–9 人日，估）
 
@@ -124,11 +141,12 @@
 ```
 三期-A（1–2d，无依赖） ──┬──> 三期-B（6–9d）──┬──> 三期-C（5–7d）
                           ├──> 三期-D（3–5d）  │
-                          └──> 三期-F（2–3d）  ┘
+                          ├──> 三期-F（2–3d）  ┘
+                          └──> 三期-H（1–1.5d，债务清偿，无裁决依赖，建议紧随 A）
 三期-E（2–3d）依赖 D6 取向；三期-G 依赖 D1 裁决（不在默认排期）
 ```
 
-- **默认排期（D1=档 0、D6=收敛）**：A → B → C → D → F，合计 **17–26 人日**。
+- **默认排期（D1=档 0、D6=收敛）**：A → H → B → C → D → F，合计 **18–27.5 人日**（H 为 A 回传项，2026-10-12 立项）。
 - **扩展排期（D6=扩展）**：再加 E，合计 **19–29 人日**。
 - **若 D1 上探**：G 另计 6–35 人日，且会反转 C2（CI 双栈）/C3（单点）/C4（合规）三项代价，需独立评估窗口。
 - 批次间无强阻塞，可并行 B/D，但 C 的右键粘贴依赖 B 的对话框模板页语义，建议串行。

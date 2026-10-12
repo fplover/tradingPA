@@ -96,7 +96,7 @@ docs/           Spec 与差距分析（见下）
 | 位置 | 规则 | 删掉后新增 | 为何保留 |
 |---|---|---|---|
 | `src/components/Chart.tsx:108` | `react-hooks/exhaustive-deps` | 1 条（missing deps: `bars` `symbol` `interval` `decimals` `exchange` `timeframeId` `chartType` `logScale` `onRendererReady`） | 该 effect 是**引擎挂载/卸载生命周期**，依赖必须为 `[]`；补齐依赖会让 Canvas 引擎随每批行情 dispose/recreate，渲染循环与视口状态全丢——属行为变更，非 lint 修复 |
-| `src/features/market/useChartSeries.ts:223` | `react-hooks/exhaustive-deps` | 8 条（1 条 exhaustive-deps：missing `tf` `tf.seconds`；另 **6 条 refs + 1 条 set-state-in-effect** 被同一条指令连带抑制） | 依赖按 `[id, timeframe, nonce]` 收窄是有意的（`tf` 由 `timeframe` 派生、`instRef` 由 `id` 决定，进依赖会让实时通道反复重挂）。被遮蔽的 7 条是「渲染期同步 latest-ref」与「effect 内同步 setState」两处既有模式，改造会改变行为——已作为**门禁盲区**登记 `docs/decisions/OPEN-DECISIONS.md`（2026-10-12 行）待专门批次处理，不得当作已清偿 |
+| `src/features/market/useChartSeries.ts:223` | `react-hooks/exhaustive-deps` | 8 条（1 条 exhaustive-deps：missing `tf` `tf.seconds`；另 **6 条 refs + 1 条 set-state-in-effect** 被同一条指令连带抑制） | 依赖按 `[id, timeframe, nonce]` 收窄是有意的（`tf` 由 `timeframe` 派生、`instRef` 由 `id` 决定，进依赖会让实时通道反复重挂）。被遮蔽的 7 条是「渲染期同步 latest-ref」与「effect 内同步 setState」两处既有模式——**该文件的「0 警告」是指令锚定而非分析归零**，不得当作已清偿；已登记为门禁盲区并经用户裁决（2026-10-12）**立项改造** → `docs/PLAN-PHASE3.md` §2-H 三期-H（退出判据：本文件 disable 归零 + 单文件 lint 0/0 + 行为零变更） |
 | `src/features/layout/ChartWorkspace.tsx:175` | `react-hooks/purity` | 1 条（`Date.now()` 渲染期读取） | 回放 bar 缺失瞬态的墙钟占位；改 effect+state 会触发 set-state-in-effect 且首帧取旧值，从 store/末柱派生会改变该瞬态显示值——两条替代路径均已核实为行为变更（理由同见该处 L172–174 注释） |
 
 **探针副产物（oxlint 1.87 的指令作用域，与 ESLint 语义不一致）**：在 `.ts` 自定义 hook 文件里，一条 react-hooks 指令会抑制**同文件其余行**的编译器规则诊断——把 `useChartSeries.ts:223` 的指令移到同文件任意其他位置（含文件末尾）后，refs/purity/set-state 诊断仍全部消失；删掉指令则报出。而在 `.tsx` 双组件合成件里，指令只对紧邻下一行生效。机制未证实（疑与该函数是否走 React Compiler 路径有关），已在 OPEN-DECISIONS 登记为待查项。
@@ -160,7 +160,7 @@ npm run test:e2e
 |---|---|
 | [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) | 开发计划与 1:1 对照清单（§3 为功能验收基线） |
 | [docs/PLAN-PHASE2.md](docs/PLAN-PHASE2.md) | 二期七批次规格与交付记录；§3 二期「明确不做」清单、§5 决策点 D1/D2/D3 裁决（D1 不引入后端） |
-| [docs/PLAN-PHASE3.md](docs/PLAN-PHASE3.md) | **三期规划（草案，待裁决）**：批次 A–G 的范围/出处/人日，§3 明确不做结转，§4 决策点 D1/D4/D6；**三期-A 已交付**（§2-A 交付记录） |
+| [docs/PLAN-PHASE3.md](docs/PLAN-PHASE3.md) | **三期规划（草案，待裁决）**：批次 A–H 的范围/出处/人日，§3 明确不做结转，§4 决策点 D1/D4/D6；**三期-A 已交付**（§2-A），**三期-H 已立项**（§2-H 门禁盲区清偿） |
 | [docs/SPEC-TV-ALIGNMENT.md](docs/SPEC-TV-ALIGNMENT.md) | TV 对齐 v2.0 主规格；**§12 变更记录 = 项目决策登记表** |
 | [docs/SPEC-PHASE1-FEATURE-BREADTH.md](docs/SPEC-PHASE1-FEATURE-BREADTH.md) | 一期「功能广度」批次（原 `SPEC-P1`）规格与交付记录 |
 | [docs/SPEC-PHASE1-CLOSEOUT.md](docs/SPEC-PHASE1-CLOSEOUT.md) | 一期「收官」批次（原 `SPEC-P2`）规格与交付记录 |
