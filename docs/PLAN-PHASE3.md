@@ -1,7 +1,7 @@
 # 三期开发规划（PLAN-PHASE3）
 
 > 状态：**三个决策点已全部裁决（2026-10-12）**——D1 维持档 0 并**关闭重评入口**、D4 MTF **不做**（登记为明确不做）、D6 取向 **收敛**。批次 B/C/D 可直接排期，E/F/G 已按裁决移出（详见 §4 与 `docs/decisions/OPEN-DECISIONS.md` 2026-10-12 三行）。**三期-H** 为批次 A 回传项，同日由用户裁决立项。
-> **批次进度（2026-10-12）**：三期-A 已交付（见 §2-A 交付记录，零功能变更）；三期-H 已交付（见 §2-H 交付记录，该文件 disable 归零 + 行为零变更）；**三期-B 开工取证完成并重排**（加 B0 前置、撤事件页，4.5–6.5 → **6–8 人日**，见 §2-B）；**三期-B0 已交付**（设置态单一来源 + 偏好落盘，见 §2-B 的 B0 交付记录）；**三期-B1 已交付**（图表设置「模板」页 + 模板 store，见 §2-B 的 B1 交付记录）；**B → C → D 为收敛取向下的全部剩余功能面**，E/F/G 不排期。
+> **批次进度（2026-10-12）**：三期-A 已交付（见 §2-A 交付记录，零功能变更）；三期-H 已交付（见 §2-H 交付记录，该文件 disable 归零 + 行为零变更）；**三期-B 开工取证完成并重排**（加 B0 前置、撤事件页，4.5–6.5 → **6–8 人日**，见 §2-B）；**三期-B0 已交付**（设置态单一来源 + 偏好落盘，见 §2-B 的 B0 交付记录）；**三期-B1 已交付**（图表设置「模板」页 + 模板 store，见 §2-B 的 B1 交付记录）；**三期-B2 已交付**（图表设置「交易」页 + 交易偏好 store + 引擎交易层显隐开关，见 §2-B 的 B2 交付记录）；**B → C → D 为收敛取向下的全部剩余功能面**，E/F/G 不排期。
 > 取证日期：2026-10-09。所有「现状」论断带出处（`路径:行号` 或文档小节 + 行号）；工时为**估算**（单人，含单测与门禁适配，不含商务/托管申请），已标注。
 > 工具链基线：TS 7 原生 `tsc` / oxlint / Vite 8 Rolldown（见 README「质量门禁」）。
 
@@ -21,11 +21,11 @@
 ## 1. 三期目标
 
 1. **收口灰区**：把交付时登记为「属后续增强」的项，逐项做掉或明确写死「不做」，让项目进入「无待办灰区」状态。
-2. **规格深化**：设置类对话框补齐 TV 的页级结构（交易/一般/**模板**；原列「事件」页经 2026-10-12 开工取证撤项，无数据面可接，见 §2-B 与 §3 第 7 条）。**模板页已随 B1 交付（2026-10-12）**，剩交易 / 一般两页。前置项 **B0：设置态单一来源 + 偏好落盘**同期立项（`chartConfigStore` 无 persist、画布偏好由对话框自持）。~~控件精度（number stepper、plot 类型下拉）~~ **2026-10-12 复核为已交付**，见 §2-B 校准行。
+2. **规格深化**：设置类对话框补齐 TV 的页级结构（交易/一般/**模板**；原列「事件」页经 2026-10-12 开工取证撤项，无数据面可接，见 §2-B 与 §3 第 7 条）。**模板页已随 B1 交付（2026-10-12）**、**交易页已随 B2 交付（2026-10-12）**，剩 **一般** 一页。前置项 **B0：设置态单一来源 + 偏好落盘**同期立项（`chartConfigStore` 无 persist、画布偏好由对话框自持）。~~控件精度（number stepper、plot 类型下拉）~~ **2026-10-12 复核为已交付**，见 §2-B 校准行。
 3. **工程债清理**：README 与 `oxlintrc` 类文档-代码口径漂移（三期-A 已处置）、lint disable 残留（原 **3 处**，三期-H 消除 1 处后**现 2 处**，二者经删除探针证实只抑制自身那一行、属真·有意例外，见 README「lint disable 台账」）、E2E 重试基线（`playwright.config.ts:17` `retries: 1` 与既定「`--retries=0` 全绿」标准不一致——登记为不排期残留，见 §2-F）。
 4. **决策落定**：D1（后端）、D4（MTF）、D6（取向）三个决策点给出书面裁决并结转进 OPEN-DECISIONS。**2026-10-12 全部达成**（档 0 + 关闭重评 / MTF 不做 / 收敛；三行已入册）。
 
-**量化验收口径（全期）**：`npm run verify` 全绿；`npm run test:e2e -- --retries=0` 全绿；`npm run build` 最大 chunk gzip ≤ 150 kB（三期-B1 后现 142.79 kB，留裕度）；Vitest 用例数 ≥ **1332**（三期-B1 后现量，+14 例来自 `tests/unit/chart-template-store.test.ts`）且不删既有断言。**注意原始体积口径**：B1 后应用块 500.61 kB 已越过 Vite 的 500 kB **警告阈值**（非门禁、不影响 gzip 口径），详见 §2-B 的 B1 交付记录「登记项」。
+**量化验收口径（全期）**：`npm run verify` 全绿；`npm run test:e2e -- --retries=0` 全绿；`npm run build` 最大 chunk gzip ≤ 150 kB（三期-B2 后现 143.80 kB，留裕度）；Vitest 用例数 ≥ **1344**（三期-B2 后现量，+12 例来自 `tests/unit/trade-settings.test.ts` 9 例与两份既有测试的 3 例新场景）且不删既有断言。**注意原始体积口径**：B1 后应用块 500.61 kB 已越过 Vite 的 500 kB **警告阈值**（非门禁、不影响 gzip 口径；B2 后为 503.85 kB），详见 §2-B 的 B1 交付记录「登记项」。
 
 ## 2. 批次划分
 
@@ -91,7 +91,8 @@
 |---|---|---|---|
 | **B0 · 设置态单一来源 + 偏好落盘**（2026-10-12 取证立项，**当日已交付**，见下方交付记录） | 三点实测：① `chartConfigStore.ts:57` 是 `create<ChartConfigStore>((set) => ({...}))`，**无 persist**——周期/类型/对数/百分比/自动坐标/画线锁定与隐藏/指标显隐/图例选项刷新即回默认；② `ChartSettingsDialog.tsx:54-61` 五项画布偏好（gridMode / borders / watermark / priceAxisPos / timeHour12）由**对话框自持 useState + 硬编码默认值**，全仓 setter 调用点核对：这五项的唯一写入方就是该对话框（引擎侧 `ChartController.ts:358-379` 只有薄委托，`state` 私有且无对应回读面）；③ `layoutSnapshot.ts:232-257` 的 `captureSnapshot` **不含任何显示偏好**，全仓 localStorage 键盘点亦无图表配置键 | 以 **store 为单一来源**：五项画布偏好迁入 `chartConfigStore`，对话框改读 store（保留「renderer 就绪即下发」路径，引擎由 store 播种而非由默认值覆盖）；标量偏好落盘 localStorage，transient 的 `compareSymbol` / `comparePickerOpen` **不落盘**。**不加引擎 getter**：唯一写入方即对话框，加回读面无必要，避免无谓扩大公开 API 面（签名冻结口径下 additive 也不滥加） | 1–1.5 |
 | **B1 · 图表设置「模板」页**（2026-10-12 交付，见下方 B1 交付记录） | 对话框为 **5 页**，全仓无任何「命名偏好快照」面（只有 B0 的单份当前值）；同一交互形态在指标对话框已有一份实现（`features/indicators/TemplateSection.tsx`） | 新增 `chartTemplateStore`（键 `tradingpa.chartTemplates.v1`，上限 20；快照单元 = B0 的 `ChartPrefs` 切片，校验层**共用** `parseChartPrefs`）；对话框加第 6 页签「模板」；模板分区**呈现层自指标面板抽出为共用件** `src/ui/NamedTemplateSection.tsx`，两个调用方各剩 store 适配器 | 含在「页级缺口」的 3–4 人日内（模板页实耗约 1） |
-| 设置对话框页级缺口 | **2026-10-12 校准**：今为 **5 页**（`ChartSettingsDialog.tsx:11` `TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观']`），原表误记「图表/外观/指标/警报 四页」（把指标对话框的页签混进了同一对话框）。TV 侧为 **9 页签**（`AUDIT-TV-UI-GAP:44`：商品代码/状态行/坐标和线条/画布/交易/一般/外观/警报/事件/模板） | 补 **交易 / 一般** 两页（**模板页已随 B1 交付**，2026-10-12，B1 后对话框为 6 页；原「四页」中的**事件**经取证撤项，见下行；缺口结论不变，仅现状描述勘正 + 一页撤出） | ~~3–4~~ → **2–3**（模板页已交付） |
+| **B2 · 图表设置「交易」页**（2026-10-12 立项并当日交付，见下方 B2 交付记录） | 交易默认值全仓**六处硬编码字面量（分布在 5 个文件）**：`OrderDialog.tsx:18` 的数量初值取 `qtyNum` prop、prop 缺省时落到字面量 `0.01`（`qtyNum` 全仓唯一实参又是下条的 `0.01`）、`TradePanel.tsx` 调用点的 `qtyNum={0.01}`、`ChartOrderMenu.tsx` 与 `ReplayBar.tsx` 各自的 `useState('0.01')`、`OrderDialog.tsx:20` 的止损默认 `price * 1.01`、`tradeStore.ts` 引擎构造的 `100_000`；`paperEngine` 无手续费/滑点概念。全仓无任何交易偏好落盘键 | 新增 `tradeSettingsStore`（键 `tradingpa.tradeSettings.v1`，四字段：默认数量 / 止损偏移 % / 初始资金 / 交易可视化显隐）承接六处硬编码；对话框加第 7 页签「交易」；引擎侧 **additive** 一层显隐开关（`ChartState.tradingVisible` + `setTradingVisible` + `tradingVisible()` 回读，命中测试单点收敛在 `TradeGesture.hitAt`） | 含在「页级缺口」预算内（实耗约 1.5） |
+| 设置对话框页级缺口 | **2026-10-12 校准**：取证时 **5 页**（`ChartSettingsDialog.tsx:11` `TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观']`；B1 后 6 页、B2 后 7 页），原表误记「图表/外观/指标/警报 四页」（把指标对话框的页签混进了同一对话框）。TV 侧为 **9 页签**（`AUDIT-TV-UI-GAP:44`：商品代码/状态行/坐标和线条/画布/交易/一般/外观/警报/事件/模板） | 补 **交易 / 一般** 两页（**模板页已随 B1 交付**、**交易页已随 B2 交付**，2026-10-12，B2 后对话框为 7 页；原「四页」中的**事件**经取证撤项，见下行；缺口结论不变，仅现状描述勘正 + 一页撤出） | ~~3–4~~ → ~~2–3~~ → **1–1.5**（模板页、交易页已交付，仅余一般页） |
 | 警报提示音开关**能力在、UI 入口无**（2026-10-12 随 B1 取证发现，**登记**） | `alertStore.ts:187` 的 `check()` 会按 `soundEnabled` 决定是否 `playAlertBeep()`（提示音实现 `features/alerts/sound.ts` 已交付且已接线），字段随 v2 存档持久化；但 `alertStore.ts:50` 的 `setSoundEnabled` **全仓调用点为 0**（含测试）——用户无法静音，属「能力已交付、入口缺失」。TV 九页签（`AUDIT-TV-UI-GAP:44`）含「警报」页，本批三页缺口未列它 | 补一个「警报」页签承载提示音开关（复用 B0/B1 的 store 读写口径），或明确写死「不做」并附理由。**未擅自并入 B1 交付**（B1 只承诺模板页），归属待裁决 | 0.5 |
 | ~~事件页（企业行动 / 分红 / 拆股标记）~~ **撤项** | 取证：`MarketSource` 接口（`src/types/market.ts:48-52`）**无任何事件类方法**，全仓 corporate-action 业务代码命中为 **0**；`AUDIT-TV-FEATURE-GAP:147,153` 已记该能力依赖外部数据 | **从 B 撤下**，转 §3 第 7 条「明确不做」并附触发条件。理由：真实增量是「新数据源 + 新标记渲染层」（3–5d），且受 D1=档 0 与「不付费、只用免费直连源」约束，当前定位下**无解锁路径**——与 MTF（§3 第 6 条）同类处置 | ~~1–1.5~~ → **0** |
 | 时间坐标格式选项残留 | 价格轴三态与 12/24h **已交付**（L29）；时间轴格式选项仍缺 | 补齐时间轴刻度格式（紧凑/小数位/时区显示口径） | 1–1.5 |
@@ -102,6 +103,7 @@
 **B 批次人日两次校准**：原 6–9 →（控件精度子项实测已交付）**4.5–6.5** →（2026-10-12 开工取证：加 B0 前置 1–1.5、撤事件页 0）**6–8 人日**。
 原估偏低的成因写清以防重犯：该 4.5–6.5 是按「补几个 tab 的纯 UI」估的，取证后发现**设置态无单一来源**（B0）与**事件页无数据面**两个非 UI 前提。
 **B1 后（同日）**：模板页交付，页级缺口行余 **交易 / 一般** 两页（3–4 → 2–3），批次总量 **6–8 人日不变**——B1 实耗约 1 人日，落在原页级缺口预算内；另外 B1 取证新登记一处「能力在、入口无」的警报提示音缺口（见上表，0.5 人日待裁决）。
+**B2 后（同日）**：交易页交付，页级缺口行余 **一般** 一页（2–3 → 1–1.5），批次总量 **6–8 人日不变**——B2 实耗约 1.5 人日，仍落在原页级缺口预算内。B2 开工取证另发现两处「规格缺口」不是纯 UI 活：① 交易默认值散在**五处硬编码**且 `paperEngine` 无手续费/滑点模型（故该两开关**有意不做**，见下方登记），② 交易可视化的显隐需要引擎侧 additive 开关（原规划只写了「补一页」）。
 
 #### B0 交付记录（2026-10-12）
 
@@ -133,6 +135,25 @@
 **变异探针（7 处，逐条还原后复跑全绿）**：store 侧——① `applyTemplate` 去掉 `setState` → 应用写回 1 例失败；② 快照校验换成 `t.prefs as ChartPrefs` → 坏枚举逐字段回落 1 例失败（证实「共用 `parseChartPrefs`」是被测面而非注释）；③ `resolveUniqueName` 的重名分支短路 → 序号 2 例失败；④ `persistTemplates` 去掉 `setItem` → 落盘与容量 4 例失败；⑤ 三处 `slice(0, MAX_CHART_TEMPLATES)` 换成 `Infinity` → 上限 2 例失败。呈现层侧——⑥ `ChartTemplateSection` 的 `onApply` 接成空函数 → 图表模板 E2E 失败（证明页签真连 store 动作，不只是渲染出行）；⑦ 指标适配器的 `onRename` 接成空函数 → 指标契约 E2E 失败（证明共用化后指标侧仍真连 `indicatorStore`）。另有一处非探针的自证：单测初稿的 `setTimeframe('1h')` 被 `tsc` 判非法（联合类型是 `1H`），而 vitest 不做类型检查会**放过这条无效断言**——偏好类字段的测试值必须过 typecheck。
 
 **登记（非遗漏）**：① 模板继承 B0 的两条边界——偏好为**全局**、不进布局快照；被删除的自定义周期若正被某模板引用，应用后 `getTimeframe` 走既有 `'1m'` 回退。② 模板**不含品种 / 布局 / 指标组合**（快照单元 = `ChartPrefs`），与指标对话框的模板是两套独立存档。③ 构建原始体积警告待裁决：接受警告 / 提 `chunkSizeWarningLimit` / 拆动态 import，本轮**未动 build 配置**。④ 「警报提示音开关能力在、UI 入口无」为 B1 取证新发现，已单列表行（0.5 人日，归属待裁决）。
+
+#### B2 交付记录（2026-10-12）
+
+**改动（3 新 + 14 改；含 4 个测试文件）**：
+- `src/store/tradeSettingsStore.ts`（新 135 行）：四字段偏好 `defaultQty` / `stopOffsetPct` / `initialBalance` / `showTrading`，键 `tradingpa.tradeSettings.v1`（含 `version: 1`，与 chartPrefs / chartTemplates 同口径）。`TRADE_LIMITS` 是**一份上下限两处用**：读档 clamp 与 UI `NumberStepper` 的 min/max 都取它，不留第二套口径。setter 只做 `round()` 归一（步进器 `value ± step` 真会产生 `0.01+0.01 → 0.010000000000000002` 这类噪声），**不在 setter 重复 clamp**——clamp 属于不可信输入边界（localStorage），区间内的手输值不该被静默改写。落盘仍走 B0 立起来的**单点订阅**（比对整片四字段，变化才写）。
+- 六处硬编码接入 store：`OrderDialog` 的 `qtyNum` prop 整体删除（该 prop 全仓唯一实参就是 `TradePanel.tsx` 的 `qtyNum={0.01}`，删 prop 才算真收口，否则只是把硬编码往上挪一层），数量与止损默认都直读 store；`ChartOrderMenu`、`ReplayBar` 各读 `defaultQty`；止损默认由 `price * 1.01` 改为 `price * (1 + stopOffsetPct / 100)`；`tradeStore` 的引擎构造与 `reset()` 都取 `initialBalance`（`reset` 原来是「无参 = 保留当前余额」，现一律回到当前偏好值）。
+- `src/features/settings/ChartTradingSection.tsx`（新 69 行）+ `src/ui/controls.tsx`（`SettingRow` 由对话框私有上提为共用件，两处调用）：三行数值 + 一个显隐开关 + 「何时生效」提示。
+- **引擎侧 additive 链（1 字段 + 2 方法 + 1 回读）**：`ChartState.tradingVisible = true` + `setTradingVisible()`（跟 `bordersVisible` / `hideStudies` 同一约定）；`RenderPipeline` 把 `drawTrading(...)` 整层包进该旗标；命中测试**单点收敛**在 `TradeGesture.hitAt`（三个消费方都走它：悬停 `HoverController.ts:143`、按下路由 `TradeGesture.ts:92`（由 `InputController.ts:182` 调用）、右键下单守卫 `InputController.ts:301`），故只在 `hitAt` 前置一行，不在三个调用点各设一道守卫；`ChartController` 加 `setTradingVisible()` 与 `get tradingVisible()`（回读口径与 `watermarkOn` / `studiesHidden` 一致，专供 E2E 证接线）。默认 `true`，27 面黄金截图零 diff 由单测证明而非假设（关档帧内仍有图例商品行文字，只是交易层消失）。
+
+**播种口径：挂载生命周期，不是 effect**。偏好变化后要让下次打开的表单拿到新值，最省事的写法是在 `useEffect` 里 `setQty(defaultQty)`——那正是 `react(set-state-in-effect)` 规则的形状（三期-H 刚归零）。改为依赖既有事实：**Radix Dialog 关闭即卸载子树**、**`ChartOrderMenu` 拆成 gate（`!open` 返回 `null`）+ `OrderForm`**、**`ReplayBar` 由 `replayActive` 条件挂载**（`ChartWorkspace.tsx:268`）。于是「打开」本身就是一次全新挂载，初值天然取当前偏好，无需 effect、无需 remount key。**行为副作用（已核对无测试依赖）**：浮窗的买/卖方向与市价/限价档不再跨次打开保留，每次回到 买入 + 限价。
+
+**门禁**：`npm run verify` 绿（typecheck 0 错 / oxlint **375 文件 0 错 0 警告** / format:check 绿 / 单测 **85 文件 1344 例**，+12 例 = `tests/unit/trade-settings.test.ts` 9 例 + `renderer-input.test.ts` 2 例 + `gestures.test.ts` 1 例）；E2E `--retries=0` **63 例全过、27 面黄金截图零 diff**（新增「交易页偏好跨刷新保留并流入下单表单」）；`npm run build` 应用块 **503.85 kB / gzip 143.80 kB**——gzip 仍在 ≤150 kB 口径内，原始体积继续落在 B1 已登记的 500 kB 警告阈值之上（+3.24 kB，同一未裁决项，本轮仍未动 build 配置）。
+
+**变异探针（10 处，逐条还原后复跑全绿；每次只杀命中的那条，其余用例全过）**：
+- 引擎链——① `RenderPipeline` 的 `if (st.tradingVisible)` 换成 `if (true)` → `renderer-input` 关档帧用例失败（关档后 `限价` 标签仍在帧内）；② 删 `TradeGesture.hitAt` 的显隐前置行 → `gestures` 隐藏态用例 + `renderer-input`「隐藏时挂单线不可点」用例共 2 例失败；⑤ `ChartController.setTradingVisible` 方法体清空 → `renderer-input` 的显隐 2 例失败 + `settings.spec.ts:252` 引擎回读 poll 失败（收到 `true`）；`gestures` 的隐藏态用例**不受影响**（它直接构造 host 字面量、不经 `ChartController`），故该处变异单独证明的是「控制器委托到 ChartState」这一环，与 ② 证明的命中守卫不是同一件事。
+- store 与偏好流——③ 去掉订阅里的 `savePrefs(next)` → 落盘用例 + 浮点噪声用例 2 例失败；④ `readNumber` 去掉 clamp 直返 → `TRADE_LIMITS` 用例失败（`1e12` 未回落到 `1e6`）。
+- 页签与调用点——⑧ `{tab === '交易' && <ChartTradingSection />}` 换成 `null` → `settings.spec.ts:226` 页签初值用例失败；⑥ `OrderDialog` 数量初值改回 `'0.01'` → `:276` 失败；⑦ 止损默认改回 `price * 1.01` → `:280` 失败（得 `1294.63`，非 2% 口径）；⑨ `ChartOrderMenu` 数量初值改回 `'0.01'` → `:294` 失败（第六个调用点的独立证据，此前该文件无任何测试覆盖）；⑩ 把 gate 的 `if (!open) return null` 换成 CSS `display:none` 常驻挂载 → `:302`「关掉再开回到 限价档」失败（证明「按打开生命周期重新播种」是被测面，不是注释里的说法）。
+
+**登记（非遗漏）**：① **手续费 / 滑点没有开关**，且是有意不做——`paperEngine` 无此概念，加了只能是假开关（文件头注已写明）。② **交易偏好不进 B1 图表模板**：B1 的快照单元是 `ChartPrefs`，`ChartTemplate` 不含 `tradeSettingsStore` 切片，故「应用模板」不会带动默认数量 / 初始资金 / 可视化显隐。要不要扩快照单元（以及是否算 B1 交付记录的口径变更）**待裁决**，本轮不擅自改既有存档 schema。③ `showTrading` 的下发只覆盖**主图 renderer**，与 B0 画布五项目前同样的边界一致；多图表「应用到全部」另立项。④ `initialBalance` 只在 `reset()` 时生效，已有持仓/余额不被追溯改写（提示文案已写明）。⑤ 浮窗方向/档位每次重置（见上方行为副作用）。
 
 ### 三期-C · 交互与数据面板（5–7 人日，估）
 
@@ -206,14 +227,14 @@
 ```
 三期-A（1–2d，无依赖） ──> 已交付（2026-10-12）
 三期-H（1–1.5d，债务清偿） ──> 已交付（2026-10-12）
-                              ┌──> 三期-B（6–8d，**B0 + B1 已交付**，余约 4–6d；事件页已撤项）
+                              ┌──> 三期-B（6–8d，**B0 + B1 + B2 已交付**，余约 2.5–4.5d；事件页已撤项）
 剩余功能面 = ─────────────────┼──> 三期-C（5–7d，右键粘贴的前提「B 模板页」已随 B1 解锁）
                               └──> 三期-D（3–5d，可与 B 并行）
 不排期：三期-E、三期-F（D6=收敛）；三期-G（D1=档 0，批次撤销）
 ```
 
 - **合计 14–20 人日**（B 6–8 + C 5–7 + D 3–5）。上一版「12.5–18.5」随 B 批次 2026-10-12 开工取证重排作废（B0 前置入表 +1–1.5，事件页撤项 0）。原「默认排期 A → H → B → C → D → F，18–27.5 人日」与「扩展排期 +E，19–29 人日」两案随 D6 裁决作废。
-  **已消耗（2026-10-12）**：B0 约 1–1.5 + B1 约 1 ⇒ **B 余约 4–6 人日**，全期剩余约 **12–18 人日**（另有 B1 取证新登记的警报提示音入口 0.5 人日待裁决，不计入）。
+  **已消耗（2026-10-12）**：B0 约 1–1.5 + B1 约 1 + B2 约 1.5 ⇒ **B 余约 2.5–4.5 人日**（页级缺口仅余「一般」页 1–1.5，其余为时间轴格式 1–1.5 与轴宽参数化 1），全期剩余约 **10.5–16.5 人日**（另有 B1 取证新登记的警报提示音入口 0.5 人日待裁决，不计入）。
 - 批次间无强阻塞：B 与 D 可并行，**C 的画线粘贴语义依赖 B 的模板页**（该前提已随 **B1 交付解锁**，2026-10-12），C 其余项可即行。
 - **不排期残留项一览**（有裁决依据、非遗忘）：① `playwright.config.ts:17` `retries: 1` 与「`--retries=0` 全绿」标准不一致（0.5d，D6 裁决未纳入）；② E 批次两项；③ F 的多视口冒烟；④ G 批次整体。
 - **三期收口判据**：§1 目标 1「无待办灰区」= B/C/D 三批交付完毕 + §3 结转清单与能力边界表覆盖全部「属后续增强」注释 + OPEN-DECISIONS 无因三期而新增的 OPEN 项（现存两行 OPEN 均有明确外部阻塞或机制待查属性，不属三期灰区）。
