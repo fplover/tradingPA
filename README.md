@@ -160,7 +160,7 @@ npm run test:e2e
 |---|---|
 | [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) | 开发计划与 1:1 对照清单（§3 为功能验收基线） |
 | [docs/PLAN-PHASE2.md](docs/PLAN-PHASE2.md) | 二期七批次规格与交付记录；§3 二期「明确不做」清单、§5 决策点 D1/D2/D3 裁决（D1 不引入后端） |
-| [docs/PLAN-PHASE3.md](docs/PLAN-PHASE3.md) | **三期规划（草案，待裁决）**：批次 A–H 的范围/出处/人日，§3 明确不做结转，§4 决策点 D1/D4/D6；**三期-A 已交付**（§2-A），**三期-H 已立项**（§2-H 门禁盲区清偿） |
+| [docs/PLAN-PHASE3.md](docs/PLAN-PHASE3.md) | **三期规划（2026-10-12 三个决策点全部裁决完毕）**：批次 A–H 的范围/出处/人日，§3 明确不做结转 + 能力边界转正表，§4 裁决留档（D1 档 0 关闭重评 / D4 MTF 不做 / D6 收敛）；**三期-A 已交付**（§2-A），**三期-H 已交付**（§2-H 门禁盲区清偿）；**剩余功能面 = B → C → D（12.5–18.5 人日）** |
 | [docs/SPEC-TV-ALIGNMENT.md](docs/SPEC-TV-ALIGNMENT.md) | TV 对齐 v2.0 主规格；**§12 变更记录 = 项目决策登记表** |
 | [docs/SPEC-PHASE1-FEATURE-BREADTH.md](docs/SPEC-PHASE1-FEATURE-BREADTH.md) | 一期「功能广度」批次（原 `SPEC-P1`）规格与交付记录 |
 | [docs/SPEC-PHASE1-CLOSEOUT.md](docs/SPEC-PHASE1-CLOSEOUT.md) | 一期「收官」批次（原 `SPEC-P2`）规格与交付记录 |
@@ -171,5 +171,5 @@ npm run test:e2e
 | [docs/PLAN-TECH-DEBT-CLOSEOUT.md](docs/PLAN-TECH-DEBT-CLOSEOUT.md) | 技术债收尾施工蓝图（历史存档，2026-09-30 已全部交付） |
 | [docs/decisions/OPEN-DECISIONS.md](docs/decisions/OPEN-DECISIONS.md) | 未决项登记册（只追加 + 就地关闭） |
 | [docs/decisions/ADR-001-volume-profile-kline-approx.md](docs/decisions/ADR-001-volume-profile-kline-approx.md) | Volume Profile kline 近似裁决 |
-| [docs/DECISION-PHASE3-BACKEND.md](docs/DECISION-PHASE3-BACKEND.md) | **三期 D1 决策材料**：自建后端的收益/代价对照与分档（档 0–3）——供裁决用，不改变现行「不引入后端」裁定 |
+| [docs/DECISION-PHASE3-BACKEND.md](docs/DECISION-PHASE3-BACKEND.md) | **三期 D1 决策材料 + 裁决结果（§4.1）**：自建后端的收益/代价对照与分档（档 0–3）；2026-10-12 用户逐条答复五问（全「否」）→ **D1 维持档 0 并关闭重评入口**，§3「反向选项」表转正为能力边界口径 |
 | [.workbuddy/memory/](.workbuddy/memory/) | 工作日志与踩坑记录（`pitfalls.jsonl`，未入版本库） |
