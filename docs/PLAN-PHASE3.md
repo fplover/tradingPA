@@ -1,7 +1,7 @@
 # 三期开发规划（PLAN-PHASE3）
 
 > 状态：**草案，待裁决**。本文的批次 A–G 可先行讨论排期，但 §4 的三个决策点（D1 自建后端 / D4 MTF 多周期 / D6 取向）未裁决前不启动对应批次。**三期-H** 为批次 A 回传项，2026-10-12 由用户裁决立项，无裁决依赖。
-> **批次进度（2026-10-12）**：三期-A 已交付（见 §2-A 交付记录，零功能变更）；B/C/D/F 待 D6 取向裁决后排期，G 待 D1 裁决。
+> **批次进度（2026-10-12）**：三期-A 已交付（见 §2-A 交付记录，零功能变更）；三期-H 已交付（见 §2-H 交付记录，该文件 disable 归零 + 行为零变更）；B/C/D/F 待 D6 取向裁决后排期，G 待 D1 裁决。
 > 取证日期：2026-10-09。所有「现状」论断带出处（`路径:行号` 或文档小节 + 行号）；工时为**估算**（单人，含单测与门禁适配，不含商务/托管申请），已标注。
 > 工具链基线：TS 7 原生 `tsc` / oxlint / Vite 8 Rolldown（见 README「质量门禁」）。
 
@@ -51,7 +51,7 @@
 
 **门禁（2026-10-12 实跑）**：`npm run verify` 全绿——typecheck 0 错 / oxlint **0 错 0 警告**（366 文件，含带 `//` 注释的 `.oxlintrc.json`）/ format:check 绿 / 单测 **81 文件 1305 例全过**；`npm run test:e2e -- --retries=0` **59 例全过**（2.3 分钟，27 面黄金截图零 diff，dev server 手动起）；`npm run build` 通过，7 chunk、最大应用块 495.47 kB（gzip 141.16 kB，未触发 >500 kB 警告）。**差集为零**：本批次只改 README / `.oxlintrc.json` 注释 / 两份文档，源码与测试未动，用例数与截图面数与二期收官基线一致。**下一步**：批次 A 无遗留动作。回传的 ②（oxlint 指令抑制半径机制）仍为 OPEN 待查，不阻塞 B/C/D。①的门禁盲区经用户裁决（2026-10-12）为**立项改造**（不写死为有意例外），已立 **§2-H 三期-H · useChartSeries 门禁盲区清偿**，退出判据为该文件 disable 注释归零 + 单文件 lint 0/0 + 行为零变更。
 
-### 三期-H · useChartSeries 门禁盲区清偿（1–1.5 人日，估；2026-10-12 由用户裁决「立项改造」新立）
+### 三期-H · useChartSeries 门禁盲区清偿（1–1.5 人日，估；2026-10-12 由用户裁决「立项改造」新立，**同日交付**）
 
 **来源**：三期-A 交付记录回传的门禁盲区（`docs/decisions/OPEN-DECISIONS.md` 2026-10-12 两行）。`src/features/market/useChartSeries.ts:223` 一条 `react-hooks/exhaustive-deps` 指令连带遮蔽了同文件 **6 条 `react(refs)` + 1 条 `react(set-state-in-effect)`**，该文件的「0 警告」是指令锚定而非分析归零。
 
@@ -67,6 +67,21 @@
 **排期定位**：本批次是**债务清偿**而非功能扩展，不依赖 D1/D4/D6 任一裁决，可与 B/C/D 并行；建议紧随三期-A 之后执行（A 已把遮蔽清单登记在案，越晚改动该文件，清单越易失真）。
 
 **不做**：不借此批改造 React Compiler 规则本身、不为过门禁加 `.oxlintrc.json` 规则级豁免、不动 `Chart.tsx:108` 与 `ChartWorkspace.tsx:175` 两条（二者经删除探针证实**只抑制自身那一行**，无连带遮蔽，属真·有意例外）。
+
+**交付记录（2026-10-12）**
+
+开工第一步「去遮蔽重测」实测（先摊清单、后动代码）：移除 `:223` 指令后该 hook 显形 **7 条**——`react(refs)` 6（3 处渲染期写 `instRef`/`barsRef`/`tfRef` + `useMemo` 内 3 处读 `instRef.current`）+ `react(set-state-in-effect)` 1。规划表内怀疑的 `:63-65`/`:91-93` 同步 setState 经实测**未**进入诊断（只见观测事实，规则触发条件未证实，与「指令抑制去重」的猜测无关），故改造范围按实测 7 条而非按预估。四项落地：
+
+1. **渲染期 3 写 → 无依赖 `useEffect`**，声明位置在消费 effect 之前（effect 按声明序执行）。与 2026-10-08 清偿批对 `useTvShortcuts optsRef`/`quoteStore`/`ChartWorkspace needsMoreRef` 采用的同一范式一致（见 SPEC §12 该条），本文件只是当时被指令遮蔽而未纳入。
+2. **`bars` memo 不再渲染期读 ref**：`market` 由 props 直取（`instrument?.market ?? 'crypto'`）并纳入 memo 依赖。等价性可证——渲染期 `instRef.current` 当时即等于 `instrument`，两处读取同值。
+3. **`:109` 同步 setState 消解**：聚合路径的基期派生（`nativeBaseInterval`/`binanceIntervalString`/`ratio`）上提到 effect 体顶部，状态文案与 `setMode`/`setStatus` **同批下发**（`aggBase ? \`拉取 ${aggBase} 基期 K 线并聚合\` : '读取本地缓存'`），嵌套分支内不再补第二次 `setStatusDetail`；终值逐字不变，`onBars` 回调里的「聚合自 …」仍走原通路。
+4. **指令删除，依赖补全**：`tf` 直接纳入依赖即可——规划表预估需 `useMemo` 包裹，实测 `getTimeframe` 是模块级档位表查表返回**同一对象**（`src/types/market.ts`），引用天然稳定，无需 memo，纳入依赖为可证 no-op（未触发实时通道重挂，由 E2E 59 例与 `chart-series-refs` 用例锁定）。
+
+**护栏新增**：`tests/unit/chart-series-refs.test.ts`（4 例）——切品种后首次历史拉取用新 instrument（ref 同步时序）/ 聚合路径文案与其余状态同批下发且终值逐字一致 / 原生周期不误进聚合路径 / 日历桶 tz 由 props market 派生（CN 源取本地偏移）。用例经**变异测试**证明非空转：断开 ref 同步 effect → 第 1 例失败；`market` 硬编码 `'crypto'` → 第 4 例期望 480 实得 0。该测试文件自身同样零 disable（首版曾以渲染期给外部变量赋值收结果，被 `react(globals)` 拦下，改为把 hook 输出落 DOM 数据集再断言）。
+
+**门禁（2026-10-12 实跑）**：`npx oxlint src/features/market/useChartSeries.ts` **0 错 0 警告**且文件内 disable 注释 **0 处**（退出判据达成）/ 全仓 lint 0 错 0 警告（367 文件）/ typecheck 0 错 / `npm run verify` 全绿——单测 **82 文件 1309 例**（较基线 +1 文件 +4 例，即本次新增护栏）/ `npm run test:e2e -- --retries=0` **59 例全过**、**27 面黄金截图零 diff**（dev server 手动起）/ `npm run build` 通过，7 chunk、最大应用块 495.48 kB（gzip 141.17 kB，未触发 >500 kB 警告）。**行为零变更**的实证组合：黄金截图零 diff（渲染面）+ 单测终值逐字断言（状态文案）+ E2E 无重挂失败（依赖收窄改补全）。
+
+**收口**：README「lint disable 台账」3 条 → **2 条**，`useChartSeries.ts` 行改为已归零记录；基线段「指令锚定而非分析归零」的警示由「曾有一处盲区」表述取代。OPEN-DECISIONS 2026-10-12「门禁盲区」行就地关闭。同批登记的 oxlint 指令抑制半径机制行**保持 OPEN**——本批消除了唯一一处实际受害面，机制仍未证实，不阻塞 B/C/D。
 
 ### 三期-B · 设置对话框页级补齐与控件深化（6–9 人日，估）
 

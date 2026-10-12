@@ -31,7 +31,7 @@ npm run dev          # http://localhost:5173
 | `npm run build` | `tsc -b`（app + node 双项目）+ Vite 生产构建 |
 | `npm run preview` | 预览生产构建 |
 | `npm run typecheck` | 类型检查双项目：`tsconfig.json`（`src` + `tests/unit`，开着 `noUnusedLocals`）+ `tsconfig.node.json`（`vite.config.ts` / `playwright.config.ts` / `tests/e2e`） |
-| `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；**0 错误 0 警告**——2026-10-08 存量 55 条警告基线全额清偿；源码内 `eslint-disable` 注释 **3 条**，逐条理由与遮蔽范围见「lint disable 台账」；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
+| `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；**0 错误 0 警告**——2026-10-08 存量 55 条警告基线全额清偿，2026-10-12 三期-H 再消除该基线未覆盖的 1 条指令遮蔽链；源码内 `eslint-disable` 注释 **2 条**，逐条理由与遮蔽范围见「lint disable 台账」；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
 | `npm test` | Vitest 单测（81 文件 / 1305 例） |
@@ -78,7 +78,7 @@ docs/           Spec 与差距分析（见下）
 
 > E2E 在 Windows 上必须先自己起 dev server 再跑（见下节）；`verify` 只含机器无关门禁，可随时跑。
 
-当前实测基线（2026-10-12 复跑门禁口径校准；上一次功能基线为 2026-10-09 二期收官后 + 形态家族画线回归修复 + rAF 帧循环加固 + E2E 去 flaky）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1；源码内 3 条 disable 逐条见「lint disable 台账」——其中 `useChartSeries.ts` 一条**连带抑制了同文件 6 条 refs + 1 条 set-state-in-effect**，故该文件的「0 警告」是指令锚定而非分析归零）/ format:check 绿 / 单测 **81 文件 1305 例全过** / E2E **59 例全过**（`--retries=0` 实测零失败——基线已确定化，外网依赖已切断，见下条待办记录；含 `perf-million-bars.spec.ts` 的 1M 根画布全管线帧时长预算）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 495.47 kB（gzip 141.16 kB，合计 gzip 253.9 kB，>500 kB 警告未触发）。
+当前实测基线（2026-10-12 复跑门禁口径校准 + 同日晚三期-H 交付；上一次功能基线为 2026-10-09 二期收官后 + 形态家族画线回归修复 + rAF 帧循环加固 + E2E 去 flaky）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（367 文件；存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1；该口径曾有一处盲区——`useChartSeries.ts` 的一条 disable 连带遮蔽同文件 6 条 refs + 1 条 set-state-in-effect，即「指令锚定而非分析归零」，已于三期-H 用代码结构归零，现源码内 2 条 disable 逐条见「lint disable 台账」）/ format:check 绿 / 单测 **82 文件 1309 例全过** / E2E **59 例全过**（`--retries=0` 实测零失败——基线已确定化，外网依赖已切断，见下条待办记录；含 `perf-million-bars.spec.ts` 的 1M 根画布全管线帧时长预算）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 495.48 kB（gzip 141.17 kB，合计 gzip 253.9 kB，>500 kB 警告未触发）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令**基本**兼容（2026-10-03 探针验证「带指令 0 警告/去指令即报」；2026-10-12 复核补充：react-hooks 编译器规则的**抑制半径**与 ESLint 的 next-line 语义不一致，见下方台账「探针副产物」）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。
@@ -89,14 +89,14 @@ docs/           Spec 与差距分析（见下）
   现行配置里 core 规则本身是 `off`，所以删掉该键**当下**不改门禁结果，但会改掉「一旦启用 core 规则时 TS 是否被拦」的口径
   ——这正是 2026-10-09 TS7 收口时判定它承重的原因，禁止「顺手清理」。
 
-**lint disable 台账（源码内 `eslint-disable` 注释共 3 条，2026-10-12 逐条探针复核）**
+**lint disable 台账（源码内 `eslint-disable` 注释现行 2 条；2026-10-12 逐条探针复核时为 3 条，三期-H 交付后 `useChartSeries.ts` 一条归零）**
 
 复核方法：把该行的 disable 注释删掉、其余不动，跑 `npx oxlint <该文件>` 看新增诊断——「不能删」必须有机械证据，不接受口头理由。
 
 | 位置 | 规则 | 删掉后新增 | 为何保留 |
 |---|---|---|---|
 | `src/components/Chart.tsx:108` | `react-hooks/exhaustive-deps` | 1 条（missing deps: `bars` `symbol` `interval` `decimals` `exchange` `timeframeId` `chartType` `logScale` `onRendererReady`） | 该 effect 是**引擎挂载/卸载生命周期**，依赖必须为 `[]`；补齐依赖会让 Canvas 引擎随每批行情 dispose/recreate，渲染循环与视口状态全丢——属行为变更，非 lint 修复 |
-| `src/features/market/useChartSeries.ts:223` | `react-hooks/exhaustive-deps` | 8 条（1 条 exhaustive-deps：missing `tf` `tf.seconds`；另 **6 条 refs + 1 条 set-state-in-effect** 被同一条指令连带抑制） | 依赖按 `[id, timeframe, nonce]` 收窄是有意的（`tf` 由 `timeframe` 派生、`instRef` 由 `id` 决定，进依赖会让实时通道反复重挂）。被遮蔽的 7 条是「渲染期同步 latest-ref」与「effect 内同步 setState」两处既有模式——**该文件的「0 警告」是指令锚定而非分析归零**，不得当作已清偿；已登记为门禁盲区并经用户裁决（2026-10-12）**立项改造** → `docs/PLAN-PHASE3.md` §2-H 三期-H（退出判据：本文件 disable 归零 + 单文件 lint 0/0 + 行为零变更） |
+| `src/features/market/useChartSeries.ts` | ~~`react-hooks/exhaustive-deps`~~ | — | **已归零**（三期-H，2026-10-12）：该指令删除后连带显形的 6 条 `react(refs)` + 1 条 `react(set-state-in-effect)` 全部由代码结构消解，不靠指令抑制。改造后 `npx oxlint src/features/market/useChartSeries.ts` 0 错 0 警告且文件内零 disable；行为零变更经单测 + 27 面黄金截图 + E2E `--retries=0` 实证。详见 `docs/PLAN-PHASE3.md` §2-H |
 | `src/features/layout/ChartWorkspace.tsx:175` | `react-hooks/purity` | 1 条（`Date.now()` 渲染期读取） | 回放 bar 缺失瞬态的墙钟占位；改 effect+state 会触发 set-state-in-effect 且首帧取旧值，从 store/末柱派生会改变该瞬态显示值——两条替代路径均已核实为行为变更（理由同见该处 L172–174 注释） |
 
 **探针副产物（oxlint 1.87 的指令作用域，与 ESLint 语义不一致）**：在 `.ts` 自定义 hook 文件里，一条 react-hooks 指令会抑制**同文件其余行**的编译器规则诊断——把 `useChartSeries.ts:223` 的指令移到同文件任意其他位置（含文件末尾）后，refs/purity/set-state 诊断仍全部消失；删掉指令则报出。而在 `.tsx` 双组件合成件里，指令只对紧邻下一行生效。机制未证实（疑与该函数是否走 React Compiler 路径有关），已在 OPEN-DECISIONS 登记为待查项。

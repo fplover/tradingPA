@@ -37,9 +37,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
   const [nonce, setNonce] = useState(0);
 
   const instRef = useRef(instrument);
-  instRef.current = instrument;
   const barsRef = useRef<Bar[]>(history);
-  barsRef.current = history;
   const feedRef = useRef<LiveDataFeed | null>(null);
   const aggPathRef = useRef<AggregateFeedPath | null>(null);
   const pagingRef = useRef(false);
@@ -52,10 +50,19 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
   const loadTokenRef = useRef(0);
 
   const id = instrument?.id ?? null;
+  const market: Instrument['market'] = instrument?.market ?? 'crypto';
   const tf = getTimeframe(timeframe);
   const tfRef = useRef(tf);
-  tfRef.current = tf;
   const quote = useQuoteStore((s) => (id ? s.quotes[id] : undefined));
+
+  // latest-value 同步：这三个 ref 的消费者全在 effect 或异步回调里，写在渲染期会读到并发渲染的
+  // 中间值。本 effect 不带依赖数组（每次提交都跑）且声明在消费 effect 之前——effect 按声明序
+  // 执行，故消费方拿到的必是当次提交值。
+  useEffect(() => {
+    instRef.current = instrument;
+    barsRef.current = history;
+    tfRef.current = tf;
+  });
 
   useEffect(() => {
     const inst = instRef.current;
@@ -88,9 +95,14 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
       tf,
     );
 
+    // B5 聚合路径的基期只由 tf 决定，拉数前即可确定，故状态文案与其余写入同批下发
+    // （原先在嵌套分支里补第二次 setStatusDetail——effect 体内的冗余同步写，触 set-state-in-effect）。
+    const aggBaseSeconds = inst.market === 'crypto' && tf.seconds > 0 ? nativeBaseInterval(tf.seconds) : null;
+    const aggBase = aggBaseSeconds === null ? '' : binanceIntervalString(aggBaseSeconds);
+
     setMode('live');
     setStatus('loading');
-    setStatusDetail('读取本地缓存');
+    setStatusDetail(aggBase ? `拉取 ${aggBase} 基期 K 线并聚合` : '读取本地缓存');
     void klineCache.get(inst.id, timeframe).then((cached) => {
       if (disposed || cached.length === 0) return;
       readyRef.current = true;
@@ -102,14 +114,11 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
       // 经既有聚合器聚合后走 onHistory 同款通路，缓存以目标周期 id 为键。
       // 已由 AggregateFeedPath 补实：轮询封闭新桶（tailChanged 门控同数据零渲染），
       // loadMore 前插基期后全量重聚合（接缝愈合），历史深度不再止于单页。
-      const baseSeconds = tf.seconds > 0 ? nativeBaseInterval(tf.seconds) : null;
-      if (baseSeconds !== null) {
-        const base = binanceIntervalString(baseSeconds);
-        const ratio = Math.ceil(tf.seconds / baseSeconds);
-        setStatusDetail(`拉取 ${base} 基期 K 线并聚合`);
+      if (aggBaseSeconds !== null) {
+        const ratio = Math.ceil(tf.seconds / aggBaseSeconds);
         const aggPath = new AggregateFeedPath({
           symbol: inst.code,
-          baseInterval: base,
+          baseInterval: aggBase,
           tf,
           ratio,
           historyLimit: HISTORY_LIMIT,
@@ -118,7 +127,7 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
             readyRef.current = true;
             setHistory(bars);
             setStatus('live');
-            setStatusDetail(`聚合自 ${base} 基期`);
+            setStatusDetail(`聚合自 ${aggBase} 基期`);
             void klineCache.put(inst.id, timeframe, bars);
           },
           onError: (message) => {
@@ -219,18 +228,17 @@ export function useChartSeries(instrument: Instrument | null, timeframe: Timefra
     return () => {
       disposed = true;
     };
-    // tf 由 timeframe 决定，instRef 由 id 决定，无需再进依赖
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, timeframe, nonce]);
+    // 依赖按 id/timeframe/nonce 收窄：instRef 由 id 决定，tf 是模块级档位表的稳定标识
+    // （getTimeframe 查表返回同一对象），纳入 tf 不改变重挂时机。
+  }, [id, timeframe, nonce, tf]);
 
   /** 历史 + 实时尾柱。模拟数据不参与报价合成，否则会和随机游走互相打架。
    *  日历桶时区按市场取（crypto=UTC / CN 源=本地）：与源解析及聚合口径一致，
    *  否则日/周/月末柱的对齐时间永不相待、报价被静默丢弃（tz 分裂修复，见 data/tz.ts）。 */
   const bars = useMemo(() => {
     if (mode === 'mock' || !quote || history.length === 0) return history;
-    const tz = calendarTzOffsetMinutes(instRef.current?.market ?? 'crypto');
-    return applyQuote(history, quote, tf, tz);
-  }, [history, quote, mode, tf]);
+    return applyQuote(history, quote, tf, calendarTzOffsetMinutes(market));
+  }, [history, quote, mode, tf, market]);
 
   return {
     bars,
