@@ -5,6 +5,7 @@ import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { GridMode } from '@/engine/renderer/drawAxes';
 import type { PriceAxisPos } from '@/engine/renderer/chartPanes';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
+import { useChartConfigStore } from '@/store/chartConfigStore';
 import { CheckRow, Segmented } from '@/ui/controls';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
@@ -48,17 +49,23 @@ interface ChartSettingsDialogProps {
 }
 
 /** 图表设置：TV 左导航 + 实时生效（无确定按钮）。
- *  画布类偏好（网格/边框/水印）由对话框自持状态并即时下发 renderer。 */
+ *  画布类偏好（网格/边框/水印/价格轴位置/时间制式）归 chartConfigStore（三期-B0 单一来源 + 落盘），
+ *  对话框只做读写与即时下发 renderer——本组件常驻挂载，故 renderer 就绪时即由 store 播种。 */
 export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
   const [tab, setTab] = useState<Tab>('坐标轴');
-  const [gridMode, setGridMode] = useState<GridMode>('both');
-  const [borders, setBorders] = useState(true);
+  const gridMode = useChartConfigStore((s) => s.gridMode);
+  const setGridMode = useChartConfigStore((s) => s.setGridMode);
+  const borders = useChartConfigStore((s) => s.bordersVisible);
+  const setBorders = useChartConfigStore((s) => s.setBordersVisible);
   /** 水印开关（TV 画布页）：实时下发 renderer，引擎渲染到画布 */
-  const [watermark, setWatermark] = useState(false);
+  const watermark = useChartConfigStore((s) => s.watermarkVisible);
+  const setWatermark = useChartConfigStore((s) => s.setWatermarkVisible);
   /** 价格坐标位置（TV Scales 页）：右 / 左 / 无，引擎实时换算图表区几何 */
-  const [priceAxisPos, setPriceAxisPos] = useState<PriceAxisPos>('right');
+  const priceAxisPos = useChartConfigStore((s) => s.priceAxisPos);
+  const setPriceAxisPos = useChartConfigStore((s) => s.setPriceAxisPos);
   /** 时间坐标制式：false = 24 小时，true = 12 小时（AM/PM） */
-  const [timeHour12, setTimeHour12] = useState(false);
+  const timeHour12 = useChartConfigStore((s) => s.timeHour12);
+  const setTimeHour12 = useChartConfigStore((s) => s.setTimeHour12);
 
   // renderer 就绪/偏好变更即下发（renderer 异步创建，就绪时补一次当前值）
   useEffect(() => {

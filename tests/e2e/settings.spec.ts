@@ -34,7 +34,7 @@ test('设置类对话框与 tooltip', async ({ page }) => {
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
 
-  // 图表设置：左导航三页签，外观页可关网格
+  // 图表设置：左导航五页签，外观页可关网格
   await page.getByRole('button', { name: '图表设置' }).click();
   await expect(page.getByText('图表设置', { exact: true }).first()).toBeVisible();
   await page.getByRole('button', { name: '外观', exact: true }).click();
@@ -45,6 +45,39 @@ test('设置类对话框与 tooltip', async ({ page }) => {
   // TV tooltip：悬停图标按钮出现 role=tooltip
   await page.getByRole('button', { name: '指标', exact: true }).hover();
   await expect(page.getByRole('tooltip')).toBeVisible({ timeout: 3000 });
+});
+
+/** 三期-B0：图表设置偏好落盘并跨刷新保留。
+ *  改造前画布五项（网格/边框/水印/价格轴位置/时间制式）由对话框自持 useState + 硬编码默认，
+ *  刷新即丢且重开即把默认值推回引擎；现在偏好归 chartConfigStore，对话框读回真值。 */
+test('图表设置偏好跨刷新保留', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole('button', { name: '图表设置' }).click();
+  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: '水印' })).toHaveAttribute('aria-checked', 'false');
+  await page.getByRole('checkbox', { name: '水印' }).click();
+  await page.getByRole('button', { name: '外观', exact: true }).click();
+  await page.getByRole('radio', { name: '横', exact: true }).click();
+  await expect(page.getByRole('radio', { name: '横', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
+
+  // 落盘证据：写的是偏好切片键，且 watermarkVisible 为改动后的值
+  await expect
+    .poll(async () => {
+      const raw = await page.evaluate(() => localStorage.getItem('tradingpa.chartPrefs.v1'));
+      return raw ? (JSON.parse(raw).watermarkVisible ?? null) : null;
+    })
+    .toBe(true);
+
+  await page.reload();
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: '图表设置' }).click();
+  await page.getByRole('button', { name: 'Canvas', exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: '水印' })).toHaveAttribute('aria-checked', 'true');
+  await page.getByRole('button', { name: '外观', exact: true }).click();
+  await expect(page.getByRole('radio', { name: '横', exact: true })).toHaveAttribute('aria-checked', 'true');
 });
 
 /** 图例右键菜单：开关图例各部分 */
