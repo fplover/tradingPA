@@ -34,8 +34,8 @@ npm run dev          # http://localhost:5173
 | `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；**0 错误 0 警告**——2026-10-08 存量 55 条警告基线全额清偿，2026-10-12 三期-H 再消除该基线未覆盖的 1 条指令遮蔽链；源码内 `eslint-disable` 注释 **2 条**，逐条理由与遮蔽范围见「lint disable 台账」；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（83 文件 / 1318 例） |
-| `npm run test:e2e` | Playwright E2E（60 例，含 **27 面黄金截图** + 1M 根画布全管线帧时长预算） |
+| `npm test` | Vitest 单测（84 文件 / 1332 例） |
+| `npm run test:e2e` | Playwright E2E（62 例，含 **27 面黄金截图** + 1M 根画布全管线帧时长预算） |
 | `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
 | `npm run build:pages` | 按 Pages base（`/tradingPA/`）本地预演构建（配合 `npm run preview`） |
 | `npm run audit` | 依赖漏洞审计（**必须走官方 registry**：本机配置的 npmmirror 镜像不实现 `/-/npm/v1/security/*`，直接 `npm audit` 会报 NOT_IMPLEMENTED） |
@@ -78,7 +78,7 @@ docs/           Spec 与差距分析（见下）
 
 > E2E 在 Windows 上必须先自己起 dev server 再跑（见下节）；`verify` 只含机器无关门禁，可随时跑。
 
-当前实测基线（2026-10-12 复跑门禁口径校准 + 同日晚三期-H 交付 + 同日晚三期-B0 交付；上一次功能基线为 2026-10-09 二期收官后 + 形态家族画线回归修复 + rAF 帧循环加固 + E2E 去 flaky）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（368 文件；存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1；该口径曾有一处盲区——`useChartSeries.ts` 的一条 disable 连带遮蔽同文件 6 条 refs + 1 条 set-state-in-effect，即「指令锚定而非分析归零」，已于三期-H 用代码结构归零，现源码内 2 条 disable 逐条见「lint disable 台账」）/ format:check 绿 / 单测 **83 文件 1318 例全过** / E2E **60 例全过**（`--retries=0` 实测零失败——基线已确定化，外网依赖已切断，见下条待办记录；含 `perf-million-bars.spec.ts` 的 1M 根画布全管线帧时长预算）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 498.08 kB（gzip 141.86 kB，合计 gzip 254.2 kB，>500 kB 警告未触发；**裕度仅 1.92 kB，下一批功能改动前需注意该阈值**）。
+当前实测基线（2026-10-12 复跑门禁口径校准 + 同日晚三期-H 交付 + 同日晚三期-B0 交付 + 同日晚三期-B1 交付；上一次功能基线为 2026-10-09 二期收官后 + 形态家族画线回归修复 + rAF 帧循环加固 + E2E 去 flaky）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（372 文件；存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1；该口径曾有一处盲区——`useChartSeries.ts` 的一条 disable 连带遮蔽同文件 6 条 refs + 1 条 set-state-in-effect，即「指令锚定而非分析归零」，已于三期-H 用代码结构归零，现源码内 2 条 disable 逐条见「lint disable 台账」）/ format:check 绿 / 单测 **84 文件 1332 例全过** / E2E **62 例全过**（`--retries=0` 实测零失败——基线已确定化，外网依赖已切断，见下条待办记录；含 `perf-million-bars.spec.ts` 的 1M 根画布全管线帧时长预算）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 **500.61 kB（gzip 142.79 kB，合计 gzip 255.13 kB）**——B0 标注的「裕度仅 1.92 kB」已在 B1 兑现，**>500 kB 警告现已触发**（这是 Vite 的提示阈值、非本期门禁；gzip ≤150 kB 口径仍在内。处置三选一待裁决：接受警告 / 提 `chunkSizeWarningLimit` / 拆动态 import；本轮**未动 build 配置**，详见 `docs/PLAN-PHASE3.md` §2-B 的 B1 交付记录登记项③）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令**基本**兼容（2026-10-03 探针验证「带指令 0 警告/去指令即报」；2026-10-12 复核补充：react-hooks 编译器规则的**抑制半径**与 ESLint 的 next-line 语义不一致，见下方台账「探针副产物」）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。
@@ -126,7 +126,7 @@ npm run test:e2e
   `parseShapeDirective` 70 / `PaneRenderer.draw` 64）经 `.oxlintrc.json` overrides 放宽至 120 并登记；
   放宽是提阈值而非关闭，>120 的新函数仍被拦
 - 引擎侧框架无关：不得 import React / zustand
-- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1318 单测 + 60 E2E）
+- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1332 单测 + 62 E2E）
 
 ## 已知状态与待办
 
@@ -160,7 +160,7 @@ npm run test:e2e
 |---|---|
 | [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) | 开发计划与 1:1 对照清单（§3 为功能验收基线） |
 | [docs/PLAN-PHASE2.md](docs/PLAN-PHASE2.md) | 二期七批次规格与交付记录；§3 二期「明确不做」清单、§5 决策点 D1/D2/D3 裁决（D1 不引入后端） |
-| [docs/PLAN-PHASE3.md](docs/PLAN-PHASE3.md) | **三期规划（2026-10-12 三个决策点全部裁决完毕）**：批次 A–H 的范围/出处/人日，§3 明确不做结转 + 能力边界转正表，§4 裁决留档（D1 档 0 关闭重评 / D4 MTF 不做 / D6 收敛）；**三期-A 已交付**（§2-A），**三期-H 已交付**（§2-H 门禁盲区清偿）；**三期-B 开工取证后重排**（B0 设置态单一来源立项、事件页撤项）；**剩余功能面 = B → C → D（14–20 人日）** |
+| [docs/PLAN-PHASE3.md](docs/PLAN-PHASE3.md) | **三期规划（2026-10-12 三个决策点全部裁决完毕）**：批次 A–H 的范围/出处/人日，§3 明确不做结转 + 能力边界转正表，§4 裁决留档（D1 档 0 关闭重评 / D4 MTF 不做 / D6 收敛）；**三期-A 已交付**（§2-A），**三期-H 已交付**（§2-H 门禁盲区清偿），**三期-B0 已交付**（§2-B：设置态单一来源 + 偏好落盘），**三期-B1 已交付**（§2-B：图表设置「模板」页 + 模板 store，事件页撤项）；**剩余功能面 = B 余约 4–6 → C → D（约 12–18 人日）** |
 | [docs/SPEC-TV-ALIGNMENT.md](docs/SPEC-TV-ALIGNMENT.md) | TV 对齐 v2.0 主规格；**§12 变更记录 = 项目决策登记表** |
 | [docs/SPEC-PHASE1-FEATURE-BREADTH.md](docs/SPEC-PHASE1-FEATURE-BREADTH.md) | 一期「功能广度」批次（原 `SPEC-P1`）规格与交付记录 |
 | [docs/SPEC-PHASE1-CLOSEOUT.md](docs/SPEC-PHASE1-CLOSEOUT.md) | 一期「收官」批次（原 `SPEC-P2`）规格与交付记录 |
