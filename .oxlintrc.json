@@ -12,6 +12,9 @@
     "no-empty": ["error", { "allowEmptyCatch": true }],
     "no-undef": "off",
     "no-unused-vars": "off",
+    // 承重键，禁止当幽灵依赖删除：这是 oxlint 的 TS 规则命名空间（非旧 typescript-eslint 包）。
+    // 探针（2026-10-12，`npx oxlint -c` 双配置对照）：core no-unused-vars 置 error 时，带此键的 TS 未使用变量 0 错、去键即报 1 错。
+    // 现行口径：未使用代码由 tsc noUnusedLocals/noUnusedParameters 把关。详见 README「质量门禁」。
     "@typescript-eslint/no-unused-vars": "off",
     "max-statements": ["error", 60],
     "max-params": ["error", 10]

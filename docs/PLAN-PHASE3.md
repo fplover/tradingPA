@@ -1,6 +1,7 @@
 # 三期开发规划（PLAN-PHASE3）
 
 > 状态：**草案，待裁决**。本文的批次 A–G 可先行讨论排期，但 §4 的三个决策点（D1 自建后端 / D4 MTF 多周期 / D6 取向）未裁决前不启动对应批次。
+> **批次进度（2026-10-12）**：三期-A 已交付（见 §2-A 交付记录，零功能变更）；B/C/D/F 待 D6 取向裁决后排期，G 待 D1 裁决。
 > 取证日期：2026-10-09。所有「现状」论断带出处（`路径:行号` 或文档小节 + 行号）；工时为**估算**（单人，含单测与门禁适配，不含商务/托管申请），已标注。
 > 工具链基线：TS 7 原生 `tsc` / oxlint / Vite 8 Rolldown（见 README「质量门禁」）。
 
@@ -21,7 +22,7 @@
 
 1. **收口灰区**：把交付时登记为「属后续增强」的项，逐项做掉或明确写死「不做」，让项目进入「无待办灰区」状态。
 2. **规格深化**：设置类对话框补齐 TV 的页级结构（交易/一般/事件/模板）与控件精度（number stepper、plot 类型下拉）。
-3. **工程债清理**：README 与 `qxlintrc` 类文档-代码口径漂移、3 处 lint disable 残留、E2E 视口/重试基线。
+3. **工程债清理**：README 与 `oxlintrc` 类文档-代码口径漂移、3 处 lint disable 残留、E2E 视口/重试基线。
 4. **决策落定**：D1（后端）、D4（MTF）、D6（取向）三个决策点给出书面裁决并结转进 OPEN-DECISIONS。
 
 **量化验收口径（全期）**：`npm run verify` 全绿；`npm run test:e2e -- --retries=0` 全绿；`npm run build` 最大 chunk gzip ≤ 150 kB（现 141.16 kB，留裕度）；Vitest 用例数 ≥ 1305 且不删既有断言。
@@ -38,6 +39,17 @@
 | SPEC-PHASE1-FEATURE-BREADTH 版本快照陈旧 | `docs/SPEC-PHASE1-FEATURE-BREADTH.md` §4 后已加陈旧标注 blockquote | 保持（历史规格不改写，仅标注） | 不改动，登记为「已处置」 |
 | `.oxlintrc.json` 的 `@typescript-eslint/*` 键 | 该键是**承重**的（配置生效前提），曾面临被「清理」风险 | 在文件旁注或 README 写明「不可作为幽灵依赖删除」 | 重跑 `npm run lint` 0/0 |
 | TS 7 panic 侦测口径 | README 已写明判据（panic → stderr + exit 2）与临时等价命令 | 无 | — |
+
+#### 三期-A 交付记录（2026-10-12）
+
+**结论：4 项全部处置，零功能变更、零源码改动（纯文档 + `.oxlintrc.json` 注释）。**
+
+1. **disable 条数勘正**：全仓扫描实测 **3 条**（`Chart.tsx:108` / `useChartSeries.ts:223` / `ChartWorkspace.tsx:175`），README 命令表与基线段的「仅剩 1 条」已改为 3 条，并新增「**lint disable 台账**」小节。每条附**删除探针**证据（仅删该 disable 行 → `npx oxlint <该文件>` 看新增诊断）：① +1 exhaustive-deps（引擎 mount-once 生命周期，依赖必须 `[]`）；② +8（目标 1 条 + 被连带抑制的 6 条 refs + 1 条 set-state-in-effect）；③ +1 purity（渲染期墙钟占位）。三条均判定**不可删**——删除等价于行为变更，越本批次红线。
+2. **回传的新发现（不在原表内，已登记 OPEN-DECISIONS 两行）**：① **门禁盲区**——`useChartSeries.ts` 的「0 警告」是指令锚定而非分析归零，7 条诊断被同文件一条指令连带遮蔽，故 2026-10-08「55 条基线全额清偿」的表述对本文件不成立，README 基线段已就地加注；② **工具链语义**——oxlint 1.87 的 disable 抑制半径在 `.ts` hook 文件与 `.tsx` 组件文件表现不一致（前者移到文件末尾仍抑制同 hook 全部编译器规则诊断，后者严格只对下一行生效），机制未证实，按观测事实登记为待查项。
+3. **承重键旁注**：`@typescript-eslint/no-unused-vars` 键上方加注释 + README 记录探针结论（`npx oxlint -c` 双配置对照：core 规则置 `error` 时带键 0 错 / 去键 1 错）。**JSONC 兼容性实证**：带 `//` 注释的配置被 oxlint 正常解析（bogus 规则名探针反证解析失败会硬报错），`prettier --check` 通过。
+4. **历史规格陈旧标注**：`docs/SPEC-PHASE1-FEATURE-BREADTH.md` 标注 blockquote 已在位，按规划「不改写历史」登记为已处置；TS7 panic 判据无需改动。顺带勘正本文 §1 目标 3 的 `qxlintrc` 笔误。
+
+**门禁（2026-10-12 实跑）**：`npm run verify` 全绿——typecheck 0 错 / oxlint **0 错 0 警告**（366 文件，含带 `//` 注释的 `.oxlintrc.json`）/ format:check 绿 / 单测 **81 文件 1305 例全过**；`npm run test:e2e -- --retries=0` **59 例全过**（2.3 分钟，27 面黄金截图零 diff，dev server 手动起）；`npm run build` 通过，7 chunk、最大应用块 495.47 kB（gzip 141.16 kB，未触发 >500 kB 警告）。**差集为零**：本批次只改 README / `.oxlintrc.json` 注释 / 两份文档，源码与测试未动，用例数与截图面数与二期收官基线一致。**下一步**：批次 A 无遗留动作；②③ 两条 OPEN 行不阻塞 B/C/D，但 B 之前建议先裁决「latest-ref 渲染期同步」是否列为有意例外（否则遮蔽清单会随该文件改动继续增长）。
 
 ### 三期-B · 设置对话框页级补齐与控件深化（6–9 人日，估）
 
