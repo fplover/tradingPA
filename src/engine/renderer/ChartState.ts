@@ -75,6 +75,9 @@ export class ChartState {
   priceAxisPos: PriceAxisPos = DEFAULT_PRICE_AXIS_POS;
   /** 时间坐标 12 小时制（TV 坐标轴页）：false = 24 小时制（HH:mm），true = AM/PM */
   timeHour12 = false;
+  /** 图表时区显示偏移（分钟，东为正；三期-B3「一般」页）：null = 浏览器本地（改造前口径）。
+   *  只改时间标签读数，不改 bar 时间戳、不改日历桶归桶口径（归桶见 data/tz.ts）。 */
+  tzOffsetMinutes: number | null = null;
   bordersVisible = true;
   /** 水印显隐（TV 画布页）：主面板居中「代码 · 周期」，引擎实时渲染到画布 */
   watermarkVisible = false;
@@ -354,6 +357,12 @@ export class ChartState {
   /** 时间坐标 12 小时制（TV 坐标轴页）：日内标签 HH:mm → H:mm AM/PM */
   setTimeHour12(on: boolean): void {
     this.timeHour12 = on;
+    this.invalidate();
+  }
+
+  /** 图表时区显示偏移（三期-B3）：null = 回到浏览器本地口径 */
+  setTzOffsetMinutes(offset: number | null): void {
+    this.tzOffsetMinutes = offset;
     this.invalidate();
   }
 

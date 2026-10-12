@@ -114,6 +114,31 @@ describe('chartTemplateStore 应用', () => {
     expect(tpl.getState().templates.find((t) => t.id === id)?.prefs.legendOpts.showOHLC).toBe(true);
     expect(entry[0].prefs.legendOpts.showOHLC).toBe(true);
   });
+
+  it('显示时区随模板走（含跨刷新重载）；B3 之前的旧模板（prefs 无该字段）应用即回落本地档', async () => {
+    const { cfg, tpl } = await freshStores();
+    cfg.getState().setTzOffsetMinutes(330);
+    tpl.getState().saveTemplate('含时区');
+
+    // 跨刷新重载：模板 prefs 走 parseChartPrefs，tz 必须活下来并且可应用回当前偏好
+    const re = await freshStores();
+    expect(re.tpl.getState().templates[0]?.prefs.tzOffsetMinutes).toBe(330);
+    re.cfg.getState().setTzOffsetMinutes(null);
+    expect(re.tpl.getState().applyTemplate(re.tpl.getState().templates[0]!.id)).toBe(true);
+    expect(re.cfg.getState().tzOffsetMinutes).toBe(330);
+
+    // 手工造一份 B1 交付时的旧档形状：prefs 里根本没有 tzOffsetMinutes
+    localStorage.setItem(
+      TPL_KEY,
+      JSON.stringify([{ id: 'tpl-legacy', name: '旧模板', savedAt: 1, prefs: { gridMode: 'vertical' } }]),
+    );
+    const again = await freshStores(); // 旧档经 parseChartPrefs 补出的就是 null
+    expect(again.tpl.getState().templates[0]?.prefs.tzOffsetMinutes).toBeNull();
+    again.cfg.getState().setTzOffsetMinutes(-720);
+    expect(again.tpl.getState().applyTemplate('tpl-legacy')).toBe(true);
+    expect(again.cfg.getState().tzOffsetMinutes).toBeNull();
+    expect(again.cfg.getState().gridMode).toBe('vertical');
+  });
 });
 
 describe('chartTemplateStore 重命名与删除', () => {

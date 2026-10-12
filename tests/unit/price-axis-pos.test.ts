@@ -259,13 +259,50 @@ describe('drawTimeAxis：轴侧与 12 小时制接线', () => {
 
   it('hour12：日内标签透传为 H:mm AM/PM', () => {
     const c = createMockCtx();
-    drawTimeAxis(asCtx(c), series(), viewport(), { chartW: CHART_W, chartH: CHART_H }, 'right', true);
+    drawTimeAxis(asCtx(c), series(), viewport(), { chartW: CHART_W, chartH: CHART_H }, 'right', {
+      hour12: true,
+      tzOffsetMinutes: null,
+    });
     const labels = fillTexts(c);
     expect(labels.length).toBeGreaterThan(0);
     expect(labels.every((t) => /^\d{1,2}:\d{2} (AM|PM)$/.test(t))).toBe(true);
     const c2 = createMockCtx();
     drawTimeAxis(asCtx(c2), series(), viewport(), { chartW: CHART_W, chartH: CHART_H });
     expect(fillTexts(c2).every((t) => /^\d{2}:\d{2}$/.test(t))).toBe(true); // 默认 24 小时制
+  });
+});
+
+describe('时区档：controller → RenderPipeline → 画面读数', () => {
+  /** 日内读数整体平移（分钟，可负）——「换档后每个标签都跟着换」的逐位断言 */
+  const shift = (hhmm: string, deltaMin: number): string => {
+    const [h, m] = hhmm.split(':').map(Number);
+    const t = (((h * 60 + m + deltaMin) % 1440) + 1440) % 1440;
+    return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+  };
+  const isHhmm = (t: string): boolean => /^\d{2}:\d{2}$/.test(t);
+
+  /** 悬停一帧后的全部时间读数（时间轴标签 + 十字光标标签） */
+  function timeTexts(r: ChartRenderer, tz: number | null): string[] {
+    r.setTzOffsetMinutes(tz);
+    pointer('pointermove', 400, 300);
+    ctx.calls.length = 0;
+    r.redraw();
+    return fillTexts(ctx).filter(isHhmm);
+  }
+
+  it('默认档（null）与该瞬间的浏览器本地偏移档逐标签相同（27 面黄金零 diff 的凭据）', () => {
+    const r = makeRenderer();
+    // 首 bar 09:30 起 600 根 1 分钟：可见窗口约 10 小时，不跨 DST 切换点（切换都在凌晨）
+    expect(timeTexts(r, null)).toEqual(timeTexts(r, -new Date(T0).getTimezoneOffset()));
+  });
+
+  it('换档：轴标签与十字光标读数整体平移同一个档差（任一处丢 display 就红）', () => {
+    const r = makeRenderer();
+    const local = -new Date(T0).getTimezoneOffset();
+    const target = local === 0 ? 330 : 0; // 机器恰在 UTC 档时改用半小时档做判别
+    const def = timeTexts(r, null);
+    expect(def.length).toBeGreaterThan(1);
+    expect(timeTexts(r, target)).toEqual(def.map((t) => shift(t, target - local)));
   });
 });
 
@@ -317,7 +354,10 @@ describe('drawCrosshair：价格轴标签随侧', () => {
 
   it('hour12：时间标签透传 12 小时制', () => {
     const c = createMockCtx();
-    drawCrosshair(asCtx(c), crosshair(), viewport(), scale(), geo, legend, 0, geo.chartH, 'right', true);
+    drawCrosshair(asCtx(c), crosshair(), viewport(), scale(), geo, legend, 0, geo.chartH, 'right', {
+      hour12: true,
+      tzOffsetMinutes: null,
+    });
     expect(fillTexts(c).some((t) => / (AM|PM)$/.test(t))).toBe(true);
   });
 });

@@ -6,7 +6,7 @@ import { getToolDef } from '../drawing/types';
 import { drawDrawings, type DrawContext } from '../drawing/drawDrawings';
 import { drawTrading } from './drawTrading';
 import { drawWatermark, watermarkText } from './drawWatermark';
-import { drawTimeAxis, drawBorders } from './drawAxes';
+import { drawTimeAxis, drawBorders, type TimeDisplay } from './drawAxes';
 import {
   drawCrosshair,
   drawLegendBlock,
@@ -85,7 +85,8 @@ export class RenderPipeline {
 
     const legend = this.host.legend();
     const axisPos = st.priceAxisPos;
-    const hour12 = st.timeHour12;
+    // 时间标签显示口径成组下发（12 小时制 + 三期-B3 时区偏移）
+    const timeDisplay: TimeDisplay = { hour12: st.timeHour12, tzOffsetMinutes: st.tzOffsetMinutes };
     // 图表区几何随价格轴侧：right=轴在右（x0=0）、left=轴在左（x0=轴宽）、none=全宽
     const chartW = chartAreaWidth(w, axisPos);
     const x0 = chartAreaOffsetX(axisPos);
@@ -126,7 +127,7 @@ export class RenderPipeline {
 
     // 共享时间轴 + 边框 + 十字光标（全画布坐标；时间轴/边框/光标随轴侧偏移）
     const mainGeo = { chartW, chartH: h - AXIS_HEIGHT };
-    drawTimeAxis(ctx, st.displaySeries, this.host.viewport, mainGeo, axisPos, hour12);
+    drawTimeAxis(ctx, st.displaySeries, this.host.viewport, mainGeo, axisPos, timeDisplay);
     if (st.bordersVisible) drawBorders(ctx, mainGeo, axisPos);
 
     // 画线层（主面板局部坐标：随图表区左边界偏移，左轴时整体右移一个轴宽）
@@ -221,7 +222,7 @@ export class RenderPipeline {
       hoveredPane.y,
       hoveredPane.height,
       axisPos,
-      hour12,
+      timeDisplay,
     );
     // 图例常驻：悬停跟随十字光标，否则显示最后一根；同时收集研究行命中区
     st.studyRects = [];

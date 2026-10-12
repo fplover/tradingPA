@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { formatTime } from '@/engine/renderer/drawAxes';
+import { formatTime, type TimeDisplay } from '@/engine/renderer/drawAxes';
+
+/** 12 小时制档（三期-B3 起时间显示设置成组传递；tz 传 null = 浏览器本地） */
+const H12: TimeDisplay = { hour12: true, tzOffsetMinutes: null };
 
 /** TV 中文界面时间轴标签：日内 HH:mm / 日线 M月D日 / 周月以上 M月 / 跨年带年 */
 
@@ -49,17 +52,17 @@ describe('formatTime', () => {
 /** 12 小时制（TV 坐标轴页）：默认 24 小时制零变化，hour12 仅作用于日内段 */
 describe('formatTime：12 小时制（AM/PM）', () => {
   it('日内：H:mm AM/PM，小时不零填充', () => {
-    expect(formatTime(MORNING, 10, false, true)).toBe('9:05 AM');
-    expect(formatTime(AFTERNOON, 10, false, true)).toBe('3:45 PM');
+    expect(formatTime(MORNING, 10, false, H12)).toBe('9:05 AM');
+    expect(formatTime(AFTERNOON, 10, false, H12)).toBe('3:45 PM');
   });
 
   it('0 点 → 12 AM，12 点 → 12 PM（不折半）', () => {
-    expect(formatTime(MIDNIGHT, 10, false, true)).toBe('12:30 AM');
-    expect(formatTime(NOON, 10, false, true)).toBe('12:00 PM');
+    expect(formatTime(MIDNIGHT, 10, false, H12)).toBe('12:30 AM');
+    expect(formatTime(NOON, 10, false, H12)).toBe('12:00 PM');
   });
 
   it('日/月跨度不受 hour12 影响（保持中文日期）', () => {
-    expect(formatTime(T, 60, false, true)).toBe('3月5日');
-    expect(formatTime(T, 400, false, true)).toBe('3月');
+    expect(formatTime(T, 60, false, H12)).toBe('3月5日');
+    expect(formatTime(T, 400, false, H12)).toBe('3月');
   });
 });

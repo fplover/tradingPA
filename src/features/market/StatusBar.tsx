@@ -1,4 +1,6 @@
 import { ChevronLeft, ChevronRight, Eye, EyeOff, RotateCcw, Settings2, ZoomIn, ZoomOut } from 'lucide-react';
+import { localTzOffsetMinutes } from '@/data/tz';
+import { useChartConfigStore } from '@/store/chartConfigStore';
 import { fontSize, icon, radius, space } from '@/ui/tokens';
 
 interface StatusBarProps {
@@ -40,8 +42,10 @@ const RANGES: Array<{ label: string; days: number }> = [
   { label: 'All', days: 0 },
 ];
 
-function timeZoneLabel(): string {
-  const offset = -new Date().getTimezoneOffset() / 60;
+/** 底部时区标（三期-B3 起随显示偏好）：null 档保持改造前的浏览器本地读数，
+ *  固定偏移档按分钟读数（半小时档保留一位小数，如 330 → UTC+5.5）。 */
+function timeZoneLabel(tzOffsetMinutes: number | null): string {
+  const offset = (tzOffsetMinutes ?? localTzOffsetMinutes()) / 60;
   const sign = offset >= 0 ? '+' : '-';
   const abs = Math.abs(offset);
   return `UTC${sign}${abs % 1 === 0 ? abs : abs.toFixed(1)}`;
@@ -74,6 +78,10 @@ export function StatusBar({
   onPanRight,
   onResetView,
 }: StatusBarProps) {
+  /** 时区档直读 store 而非 props（三期-B3）：这是持久化偏好而非调用方状态，
+   *  与同目录 ChartContextMenu 的直读口径一致；宿主 ChartWorkspace 是装配层，
+   *  加一个它自己不消费的 prop 只是转手。 */
+  const tzOffsetMinutes = useChartConfigStore((s) => s.tzOffsetMinutes);
   return (
     <div
       style={{
@@ -91,7 +99,9 @@ export function StatusBar({
         whiteSpace: 'nowrap',
       }}
     >
-      <span style={{ color: 'var(--text-dim)', padding: `0 ${space.xs}px` }}>{timeZoneLabel()}</span>
+      <span data-testid="status-tz" style={{ color: 'var(--text-dim)', padding: `0 ${space.xs}px` }}>
+        {timeZoneLabel(tzOffsetMinutes)}
+      </span>
       <span style={{ padding: `0 ${space.xs}px` }}>
         {statusText} · {barsCount.toLocaleString()} 根 · {intervalLabel}
       </span>

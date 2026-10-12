@@ -378,6 +378,14 @@ export class ChartController {
   setTimeHour12(on: boolean): void {
     this.state.setTimeHour12(on);
   }
+  /** 图表时区显示偏移（分钟，东为正；三期-B3「一般」页）：additive，null = 浏览器本地（默认，零像素变化） */
+  setTzOffsetMinutes(offset: number | null): void {
+    this.state.setTzOffsetMinutes(offset);
+  }
+  /** 回读（与 watermarkOn / studiesHidden / tradingVisible 同口径）：E2E 用它证明 store→effect→引擎的接线 */
+  get tzOffsetMinutes(): number | null {
+    return this.state.tzOffsetMinutes;
+  }
   resetPriceScale(): void {
     this.state.resetPriceScale();
   }

@@ -100,7 +100,7 @@ export function drawTimeAxis(
   viewport: Viewport,
   geo: DrawGeometry,
   pos: PriceAxisPos = 'right',
-  hour12 = false,
+  display: TimeDisplay = DEFAULT_TIME_DISPLAY,
 ): void {
   const top = geo.chartH;
   // 轴在左：时间轴随图表区右移一个轴宽（画布坐标）；右/无轴 = 0
@@ -131,10 +131,11 @@ export function drawTimeAxis(
     const lx = viewport.indexToX(i);
     if (lx < 30 || lx > geo.chartW - 30) continue;
     // 跨年标签带年份（TV：与上一个标签不同年才显式标注）
-    const year = new Date(bar.time).getFullYear();
+    // 年份判定必须与标签同口径：跨年边界由显示时区决定，用本地 getFullYear 会与偏移档分裂
+    const year = tzDate(bar.time, display.tzOffsetMinutes).getUTCFullYear();
     const showYear = lastLabeledYear !== -1 && year !== lastLabeledYear;
     lastLabeledYear = year;
-    ctx.fillText(formatTime(bar.time, spacing, showYear, hour12), x0 + lx, top + 12);
+    ctx.fillText(formatTime(bar.time, spacing, showYear, display), x0 + lx, top + 12);
   }
 }
 
@@ -255,21 +256,45 @@ function drawXIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: num
   ctx.stroke();
 }
 
+/** 时间显示口径（三期-B3「一般」页）：两个时间标签设置成组传递，避免 drawCrosshair 溢出参数上限 */
+export interface TimeDisplay {
+  /** 日内段 12 小时制（AM/PM） */
+  hour12: boolean;
+  /** 显示时区偏移（分钟，东为正）；null = 浏览器本地（三期-B3 改造前口径） */
+  tzOffsetMinutes: number | null;
+}
+
+export const DEFAULT_TIME_DISPLAY: TimeDisplay = { hour12: false, tzOffsetMinutes: null };
+
+/** 按显示时区取「墙上时间」读数：偏移先按该瞬时自身的本地偏移折算，再一律用 UTC getter 读，
+ *  故 tzOffsetMinutes = null 时结果与改造前的本地 getter 逐位相同（DST 也由浏览器就地算）。 */
+export function tzDate(time: number, tzOffsetMinutes: number | null): Date {
+  const local = new Date(time);
+  const offset = tzOffsetMinutes ?? -local.getTimezoneOffset();
+  return new Date(time + offset * 60_000);
+}
+
 /** 时间轴标签（TV 中文界面规格）：
  *  日内（间距 <60px）HH:mm；日线（60-300px）M月D日；周/月以上（≥300px）M月；
  *  跨年标签（1 月或与上一标签不同年，由调用方判定 showYear）带 YYYY 年。
- *  hour12 = 12 小时制（TV 坐标轴页）：仅作用于日内段，H:mm AM/PM（12 点不折半）。 */
-export function formatTime(time: number, spacing: number, showYear = false, hour12 = false): string {
-  const d = new Date(time);
+ *  display.hour12 = 12 小时制（TV 坐标轴页）：仅作用于日内段，H:mm AM/PM（12 点不折半）。
+ *  display.tzOffsetMinutes = 显示时区（三期-B3）：只改读数，不改 bar 时间戳与归桶口径。 */
+export function formatTime(
+  time: number,
+  spacing: number,
+  showYear = false,
+  display: TimeDisplay = DEFAULT_TIME_DISPLAY,
+): string {
+  const d = tzDate(time, display.tzOffsetMinutes);
   const pad = (n: number) => String(n).padStart(2, '0');
-  const y = d.getFullYear();
-  const m = d.getMonth() + 1;
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth() + 1;
   if (spacing < 60) {
-    if (!hour12) return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    const h24 = d.getHours();
+    if (!display.hour12) return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+    const h24 = d.getUTCHours();
     const h12 = h24 % 12 === 0 ? 12 : h24 % 12; // 0 点 → 12 AM，12 点 → 12 PM
-    return `${h12}:${pad(d.getMinutes())} ${h24 < 12 ? 'AM' : 'PM'}`;
+    return `${h12}:${pad(d.getUTCMinutes())} ${h24 < 12 ? 'AM' : 'PM'}`;
   }
-  if (spacing < 300) return showYear ? `${y}年${m}月${d.getDate()}日` : `${m}月${d.getDate()}日`;
+  if (spacing < 300) return showYear ? `${y}年${m}月${d.getUTCDate()}日` : `${m}月${d.getUTCDate()}日`;
   return showYear || m === 1 ? `${y}年${m}月` : `${m}月`;
 }

@@ -7,12 +7,13 @@ import type { PriceAxisPos } from '@/engine/renderer/chartPanes';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
 import { useChartConfigStore } from '@/store/chartConfigStore';
 import { useTradeSettingsStore } from '@/store/tradeSettingsStore';
+import { ChartGeneralSection } from '@/features/settings/ChartGeneralSection';
 import { ChartTemplateSection } from '@/features/settings/ChartTemplateSection';
 import { ChartTradingSection } from '@/features/settings/ChartTradingSection';
 import { CheckRow, Segmented, SettingRow } from '@/ui/controls';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
-const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观', '交易', '模板'] as const;
+const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观', '一般', '交易', '模板'] as const;
 type Tab = (typeof TABS)[number];
 
 /** 网格四态（TV 画布页）：无 / 横 / 竖 / 全 */
@@ -43,7 +44,7 @@ interface ChartSettingsDialogProps {
   percent: boolean;
   autoScale: boolean;
   legend: LegendOptions;
-  /** 主图渲染器：网格四态/边框/水印/价格轴位置/时间制式实时下发 */
+  /** 主图渲染器：网格四态/边框/水印/价格轴位置/时间制式/显示时区实时下发 */
   renderer: ChartRenderer | null;
   onLog: (v: boolean) => void;
   onPercent: (v: boolean) => void;
@@ -52,8 +53,9 @@ interface ChartSettingsDialogProps {
 }
 
 /** 图表设置：TV 左导航 + 实时生效（无确定按钮）。
- *  画布类偏好（网格/边框/水印/价格轴位置/时间制式）归 chartConfigStore（三期-B0 单一来源 + 落盘），
- *  对话框只做读写与即时下发 renderer——本组件常驻挂载，故 renderer 就绪时即由 store 播种。 */
+ *  画布类偏好（网格/边框/水印/价格轴位置/时间制式/显示时区）归 chartConfigStore
+ *  （三期-B0 单一来源 + 落盘），对话框只做读写与即时下发 renderer——本组件常驻挂载，
+ *  故 renderer 就绪时即由 store 播种。 */
 export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
   const [tab, setTab] = useState<Tab>('坐标轴');
   const gridMode = useChartConfigStore((s) => s.gridMode);
@@ -69,6 +71,8 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
   /** 时间坐标制式：false = 24 小时，true = 12 小时（AM/PM） */
   const timeHour12 = useChartConfigStore((s) => s.timeHour12);
   const setTimeHour12 = useChartConfigStore((s) => s.setTimeHour12);
+  /** 时间标签显示时区（三期-B3「一般」页）：null = 浏览器本地（改造前口径） */
+  const tzOffsetMinutes = useChartConfigStore((s) => s.tzOffsetMinutes);
   /** 交易可视化显隐（三期-B2 交易页）：与画布五项同一路径，只下发主图 renderer */
   const showTrading = useTradeSettingsStore((s) => s.showTrading);
 
@@ -79,8 +83,9 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
     p.renderer?.setWatermarkVisible(watermark);
     p.renderer?.setPriceAxisPos(priceAxisPos);
     p.renderer?.setTimeHour12(timeHour12);
+    p.renderer?.setTzOffsetMinutes(tzOffsetMinutes);
     p.renderer?.setTradingVisible(showTrading);
-  }, [p.renderer, gridMode, borders, watermark, priceAxisPos, timeHour12, showTrading]);
+  }, [p.renderer, gridMode, borders, watermark, priceAxisPos, timeHour12, tzOffsetMinutes, showTrading]);
 
   return (
     <Dialog.Root
@@ -190,6 +195,8 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
                   <Segmented ariaLabel="网格线" value={gridMode} options={GRID_OPTIONS} onChange={setGridMode} />
                 </SettingRow>
               )}
+
+              {tab === '一般' && <ChartGeneralSection />}
 
               {tab === '交易' && <ChartTradingSection />}
 

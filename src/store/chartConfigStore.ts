@@ -44,6 +44,8 @@ export interface ChartPrefs {
   watermarkVisible: boolean;
   priceAxisPos: PriceAxisPos;
   timeHour12: boolean;
+  /** 图表时区显示偏移（分钟，东为正）；null = 浏览器本地（三期-B3「一般」页） */
+  tzOffsetMinutes: number | null;
 }
 
 /** 默认值：画布五项沿用 B0 改造前对话框里的硬编码初值，与引擎侧默认一致 → 首次进入零行为变化 */
@@ -62,6 +64,7 @@ const DEFAULT_PREFS: ChartPrefs = {
   watermarkVisible: false,
   priceAxisPos: 'right',
   timeHour12: false,
+  tzOffsetMinutes: null,
 };
 
 const GRID_MODES: readonly GridMode[] = ['none', 'horizontal', 'vertical', 'both'];
@@ -77,6 +80,17 @@ function readBool(v: unknown, d: boolean): boolean {
 
 function readEnum<T extends string>(v: unknown, allowed: readonly T[], d: T): T {
   return typeof v === 'string' && allowed.includes(v as T) ? (v as T) : d;
+}
+
+/** 时区显示偏移上下限（分钟）：真实固定偏移档是 UTC−12 ~ UTC+14（含 +5:30 这类半小时档）。
+ *  读入 clamp 与「一般」页步进器的 min/max 共用这一份，不留第二套口径（三期-B2 同例）。 */
+export const TZ_OFFSET_LIMITS = { min: -720, max: 840 } as const;
+
+/** 时区显示偏移：null / 缺字段 / 坏值（字符串、NaN、Infinity）一律回落 null = 浏览器本地
+ *  （改造前口径）；有限数取整并 clamp——坏一个字段不改掉整档（B0 口径）。 */
+function readTzOffset(v: unknown): number | null {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return null;
+  return Math.round(Math.min(TZ_OFFSET_LIMITS.max, Math.max(TZ_OFFSET_LIMITS.min, v)));
 }
 
 function readTimeframe(v: unknown): TimeframeId {
@@ -133,6 +147,7 @@ export function parseChartPrefs(v: unknown): ChartPrefs {
     watermarkVisible: readBool(s.watermarkVisible, DEFAULT_PREFS.watermarkVisible),
     priceAxisPos: readEnum(s.priceAxisPos, PRICE_AXIS_POSS, DEFAULT_PREFS.priceAxisPos),
     timeHour12: readBool(s.timeHour12, DEFAULT_PREFS.timeHour12),
+    tzOffsetMinutes: readTzOffset(s.tzOffsetMinutes),
   };
 }
 
@@ -153,6 +168,7 @@ export function slicePrefs(s: ChartConfigStore): ChartPrefs {
     watermarkVisible: s.watermarkVisible,
     priceAxisPos: s.priceAxisPos,
     timeHour12: s.timeHour12,
+    tzOffsetMinutes: s.tzOffsetMinutes,
   };
 }
 
@@ -212,6 +228,9 @@ export interface ChartConfigStore {
   /** 时间坐标制式（Scales 页）：false = 24 小时，true = 12 小时（AM/PM） */
   timeHour12: boolean;
   setTimeHour12: (v: boolean) => void;
+  /** 图表时区显示偏移（分钟，东为正；三期-B3「一般」页）：null = 浏览器本地 */
+  tzOffsetMinutes: number | null;
+  setTzOffsetMinutes: (v: number | null) => void;
   /** 对比品种（P2-D 叠加）：null = 不叠加；独立订阅数据，归一化百分比副坐标渲染 */
   compareSymbol: Instrument | null;
   setCompareSymbol: (inst: Instrument | null) => void;
@@ -261,6 +280,8 @@ export const useChartConfigStore = create<ChartConfigStore>((set) => ({
   setPriceAxisPos: (priceAxisPos) => set({ priceAxisPos }),
   timeHour12: INITIAL.timeHour12,
   setTimeHour12: (timeHour12) => set({ timeHour12 }),
+  tzOffsetMinutes: INITIAL.tzOffsetMinutes,
+  setTzOffsetMinutes: (tzOffsetMinutes) => set({ tzOffsetMinutes }),
 
   compareSymbol: null,
   setCompareSymbol: (compareSymbol) => set({ compareSymbol }),

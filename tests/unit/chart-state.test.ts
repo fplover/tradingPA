@@ -173,6 +173,17 @@ describe('ChartState：面板布局与配置', () => {
     expect(state.timeHour12).toBe(true);
     expect(invalidate).toHaveBeenCalledTimes(3);
   });
+
+  it('显示时区 setter（三期-B3）：默认 null = 浏览器本地，落状态并请求重绘', () => {
+    const { state, invalidate } = makeState();
+    expect(state.tzOffsetMinutes).toBeNull();
+    invalidate.mockClear();
+    state.setTzOffsetMinutes(330);
+    expect(state.tzOffsetMinutes).toBe(330);
+    state.setTzOffsetMinutes(null); // 回本地档同样要请求重绘（读数变了）
+    expect(state.tzOffsetMinutes).toBeNull();
+    expect(invalidate).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('IndicatorManager：指标生命周期', () => {

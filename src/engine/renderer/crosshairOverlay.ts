@@ -3,13 +3,13 @@ import type { Viewport } from '../viewport/Viewport';
 import type { PriceScale } from '../scale/PriceScale';
 import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
-import { formatTime } from './drawAxes';
+import { formatTime, type TimeDisplay, DEFAULT_TIME_DISPLAY } from './drawAxes';
 import { chartAreaOffsetX, type PriceAxisPos } from './chartPanes';
 import type { LegendInfo } from './legendTypes';
 
 /** 十字光标：虚线 + 价格轴标签 + 时间轴标签。
  *  axisPos = 价格轴侧：虚线/时间标签随图表区偏移，价格标签贴轴内侧（无轴时不绘）；
- *  hour12 = 时间标签 12 小时制（AM/PM）。 */
+ *  display = 时间标签显示口径（12 小时制 + 时区偏移）。 */
 export function drawCrosshair(
   ctx: CanvasRenderingContext2D,
   crosshair: Crosshair,
@@ -20,7 +20,7 @@ export function drawCrosshair(
   paneY = 0,
   paneHeight = geo.chartH,
   axisPos: PriceAxisPos = 'right',
-  hour12 = false,
+  display: TimeDisplay = DEFAULT_TIME_DISPLAY,
 ): void {
   if (!crosshair.visible) return;
   const x0 = chartAreaOffsetX(axisPos); // 图表区左边界画布 x（右/无轴 = 0）
@@ -52,7 +52,7 @@ export function drawCrosshair(
   // 时间轴标签（水平 clamp 在图表宽度内）
   const time = crosshair.barIndex >= 0 ? crosshair.time : 0;
   if (time > 0) {
-    drawAxisLabel(ctx, snapX + x0, geo.chartH + 1, formatTime(time, viewport.spacing, false, hour12), 'time', {
+    drawAxisLabel(ctx, snapX + x0, geo.chartH + 1, formatTime(time, viewport.spacing, false, display), 'time', {
       minX: x0,
       maxX: x0 + geo.chartW,
     });

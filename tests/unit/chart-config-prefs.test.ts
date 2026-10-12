@@ -159,3 +159,50 @@ describe('chartConfigStore 坏档兜底（逐字段，不整体弃档）', () =>
     expect((await freshStore()).timeframe).toBe('1m');
   });
 });
+
+/** 三期-B3「一般」页新增字段：null = 浏览器本地 = 该字段存在之前的口径，
+ *  故「旧档读回 null」本身就是兼容性证明，越界与坏值只影响这一个字段。 */
+describe('chartConfigStore 显示时区（tzOffsetMinutes）', () => {
+  beforeEach(() => localStorage.clear());
+
+  it('B3 之前落盘的整档（无该字段）读回 null，其余字段原样保留', async () => {
+    seed({ version: 1, gridMode: 'horizontal', timeHour12: true, watermarkVisible: true });
+    const s = await freshStore();
+    expect(s.tzOffsetMinutes).toBeNull();
+    expect(s.gridMode).toBe('horizontal');
+    expect(s.timeHour12).toBe(true);
+    expect(s.watermarkVisible).toBe(true);
+  });
+
+  it('固定偏移与回本地两向都落盘（等效刷新读回同值）', async () => {
+    const s = await freshStore();
+    s.setTzOffsetMinutes(330);
+    expect((await freshStore()).tzOffsetMinutes).toBe(330);
+    s.setTzOffsetMinutes(null);
+    expect((await freshStore()).tzOffsetMinutes).toBeNull();
+    expect(localStorage.getItem(KEY)).toContain('"tzOffsetMinutes":null');
+  });
+
+  it('越界 clamp 到 TZ_OFFSET_LIMITS；小数取整；坏类型回落 null', async () => {
+    seed({ tzOffsetMinutes: 5000 });
+    expect((await freshStore()).tzOffsetMinutes).toBe(840);
+    seed({ tzOffsetMinutes: -5000 });
+    expect((await freshStore()).tzOffsetMinutes).toBe(-720);
+    seed({ tzOffsetMinutes: 330.7 });
+    expect((await freshStore()).tzOffsetMinutes).toBe(331);
+    seed({ tzOffsetMinutes: 'UTC+8' });
+    expect((await freshStore()).tzOffsetMinutes).toBeNull();
+    // Infinity 无法经 JSON.stringify 落盘，直接写原始档（parse 后才成为非有限数）
+    localStorage.setItem(KEY, '{"tzOffsetMinutes":1e999}');
+    expect((await freshStore()).tzOffsetMinutes).toBeNull();
+  });
+
+  it('坏时区字段只改掉该字段，同档其余偏好保留', async () => {
+    seed({ tzOffsetMinutes: 'soon', gridMode: 'vertical', priceAxisPos: 'left', timeHour12: true });
+    const s = await freshStore();
+    expect(s.tzOffsetMinutes).toBeNull();
+    expect(s.gridMode).toBe('vertical');
+    expect(s.priceAxisPos).toBe('left');
+    expect(s.timeHour12).toBe(true);
+  });
+});

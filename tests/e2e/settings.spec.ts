@@ -302,6 +302,95 @@ test('交易页偏好跨刷新保留并流入下单表单', async ({ page }) => 
   await expect(menu.getByLabel('价格')).toBeVisible();
 });
 
+/** 三期-B3：图表设置「一般」页（时区口径只做显示层）。
+ *  默认档 = 浏览器本地，且必须与改造前逐字等价——这是 27 面黄金截图零 diff 的凭据，
+ *  也是最容易被「顺手改成 UTC」改坏的性质，故连状态栏读数一起锁住。 */
+test('一般页时区偏好落盘并流入引擎与状态栏', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  const engineTz = () =>
+    page.evaluate(() => {
+      const r = (window as unknown as { __chartRenderer?: { tzOffsetMinutes?: number | null } }).__chartRenderer;
+      // null 是合法档位（浏览器本地），不能与「句柄/属性缺失」混为一谈，故显式分支
+      if (!r) return 'no-dev-handle';
+      return 'tzOffsetMinutes' in r ? r.tzOffsetMinutes : 'no-such-getter';
+    });
+  const localOffset = () => page.evaluate(() => -new Date().getTimezoneOffset());
+  /** 状态栏时区标的期望值：按浏览器本地偏移算，不写死 UTC+8（CI 时区不同） */
+  const localLabel = async () => {
+    const hours = (await localOffset()) / 60;
+    const abs = Math.abs(hours);
+    return `UTC${hours >= 0 ? '+' : '-'}${abs % 1 === 0 ? abs : abs.toFixed(1)}`;
+  };
+  const statusTz = page.getByTestId('status-tz');
+  const stepper = page.getByRole('spinbutton', { name: '时区偏移' });
+  const openGeneralTab = async () => {
+    await page.getByRole('button', { name: '图表设置' }).click();
+    await page.getByRole('button', { name: '一般', exact: true }).click();
+  };
+
+  // 默认档：引擎收 null、步进器不出现、状态栏 = 浏览器本地（改造前口径）
+  await expect.poll(engineTz).toBeNull();
+  await expect(statusTz).toHaveText(await localLabel());
+
+  await openGeneralTab();
+  await expect(page.getByRole('radio', { name: '浏览器本地', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(stepper).toBeHidden();
+
+  // 由本地切固定偏移：以当前本地偏移起算，切档瞬间图上读数与状态栏都不跳
+  await page.getByRole('radio', { name: '固定偏移', exact: true }).click();
+  await expect(stepper).toBeVisible();
+  const seeded = await localOffset();
+  await expect(stepper).toHaveValue(String(seeded));
+  await expect.poll(engineTz).toBe(seeded);
+  await expect(statusTz).toHaveText(await localLabel());
+
+  // 半小时档：引擎读数 + 状态栏 + 落盘三处同向
+  await stepper.fill('330');
+  await expect.poll(engineTz).toBe(330);
+  await expect(statusTz).toHaveText('UTC+5.5');
+  await expect
+    .poll(async () => {
+      const raw = await page.evaluate(() => localStorage.getItem('tradingpa.chartPrefs.v1'));
+      return raw ? JSON.parse(raw).tzOffsetMinutes : null;
+    })
+    .toBe(330);
+  await page.keyboard.press('Escape');
+
+  // 刷新：读回真值而非回到本地档，且引擎重新收到该档
+  await page.reload();
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+  await expect.poll(engineTz).toBe(330);
+  await expect(statusTz).toHaveText('UTC+5.5');
+  await openGeneralTab();
+  await expect(page.getByRole('radio', { name: '固定偏移', exact: true })).toHaveAttribute('aria-checked', 'true');
+  await expect(stepper).toHaveValue('330');
+
+  // UTC 档 = 固定偏移填 0（不与「浏览器本地」混档），状态栏随之
+  await stepper.fill('0');
+  await expect.poll(engineTz).toBe(0);
+  await expect(statusTz).toHaveText('UTC+0');
+
+  // 越界由步进器 clamp 到 TZ_OFFSET_LIMITS（与读档 clamp 同一份上下限）
+  await stepper.fill('5000');
+  await expect(stepper).toHaveValue('840');
+  await expect.poll(engineTz).toBe(840);
+  await expect(statusTz).toHaveText('UTC+14');
+
+  // 回本地档：引擎收 null、步进器消失、状态栏回到本地读数
+  await page.getByRole('radio', { name: '浏览器本地', exact: true }).click();
+  await expect(stepper).toBeHidden();
+  await expect.poll(engineTz).toBeNull();
+  await expect(statusTz).toHaveText(await localLabel());
+  await expect
+    .poll(async () => {
+      const raw = await page.evaluate(() => localStorage.getItem('tradingpa.chartPrefs.v1'));
+      return raw ? JSON.parse(raw).tzOffsetMinutes : null;
+    })
+    .toBeNull();
+});
+
 /** 图例右键菜单：开关图例各部分 */ test('图例右键菜单', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
