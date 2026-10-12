@@ -2,7 +2,7 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Bar } from '@/types/market';
-import { createMockCtx, asCtx, fillTexts, hasCall, type MockCtx } from './helpers/mock-ctx';
+import { createMockCtx, asCtx, callsOf, fillTexts, hasCall, type MockCtx } from './helpers/mock-ctx';
 
 /**
  * ChartRenderer 输入 → 状态集成测试（A3-3）。
@@ -297,5 +297,60 @@ describe('ChartRenderer 输入 → 渲染链路', () => {
     pointer('pointerdown', 300, 300);
     pointer('pointermove', 200, 300);
     expect(r.getViewport().first).toBe(before);
+  });
+});
+
+describe('交易可视化显隐开关（三期-B2「交易」页）', () => {
+  const VISUAL = {
+    orders: [{ id: 'ord_1', side: 'buy' as const, type: 'limit' as const, qty: 2, price: 30_000 }],
+    position: null,
+    entries: [],
+    exits: [],
+  };
+
+  /** 挂单线右端标签（drawOrderLine：数量 + 类型 + 价格），用于判断交易层是否参与绘制 */
+  const hasOrderTag = (r: ChartRenderer) => axisLabels(r).some((t) => t.includes('限价'));
+
+  it('默认显示：挂单标签入帧；关闭后仅剩其他图层；再开恢复', () => {
+    const r = makeRenderer();
+    r.setTradeVisual(VISUAL);
+    expect(hasOrderTag(r)).toBe(true);
+
+    r.setTradingVisible(false);
+    expect(hasOrderTag(r)).toBe(false);
+    // 只摘掉交易层：图例商品行仍在同一帧绘制
+    expect(axisLabels(r)).toContain('BTC/USDT');
+
+    r.setTradingVisible(true);
+    expect(hasOrderTag(r)).toBe(true);
+  });
+
+  it('隐藏时挂单线不可点：按下落到画布平移，不进入交易拖拽', () => {
+    const r = makeRenderer();
+    const moved = vi.fn();
+    r.setTradeCallbacks({ onOrderMove: moved });
+    r.setTradeVisual(VISUAL);
+    // 从可见帧的挂单标签取线体 y（同一视口与比例下稳定；标签 y 即线体 y，容差内）
+    r.setTradingVisible(true);
+    ctx.calls.length = 0;
+    r.redraw();
+    const tag = callsOf(ctx, 'fillText').find((a) => String(a[0]).includes('限价'));
+    expect(tag).toBeDefined();
+    const y = Number(tag![2]);
+
+    r.setTradingVisible(false);
+    const before = r.getViewport().first;
+    pointer('pointerdown', 300, y);
+    pointer('pointermove', 200, y);
+    expect(moved).not.toHaveBeenCalled();
+    expect(r.getViewport().first).toBeGreaterThan(before); // 同价位按下改判为画布平移
+    pointer('pointerup', 200, y);
+
+    // 对照组：重新显示后同一点位确实进入交易拖拽（证明上面选的 y 落在线体命中区内）
+    r.setTradingVisible(true);
+    pointer('pointerdown', 300, y);
+    pointer('pointermove', 300, y + 40);
+    expect(moved).toHaveBeenCalledTimes(1);
+    pointer('pointerup', 300, y + 40);
   });
 });

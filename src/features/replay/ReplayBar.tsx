@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { nextAutoplayIndex, useReplayStore } from '@/store/replayStore';
+import { useTradeSettingsStore } from '@/store/tradeSettingsStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { Menu, MenuItem } from '@/ui/primitives';
 import { DatePicker } from '@/ui/DatePicker';
@@ -71,10 +72,11 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
   const tradeEngine = useTradeStore((s) => s.engine);
   const place = useTradeStore((s) => s.place);
   const closePosition = useTradeStore((s) => s.closePosition);
+  const defaultQty = useTradeSettingsStore((s) => s.defaultQty);
 
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [dateValue, setDateValue] = useState('');
-  const [qty, setQty] = useState('0.01');
+  const [qty, setQty] = useState(String(defaultQty));
 
   // 播放：按倍速推进；可到达最后一根（barCount-1），到位后停止
   useEffect(() => {

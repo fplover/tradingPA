@@ -376,10 +376,12 @@ describe('TradeGesture：交易线拖拽与侵入剥离', () => {
     const priceScale = makePriceScale();
     const pane: TradePane = { y: 0, height: CHART_H, priceScale };
     const invalidate = vi.fn();
+    const vis = { on: true };
     const host: TradeHost = {
       paneAt: () => pane,
       mainPane: () => pane,
       chartW: () => CHART_W,
+      tradingVisible: () => vis.on,
       invalidate,
     };
     const cbs = {
@@ -396,7 +398,7 @@ describe('TradeGesture：交易线拖拽与侵入剥离', () => {
       entries: [],
       exits: [],
     });
-    return { g, cbs, priceScale, pane, invalidate };
+    return { g, cbs, priceScale, pane, invalidate, vis };
   }
 
   it('hitAt 命中挂单线体；onPointerDown 进入拖拽不触发回调', () => {
@@ -407,6 +409,22 @@ describe('TradeGesture：交易线拖拽与侵入剥离', () => {
     expect(g.onPointerDown(600, y, pane)).toBe(true);
     expect(g.dragging).toBe(true);
     expect(cbs.onOrderMove).not.toHaveBeenCalled();
+  });
+
+  it('隐藏态：hitAt 恒不命中，按下既不拖拽也不触发撤单，交还画布', () => {
+    const { g, cbs, priceScale, vis } = setup();
+    const y = priceScale.priceToY(P * 0.95);
+    const pane = { y: 0, height: CHART_H, priceScale };
+    vis.on = false;
+    expect(g.hitAt(600, y, pane)).toBeNull();
+    expect(g.onPointerDown(600, y, pane)).toBe(false);
+    expect(g.dragging).toBe(false);
+    // 右端撤单按钮同样失效（隐藏时图上无该元素）
+    expect(g.onPointerDown(CHART_W - 18, y, pane)).toBe(false);
+    expect(cbs.onOrderCancel).not.toHaveBeenCalled();
+    // 重新显示后命中恢复
+    vis.on = true;
+    expect(g.hitAt(600, y, pane)).toEqual({ kind: 'order', id: 'ord_1' });
   });
 
   it('拖拽挂单线 → onOrderMove 带上新价', () => {
@@ -523,6 +541,7 @@ describe('HoverController：悬停态/十字光标/光标决策', () => {
       paneAt: () => ({ y: 0, height: CHART_H, priceScale }),
       mainPane: () => ({ y: 0, height: CHART_H, priceScale }),
       chartW: () => CHART_W,
+      tradingVisible: () => true,
       invalidate: () => {},
     });
     return { h: new HoverController(host, drawing, trade), crosshair, published, canvas, viewport };
@@ -620,6 +639,7 @@ describe('InputController：事件路由到手势', () => {
       mainPaneY: () => 0,
       mainPane: () => panes[0],
       drawingsLocked: () => false,
+      tradingVisible: () => true,
       publishViewport: () => published.push(viewport.first),
       publishCrosshairTime: () => {},
       selectPane: (id) => {

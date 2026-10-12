@@ -146,15 +146,17 @@ export class RenderPipeline {
       );
     }
     // 交易可视化：挂单线 / 持仓线 / TP-SL / K 线进出场标记（图表区局部坐标）
-    drawTrading(
-      ctx,
-      this.host.trade.tradeVisual,
-      main.priceScale,
-      { chartW, chartH: main.height },
-      legend.decimals,
-      st.displaySeries,
-      this.host.viewport,
-    );
+    if (st.tradingVisible) {
+      drawTrading(
+        ctx,
+        this.host.trade.tradeVisual,
+        main.priceScale,
+        { chartW, chartH: main.height },
+        legend.decimals,
+        st.displaySeries,
+        this.host.viewport,
+      );
+    }
     const previewTool = this.host.drawing.tool;
     if (previewTool && this.host.drawing.placingPoints.length > 0) {
       const placing = this.host.drawing.placingPoints;

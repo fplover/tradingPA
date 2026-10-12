@@ -130,6 +130,7 @@ export class ChartController {
       mainPaneY: () => this.state.panes[0].y,
       mainPane: () => this.state.panes[0],
       drawingsLocked: () => this.state.drawingsLocked,
+      tradingVisible: () => this.state.tradingVisible,
       publishViewport: () => this.sync.publishViewport(),
       publishCrosshairTime: (t) => this.sync.publishCrosshairTime(t),
       selectPane: (id) => (this.state.selectedPaneId = id),
@@ -579,6 +580,14 @@ export class ChartController {
   }
   setTradeCallbacks(cbs: TradeCallbacks): void {
     this.trade.setCallbacks(cbs);
+  }
+  /** 交易可视化整层显隐（三期-B2 图表设置「交易」页）：additive 开关，默认开 */
+  setTradingVisible(visible: boolean): void {
+    this.state.setTradingVisible(visible);
+  }
+  /** 回读（与 watermarkOn / studiesHidden 同口径）：E2E 用它证明 store→对话框 effect→引擎的接线 */
+  get tradingVisible(): boolean {
+    return this.state.tradingVisible;
   }
 
   // ---------- 联动 ----------

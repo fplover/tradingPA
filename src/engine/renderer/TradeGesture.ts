@@ -30,6 +30,8 @@ export interface TradeHost {
   mainPane(): TradePane;
   /** 图表区宽（getter：随画布尺寸变化） */
   chartW(): number;
+  /** 交易可视化整层显隐（三期-B2）：隐藏时命中测试恒不命中 */
+  tradingVisible(): boolean;
   invalidate(): void;
 }
 
@@ -74,6 +76,8 @@ export class TradeGesture {
 
   /** 命中测试（悬停/右键守卫/按下分发共用） */
   hitAt(x: number, y: number, pane: TradePane): TradeHit {
+    // 隐藏时图上无线可点：命中恒空，悬停光标、按下拖拽与右键守卫分支一并回到画布默认行为
+    if (!this.host.tradingVisible()) return null;
     return hitTestTrading(this.visual, x, y - pane.y, pane.priceScale, {
       chartW: this.host.chartW(),
       chartH: pane.height,

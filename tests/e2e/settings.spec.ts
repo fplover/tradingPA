@@ -211,6 +211,97 @@ test('指标模板分区契约（共用呈现层回归）', async ({ page }) => 
   await expect(section.getByText('保存当前指标组合为模板，随时一键应用')).toBeVisible();
 });
 
+/** 三期-B2：图表设置「交易」页。改造前四项默认值散落在五处硬编码（0.01 ×4、×1.01、100_000），
+ *  本页把它们收成一个落盘偏好，并证明它真的流入下单表单与模拟盘引擎——不是只存在 store 里。 */
+test('交易页偏好跨刷新保留并流入下单表单', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole('button', { name: '图表设置' }).click();
+  await page.getByRole('button', { name: '交易', exact: true }).click();
+
+  // 初值 = 改造前的硬编码逐位相同
+  const qty = page.getByRole('spinbutton', { name: '默认下单数量' });
+  const sl = page.getByRole('spinbutton', { name: '止损价偏移' });
+  await expect(qty).toHaveValue('0.01');
+  await expect(sl).toHaveValue('1');
+  await expect(page.getByRole('spinbutton', { name: '模拟盘初始资金' })).toHaveValue('100000');
+  await expect(page.getByRole('checkbox', { name: /显示交易可视化/ })).toHaveAttribute('aria-checked', 'true');
+
+  await qty.fill('0.25');
+  await sl.fill('2');
+  await page.getByRole('spinbutton', { name: '模拟盘初始资金' }).fill('250000');
+  const showTrading = page.getByRole('checkbox', { name: /显示交易可视化/ });
+  await showTrading.click();
+  await expect
+    .poll(async () => {
+      const raw = await page.evaluate(() => localStorage.getItem('tradingpa.tradeSettings.v1'));
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return `${p.defaultQty}/${p.stopOffsetPct}/${p.initialBalance}/${p.showTrading}`;
+    })
+    .toBe('0.25/2/250000/false');
+
+  // 接线证明：复选框 → store → 对话框下发 effect → 主图引擎状态（画布层证据见 renderer-input 单测）
+  const engineTradingOn = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __chartRenderer?: { tradingVisible?: boolean } }).__chartRenderer?.tradingVisible ??
+        null,
+    );
+  await expect.poll(engineTradingOn).toBe(false);
+
+  await page.keyboard.press('Escape');
+
+  // 刷新后读回真值（不是回到硬编码默认），且引擎重新收到关档
+  await page.reload();
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: '图表设置' }).click();
+  await page.getByRole('button', { name: '交易', exact: true }).click();
+  await expect(page.getByRole('spinbutton', { name: '默认下单数量' })).toHaveValue('0.25');
+  await expect(page.getByRole('spinbutton', { name: '止损价偏移' })).toHaveValue('2');
+  await expect(page.getByRole('checkbox', { name: /显示交易可视化/ })).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(engineTradingOn).toBe(false);
+
+  // 流入下单表单：进入回放 → 挂单对话框数量初值 = 偏好；止损价 = 当前价 × (1 + 2%)
+  await page.getByRole('checkbox', { name: /显示交易可视化/ }).click(); // 恢复显示再走下单链路
+  await expect.poll(engineTradingOn).toBe(true);
+  await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: '回放：点击后在图表上选择 K 线作为起点' }).click();
+  await page.locator('canvas').click({ position: { x: 400, y: 300 } });
+  // 初始资金经引擎构造抵达面板权益
+  await expect(page.getByText('权益 250000.00')).toBeVisible();
+  await page.getByRole('button', { name: '限价 / 止损挂单' }).click();
+  const dlg = page.getByRole('dialog', { name: '挂单' });
+  await expect(dlg.getByLabel('数量')).toHaveValue('0.25');
+  await dlg.getByRole('button', { name: '止损', exact: true }).click();
+  const priceText = (await dlg.getByText(/当前价/).textContent())?.match(/当前价 ([0-9.]+)/)?.[1];
+  expect(priceText).toBeTruthy();
+  await expect(dlg.getByLabel('止损价')).toHaveValue((Number(priceText) * 1.02).toFixed(2));
+
+  // 第 5 处调用点（图表右键下单浮窗）：回放态右键 → 数量同样取偏好；
+  // 关档改 市价/卖出 后点遮罩关闭 → 卸载，重开回到默认档且数量仍是偏好（证明每次打开重新播种）
+  await page.keyboard.press('Escape');
+  const menu = page.getByTestId('chart-order-menu');
+  const openMenu = async () => {
+    await page
+      .locator('canvas')
+      .first()
+      .click({ button: 'right', position: { x: 400, y: 300 } });
+    await expect(menu).toBeVisible();
+  };
+  await openMenu();
+  await expect(menu.getByLabel('数量')).toHaveValue('0.25');
+  await expect(menu.getByLabel('价格')).toBeVisible();
+  await menu.getByRole('button', { name: '市价', exact: true }).click();
+  await expect(menu.getByLabel('价格')).toBeHidden();
+  await page.mouse.click(20, 300); // 遮罩 pointerdown 关闭浮窗
+  await expect(menu).toBeHidden();
+  await openMenu();
+  await expect(menu.getByLabel('数量')).toHaveValue('0.25');
+  await expect(menu.getByLabel('价格')).toBeVisible();
+});
+
 /** 图例右键菜单：开关图例各部分 */ test('图例右键菜单', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });

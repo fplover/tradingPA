@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { PaperTradingEngine, type OrderSpec, type Position } from './paperEngine';
+import { useTradeSettingsStore } from '@/store/tradeSettingsStore';
 import type { TradeMarker, TradeVisual } from '@/engine/renderer/drawTrading';
 
 interface TradeStore {
@@ -10,15 +11,19 @@ interface TradeStore {
   cancel: (id: string) => void;
   closePosition: (refPrice: number, time: number) => void;
   onBar: (bar: { time: number; open: number; high: number; low: number; close: number }) => void;
-  reset: (balance?: number) => void;
+  /** 重置会话：资金一律取交易偏好的初始资金（三期-B2 前为「无参 = 保留当前余额」） */
+  reset: () => void;
   updateOrderPrice: (id: string, price: number) => void;
   setPositionTPSL: (tp: number | null, sl: number | null) => void;
   /** 构造图表可视化数据（挂单线/持仓线） */
   visual: () => TradeVisual;
 }
 
+/** 初始资金取偏好；本 store 在模块求值时播种一次，之后的偏好变化由每次 reset 读取生效 */
+const seedBalance = () => useTradeSettingsStore.getState().initialBalance;
+
 export const useTradeStore = create<TradeStore>((set, get) => ({
-  engine: new PaperTradingEngine(100_000),
+  engine: new PaperTradingEngine(seedBalance()),
   version: 0,
   place: (spec, refPrice, time) => {
     get().engine.place(spec, refPrice, time);
@@ -36,8 +41,8 @@ export const useTradeStore = create<TradeStore>((set, get) => ({
     get().engine.onBar(bar);
     set((s) => ({ version: s.version + 1 }));
   },
-  reset: (balance) => {
-    get().engine.reset(balance);
+  reset: () => {
+    get().engine.reset(seedBalance());
     set((s) => ({ version: s.version + 1 }));
   },
   updateOrderPrice: (id, price) => {

@@ -6,11 +6,13 @@ import type { GridMode } from '@/engine/renderer/drawAxes';
 import type { PriceAxisPos } from '@/engine/renderer/chartPanes';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
 import { useChartConfigStore } from '@/store/chartConfigStore';
+import { useTradeSettingsStore } from '@/store/tradeSettingsStore';
 import { ChartTemplateSection } from '@/features/settings/ChartTemplateSection';
-import { CheckRow, Segmented } from '@/ui/controls';
+import { ChartTradingSection } from '@/features/settings/ChartTradingSection';
+import { CheckRow, Segmented, SettingRow } from '@/ui/controls';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
-const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观', '模板'] as const;
+const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观', '交易', '模板'] as const;
 type Tab = (typeof TABS)[number];
 
 /** 网格四态（TV 画布页）：无 / 横 / 竖 / 全 */
@@ -67,6 +69,8 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
   /** 时间坐标制式：false = 24 小时，true = 12 小时（AM/PM） */
   const timeHour12 = useChartConfigStore((s) => s.timeHour12);
   const setTimeHour12 = useChartConfigStore((s) => s.setTimeHour12);
+  /** 交易可视化显隐（三期-B2 交易页）：与画布五项同一路径，只下发主图 renderer */
+  const showTrading = useTradeSettingsStore((s) => s.showTrading);
 
   // renderer 就绪/偏好变更即下发（renderer 异步创建，就绪时补一次当前值）
   useEffect(() => {
@@ -75,7 +79,8 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
     p.renderer?.setWatermarkVisible(watermark);
     p.renderer?.setPriceAxisPos(priceAxisPos);
     p.renderer?.setTimeHour12(timeHour12);
-  }, [p.renderer, gridMode, borders, watermark, priceAxisPos, timeHour12]);
+    p.renderer?.setTradingVisible(showTrading);
+  }, [p.renderer, gridMode, borders, watermark, priceAxisPos, timeHour12, showTrading]);
 
   return (
     <Dialog.Root
@@ -186,23 +191,14 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
                 </SettingRow>
               )}
 
+              {tab === '交易' && <ChartTradingSection />}
+
               {tab === '模板' && <ChartTemplateSection />}
             </div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  );
-}
-
-function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md, minHeight: 32 }}
-    >
-      <span style={{ color: 'var(--text)', fontSize: fontSize.lg }}>{label}</span>
-      {children}
-    </div>
   );
 }
 

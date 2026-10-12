@@ -208,3 +208,15 @@ export function CheckRow({
     </button>
   );
 }
+
+/** 设置页通用行：左标签 + 右控件（Segmented / NumberStepper 等非复选控件用；三期-B2 起两页共用） */
+export function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: space.md, minHeight: 32 }}
+    >
+      <span style={{ color: 'var(--text)', fontSize: fontSize.lg }}>{label}</span>
+      {children}
+    </div>
+  );
+}

@@ -1,23 +1,19 @@
 import { useState } from 'react';
 import type { OrderType, OrderSide, OrderSpec } from './paperEngine';
 import { ORDER_TYPE_LABELS } from './orderLabels';
+import { useTradeSettingsStore } from '@/store/tradeSettingsStore';
 import { radius } from '@/ui/tokens';
 
-/** 挂单对话框：限价 / 止损 / 止损限价 下单表单（颜色走 --buy/--sell token） */
-export function OrderDialog({
-  price,
-  qtyNum,
-  onSubmit,
-}: {
-  price: number;
-  qtyNum: number;
-  onSubmit: (spec: OrderSpec) => void;
-}) {
+/** 挂单对话框：限价 / 止损 / 止损限价 下单表单（颜色走 --buy/--sell token）
+ *  数量初值与止损价偏移取交易偏好（三期-B2）；本组件常驻 Modal 内，每次打开重新挂载即重新播种。 */
+export function OrderDialog({ price, onSubmit }: { price: number; onSubmit: (spec: OrderSpec) => void }) {
+  const defaultQty = useTradeSettingsStore((s) => s.defaultQty);
+  const stopOffsetPct = useTradeSettingsStore((s) => s.stopOffsetPct);
   const [type, setType] = useState<OrderType>('limit');
   const [side, setSide] = useState<OrderSide>('buy');
-  const [qty, setQty] = useState(String(qtyNum || 0.01));
+  const [qty, setQty] = useState(String(defaultQty));
   const [limitPrice, setLimitPrice] = useState(price > 0 ? price.toFixed(2) : '');
-  const [stopPrice, setStopPrice] = useState(price > 0 ? (price * 1.01).toFixed(2) : '');
+  const [stopPrice, setStopPrice] = useState(price > 0 ? (price * (1 + stopOffsetPct / 100)).toFixed(2) : '');
 
   const submit = () => {
     const q = Number(qty);

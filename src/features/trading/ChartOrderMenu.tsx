@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import { useOrderMenuStore } from '@/store/orderMenuStore';
+import { useTradeSettingsStore } from '@/store/tradeSettingsStore';
 import { useTradeStore } from './tradeStore';
 import { radius } from '@/ui/tokens';
 
-/** 图表点击下单浮窗（TV 风格）：市价/限价 + 买/卖 + 数量 + 价格 */
+/** 图表点击下单浮窗（TV 风格）：市价/限价 + 买/卖 + 数量 + 价格
+ *  关闭时整棵表单子树卸载，故每次打开都按当前交易偏好重新播种数量初值（三期-B2）。 */
 export function ChartOrderMenu({ decimals }: { decimals: number }) {
-  const { open, price, time, x, y, close } = useOrderMenuStore();
+  const open = useOrderMenuStore((s) => s.open);
+  if (!open) return null;
+  return <OrderForm decimals={decimals} />;
+}
+
+function OrderForm({ decimals }: { decimals: number }) {
+  const { price, time, x, y, close } = useOrderMenuStore();
   const place = useTradeStore((s) => s.place);
+  const defaultQty = useTradeSettingsStore((s) => s.defaultQty);
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [type, setType] = useState<'market' | 'limit'>('limit');
-  const [qty, setQty] = useState('0.01');
+  const [qty, setQty] = useState(String(defaultQty));
   const [limitPrice, setLimitPrice] = useState('');
-
-  if (!open) return null;
 
   const submit = () => {
     const q = Math.max(0, Number(qty) || 0);
@@ -32,7 +39,11 @@ export function ChartOrderMenu({ decimals }: { decimals: number }) {
 
   return (
     <div style={{ ...overlayStyle }} onPointerDown={close}>
-      <div style={{ ...menuStyle, left, top }} onPointerDown={(e) => e.stopPropagation()}>
+      <div
+        data-testid="chart-order-menu"
+        style={{ ...menuStyle, left, top }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
           <button
             onClick={() => setSide('buy')}

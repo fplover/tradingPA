@@ -184,7 +184,6 @@ export function TradePanel({ price, time, onReport }: TradePanelProps) {
       <Modal open={dialogOpen} onOpenChange={setDialogOpen} title="挂单" width={280}>
         <OrderDialog
           price={price}
-          qtyNum={0.01}
           onSubmit={(spec) => {
             place(spec, price, time);
             setDialogOpen(false);

@@ -79,6 +79,8 @@ export class ChartState {
   /** 水印显隐（TV 画布页）：主面板居中「代码 · 周期」，引擎实时渲染到画布 */
   watermarkVisible = false;
   hideStudies = false;
+  /** 交易可视化显隐（三期-B2「交易」页）：挂单线 / 持仓线 / TP-SL / 进出场标记整层开关 */
+  tradingVisible = true;
   legendOptions: LegendOptions = { ...DEFAULT_LEGEND_OPTIONS };
 
   // 交互态中的图表级部分（输入层经 host 读写；draw() 同读）
@@ -303,6 +305,12 @@ export class ChartState {
   /** 隐藏全部指标（TV 底栏 hide-indicators 开关） */
   setHideStudies(hidden: boolean): void {
     this.hideStudies = hidden;
+    this.invalidate();
+  }
+
+  /** 交易可视化整层显隐（三期-B2 图表设置「交易」页）：隐藏时命中测试一并失效，不可拖不可点 */
+  setTradingVisible(visible: boolean): void {
+    this.tradingVisible = visible;
     this.invalidate();
   }
 
