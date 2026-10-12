@@ -27,8 +27,9 @@ import type { Instrument } from '@/types/instrument';
 /** 偏好落盘 key（含版本号，换 schema 时换 key，旧档自然隔离——与 layouts/watchlist 同口径） */
 export const CHART_PREFS_STORAGE_KEY = 'tradingpa.chartPrefs.v1';
 
-/** 可落盘的偏好切片（store 的标量字段，不含 setter 与 transient 字段） */
-interface ChartPrefs {
+/** 可落盘的偏好切片（store 的标量字段，不含 setter 与 transient 字段）；
+ *  三期-B1 起同时是「图表模板」的快照单元（chartTemplateStore 按此结构存/校验） */
+export interface ChartPrefs {
   timeframe: TimeframeId;
   chartType: ChartTypeId;
   logScale: boolean;
@@ -110,7 +111,13 @@ function loadPrefs(): ChartPrefs {
   } catch {
     return DEFAULT_PREFS;
   }
-  const s = (p ?? {}) as Record<string, unknown>;
+  return parseChartPrefs(p);
+}
+
+/** 未知对象 → 偏好切片，逐字段回落不整体弃档。落盘读档与三期-B1 图表模板快照共用这一层
+ *  （模板来自 localStorage，其 prefs 子对象同样是不可信输入）。 */
+export function parseChartPrefs(v: unknown): ChartPrefs {
+  const s = (v ?? {}) as Record<string, unknown>;
   return {
     timeframe: readTimeframe(s.timeframe),
     chartType: readEnum(s.chartType, CHART_TYPE_IDS, DEFAULT_PREFS.chartType),
@@ -129,8 +136,8 @@ function loadPrefs(): ChartPrefs {
   };
 }
 
-/** 取当前状态的可落盘切片 */
-function slicePrefs(s: ChartConfigStore): ChartPrefs {
+/** 取当前状态的可落盘切片（三期-B1 亦用它作模板快照的采集面） */
+export function slicePrefs(s: ChartConfigStore): ChartPrefs {
   return {
     timeframe: s.timeframe,
     chartType: s.chartType,

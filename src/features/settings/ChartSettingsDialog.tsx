@@ -6,10 +6,11 @@ import type { GridMode } from '@/engine/renderer/drawAxes';
 import type { PriceAxisPos } from '@/engine/renderer/chartPanes';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
 import { useChartConfigStore } from '@/store/chartConfigStore';
+import { ChartTemplateSection } from '@/features/settings/ChartTemplateSection';
 import { CheckRow, Segmented } from '@/ui/controls';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
-const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观'] as const;
+const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观', '模板'] as const;
 type Tab = (typeof TABS)[number];
 
 /** 网格四态（TV 画布页）：无 / 横 / 竖 / 全 */
@@ -184,6 +185,8 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
                   <Segmented ariaLabel="网格线" value={gridMode} options={GRID_OPTIONS} onChange={setGridMode} />
                 </SettingRow>
               )}
+
+              {tab === '模板' && <ChartTemplateSection />}
             </div>
           </div>
         </Dialog.Content>
