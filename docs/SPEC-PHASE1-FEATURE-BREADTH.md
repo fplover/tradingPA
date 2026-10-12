@@ -1,7 +1,7 @@
 # Spec - tradingPA P1 功能广度批次 v1.0
 
 > 生成日期：2026-09-29
-> 基于：docs/GAP_ANALYSIS_TV_vs_tradingPA.md（§1.1/§1.4/§1.7/§1.8/§1.9/§1.11）+ SPEC-TV-ALIGNMENT v2.0（已交付，规则沿用）
+> 基于：docs/AUDIT-TV-FEATURE-GAP.md（§1.1/§1.4/§1.7/§1.8/§1.9/§1.11）+ SPEC-TV-ALIGNMENT v2.0（已交付，规则沿用）
 > 状态：已交付（2026-09-29 全 6 模块交付；2026-09-30 文档回填：§2 P1-B 落点路径修正为 `src/indicators/pine/`）
 
 ---
@@ -74,8 +74,8 @@ React 18.3.1 / TS 5.6.3 / Vite 5.4.11 / Zustand 4.5.5 / Radix + lucide-react 1.4
 | 日期 | 变更内容 | 原因 | 影响范围 |
 |---|---|---|---|
 | 2026-09-29 | Spec 创建，用户确认全 6 模块 | P1 启动 | 全项目 |
-| 2026-09-29 | **P1-F0 评估完成**：VP 裁决 kline 近似（TV 同语义），否决 aggTrades（请求预算 7-27% 配额 + 端点不可达）；渲染裁决主图右侧横置直方图；工作量复估 6-8 人日。落档 DESIGN-volume-profile.md + ADR-001 | Wave 2 施工依据 | docs |
+| 2026-09-29 | **P1-F0 评估完成**：VP 裁决 kline 近似（TV 同语义），否决 aggTrades（请求预算 7-27% 配额 + 端点不可达）；渲染裁决主图右侧横置直方图；工作量复估 6-8 人日。落档 DESIGN-VOLUME-PROFILE.md + ADR-001 | Wave 2 施工依据 | docs |
 | 2026-09-29 | **Wave 1 四流交付**：P1-A 指标 30 个（registry diff 跳过已有 Aroon/ATR；Anchored VWAP 需锚定交互，落 OPEN-DECISIONS）；P1-B Pine if/for/var/用户函数 + 21 ta.*（taCore 与指标引擎同源）+ hline/bgcolor/barcolor（bgcolor/barcolor 渲染接线留 P2，pinePaint 旁路已就绪）；P1-C 警报 4 条件/指标值触发/编辑/频率/过期/声音 + schema v2 迁移；P1-E 命令面板 ~45 命令 Ctrl+P；P1-D limit/stop/stop-limit + gap 语义 + 无效单拒绝 | 成员 RoleVerdict 全部 pass | 见各提交白名单 |
 | 2026-09-29 | **集成门禁全绿**：typecheck 0 错误；单测 544/544（批次前 427，净增 117）；E2E 47/47（1.2m）；P0 双扫零（emoji 零匹配；hex 命中均为 v2.0 已裁决存量）。**环境坑记录**：Playwright webServer(npm run dev) 在 Windows 退出时无法杀 npm→vite 孙进程导致进程挂死（30min 无汇总、test-results 空）；绕过=预先自起 dev server 让 reuseExistingServer 生效，跑完 1.2m 退出（已入 pitfalls.jsonl validated） | 批次出口门禁 | 全项目 |
-| 2026-09-29 | **P1-F Volume Profile 实装交付（Wave 2）**：computeProfile 纯函数+签名缓存（dataEpoch 门控）、drawVolumeProfile 右对齐直方图+POC/VAH/VAL（插 drawTrading 前，仅 timeBasedChart 绘制）、IndicatorManager profile 分支（固定 uid 'vp'，模板持久化自动兼容）、theme 4 token × 双主题、delta 源 buyRatio 近似。已知边界：同图单 VP 实例（蓝图语义）；设置面板色参初值随加载时主题快照（渲染实时读 token） | Wave 2 施工（蓝图 DESIGN-volume-profile.md 全量落地） | engine/profile、engine/renderer、indicators、theme |
-| 2026-09-30 | **文档回填（路径修正）**：§2 P1-B 落点 `src/features/pine/` → `src/indicators/pine/`（P1-B 实际落点：tokenizer/parser/validator/interpreter 等 12 模块，compile.ts 为 30 行 barrel）；ta.* 函数数以代码核实 **32** 个为准（compile.ts:16 自述「31 个」系笔误，按纪律不改代码、仅在文档更正） | 文档与代码一致性（用户指令） | docs/SPEC-P1.md |
+| 2026-09-29 | **P1-F Volume Profile 实装交付（Wave 2）**：computeProfile 纯函数+签名缓存（dataEpoch 门控）、drawVolumeProfile 右对齐直方图+POC/VAH/VAL（插 drawTrading 前，仅 timeBasedChart 绘制）、IndicatorManager profile 分支（固定 uid 'vp'，模板持久化自动兼容）、theme 4 token × 双主题、delta 源 buyRatio 近似。已知边界：同图单 VP 实例（蓝图语义）；设置面板色参初值随加载时主题快照（渲染实时读 token） | Wave 2 施工（蓝图 DESIGN-VOLUME-PROFILE.md 全量落地） | engine/profile、engine/renderer、indicators、theme |
+| 2026-09-30 | **文档回填（路径修正）**：§2 P1-B 落点 `src/features/pine/` → `src/indicators/pine/`（P1-B 实际落点：tokenizer/parser/validator/interpreter 等 12 模块，compile.ts 为 30 行 barrel）；ta.* 函数数以代码核实 **32** 个为准（compile.ts:16 自述「31 个」系笔误，按纪律不改代码、仅在文档更正） | 文档与代码一致性（用户指令） | docs/SPEC-PHASE1-FEATURE-BREADTH.md |

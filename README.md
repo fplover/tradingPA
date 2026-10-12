@@ -117,7 +117,7 @@ npm run test:e2e
 - **形态家族画线已修（2026-10-09）**：谐波四工具（gartley/bat/butterfly/crab）的比率标签无条件索引 `pts[4]`，而放置中的 `__preview` 走同一渲染路径，锚点不足 5 个时抛 TypeError；异常从 `pipeline.draw()` 逃出后 `ChartController` 的 rAF 循环不再自我重挂，**整张画布永久冻结**——用户侧表现为「ABCD 分类下其他划线工具没效果」，刷新页面才恢复。现整段比率标签以 `pts.length >= HARMONIC_LABELS.length` 守卫（不足时只画已有折线与锚点字母，同时避免越界点的 price 兜底 0 算出假比率）。回归：`tests/unit/drawing-pattern-render.test.ts`（9 工具 × 1..5 锚点逐档不抛错）。
 - **rAF 帧循环已加固（2026-10-09）**：`ChartController.start()` 原把 `requestAnimationFrame(loop)` 排在帧体之后，帧体（尤其 `pipeline.draw()`）一次抛错就再也不挂帧 → 整张画布永久冻结，须刷新页面。现改为「先挂下一帧再干活」，单帧异常只丢这一帧。不吞异常：错误仍上抛到 `window.onerror`（syncBus 的 console.error 口径只用于隔离外部 handler，本处是引擎自身缺陷，需要响亮暴露）。回归双跑：`tests/unit/chart-raf-loop.test.ts`（假帧队列逐帧驱动，6 例——含「连续 5 帧异常不终止」「dispose 后不再挂帧」「重复 start 不叠加」）+ `tests/e2e/drawing.spec.ts` 真浏览器注入异常用例。两者按旧顺序实测均失败（旧实现第 1 帧抛错即死），非空断言。
 
-- **TS7 迁移缺口已收口（2026-10-09，判定为文档口径缺口而非代码缺口）**：二期各批交付记录里的「TS6 typecheck 降级等效验证」是从 2026-10-08 一次**宿主环境故障**（TS7 原生二进制拒绝加载 bcrypt.dll → panic + exit 2，当次以 `npx -p typescript@6.0.3 tsc` 等效验证）复制来的措辞，被后续批次当模板沿用。实测现状：`typescript` 单依赖 = 7.0.2（无 `npm:` 别名）、平台二进制 `@typescript/typescript-win32-x64/lib/tsc.exe` 就位、`tsc --version` = 7.0.2、`npm run typecheck` 0 错（1.96s）/ `npm run build` 内联同一条 tsc 0 错，`--verbose` 重跑 stderr 无 panic → 门禁一直跑的就是 TS7 原生，本节上条基线声明为真。TS JS API 消费者为零（lint=oxlint、转译=Vite 8/Rolldown、E2E=Playwright 自带转译；`typescript` 包的 `exports["."]` 只指向 `lib/version.cjs`）。**易误判点**：`.oxlintrc.json` 的 `"@typescript-eslint/no-unused-vars": "off"` 是 oxlint 的规则命名空间（不是旧 npm 包，也不是死键）——探针证实它确实压制 TS 文件的 core `no-unused-vars`，未使用代码改由 tsc `noUnusedLocals/noUnusedParameters` 把关，删除会让门禁口径改变。**宿主故障复现判据**：TS7 的失败形态是 panic 打 stderr 且 exit 2，不得按「有输出即放行」处理；等效替代链在 TS7 单依赖下已不存在（无 tsc6 二进制），需要临时验证时用 `npx -y -p typescript@6.0.3 tsc -b tsconfig.json tsconfig.node.json --noEmit`。详见 `docs/PHASE2-PLAN.md` 二期-G 交付记录与 OPEN-DECISIONS 登记行。
+- **TS7 迁移缺口已收口（2026-10-09，判定为文档口径缺口而非代码缺口）**：二期各批交付记录里的「TS6 typecheck 降级等效验证」是从 2026-10-08 一次**宿主环境故障**（TS7 原生二进制拒绝加载 bcrypt.dll → panic + exit 2，当次以 `npx -p typescript@6.0.3 tsc` 等效验证）复制来的措辞，被后续批次当模板沿用。实测现状：`typescript` 单依赖 = 7.0.2（无 `npm:` 别名）、平台二进制 `@typescript/typescript-win32-x64/lib/tsc.exe` 就位、`tsc --version` = 7.0.2、`npm run typecheck` 0 错（1.96s）/ `npm run build` 内联同一条 tsc 0 错，`--verbose` 重跑 stderr 无 panic → 门禁一直跑的就是 TS7 原生，本节上条基线声明为真。TS JS API 消费者为零（lint=oxlint、转译=Vite 8/Rolldown、E2E=Playwright 自带转译；`typescript` 包的 `exports["."]` 只指向 `lib/version.cjs`）。**易误判点**：`.oxlintrc.json` 的 `"@typescript-eslint/no-unused-vars": "off"` 是 oxlint 的规则命名空间（不是旧 npm 包，也不是死键）——探针证实它确实压制 TS 文件的 core `no-unused-vars`，未使用代码改由 tsc `noUnusedLocals/noUnusedParameters` 把关，删除会让门禁口径改变。**宿主故障复现判据**：TS7 的失败形态是 panic 打 stderr 且 exit 2，不得按「有输出即放行」处理；等效替代链在 TS7 单依赖下已不存在（无 tsc6 二进制），需要临时验证时用 `npx -y -p typescript@6.0.3 tsc -b tsconfig.json tsconfig.node.json --noEmit`。详见 `docs/PLAN-PHASE2.md` 二期-G 交付记录与 OPEN-DECISIONS 登记行。
 - **依赖漏洞 → 0（2026-10-08 复核）**：经依赖升级专项批次（vite 5→8、vitest 3→5、react 18→19、
   zustand 4→5、TS 5.6→6.0.3、eslint 9→10，见 git log `507be30`…`956fa1f`），`npm run audit` 报
   **found 0 vulnerabilities**。复查命令不变：`npm run audit`（必须走官方 registry）。
@@ -134,14 +134,24 @@ npm run test:e2e
 
 ## 文档
 
+命名约定：`docs/` 下按**体裁**前缀命名，全大写连字符式——`SPEC-`（规格）/ `PLAN-`（规划）/
+`AUDIT-`（差距与风险评估）/ `DESIGN-`（施工设计）/ `DECISION-`（决策材料），
+`docs/decisions/` 存**已裁决**（`ADR-NNN-*`）与未决登记册。体裁即文件名，不再靠 `P1`/`pixel` 这类批次代号表意。
+
 | 文件 | 内容 |
 |---|---|
 | [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) | 开发计划与 1:1 对照清单（§3 为功能验收基线） |
+| [docs/PLAN-PHASE2.md](docs/PLAN-PHASE2.md) | 二期七批次规格与交付记录；§3 二期「明确不做」清单、§5 决策点 D1/D2/D3 裁决（D1 不引入后端） |
+| [docs/PLAN-PHASE3.md](docs/PLAN-PHASE3.md) | **三期规划（草案，待裁决）**：批次 A–G 的范围/出处/人日，§3 明确不做结转，§4 决策点 D1/D4/D6 |
 | [docs/SPEC-TV-ALIGNMENT.md](docs/SPEC-TV-ALIGNMENT.md) | TV 对齐 v2.0 主规格；**§12 变更记录 = 项目决策登记表** |
-| [docs/SPEC-P1.md](docs/SPEC-P1.md) / [docs/SPEC-P2.md](docs/SPEC-P2.md) | P1（功能广度）/ P2（收官批次）规格与交付记录 |
-| [docs/PHASE2-PLAN.md](docs/PHASE2-PLAN.md) | 二期（PHASE-2）七批次规格与交付记录；§3 二期「明确不做」清单、§5 决策点 D1/D2/D3 裁决（D1 不引入后端） |
+| [docs/SPEC-PHASE1-FEATURE-BREADTH.md](docs/SPEC-PHASE1-FEATURE-BREADTH.md) | 一期「功能广度」批次（原 `SPEC-P1`）规格与交付记录 |
+| [docs/SPEC-PHASE1-CLOSEOUT.md](docs/SPEC-PHASE1-CLOSEOUT.md) | 一期「收官」批次（原 `SPEC-P2`）规格与交付记录 |
+| [docs/AUDIT-TV-FEATURE-GAP.md](docs/AUDIT-TV-FEATURE-GAP.md) | 功能维度差距分析（TV × tradingPA，P0/P1/P2 池的来源） |
+| [docs/AUDIT-TV-UI-GAP.md](docs/AUDIT-TV-UI-GAP.md) | UI / 交互像素维度差距分析（设置对话框深度、右键菜单广度、token 收敛等缺口的登记处） |
+| [docs/AUDIT-ARCHITECTURE-REFACTOR.md](docs/AUDIT-ARCHITECTURE-REFACTOR.md) | 技术改造点与架构风险评估（只读分析，M0-M7 收尾期） |
+| [docs/DESIGN-VOLUME-PROFILE.md](docs/DESIGN-VOLUME-PROFILE.md) | Volume Profile 数据管线与集成架构设计（配套 ADR-001） |
+| [docs/PLAN-TECH-DEBT-CLOSEOUT.md](docs/PLAN-TECH-DEBT-CLOSEOUT.md) | 技术债收尾施工蓝图（历史存档，2026-09-30 已全部交付） |
 | [docs/decisions/OPEN-DECISIONS.md](docs/decisions/OPEN-DECISIONS.md) | 未决项登记册（只追加 + 就地关闭） |
-| [docs/PHASE3-D1-BACKEND.md](docs/PHASE3-D1-BACKEND.md) | **三期 D1 决策材料**：自建后端的收益/代价对照与分档（档 0–3）——供裁决用，不改变现行「不引入后端」裁定 |
 | [docs/decisions/ADR-001-volume-profile-kline-approx.md](docs/decisions/ADR-001-volume-profile-kline-approx.md) | Volume Profile kline 近似裁决 |
-| [docs/GAP_ANALYSIS_TV_vs_tradingPA.md](docs/GAP_ANALYSIS_TV_vs_tradingPA.md) / [docs/UI_GAP_ANALYSIS_pixel.md](docs/UI_GAP_ANALYSIS_pixel.md) | 功能维度 / UI 像素维度差距分析 |
+| [docs/DECISION-PHASE3-BACKEND.md](docs/DECISION-PHASE3-BACKEND.md) | **三期 D1 决策材料**：自建后端的收益/代价对照与分档（档 0–3）——供裁决用，不改变现行「不引入后端」裁定 |
 | [.workbuddy/memory/](.workbuddy/memory/) | 工作日志与踩坑记录（`pitfalls.jsonl`，未入版本库） |

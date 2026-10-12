@@ -8,7 +8,7 @@ P1-F 需要实现 Volume Profile（POC/VAH/VAL 价格分布直方图）。候选
 
 ## Decision
 
-VP 计算一律基于图表 K 线（Bar[]）：每根 bar 的 volume 均匀分布到其 [low,high] 覆盖的价格行。这与 TradingView 自家 VP 的计算语义一致（TV 也是按 bar 而非 tick）。全市场数据源（crypto/A股/港股/美股/期货）统一算法。设计详见 `docs/DESIGN-volume-profile.md`。
+VP 计算一律基于图表 K 线（Bar[]）：每根 bar 的 volume 均匀分布到其 [low,high] 覆盖的价格行。这与 TradingView 自家 VP 的计算语义一致（TV 也是按 bar 而非 tick）。全市场数据源（crypto/A股/港股/美股/期货）统一算法。设计详见 `docs/DESIGN-VOLUME-PROFILE.md`。
 
 ## Consequences
 
@@ -18,4 +18,4 @@ VP 计算一律基于图表 K 线（Bar[]）：每根 bar 的 volume 均匀分�
 
 ## Related ADRs
 
-- GAP_ANALYSIS_TV_vs_tradingPA.md §3 第 6 条（tick 依赖功能降级裁定）
+- AUDIT-TV-FEATURE-GAP.md §3 第 6 条（tick 依赖功能降级裁定）

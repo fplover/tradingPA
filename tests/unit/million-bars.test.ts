@@ -5,7 +5,7 @@ import type { Bar } from '@/types/market';
 
 /**
  * 二期-G 百万根 K 线数据面探针（机械证据）：
- * 渲染管线本就 O(可见 bar)（LOD + 视口切片，10 万根实测 3–9ms/帧，见 PHASE2-PLAN），
+ * 渲染管线本就 O(可见 bar)（LOD + 视口切片，10 万根实测 3–9ms/帧，见 PLAN-PHASE2），
  * 1M 根的增量压力全在数据面——本探针在 Node 侧机械验证：
  * 1M 根构建、BarSeries 二分查找（O(log n)）、时间→小数 index 插值、
  * 视口切片与 VP 分桶（O(可见窗口)）的时间预算。

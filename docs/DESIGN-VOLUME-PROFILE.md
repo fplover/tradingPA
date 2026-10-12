@@ -1,7 +1,7 @@
 # Design - Volume Profile 数据管线与集成架构（P1-F）
 
 > 作者：首席架构师 高见远 ｜ 日期：2026-09-29 ｜ 状态：已评审通过（team-lead 采信，Wave 2 施工依据）
-> 上游：docs/SPEC-P1.md §2 P1-F / §5 AC-F1
+> 上游：docs/SPEC-PHASE1-FEATURE-BREADTH.md §2 P1-F / §5 AC-F1
 > 关联决策：ADR-001（本文档同日落档）
 
 ## 1. 核心裁决：kline 近似（纯计算，零新增请求）

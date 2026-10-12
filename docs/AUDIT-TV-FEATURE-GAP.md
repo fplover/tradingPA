@@ -4,7 +4,7 @@
 > 输入：DEVELOPMENT_PLAN.md v1.1（M0-M7 声称完成，实际以代码为准）+ src 93 文件实证 + git log 30 条 + TradingView 官方 4 来源 + 第三方评测 3 来源
 > 结论：**整体完成度高（TV 图表复刻主干已齐），差距集中在「交互细节映射」与「长尾功能广度」两层。P0 清单 8 项均为「差一步就齐」（框架已在、TV 行为明确、成本 1-6 人日）。**
 
-> **v1.1 回填（2026-09-30，依据：git log + src 代码逐项核实）**：TV-ALIGNMENT v2.0（B1–B8）与 P1 六个批次（A–F）已交付——**P0 八项全部清零**（快捷键体系 / 前往日期 / 收盘倒计时 / 6 种图表类型 / 2m·3m·45m·3H + 自定义间隔 / 斐波那契家族 6 变体 / 画线交互补齐 / 布局保存加载）；P1 主要项亦已交付（指标 33→63、Pine 迁移 `src/indicators/pine/` 12 模块含 if/for/while 与 32 个 ta 函数、警报 4 条件 + 指标值触发 + 编辑 + 声音、模拟交易 limit/stop/stop-limit 挂单、命令面板 Ctrl+P、Volume Profile 按 ADR-001 以 kline 近似交付）。**本文 §1 各表「当前项目状态 / 差距描述」列已按代码核实回填**：已交付行保留原文并加删除线与「已交付」标注，未交付行维持原判；§0.1 证据表过时数字同步修正。§3「明确不做」维持有效。剩余缺口以 P2 批次（docs/SPEC-P2.md，2026-09-30 创建，未开工）为准。
+> **v1.1 回填（2026-09-30，依据：git log + src 代码逐项核实）**：TV-ALIGNMENT v2.0（B1–B8）与 P1 六个批次（A–F）已交付——**P0 八项全部清零**（快捷键体系 / 前往日期 / 收盘倒计时 / 6 种图表类型 / 2m·3m·45m·3H + 自定义间隔 / 斐波那契家族 6 变体 / 画线交互补齐 / 布局保存加载）；P1 主要项亦已交付（指标 33→63、Pine 迁移 `src/indicators/pine/` 12 模块含 if/for/while 与 32 个 ta 函数、警报 4 条件 + 指标值触发 + 编辑 + 声音、模拟交易 limit/stop/stop-limit 挂单、命令面板 Ctrl+P、Volume Profile 按 ADR-001 以 kline 近似交付）。**本文 §1 各表「当前项目状态 / 差距描述」列已按代码核实回填**：已交付行保留原文并加删除线与「已交付」标注，未交付行维持原判；§0.1 证据表过时数字同步修正。§3「明确不做」维持有效。剩余缺口以 P2 批次（docs/SPEC-PHASE1-CLOSEOUT.md，2026-09-30 创建，未开工）为准。
 
 ---
 
@@ -116,7 +116,7 @@
 | 功能模块 | TV 标准行为 | 当前项目状态 | 差距描述 | 优先级 | 预估工作量 |
 |---|---|---|---|---|---|
 | 触发条件类型 | crossing / crossing up / crossing down / entering channel / greater than / less than | ~~仅上穿/下穿（`alertStore.add` price+direction）~~ **已交付**：4 条件 greater/less/crossUp/crossDown（`features/alerts/alertLogic.ts`） | ~~crossing up/down 已有，补 greater/less（不依赖穿越）与 channel 低成本~~ **已交付**（P1-C，greater/less 补齐；channel 条件仍未做） | P1 | ~~1-2~~ 已完成 |
-| 作用对象 | 价格、**任意指标值、画线水平（alert on line）、Pine 条件** | ~~仅价格（报价轮询触发，`App.tsx` useEffect checkAlerts）~~ **已交付**：价格 + 指标值（`useAlertWatcher` 采样报价与已挂指标 plot 值，指标源下拉分组） | ~~指标值/画线触及需接入指标计算结果与画线命中；Pine 条件依赖 Pine 扩展~~ 指标值**已交付**（P1-C）；画线触及明确不做（SPEC-P1 §3）；Pine 条件依赖 P2-A alertcondition | P1 | ~~4-6~~ 已完成 |
+| 作用对象 | 价格、**任意指标值、画线水平（alert on line）、Pine 条件** | ~~仅价格（报价轮询触发，`App.tsx` useEffect checkAlerts）~~ **已交付**：价格 + 指标值（`useAlertWatcher` 采样报价与已挂指标 plot 值，指标源下拉分组） | ~~指标值/画线触及需接入指标计算结果与画线命中；Pine 条件依赖 Pine 扩展~~ 指标值**已交付**（P1-C）；画线触及明确不做（SPEC-PHASE1-FEATURE-BREADTH §3）；Pine 条件依赖 P2-A alertcondition | P1 | ~~4-6~~ 已完成 |
 | 触发频率与过期 | Once only vs Every time；可设过期时间 | ~~无（触发即标记，无重复触发逻辑）~~ **已交付**：Once/Every time（`AlertFrequency`）+ 过期时间 | ~~store 加字段 + 检查逻辑~~ **已交付**（P1-C） | P1 | ~~1-2~~ 已完成 |
 | 警报编辑与管理 | 编辑已有警报（改价/改条件/暂停）、按品种分组 | ~~仅新建/删除/清除已触发（`AlertPanel.tsx`）~~ **已交付**：`AlertEditDialog` 改价/改条件/暂停 | ~~编辑浮层 + store update~~ **已交付**（P1-C）；按品种分组未做 | P1 | ~~2-3~~ 已完成 |
 | 通知渠道 | App push / 邮件 / 网页通知 / 声音 | ~~浏览器 Notification（`alertStore.ts:86`）~~ **已交付**：浏览器 Notification + Web Audio 声音（`features/alerts/sound.ts`；已知边界：声音无 UI 开关） | ~~声音提示低成本；邮件/push 需后端，明确不做（见第 2 节）~~ **已交付**（P1-C）；邮件/push 明确不做 | P1 | ~~0.5-1~~ 已完成 |
@@ -224,4 +224,4 @@
 
 - **主干已齐**（v1.1 回填数字已刷新）：图表类型 ~~12/21~~ 18/21、周期 ~~20~~ 22 档、指标 ~~32~~ 63+自定义、画线 ~~12~~ 17 类 + 交互框架（克隆/多选/Shift 锁轴）、多布局 8 格 + 布局保存加载 + 光标/视口联动、警报（4 条件/指标值/编辑/声音）/复盘/模拟交易（含挂单）/自选/搜索/命令面板/主题/截图——TV 图表复刻的「能用」层面已完成，且 git 历史显示团队已在做一手规格细节对齐。
 - **差距结构**（v1.0 基线判断）：约 60% 的差距是「交互映射与档位补齐」（P0，20-30 人日可清零 TV 违和感——**已清零**）；约 30% 是功能广度（P1，指标扩充/VP/警报丰富化/Pine 扩展，60-90 人日——**主要项已交付**）；约 10% 是 TV 付费卖点与平台资产（P2/out-of-scope）。
-- **建议**：~~下一阶段直接执行第 2 节 P0 八项，不做新架构~~（已执行完毕）；P1 主要模块（Volume Profile、指标扩充、Pine 语句控制流）已按用户反馈交付，剩余缺口进入 P2 收官批次（docs/SPEC-P2.md，2026-09-30 创建，未开工）。
+- **建议**：~~下一阶段直接执行第 2 节 P0 八项，不做新架构~~（已执行完毕）；P1 主要模块（Volume Profile、指标扩充、Pine 语句控制流）已按用户反馈交付，剩余缺口进入 P2 收官批次（docs/SPEC-PHASE1-CLOSEOUT.md，2026-09-30 创建，未开工）。

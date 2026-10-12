@@ -1,7 +1,7 @@
 # Spec - tradingPA P2 收官批次 v1.0
 
 > 生成日期：2026-09-30
-> 基于：GAP_ANALYSIS_TV_vs_tradingPA.md（P2 池）+ SPEC-P1 交付后 advisory + OPEN-DECISIONS.md
+> 基于：AUDIT-TV-FEATURE-GAP.md（P2 池）+ SPEC-PHASE1-FEATURE-BREADTH 交付后 advisory + OPEN-DECISIONS.md
 > 状态：已确认（用户 2026-09-30 指令「完成 P2」）
 
 ---
