@@ -254,6 +254,37 @@
 
 **⑧ 门禁（2026-10-14 实跑）**：`npm run verify` 绿（typecheck 0 错 / oxlint **379 文件 0 错 0 警告** / format:check 绿 / 单测 **87 文件 1377 例**，+9）；`npm run test:e2e` **66 例全过、27 面黄金截图零 diff**（不带 flag 跑，`retries: 0` 已生效）；`npm run build` 应用块 **508.26 kB / gzip 145.33 kB**（C1 增量 +1.77 kB 原始 / +0.46 kB gzip），560 阈值内无警告；合计 gzip **257.78 kB**。
 
+**C2-0 前提核查（2026-10-14，开工前逐行核实；只出清单、不写代码）**
+
+A. **现成可读（不必动引擎）**：
+- **光标吸附本体**：`HoverController.ts:145-149` —— `idx = Math.round(viewport.xToIndex(cx))`，bar 取 **`displaySeries().barAt(idx)`**（`:146`），`crosshair.set(cx, y, idx, bar.time, price)`；`price = pane.priceScale.yToPrice(y - pane.y)`（`:148`，面板局部坐标）。**index 空间 = 显示序列**，`Crosshair.bar(series)`（`Crosshair.ts:31-33`）必须喂 display 才自洽。出界时 `:114-121` 走 `clear()` + `publishCrosshairTime(null)`。
+- **光标所在面板**：`state.hoveredPaneId`（`ChartState.ts:91`，每帧由 `HoverController.ts:139` `setHoveredPane(pane.id)` 写入），绘制侧已用 `?? st.panes[0]` 兜底（`RenderPipeline.ts:195`）——面板归属**无需新造**。
+- **指标读数原语**：`indicatorValuesAt(inst, bars, from, index)`（`drawIndicator.ts:161-175`）返回 `Array<{label, value}>`，内建 `isPlotHidden` 过滤与 50 根回看脏缓存；副面板同源但只取首 plot（`PaneRenderer.ts:217-220`）。
+- **结构件**：`PaneState`（`chartPanes.ts:32-46`：`id/kind/indicators/priceScale/y/height`）；`IndicatorInstance`（`src/indicators/core/instance.ts:62-84`：`uid/precision/displayName/visibleTimeframes`）——注意它在 `src/indicators/**` 而非 `src/engine/**`。
+- **UI 侧格式化三件套**：`src/data/format.ts` 的 `formatCompact:4` / `formatPrice:15`（含 `—` 占位）/ `formatSigned:21`，另有 `decimalsFor:41`。画布的 `formatVolume` / `formatIndicatorValue`（`drawLegend.ts:213` / `:207`）是**模块私有**，但表格要的是**裸数**，这三件套已够 → **引擎侧不加格式化口**。
+- **显示时区口径**：`chartConfigStore.ts:46`（`timeHour12`）/ `:48`（`tzOffsetMinutes`）是 B3 的单一来源，React 面板直读即可；纯换算件 `tzDate(time, offset)`（`drawAxes.ts:271`，`null` 时逐位等同改造前本地读数）可复用（React→engine 方向合法）。
+- **宿主停靠面**：`src/features/rightbar/rightPanelStore.ts:4`（union）/ `:13`（`IDS`，兼落盘白名单校验 `:15-24`）+ `RightSide.tsx:13-17`（`RAIL`）/ `:92-94`（id switch）——**四行改动**即可挂第四面板，宽度 clamp 240–640 与窄屏覆盖层行为全复用。
+- **面板实时刷新形态**：`ObjectTree.tsx:33-41`「effect 内 `sync()` + `renderer.onXxxChanged(sync)` 返回 off」= callback+回读在 React 侧的标准写法。
+- **门面即实现**：`ChartRenderer.ts:5` 只是 `ChartController` 的 re-export 桶，additive 只落一个文件。
+
+B. **必须 additive（冻结口径：新参带默认值 + 有回读）**：
+1. **光标快照读出**：`crosshair` 是 `ChartController.ts:48` 的 **private 且无 getter**；对外仅 `onCrosshairTime`（`:640-642` → SyncBridge → `syncBus.ts:101` 的 throttled emit），载荷**只有 `time | null`**。借那条通道既拿不到 barIndex/price/paneId，又会把本图表的 hover 广播给其它图表（其语义是跨图联动）。→ 新 `get crosshairSnapshot()` + 新 `onCrosshairChanged(cb)`。
+2. **按 index 读显示序列的 OHLCV**：`getBars()`（`:650-652`）返回 **`baseSeries.raw()`**，与 `crosshair.barIndex` 的显示空间**不同构**——HA / renko / kagi / 砖块下会把数值取到错的根，且没有任何公开口能拿到 display 序列（`state.bars()` `ChartState.ts:190-192` 是内部的）。→ 快照**直接带 bar 对象**，把 index 空间封在引擎内，React 侧永远不同时持有「裸 index」与「裸序列」。
+3. **按面板分组的指标数值**：`listIndicators()`（`:412-414`）只给 `uid/id/name/overlay/params`（`IndicatorManager.ts:12-18`）——**没有 paneId、没有实例、没有可见性**；`panes` 只在私有 `inputHost` 闭包里（`:117`）；`visibleStudies`（`:143-146`）**只覆盖主面板**且含 `hideStudies` 短路。副面板指标今天**在 UI 上完全读不到**。→ additive「全面板 × 该 index 的 `{label, value}`」，并带 `hideStudies` / `isVisibleOn(timeframeId)` 两道既有过滤（与 `RenderPipeline.ts:206`、`PaneRenderer.ts:92/:127/:234/:250` 同口径）。
+4. **变更广播合帧**：`HoverController.update` 每像素都跑，逐次回调会让表格逐像素重渲。现成同科件 `DrawingsNotifyCoalescer`（`ChartController.ts:67` + 该文件 `:8-22`：借既有 rAF、每帧至多冲一次、rAF 未运行则立即广播不丢事件）——复用其形态，不另起定时器。
+5. **画线数值**：全仓**零**「某根 bar 处的画线值」读口；`Drawing` 只有 `points/levels/style`，价格只在各 `*Render.ts` 绘制时现算。→ 归属见 D 段。
+
+C. **勘正（初稿与实读不符处）**：
+① 图例的取数**不只跟鼠标**：`RenderPipeline.ts:202` 是 `crosshair.visible && hoveredBar ? barIndex : st.currentIndex`，回放态跟随游标（`ChartState.ts:178-182` 明写「取真实末柱会泄露未来价格」）。数据窗口若只跟 crosshair，回放中鼠标一离游标就显示游标之后的 bar → **同一回落口径必须一起搬过来**。
+② 「指标读数链现成」只对**主面板叠加指标**成立；副面板走 `PaneRenderer.ts:217` 的私有方法且只取首 plot，两条链都没出引擎。
+③ `Crosshair` **没有 `paneId` 字段**（`Crosshair.ts:8-14` 六项：`x/y/visible/barIndex/time/price`），面板归属在 `state.hoveredPaneId`——两者要**一并**出引擎，否则副面板的价格读数无法换算。
+④ 「第四个 `RightPanelId`」前提成立，但 `RightSide` 只在 `App.tsx:229` 的 `layout === 1` 分支挂载；layout 0/2 下右轨**不存在**，入口在那些布局里天然没有 —— 属既有约束、非本批缺陷，交付时按现状登记。
+⑤ `tokens.numeric`（`src/ui/tokens.ts:79-82`，`tabular-nums`）**全仓零引用**（`global.css:20` 已在 body 级给 `font-variant-numeric`）→ 表格沿用全局，不为它造用法。
+⑥ **画线族实数是 45，不是本节先前口语里的 38**：`DRAWING_TOOLS`（`types.ts:104-219`）逐条点数 = 1 点 12 族 / 2 点 14 族 / 3 点 5 族 / 4 点 2 族 / 5 点 8 族 / 8 点 1 族 / `points:0`（任意）3 族 = 45。
+
+D. **一项范围裁决（待用户定，不擅断）**：数据窗口的「画线数值」列做到哪一层。C 段 ⑥ 的 45 族按「给定 time 上是否有唯一价格读数」**判断**分五档（成员可按 id 复核，档位归属是判断不是事实）：**甲** 可插值线/线组 = trendline / ray / hline / arrow / info-line / measure / percent-line / fib / fib-extension / fib-fan / channel / fib-auto（12）；**乙** 区域盒类，穿过与否而非一个数 = rect / ellipse / circle / gann-box / polygon / path / forecast（7）；**丙** 形态标注，bar 处无定义 = abc-pattern / gartley / bat / butterfly / crab / head-shoulders ×2 / triangle ×2 / elliott-wave（10）；**丁** 文字与标记，读数是文字 = text / note / price-label / anchored-text / arrow-mark / icon-mark / price-note（7）；**戊** 角度/时间/曲线构造，time→price 不成立 = vline / fib-timezone / gann-fan / gann-line / fib-arc / fib-spiral / arc / curve（9，`fib-fan` 归甲戊有争议）。
+   提议口径：**甲档出数、乙丙丁戊一律 `—`**，或本批**完全不做画线列**（先交 OHLCV + 全面板指标，画线列另立 C2b）。这直接决定 B-1 快照的形状，故在写引擎读口前定。
+
 ### 三期-D · 指标与画线精度（3–5 人日，估）
 
 | 项 | 现状 | 动作 | 人日 |
