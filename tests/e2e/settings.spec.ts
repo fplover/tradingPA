@@ -391,6 +391,50 @@ test('一般页时区偏好落盘并流入引擎与状态栏', async ({ page }) 
     .toBeNull();
 });
 
+/** 三期-B4：图表设置「警报」页。B4 之前 setSoundEnabled 全仓零调用点（能力在、入口无），
+ *  故本用例锁的是「入口确实接在那条既有的声音判定链上」——内存态、存档、跨刷新三处同向。 */
+test('警报页提示音开关落盘并跨刷新生效', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  const sound = page.getByRole('checkbox', { name: '警报触发时播放提示音' });
+  const dialog = page.getByRole('dialog', { name: '图表设置' });
+  const stored = () =>
+    page.evaluate(() => {
+      const raw = localStorage.getItem('tradingpa.alerts');
+      if (!raw) return 'no-archive';
+      const p = JSON.parse(raw) as { soundEnabled?: unknown };
+      return 'soundEnabled' in p ? String(p.soundEnabled) : 'no-field';
+    });
+  const openAlertTab = async () => {
+    await page.getByRole('button', { name: '图表设置' }).click();
+    await page.getByRole('button', { name: '警报', exact: true }).click();
+  };
+
+  // 默认开（改造前行为：无存档即响）+ 页内口径提示在位
+  await openAlertTab();
+  await expect(sound).toHaveAttribute('aria-checked', 'true');
+  await expect(dialog.getByText(/触发判定、历史登记与系统通知均不受本页开关影响/)).toBeVisible();
+
+  // 关：复选框 + 存档同向
+  await sound.click();
+  await expect(sound).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(stored).toBe('false');
+  await page.keyboard.press('Escape');
+
+  // 刷新读回关档（值由 alertStore 初始化从存档取，不是页面硬编码）
+  await page.reload();
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+  await openAlertTab();
+  await expect(sound).toHaveAttribute('aria-checked', 'false');
+  await expect.poll(stored).toBe('false');
+
+  // 勾回开档（离开本页时不留脏存档）
+  await sound.click();
+  await expect.poll(stored).toBe('true');
+  await page.keyboard.press('Escape');
+});
+
 /** 图例右键菜单：开关图例各部分 */ test('图例右键菜单', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });

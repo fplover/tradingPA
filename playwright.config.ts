@@ -13,8 +13,11 @@ export default defineConfig({
   timeout: 30_000,
   // A3-1：黄金截图基线目录（toHaveScreenshot 经 expect.pathTemplate 落此）
   snapshotDir: './tests/e2e/__screenshots__',
-  // 首个用例会触发 dev server 冷编译（~60 模块），允许 1 次重试消解 flaky
-  retries: 1,
+  // 首个用例会触发 dev server 冷编译（~60 模块），由 webServer.url 健康检查 + 用例内
+  // 显式 timeout 承担，不靠重试兜底（2026-10-14 用户裁决 retries 归零）：
+  // 本仓交付标准一直是 `--retries=0` 全绿 + 27 面黄金截图零 diff，配置留 1 只会让
+  // 「不带 flag 的本地跑法」与被采纳的结果不一致，把 flaky 藏在重试里。
+  retries: 0,
   // 图表应用较重（10 万 K 线 + 实时流），并行页面互相抢资源会 flaky，串行执行
   workers: 1,
   fullyParallel: false,
@@ -27,9 +30,9 @@ export default defineConfig({
   use: {
     baseURL: BASE_URL,
     viewport: { width: 1280, height: 800 },
-    // 首个用例会触发 dev server 冷编译（~60 模块），允许 1 次重试消解 flaky；
-    // 重试时留 trace，flaky 排查不必重跑全量
-    trace: 'on-first-retry',
+    // 首个用例会触发 dev server 冷编译（~60 模块），由健康检查与用例 timeout 承担（见上）；
+    // retries 归零后 'on-first-retry' 永不落地（不会有第二次尝试），改为失败即留 trace
+    trace: 'retain-on-failure',
   },
   projects: [
     // 使用系统 Chrome（本环境无法从 CDN 下载 Playwright 内置 chromium）

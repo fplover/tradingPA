@@ -7,13 +7,14 @@ import type { PriceAxisPos } from '@/engine/renderer/chartPanes';
 import type { LegendOptions } from '@/engine/renderer/drawCrosshair';
 import { useChartConfigStore } from '@/store/chartConfigStore';
 import { useTradeSettingsStore } from '@/store/tradeSettingsStore';
+import { ChartAlertSection } from '@/features/settings/ChartAlertSection';
 import { ChartGeneralSection } from '@/features/settings/ChartGeneralSection';
 import { ChartTemplateSection } from '@/features/settings/ChartTemplateSection';
 import { ChartTradingSection } from '@/features/settings/ChartTradingSection';
 import { CheckRow, Segmented, SettingRow } from '@/ui/controls';
 import { fontSize, radius, shadow, space, zIndex } from '@/ui/tokens';
 
-const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观', '一般', '交易', '模板'] as const;
+const TABS = ['坐标轴', 'Scales', '状态栏', 'Canvas', '外观', '一般', '交易', '警报', '模板'] as const;
 type Tab = (typeof TABS)[number];
 
 /** 网格四态（TV 画布页）：无 / 横 / 竖 / 全 */
@@ -199,6 +200,8 @@ export function ChartSettingsDialog(p: ChartSettingsDialogProps) {
               {tab === '一般' && <ChartGeneralSection />}
 
               {tab === '交易' && <ChartTradingSection />}
+
+              {tab === '警报' && <ChartAlertSection />}
 
               {tab === '模板' && <ChartTemplateSection />}
             </div>
