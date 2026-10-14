@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 /** 右侧停靠面板。TradingView 的面板是挤压图表宽度停靠，不是浮在图表上。 */
-export type RightPanelId = 'watchlist' | 'objectTree' | 'alerts';
+export type RightPanelId = 'watchlist' | 'objectTree' | 'alerts' | 'dataWindow';
 
 const WIDTH_KEY = 'tradingpa.rightdock.width';
 const PANEL_KEY = 'tradingpa.rightdock.panel';
@@ -10,7 +10,7 @@ export const DOCK_MIN = 240;
 export const DOCK_MAX = 640;
 const DOCK_DEFAULT = 320;
 
-const IDS: RightPanelId[] = ['watchlist', 'objectTree', 'alerts'];
+const IDS: RightPanelId[] = ['watchlist', 'objectTree', 'alerts', 'dataWindow'];
 
 function loadPanel(): RightPanelId | null {
   try {

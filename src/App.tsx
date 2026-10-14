@@ -226,7 +226,12 @@ export default function App() {
                 rendererRef={rendererRef}
                 onRendererReady={handleRendererReady}
               />
-              <RightSide renderer={renderer} alertSymbol={activeInstrument?.symbol ?? ''} alertPrice={lastPrice} />
+              <RightSide
+                renderer={renderer}
+                alertSymbol={activeInstrument?.symbol ?? ''}
+                alertPrice={lastPrice}
+                decimals={decimals}
+              />
             </div>
           ) : (
             <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>

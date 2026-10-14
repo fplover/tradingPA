@@ -2,6 +2,7 @@
  *  与 drawDrawings 内联实现逐字一致（拆分红线，命中测试仍走 drawDrawings 的合并分支）。
  *  约定：调用方（drawOne）已设置 strokeStyle/fillStyle/lineWidth/setLineDash。 */
 import type { Drawing } from './types';
+import { rayEndPix } from './geom';
 import { axisLabel, strokeLine } from './drawingChrome';
 import type { DrawContext } from './coords';
 
@@ -32,14 +33,9 @@ export function drawLineFamily(
       break;
     case 'ray': {
       if (pts.length < 2) break;
-      const dx = pts[1].x - pts[0].x;
-      const dy = pts[1].y - pts[0].y;
-      // 向落点方向延伸到画布边缘：左/右缘由 dx 符号决定（同 fibRender.fanRayEndPix 口径），
-      // 修复向左画射线时 (chartW - x)/dx 为负被 Math.max 钳成 0 而退化成点。
-      // dx === 0（垂直射线）保留原行为：延伸一个落点段。
-      const edgeX = dx >= 0 ? dctx.geo.chartW : 0;
-      const scale = dx === 0 ? 1 : (edgeX - pts[0].x) / dx;
-      strokeLine(ctx, pts[0].x, pts[0].y, pts[0].x + dx * scale, pts[0].y + dy * scale);
+      // 末端公式抽到 geom.rayEndPix（渲染与数据窗口读数共用，见该处注释）
+      const end = rayEndPix(pts[0], pts[1], dctx.geo.chartW);
+      strokeLine(ctx, pts[0].x, pts[0].y, end.x, end.y);
       break;
     }
   }

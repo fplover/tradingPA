@@ -11,6 +11,7 @@ import { DrawingsNotifyCoalescer } from './drawingsNotifyCoalescer';
 import { earlyFinishMinPoints } from '../drawing/placingRules';
 import { pixelToPoint, type DrawContext } from '../drawing/drawDrawings';
 import type { TradeVisual } from './drawTrading';
+import { buildDataWindowSnapshot, type DataWindowSnapshot } from './dataWindow';
 import type { LegendInfo, LegendOptions } from './drawCrosshair';
 import type { GridMode } from './drawAxes';
 import type { ViewportTimeRange } from '@/store/syncBus';
@@ -65,6 +66,10 @@ export class ChartController {
   private drawingsListeners = new Set<() => void>();
   /** 拖拽中画线变更的合帧广播（P2-D③：rAF 每帧至多冲刷一次；状态机见 DrawingsNotifyCoalescer） */
   private drawingsNotify = new DrawingsNotifyCoalescer();
+  /** 数据窗口订阅者（右侧停靠面板）与同款合帧广播器（类本身与画线无关，是通用的「借主循环 rAF
+   *  每帧至多冲刷一次」形态；pointermove 每像素都会改光标，逐次广播会让整张表逐像素重渲） */
+  private dataWindowListeners = new Set<() => void>();
+  private dataWindowNotify = new DrawingsNotifyCoalescer();
   /** TV 式选择工具栏状态机（选中画线/指标 → 弹窗锚点；DOM 渲染在 React 层，见 selectionPopup.ts） */
   readonly selectionPopup = new SelectionPopupTracker();
   // 交互回调（UI 层经 setXxxCallback 注册）
@@ -432,6 +437,7 @@ export class ChartController {
       this.rafId = requestAnimationFrame(loop);
       // 拖拽画线合帧广播：每帧至多一次（P2-D③）
       this.drawingsNotify.flush(() => this.notifyDrawings());
+      this.dataWindowNotify.flush(() => this.notifyDataWindow());
       if (this.dirty) {
         this.dirty = false;
         if (this.selectionPopup.current) this.drawing.syncSelection(); // 平移/缩放/改尺寸后工具栏锚点跟随选中对象
@@ -460,6 +466,10 @@ export class ChartController {
 
   invalidate(): void {
     this.dirty = true;
+    // 数据窗口的合帧重读挂在这里而不是各变更点：实时 tick / 改指标 / 改画线 / 平移缩放 /
+    // 光标移动全部经本入口请求重绘，故「漏挂某个变更源」这类缺陷结构上不可能发生。
+    // rAF 未运行（未 start / 已 stop / 单测）时立即广播，与画线合帧器同一语义。
+    this.dataWindowNotify.request(this.rafId !== 0, () => this.notifyDataWindow());
   }
 
   /** 强制立即重绘（主题切换等需要零延迟的场景，不等 rAF） */
@@ -854,6 +864,38 @@ export class ChartController {
     }
     this.avwapAnchor.cancelIfActive(); // AVWAP 锚定落点进行中 → 退出选 bar 模式
     this.drawing.cancelPlacing();
+  }
+
+  // ---------- 数据窗口（三期-C2）----------
+
+  /** 数据窗口快照：光标所在 bar 的 OHLCV + 全部可见面板的指标读数 + 画线读数。
+   *  纯读，不改状态、不触发重绘。index 空间（显示序列）与回放钳制都封在
+   *  `buildDataWindowSnapshot` 内，调用方拿到的是 bar 本体而不是裸 index。 */
+  get dataWindowSnapshot(): DataWindowSnapshot {
+    const st = this.state;
+    return buildDataWindowSnapshot({
+      crosshair: this.crosshair,
+      hoveredPaneId: st.hoveredPaneId,
+      panes: st.panes,
+      bars: st.bars(),
+      currentIndex: st.currentIndex,
+      replayIndex: st.replayIndex,
+      hideStudies: st.hideStudies,
+      timeframeId: this.legend.timeframeId,
+      drawings: this.drawing.layer.list(),
+      dctx: this.drawingCtx(),
+    });
+  }
+
+  /** 订阅数据窗口刷新（右停靠面板用）：任何会让表里数字变样的变化都经 `invalidate` 进来，
+   *  故实时 tick / 改指标 / 改画线 / 平移缩放与鼠标移动同一条路，不存在「漏挂某个变更源」。 */
+  onDataWindowChanged(cb: () => void): () => void {
+    this.dataWindowListeners.add(cb);
+    return () => this.dataWindowListeners.delete(cb);
+  }
+
+  private notifyDataWindow(): void {
+    for (const cb of this.dataWindowListeners) cb();
   }
 
   // ---------- 内部：跨模块编排 ----------

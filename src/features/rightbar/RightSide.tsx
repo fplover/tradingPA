@@ -1,4 +1,4 @@
-import { Bell, Layers, List } from 'lucide-react';
+import { Bell, Layers, List, Table2 } from 'lucide-react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useAlertStore } from '@/store/alertStore';
 import { useNarrowViewport } from '@/hooks/useViewport';
@@ -7,6 +7,7 @@ import { rightPanelBox } from './rightPanelLayout';
 import { WatchlistPanel } from '@/features/watchlist/WatchlistPanel';
 import { ObjectTree } from '@/features/drawings/ObjectTree';
 import { AlertPanel } from '@/features/alerts/AlertPanel';
+import { DataWindowPanel } from '@/features/datawindow/DataWindowPanel';
 import { icon, zIndex } from '@/ui/tokens';
 
 /** 右侧图标轨的条目。顺序对齐 TradingView：自选股在最上。 */
@@ -14,17 +15,20 @@ const RAIL: { id: RightPanelId; label: string; icon: typeof List }[] = [
   { id: 'watchlist', label: '自选股', icon: List },
   { id: 'objectTree', label: '对象树', icon: Layers },
   { id: 'alerts', label: '价格警报', icon: Bell },
+  { id: 'dataWindow', label: '数据窗口', icon: Table2 },
 ];
 
 interface RightSideProps {
   renderer: ChartRenderer | null;
   alertSymbol: string;
   alertPrice: number;
+  /** 价格小数位（数据窗口的 OHLC / 画线读数用，与图例同源） */
+  decimals: number;
 }
 
 /** 右侧区域 = 停靠面板 + 图标轨。桌面：面板挤压图表宽度，不覆盖图表。
  *  窄屏（二期-F）：面板改为固定覆盖层（不挤压图表），隐藏拖拽调宽热区。 */
-export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps) {
+export function RightSide({ renderer, alertSymbol, alertPrice, decimals }: RightSideProps) {
   const panel = useRightDockStore((s) => s.panel);
   const width = useRightDockStore((s) => s.width);
   const setWidth = useRightDockStore((s) => s.setWidth);
@@ -92,6 +96,7 @@ export function RightSide({ renderer, alertSymbol, alertPrice }: RightSideProps)
             {panel === 'watchlist' && <WatchlistPanel />}
             {panel === 'objectTree' && <ObjectTree renderer={renderer} onClose={close} />}
             {panel === 'alerts' && <AlertPanel symbol={alertSymbol} currentPrice={alertPrice} />}
+            {panel === 'dataWindow' && <DataWindowPanel renderer={renderer} decimals={decimals} onClose={close} />}
           </div>
         </div>
       )}
