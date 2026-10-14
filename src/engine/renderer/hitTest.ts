@@ -23,6 +23,9 @@ export interface PaneButtonHit {
 /**
  * 画布级画线命中：自顶向下（顶层级优先），跳过不可见/锁定对象。
  * y 为全画布坐标，内部换算到面板局部（y - paneY）后交给 drawDrawings 的逐对象测试。
+ * `includeLocked`（三期-C1，缺省 `false` = 旧语义逐位不变）只给右键菜单路径用：锁定对象
+ * 若在画布上不可命中，「解锁」就没有画布入口（唯一残径是对象树），菜单项形同单向门。
+ * 编辑/拖拽/放置路径一律不带该参数，「锁定即不可动」的口径不变。
  */
 export function hitDrawings(
   drawings: readonly Drawing[],
@@ -30,10 +33,11 @@ export function hitDrawings(
   y: number,
   paneY: number,
   dctx: DrawContext,
+  includeLocked = false,
 ): DrawingHit | null {
   for (let i = drawings.length - 1; i >= 0; i--) {
     const d = drawings[i];
-    if (!d.visible || d.locked) continue;
+    if (!d.visible || (d.locked && !includeLocked)) continue;
     const hit = hitTestDrawing(d, x, y - paneY, dctx);
     if (hit) return { id: d.id, part: hit.part, index: hit.part === 'handle' ? hit.index : -1 };
   }

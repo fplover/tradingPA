@@ -677,21 +677,28 @@ export class ChartController {
     this.invalidate();
   }
 
-  /** 克隆画线（偏移少量像素，避免与原图完全重合） */
-  duplicateDrawing(id: string): void {
-    const src = this.drawing.layer.list().find((d) => d.id === id);
-    if (!src) return;
+  /** 克隆与粘贴共用的落点位移（三期-C1 抽为一点，避免两条“同址重叠”口径各自漂移）：
+   *  右移 3 根 bar + 上移可视价格区间的 2%。 */
+  private drawingShift(): { dt: number; dp: number } {
     const iv =
       this.state.displaySeries.length > 1
         ? this.state.displaySeries.raw()[1].time - this.state.displaySeries.raw()[0].time
         : 60_000;
     const span = this.state.panes[0].priceScale.range;
-    const dPrice = (span.max - span.min) * 0.02;
+    return { dt: iv * 3, dp: (span.max - span.min) * 0.02 };
+  }
+
+  /** 克隆画线（偏移少量像素，避免与原图完全重合） */
+  duplicateDrawing(id: string): void {
+    const src = this.drawing.layer.list().find((d) => d.id === id);
+    if (!src) return;
+    const { dt, dp } = this.drawingShift();
     const clone = this.drawing.layer.add(
       src.type,
-      src.points.map((p) => ({ time: p.time + iv * 3, price: p.price + dPrice })),
+      src.points.map((p) => ({ time: p.time + dt, price: p.price + dp })),
       src.style,
     );
+    if (src.levels) clone.levels = [...src.levels]; // 自定义档位随克隆复制（同 cloneDrawing）
     this.drawing.layer.select(clone.id);
     this.notifyDrawings();
     this.invalidate();
@@ -796,10 +803,30 @@ export class ChartController {
   exportDrawings(): string {
     return serializeDrawings(this.drawing.layer.list());
   }
+  /** 按 id 子集序列化（三期-C1 复制用）：格式与 exportDrawings 同源，子集筛选留在引擎内，
+   *  避免调用方各自 JSON.stringify 出第二种格式。无命中返回 `[]`。 */
+  exportDrawingsByIds(ids: readonly string[]): string {
+    const keep = new Set(ids);
+    return serializeDrawings(this.drawing.layer.list().filter((d) => keep.has(d.id)));
+  }
   importDrawings(raw: string): void {
     this.drawing.layer.replaceAll(deserializeDrawings(raw));
     this.notifyDrawings();
     this.invalidate();
+  }
+
+  /** 粘贴画线（三期-C1，additive）：反序列化 raw 后整组以新 id 落入并平移一段位移
+   *  （与克隆同口径），粘贴集成为选中。**与 importDrawings 不同构**：后者是 replaceAll
+   *  （清空现有），粘贴是追加。坏档 / 空表按 deserializeDrawings 的既有过滤口径退化为
+   *  0 条，不改动态、不入撤销栈。返回实际粘贴条数（调用方据此决定提示与禁用态）。 */
+  pasteDrawings(raw: string): number {
+    const list = deserializeDrawings(raw);
+    if (list.length === 0) return 0; // 空/坏档不广播、不重绘（DrawingLayer.paste 自身也不入历史）
+    const { dt, dp } = this.drawingShift();
+    const pasted = this.drawing.layer.paste(list, dt, dp);
+    this.notifyDrawings();
+    this.invalidate();
+    return pasted.length;
   }
 
   /** 完成路径类画线（双击/回车）：path 既有语义 +

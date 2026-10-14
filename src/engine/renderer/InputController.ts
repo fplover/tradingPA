@@ -309,8 +309,9 @@ export class InputController {
 
     const contextMenu = this.host.contextMenuCb();
     if (!contextMenu) return;
-    // 右键命中画线 → 画线上下文菜单（设置/移除/视觉顺序）
-    const dHit = this.drawing.hitAt(this.chartX(x), y, pane.y);
+    // 右键命中画线 → 画线上下文菜单（设置/复制/粘贴/克隆/移除/锁定/视觉顺序）
+    // menuHitAt 而非 hitAt：锁定对象也要能右键，否则「解锁」在画布上没有入口（三期-C1）
+    const dHit = this.drawing.menuHitAt(this.chartX(x), y, pane.y);
     if (dHit) {
       this.host.drawingMenuCb()?.(dHit.id, e.clientX, e.clientY);
       return;

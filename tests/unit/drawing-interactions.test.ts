@@ -3,7 +3,7 @@ import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { DrawingLayer } from '@/engine/drawing/DrawingLayer';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import type { Bar } from '@/types/market';
-import type { DrawingPoint } from '@/engine/drawing/types';
+import { serializeDrawings, type Drawing, type DrawingPoint } from '@/engine/drawing/types';
 import { createMockCtx, asCtx } from './helpers/mock-ctx';
 
 /**
@@ -462,5 +462,159 @@ describe('B7 方向键微调', () => {
     const before = r.listDrawings()[0].points[0];
     expect(r.nudgeSelectedDrawing(5, 5)).toBe(false);
     expect(r.listDrawings()[0].points[0]).toEqual(before);
+  });
+});
+
+/**
+ * 三期-C1 画线剪贴板。层侧钉住粘贴的四件事：新 id、平移、单步历史、来档保真；
+ * renderer 侧钉住「粘贴是追加」（与 importDrawings 的 replaceAll 相对）与坏档退化。
+ */
+describe('三期-C1 DrawingLayer.paste', () => {
+  it('整组落新 id 并平移，原体逐位不动；locked 与 levels 保真、style 为深拷', () => {
+    const layer = new DrawingLayer();
+    const src = layer.add('fib', [P(1_000, 100), P(2_000, 120)]);
+    layer.updateLevels(src.id, [0.382, 0.618]);
+    layer.setLocked(src.id, true);
+    // 走一趟真实存档格式（剪贴板里就是这种东西）
+    const fromArchive = JSON.parse(serializeDrawings(layer.list()))[0] as Drawing;
+
+    const [out] = layer.paste([fromArchive], 500, 10);
+    expect(out).toBeDefined();
+    expect(out!.id).not.toBe(src.id);
+    expect(out!.points).toEqual([P(1_500, 110), P(2_500, 130)]);
+    expect(out!.locked).toBe(true); // 锁定的线粘出来仍是锁定的（保真优先于「粘出来就能改」）
+    expect(out!.levels).toEqual([0.382, 0.618]);
+
+    const orig = layer.list().find((d) => d.id === src.id)!;
+    expect(orig.points).toEqual([P(1_000, 100), P(2_000, 120)]);
+    expect(orig.locked).toBe(true);
+    expect(layer.selectedIdList).toEqual([out!.id]);
+
+    // 深拷只对「活对象」可测：上面那趟存档对象与原体本就无共享，粘贴体即便浅拷也脏不到原体。
+    // 直接粘层内活对象才钉得住 paste 的契约（粘贴体与来源独立）——菜单路径经 serialize 往返，
+    // 今天拿不到活对象引用，所以这条锁的是 API 契约而非某条 UI 路径。
+    const origLineWidth = orig.style.lineWidth;
+    const [live] = layer.paste([orig], 0, 0);
+    live!.style.lineWidth = 7;
+    live!.levels!.push(0.5);
+    live!.points[0]!.price = 999;
+    expect(orig.style.lineWidth).toBe(origLineWidth);
+    expect(orig.levels).toEqual([0.382, 0.618]);
+    expect(orig.points[0]!.price).toBe(100);
+  });
+
+  it('一次粘贴两条 = 一步撤销（撤销抹掉整组而非逐条），redo 复原', () => {
+    const layer = new DrawingLayer();
+    layer.add('trendline', [P(1, 100), P(2, 110)]);
+    layer.add('hline', [P(3, 120)]);
+    expect(layer.paste([...layer.list()], 0, 0)).toHaveLength(2);
+    expect(layer.list()).toHaveLength(4);
+    layer.undo();
+    expect(layer.list()).toHaveLength(2);
+    layer.redo();
+    expect(layer.list()).toHaveLength(4);
+  });
+
+  it('空表返回空数组、不改动态，且不脏撤销栈', () => {
+    const layer = new DrawingLayer();
+    const a = layer.add('hline', [P(1, 100)]);
+    expect(layer.paste([], 10, 10)).toEqual([]);
+    expect(layer.list().map((d) => d.id)).toEqual([a.id]);
+    // 关键判别：paste([]) 没压快照 —— 单次 undo 直接回到 add 之前
+    layer.undo();
+    expect(layer.list()).toHaveLength(0);
+  });
+
+  it('来档 id 与现存重复时仍各取新 id，集合内无重名', () => {
+    const layer = new DrawingLayer();
+    const dup = layer.add('hline', [P(1, 100)]);
+    layer.replaceAll([{ ...dup, id: 'dw_dup' }]);
+    const out = layer.paste(
+      [
+        { ...dup, id: 'dw_dup' },
+        { ...dup, id: 'dw_dup' },
+      ],
+      0,
+      0,
+    );
+    expect(out).toHaveLength(2);
+    const ids = layer.list().map((d) => d.id);
+    expect(new Set(ids).size).toBe(3); // 1 条现存 + 2 条各得新 id
+    expect(out!.map((d) => d.id)).not.toContain('dw_dup');
+  });
+});
+
+describe('三期-C1 ChartRenderer 剪贴板 API', () => {
+  it('exportDrawingsByIds：与 exportDrawings 同格式，子集精确、空入参得空表', () => {
+    const r = makeRenderer();
+    r.setActiveTool('hline');
+    click(300, 250);
+    r.setActiveTool(null);
+    placeTrendline(r, 300, 300, 600, 400);
+    const ids = r.listDrawings().map((d) => d.id);
+    expect(ids).toHaveLength(2);
+
+    const subset = JSON.parse(r.exportDrawingsByIds([ids[0]!])) as Drawing[];
+    expect(subset).toHaveLength(1);
+    expect(subset[0]!.id).toBe(ids[0]);
+    expect(JSON.parse(r.exportDrawingsByIds([])) as Drawing[]).toEqual([]);
+    // 子集串可被 pasteDrawings 直接吃下（同一格式的两端）
+    expect(r.pasteDrawings(r.exportDrawingsByIds(ids))).toBe(2);
+  });
+
+  it('pasteDrawings 是追加不是替换：原体保留、落点偏移、返回条数、粘贴体成为选中', () => {
+    const r = makeRenderer();
+    r.setActiveTool('hline');
+    click(300, 250);
+    r.setActiveTool(null);
+    const before = r.listDrawings()[0]!;
+    const payload = r.exportDrawings();
+
+    expect(r.pasteDrawings(payload)).toBe(1);
+    expect(r.listDrawings()).toHaveLength(2);
+    const pasted = r.listDrawings()[1]!;
+    expect(pasted.id).not.toBe(before.id);
+    expect(pasted.points[0]!.time).toBeGreaterThan(before.points[0]!.time); // 右移 3 根 bar
+    expect(pasted.points[0]!.price).toBeGreaterThan(before.points[0]!.price); // 上移可视区间 2%
+    expect(r.selectedDrawingId).toBe(pasted.id);
+    expect(r.listDrawings().find((d) => d.id === before.id)).toBe(before); // 原体没被换掉
+
+    // 对照：importDrawings 是整表替换（清空语义），粘贴与导入不可混用
+    r.importDrawings(payload);
+    expect(r.listDrawings()).toHaveLength(1);
+  });
+
+  it('坏档 / 空表 / 缺字段条目一律 0 条且不改动态、不广播', () => {
+    const r = makeRenderer();
+    r.setActiveTool('hline');
+    click(300, 250);
+    r.setActiveTool(null);
+    const ids = r.listDrawings().map((d) => d.id);
+    let notified = 0;
+    const off = r.onDrawingsChanged(() => notified++);
+    for (const raw of ['not json', '{}', '[]', 'null', '[{"id":"x"}]']) {
+      expect(r.pasteDrawings(raw)).toBe(0);
+    }
+    expect(r.listDrawings().map((d) => d.id)).toEqual(ids);
+    // 0 条即「什么都没发生」：不广播（对象树/画线警报面板不被空粘贴惊动）
+    expect(notified).toBe(0);
+    // 对照：真粘上一条必须广播一次，否则上面那条 0 只是监听器没接上
+    expect(r.pasteDrawings(r.exportDrawings())).toBe(1);
+    off();
+    expect(notified).toBe(1);
+  });
+
+  /** 顺带修正（本批发现、非本批立项）：右键「克隆」此前不带走自定义档位，而
+   *  Ctrl+拖动克隆（cloneDrawing）带走 —— 同一功能两个入口口径分裂。 */
+  it('duplicateDrawing 带走自定义档位（与 cloneDrawing 同口径）', () => {
+    const r = makeRenderer();
+    r.setActiveTool('fib');
+    click(300, 250);
+    click(600, 400);
+    r.setActiveTool(null);
+    const src = r.listDrawings()[0]!;
+    r.updateDrawingLevels(src.id, [0.25, 0.75]);
+    r.duplicateDrawing(src.id);
+    expect(r.listDrawings()[1]!.levels).toEqual([0.25, 0.75]);
   });
 });

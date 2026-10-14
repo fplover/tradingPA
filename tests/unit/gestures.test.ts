@@ -336,6 +336,25 @@ describe('DrawingGesture：放置/预览/拖拽/克隆', () => {
     expect(hit!.id).toBe(open.g.layer.list()[0].id);
   });
 
+  /** 三期-C1：锁定对象的「解锁」入口。menuHitAt 是右键路径专用命中，与 hitAt 的唯一
+   *  差别是带 includeLocked —— 若两者同语义，锁定就成了单向门（画布上再也点不到它）。 */
+  it('menuHitAt：单对象锁定仍可命中而 hitAt 仍为 null；全局锁定态下两者皆 null', () => {
+    const { g } = setup();
+    g.setTool('hline');
+    g.place(200, 200, 0, false);
+    const id = g.layer.list()[0].id;
+    g.layer.setLocked(id, true);
+    expect(g.hitAt(300, 201, 0)).toBeNull(); // 编辑/拖拽口径不变
+    const menuHit = g.menuHitAt(300, 201, 0);
+    expect(menuHit).not.toBeNull();
+    expect(menuHit!.id).toBe(id);
+    // 全局锁（drawingsLocked）不是单对象锁：整个画线层不可交互，菜单也不该穿透
+    const global = setup(true);
+    global.g.setTool('hline');
+    global.g.place(200, 200, 0, false);
+    expect(global.g.menuHitAt(300, 201, 0)).toBeNull();
+  });
+
   it('beginDrag 后 onPointerUp 结束拖拽；Ctrl 无移动 = 多选切换', () => {
     const { g } = setup();
     g.setTool('hline');

@@ -181,6 +181,14 @@ export class DrawingGesture {
     return hitDrawings(this.layer.list(), x, y, paneY, this.host.drawingCtx());
   }
 
+  /** 右键菜单路径专用命中（三期-C1）：与 hitAt 同一全局锁守卫，唯一差别是带
+   *  includeLocked —— 已锁定的对象也要能被右键命中，否则「解锁」只能去对象树点。
+   *  编辑与拖拽仍走 hitAt（锁定不可动，口径不变）。 */
+  menuHitAt(x: number, y: number, paneY: number): DrawingHit | null {
+    if (this.host.drawingsLocked()) return null;
+    return hitDrawings(this.layer.list(), x, y, paneY, this.host.drawingCtx(), true);
+  }
+
   /** 工具模式落点（1 点工具即落成；多点工具累积锚点，满点数落成） */
   place(x: number, y: number, paneY: number, shift: boolean): void {
     // 多边形工具态顶点增删（P2-B 遗留接线）：放置空位时点中选中多边形的

@@ -94,6 +94,76 @@ test('磁吸档位与清空全部', async ({ page }) => {
   await expect(page.getByTestId('object-row')).toHaveCount(0);
 });
 
+/** 三期-C1：画线右键的「复制 / 粘贴 / 锁定」。三项各锁一段机制——粘贴项的禁用态锁的是
+ *  应用内内存剪贴板（用户裁决③：不落盘，故刷新即空）；锁定后再右键仍能出画线菜单锁的是
+ *  menuHitAt（去掉它，右键会穿到图表菜单，「解锁」在画布上就永远点不到）；复制→粘贴的
+ *  行数 +1 锁的是 exportDrawingsByIds → pasteDrawings 这条同格式往返。 */
+test('画线右键复制粘贴与锁定', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+
+  const canvas = page.locator('canvas').first();
+  const paste = page.getByRole('menuitem', { name: '粘贴', exact: true });
+  const placeTrendline = async () => {
+    await page.getByRole('button', { name: '趋势线', exact: true }).click();
+    await canvas.click({ position: { x: 300, y: 200 } });
+    await canvas.click({ position: { x: 500, y: 300 } });
+  }; // 两点工具放完即退出（stayMode 默认关），无需再点工具按钮
+  const rightClickLine = () => canvas.click({ button: 'right', position: { x: 400, y: 250 } });
+
+  await placeTrendline();
+
+  // 空剪贴板：粘贴项在位但不可用
+  await rightClickLine();
+  await expect(paste).toHaveAttribute('aria-disabled', 'true');
+  await page.getByRole('menuitem', { name: '锁定', exact: true }).click();
+
+  // 锁定态：右键仍命中该画线（菜单项已是「解锁」）→ 画布上没有失去入口
+  await rightClickLine();
+  await expect(page.getByRole('menuitem', { name: '解锁', exact: true })).toBeVisible();
+  await page.getByRole('menuitem', { name: '解锁', exact: true }).click();
+
+  // 复制 → 粘贴：粘贴项转可用，行数 +1
+  await rightClickLine();
+  await page.getByRole('menuitem', { name: '复制', exact: true }).click();
+  await rightClickLine();
+  await expect(paste).not.toHaveAttribute('aria-disabled', 'true');
+  await paste.click();
+  await page.getByRole('button', { name: '对象树' }).click();
+  await expect(page.getByTestId('object-row')).toHaveCount(2);
+  await page.getByRole('button', { name: '对象树' }).click();
+
+  // 多选整组复制：右键对象在多选集内时复制整组，而不是只复制它自己（锁 copyTarget 的分支）。
+  // 刚放下的第二条已被 DrawingLayer.add 选中（:96），所以这里只需 Ctrl+点击把第一条并入 ——
+  // 再 Ctrl+点击第二条会变成「取消选中」（toggle 语义），多选集退化成单条，粘贴只 +1。
+  // 坐标刻意留在「最后一根 bar 以左」的实数据区（x≤740）：画布宽会随右侧停靠栏折叠从 870 跳到 1190，
+  // 按画布宽推导的落点可能落到末根之后 —— 两点被 clamp 到同一时间，画线退化成竖线，右键便穿到图表菜单。
+  const placeSecond = async () => {
+    await page.getByRole('button', { name: '趋势线', exact: true }).click();
+    await canvas.click({ position: { x: 600, y: 300 } });
+    await canvas.click({ position: { x: 740, y: 390 } });
+  };
+  await placeSecond();
+  await canvas.click({ position: { x: 400, y: 250 }, modifiers: ['Control'] });
+  const rightClickSecond = () => canvas.click({ button: 'right', position: { x: 670, y: 345 } });
+  await rightClickSecond();
+  await page.getByRole('menuitem', { name: '复制', exact: true }).click();
+  await rightClickSecond();
+  await paste.click();
+  await page.getByRole('button', { name: '对象树' }).click();
+  // 3 行（原 + 首次粘贴 + 第二条）→ 整组粘贴 +2 = 5；只复制单条会停在 4
+  await expect(page.getByTestId('object-row')).toHaveCount(5);
+  await page.getByRole('button', { name: '对象树' }).click();
+
+  // 刷新：画线与剪贴板都不留（剪贴板刻意不落盘）
+  await page.reload();
+  await expect(page.getByText(/[1-9][0-9,]* 根/)).toBeVisible({ timeout: 20_000 });
+  await placeTrendline();
+  await rightClickLine();
+  await expect(paste).toHaveAttribute('aria-disabled', 'true');
+  await page.keyboard.press('Escape');
+});
+
 /** 对象树：视觉顺序（置于顶层）改变行序 */
 test('对象树视觉顺序', async ({ page }) => {
   await page.goto('/');

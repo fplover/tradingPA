@@ -1,5 +1,5 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { ChevronRight, Settings, Trash2, Copy } from 'lucide-react';
+import { ChevronRight, ClipboardCopy, Copy, Lock, Settings, Trash2, Unlock } from 'lucide-react';
 import type { ChartRenderer } from '@/engine/renderer/ChartRenderer';
 import { useDrawingStore } from '@/store/drawingStore';
 import { fontSize, icon, radius, shadow, space, zIndex } from '@/ui/tokens';
@@ -16,10 +16,35 @@ interface DrawingContextMenuProps {
   onClose: () => void;
 }
 
-/** 画线右键菜单（TV）：设置 / 移除 / 克隆 / 视觉顺序子菜单 */
+/** 画线右键菜单（TV）：设置 / 复制 / 粘贴 / 移除 / 克隆 / 锁定 / 视觉顺序子菜单 */
 export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextMenuProps) {
+  const clipboard = useDrawingStore((s) => s.clipboard);
+  const setClipboard = useDrawingStore((s) => s.setClipboard);
+  // 渲染期读引擎（同 DrawingSettingsDialog.tsx:28 既有口径）：菜单每次打开都是新挂载，
+  // 不存在「读到上一帧的锁定态」这种陈旧问题
+  const locked = state ? (renderer?.listDrawings().find((d) => d.id === state.id)?.locked ?? false) : false;
+
   const order = (action: 'front' | 'forward' | 'backward' | 'back') => {
     if (state) renderer?.setDrawingOrder(state.id, action);
+    onClose();
+  };
+
+  /** 复制源语义（TV 同）：右键对象落在多选集内就整组复制，否则只复制它自己 */
+  const copyTarget = () => {
+    if (!state || !renderer) return;
+    const sel = renderer.selectedDrawingIds;
+    const ids = sel.includes(state.id) ? sel : [state.id];
+    setClipboard(renderer.exportDrawingsByIds(ids));
+    onClose();
+  };
+
+  const pasteHere = () => {
+    if (clipboard) renderer?.pasteDrawings(clipboard);
+    onClose();
+  };
+
+  const toggleLock = () => {
+    if (state) renderer?.setDrawingLocked(state.id, !locked);
     onClose();
   };
 
@@ -58,6 +83,23 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
             </span>
             设置
           </DropdownMenu.Item>
+          <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={copyTarget}>
+            <span style={slot}>
+              <ClipboardCopy size={icon.md} />
+            </span>
+            复制
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            className="tv-menu-item"
+            style={clipboard ? itemStyle : disabledStyle}
+            disabled={!clipboard}
+            onSelect={pasteHere}
+          >
+            <span style={slot}>
+              <Copy size={icon.md} />
+            </span>
+            粘贴
+          </DropdownMenu.Item>
           <DropdownMenu.Item
             className="tv-menu-item"
             style={itemStyle}
@@ -83,6 +125,11 @@ export function DrawingContextMenu({ state, renderer, onClose }: DrawingContextM
               <Copy size={icon.md} />
             </span>
             克隆
+          </DropdownMenu.Item>
+          <DropdownMenu.Separator style={sepStyle} />
+          <DropdownMenu.Item className="tv-menu-item" style={itemStyle} onSelect={toggleLock}>
+            <span style={slot}>{locked ? <Unlock size={icon.md} /> : <Lock size={icon.md} />}</span>
+            {locked ? '解锁' : '锁定'}
           </DropdownMenu.Item>
           <DropdownMenu.Separator style={sepStyle} />
           <DropdownMenu.Sub>
@@ -146,5 +193,8 @@ const itemStyle: React.CSSProperties = {
 };
 
 const slot: React.CSSProperties = { width: icon.lg, flexShrink: 0, display: 'flex', alignItems: 'center' };
+
+/** 空剪贴板时的「粘贴」：Radix 的 disabled 只给行为不给观感，灰字沿用 LayoutSaveMenu:105 口径 */
+const disabledStyle: React.CSSProperties = { ...itemStyle, color: 'var(--text-faint)' };
 
 const sepStyle: React.CSSProperties = { height: 1, background: 'var(--border)', margin: `${space.xs}px 0` };

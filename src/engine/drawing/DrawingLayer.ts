@@ -228,4 +228,30 @@ export class DrawingLayer {
     this.drawings = drawings;
     this.selectedIds = [];
   }
+
+  /** 粘贴（三期-C1）：整组以**新 id** 落入（不与来档共用 id，撤销/删除语义因此与普通
+   *  add 同构），可带 time/price 平移，粘贴集成为当前选中；一次粘贴 = 一步撤销。
+   *  style/levels 深拷，locked 与 visible **原样保留**（锁定的线粘出来仍是锁定的，
+   *  解锁入口见 DrawingGesture.menuHitAt）。空表返回空数组且不改动、不入历史。 */
+  paste(list: readonly Drawing[], dt = 0, dp = 0): Drawing[] {
+    if (list.length === 0) return [];
+    const taken = new Set(this.drawings.map((d) => d.id));
+    const pasted: Drawing[] = [];
+    for (const src of list) {
+      let id = `dw_${++seq}`;
+      while (taken.has(id)) id = `dw_${++seq}`;
+      taken.add(id);
+      pasted.push({
+        ...src,
+        id,
+        points: src.points.map((p) => ({ time: p.time + dt, price: p.price + dp })),
+        style: { ...src.style },
+        ...(src.levels ? { levels: [...src.levels] } : {}),
+      });
+    }
+    this.snapshot();
+    this.drawings.push(...pasted);
+    this.selectedIds = pasted.map((d) => d.id);
+    return pasted;
+  }
 }
