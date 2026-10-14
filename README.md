@@ -34,8 +34,8 @@ npm run dev          # http://localhost:5173
 | `npm run lint` | oxlint（`.oxlintrc.json`，Rust 原生 0.3s；**0 错误 0 警告**——2026-10-08 存量 55 条警告基线全额清偿，2026-10-12 三期-H 再消除该基线未覆盖的 1 条指令遮蔽链；源码内 `eslint-disable` 注释 **2 条**，逐条理由与遮蔽范围见「lint disable 台账」；含函数级规模规则 max-statements 60 / max-params 10，7 个编排类文件放宽至 120） |
 | `npm run lint:fix` | oxlint 自动修复 |
 | `npm run format` / `format:check` | Prettier（代码/配置全覆盖，已全仓格式化；markdown 与 `docs/` 刻意排除，见 `.prettierignore` 的量化理由） |
-| `npm test` | Vitest 单测（87 文件 / 1377 例） |
-| `npm run test:e2e` | Playwright E2E（66 例，含 **27 面黄金截图** + 1M 根画布全管线帧时长预算；配置内 `retries: 0`，见下「已知状态」） |
+| `npm test` | Vitest 单测（90 文件 / 1446 例） |
+| `npm run test:e2e` | Playwright E2E（67 例，含 **27 面黄金截图** + 1M 根画布全管线帧时长预算；配置内 `retries: 0`，见下「已知状态」） |
 | `npm run test:e2e:update` | 黄金截图重基线（**仅有意渲染变更时用**：跑完必须在同一提交里审查 `__screenshots__` 的 diff 并说明理由，禁止顺手全量更新） |
 | `npm run build:pages` | 按 Pages base（`/tradingPA/`）本地预演构建（配合 `npm run preview`） |
 | `npm run audit` | 依赖漏洞审计（**必须走官方 registry**：本机配置的 npmmirror 镜像不实现 `/-/npm/v1/security/*`，直接 `npm audit` 会报 NOT_IMPLEMENTED） |
@@ -46,8 +46,8 @@ npm run dev          # http://localhost:5173
 ```
 src/
   engine/       自研渲染引擎（框架无关，不得 import React/zustand）
-    renderer/     ChartController 门面 + 状态/管线/输入/手势/坐标轴/序列渲染（40 文件，含水印绘制）
-    drawing/      画线数据模型、几何纯函数、canvas 绘制（26 文件，math 与 render 分离）
+    renderer/     ChartController 门面 + 状态/管线/输入/手势/坐标轴/序列渲染（41 文件，含水印绘制、数据窗口读数快照）
+    drawing/      画线数据模型、几何纯函数、canvas 绘制（34 文件，math 与 render 分离；原记 26 为陈旧计数，已按 `find` 实数复核）
     profile/      Volume Profile（kline 近似，见 docs/DECISIONS）
     scale/ viewport/ crosshair/ canvas/ theme.ts countdown.ts
   indicators/   指标引擎
@@ -63,12 +63,12 @@ src/
     feed/         Binance REST + WS 实时通道
     aggregate.ts aggregatePath.ts liveBar.ts tz.ts cache/ BarSeries.ts
   store/        Zustand（UI/布局/指标/自选/警报/联动总线…），渲染态不进 React
-  features/     平台功能（market / drawings / watchlist / layout / alerts / trading / command / replay / pine / settings）
+  features/     平台功能（market / drawings / watchlist / layout / alerts / trading / command / replay / pine / settings / datawindow）
   ui/           设计 token 与基础组件（primitives / controls / tokens）
   components/ hooks/ types/ styles/
 tests/
-  unit/         Vitest（87 文件，node 环境为主，需 DOM 的文件用 `// @vitest-environment jsdom`）
-  e2e/          Playwright（8 spec / 66 例）+ __screenshots__ 黄金基线
+  unit/         Vitest（90 文件，node 环境为主，需 DOM 的文件用 `// @vitest-environment jsdom`）
+  e2e/          Playwright（9 spec / 67 例）+ __screenshots__ 黄金基线
 docs/           Spec 与差距分析（见下）
 ```
 
@@ -78,7 +78,7 @@ docs/           Spec 与差距分析（见下）
 
 > E2E 在 Windows 上必须先自己起 dev server 再跑（见下节）；`verify` 只含机器无关门禁，可随时跑。
 
-当前实测基线（**2026-10-14 三期-C1 交付复跑**；上一次为 2026-10-14 三期-B4 交付 + 2026-10-12 复跑门禁口径校准 + 同日晚三期-H 交付 + 同日晚三期-B0 交付 + 同日晚三期-B1 交付 + 同日晚三期-B2 交付 + 同日晚三期-B3 交付；再前次功能基线为 2026-10-09 二期收官后 + 形态家族画线回归修复 + rAF 帧循环加固 + E2E 去 flaky）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（379 文件；存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1；该口径曾有一处盲区——`useChartSeries.ts` 的一条 disable 连带遮蔽同文件 6 条 refs + 1 条 set-state-in-effect，即「指令锚定而非分析归零」，已于三期-H 用代码结构归零，现源码内 2 条 disable 逐条见「lint disable 台账」）/ format:check 绿 / 单测 **87 文件 1377 例全过**（三期-C1 +9） / E2E **66 例全过**（三期-C1 +1；`--retries=0` 实测零失败——基线已确定化，外网依赖已切断，见下条待办记录；含 `perf-million-bars.spec.ts` 的 1M 根画布全管线帧时长预算。**2026-10-14 用户裁决**：`playwright.config.ts` 内 `retries` 由 1 归零，「不带 flag 的本地跑法」与被采纳的结果从此一致；连带 `trace` 由 `on-first-retry` 改 `retain-on-failure`，因为 `retries: 0` 下前者永不落地）/ **27 面黄金截图零 diff** / 构建 7 chunk、最大应用块 **508.26 kB（gzip 145.33 kB，合计 gzip 257.78 kB）**——B0 标注的「裕度仅 1.92 kB」已在 B1 兑现，**>500 kB 警告现已触发**（B2 再 +3.24 kB、B3 再 +2.02 kB、B4 再 +0.62 kB、C1 再 +1.77 kB，仍在同一触发态；这是 Vite 的提示阈值、非本期门禁；gzip ≤150 kB 口径仍在内。**2026-10-14 用户裁决**：`vite.config.ts` 设 `chunkSizeWarningLimit = 560`，即「提阈值而非关警告」，约 54 kB 余量按三期-C 规模预留；已用副本配置实测——同一 506.49 kB 块在 500 档复现警告、在 560 档静默，故这是登记的预算而非压制。详见 `docs/PLAN-PHASE3.md` §2-B 的 B1/B4 交付记录与 §2-C 的 C1 交付记录）。
+当前实测基线（**2026-10-14 三期-C2 交付复跑**；上一次为 2026-10-14 三期-C1 交付 + 同日晚三期-B4 交付 + 2026-10-12 复跑门禁口径校准 + 同日晚三期-H 交付 + 同日晚三期-B0 交付 + 同日晚三期-B1 交付 + 同日晚三期-B2 交付 + 同日晚三期-B3 交付；再前次功能基线为 2026-10-09 二期收官后 + 形态家族画线回归修复 + rAF 帧循环加固 + E2E 去 flaky）：typecheck 0 错（**TypeScript 7 原生编译器，单一依赖无别名**；双项目：app + node 配置/e2e）/ lint **0 错 0 警告**（386 文件；存量 55 条基线已于 2026-10-08 全额清偿：exhaustive-deps 19 / only-export-components 11 / refs 10 / set-state-in-effect 11 / purity 3 / use-memo 1；该口径曾有一处盲区——`useChartSeries.ts` 的一条 disable 连带遮蔽同文件 6 条 refs + 1 条 set-state-in-effect，即「指令锚定而非分析归零」，已于三期-H 用代码结构归零，现源码内 2 条 disable 逐条见「lint disable 台账」）/ format:check 绿 / 单测 **90 文件 1446 例全过**（三期-C2 +69；其中 +4 例是新文件 `tests/unit/data-window-broadcast.test.ts`（jsdom），把两个引擎新增端口从「只有 E2E 覆盖」补到控制器级覆盖） / E2E **67 例全过**（三期-C2 +1、spec 文件 8 → 9；`--retries=0` 实测零失败——基线已确定化，外网依赖已切断，见下条待办记录；含 `perf-million-bars.spec.ts` 的 1M 根画布全管线帧时长预算。**2026-10-14 用户裁决**：`playwright.config.ts` 内 `retries` 由 1 归零，「不带 flag 的本地跑法」与被采纳的结果从此一致；连带 `trace` 由 `on-first-retry` 改 `retain-on-failure`，因为 `retries: 0` 下前者永不落地）/ **27 面黄金截图零 diff**（C2 未新增黄金面；㉒ drawings-line-family 兼作 `rayEndPix` 抽件的行为中性证明） / 构建 7 chunk、最大应用块 **514.94 kB（gzip 147.28 kB，合计 gzip 260.11 kB）**——B0 标注的「裕度仅 1.92 kB」已在 B1 兑现，**>500 kB 警告现已触发**（B2 再 +3.24 kB、B3 再 +2.02 kB、B4 再 +0.62 kB、C1 再 +1.77 kB、C2 再 +6.68 kB，仍在同一触发态；这是 Vite 的提示阈值、非本期门禁；gzip ≤150 kB 口径仍在内，但裕度已收到 **2.72 kB**。**2026-10-14 用户裁决**：`vite.config.ts` 设 `chunkSizeWarningLimit = 560`，即「提阈值而非关警告」，约 54 kB 余量按三期-C 规模预留；C2 交付后实余 **45.06 kB**，C 批次收口，该预算的预留对象转为 D 批次；已用副本配置实测——同一 506.49 kB 块在 500 档复现警告、在 560 档静默，故这是登记的预算而非压制。详见 `docs/PLAN-PHASE3.md` §2-B 的 B1/B4 交付记录与 §2-C 的 C1/C2 交付记录）。
 
 **工具链统一 Vite 8 / oxc 生态（2026-10-03 迁移）**：`typescript` 为原生 7.0 单一依赖（无 JS API，官方预期形态）。原依赖 TS JS API 与 eslint/babel 的两处校验工具链统一迁到 **oxc 栈**（Vite 8 内置 Rolldown 的同源生态，Rust 原生解析）：
 - **lint**：eslint 五件套 + @babel 三件套（共 8 个 devDep）→ **oxlint** 单二进制（`.oxlintrc.json`）。规则覆盖完备：react-hooks 全家族（含编译器规则 refs/purity/set-state-in-effect）+ react-refresh + TS 规则；`eslint-disable` 注释指令**基本**兼容（2026-10-03 探针验证「带指令 0 警告/去指令即报」；2026-10-12 复核补充：react-hooks 编译器规则的**抑制半径**与 ESLint 的 next-line 语义不一致，见下方台账「探针副产物」）。61 条 vs 原 68 条：oxlint 的 refs/set-state-in-effect 移植更保守（-7），无新增类别。耗时 30s → **0.3s**。
@@ -126,14 +126,14 @@ npm run test:e2e
   `parseShapeDirective` 70 / `PaneRenderer.draw` 64）经 `.oxlintrc.json` overrides 放宽至 120 并登记；
   放宽是提阈值而非关闭，>120 的新函数仍被拦
 - 引擎侧框架无关：不得 import React / zustand
-- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1377 单测 + 66 E2E）；additive 扩展需带默认值与回读口（三期-B2 的 `setTradingVisible` / `tradingVisible`、三期-B3 的 `setTzOffsetMinutes` / `tzOffsetMinutes` 与 `formatTime` 末位 `TimeDisplay` 缺省对象即按此口径；三期-C1 的 `hitDrawings(..., includeLocked = false)` 末位新参、`menuHitAt` / `DrawingLayer.paste` / `exportDrawingsByIds` / `pasteDrawings` 四个新口同按此口径，且**只增不改**）
+- 公开 API 签名冻结，重构保持调用点零改动（golden：27 面截图 + 1446 单测 + 67 E2E）；additive 扩展需带默认值与回读口（三期-B2 的 `setTradingVisible` / `tradingVisible`、三期-B3 的 `setTzOffsetMinutes` / `tzOffsetMinutes` 与 `formatTime` 末位 `TimeDisplay` 缺省对象即按此口径；三期-C1 的 `hitDrawings(..., includeLocked = false)` 末位新参、`menuHitAt` / `DrawingLayer.paste` / `exportDrawingsByIds` / `pasteDrawings` 四个新口同按此口径，且**只增不改**；三期-C2 的 `dataWindowSnapshot` 回读口 + `onDataWindowChanged` 订阅口亦为纯新增，`ChartController` 既有签名零改动）
 
 ## 已知状态与待办
 
 - **E2E 日历用例已修（2026-10-09）**：`interactions.spec.ts` 两处「日历弹层」用例原以 `button[aria-label^="2026-"]` 的 `.first()` 取日格，当日历首行含上/下月补位或区间外日期时命中 `disabled` 格导致点击永久等待——根因是 mock 数据区间由 `Date.now()` 逐日漂移（非应用回归）。现改为 `getByRole('button', { name: /^\d{4}-\d{2}-\d{2}$/, disabled: false })`：可访问名即 ISO 日期串（该形态只有日期格具备，导航/触发按钮不带），且不再依赖年份字面量。
 - **E2E 去 flaky 已收口（2026-10-09）**：`watchlist.spec.ts 期货分类可搜到合约` 此前偶发 30s 超时、重试即过，登记为「依赖外网搜索源」——实跑定位后根因是**用例缺就绪门**：`/` 是 window keydown 快捷键（`useTvShortcuts` 的 effect 挂载后才有监听），用例在 `goto('/')` 之后立即按键，按键偶发丢失 → 弹层根本没开，等待的是弹层里的「国内期货」按钮，而非搜索结果。现补上与其他用例一致的就绪断言（`/[1-9][0-9,]* 根/` 可见）再按键。同时把东财合约全集与搜索联想改为 `page.route` 固定桩：期货分类搜索的语义是「本地按合约全集过滤」，网络只负责供料，钉死供料后断言只考察应用逻辑；这还顺带修掉一个定时炸弹——原断言写死 `/rb26/`，真实合约随主力换月会消失，桩数据不会。验证：`--repeat-each=4 --retries=0` 四连过；全量 `--retries=0` **57 例全过**（黄金截图 27 面零 diff）。
 - **E2E 重试口径归零（2026-10-14 用户裁决）**：`playwright.config.ts` 的 `retries` 由 1 改 **0**，`trace` 连带由 `on-first-retry` 改 `retain-on-failure`——`retries: 0` 下「首次重试」永不存在，旧值是个死键。理由不是「冷编译会挂」：冷编译已由 `webServer.url` 健康检查 + 用例显式超时兜住，而配置留 1 只会让「本地不带 flag 的跑法」与被采纳的结果不一致（基线声明的 `--retries=0` 从此是默认而非外加）。证据：副本配置对照实测（同一测试在 `retries: 5` 下报 6 条 attempt 行、`retries: 0` 下 1 条）。**勘正**：`docs/decisions/OPEN-DECISIONS.md` 当年 D6 登记的理由「会在 CI 掩盖 flaky」今天不成立——`.github/workflows/deploy.yml` 只跑 `npm run verify` + `npm run build`，**没有 E2E job**；真实动机是上面那条本地口径。历史行不改写，就地补记。
-- **应用块体积预算（2026-10-14 用户裁决）**：`vite.config.ts` 设 `build.chunkSizeWarningLimit = 560`。这是**登记的预算**，不是关掉警告——仓库同口径先例是 oxlint overrides「放宽是提阈值而非关闭」。当前块 508.26 kB，约 52 kB 余量按三期-C 剩余规模（数据窗口）预留；B1→C1 的增量轨迹为 500.61 / 503.85 / 505.87 / 506.49 / 508.26。不拆动态 `import()`：`src/` 目前零动态导入边界，开第一刀会让「结构中性」的交付论证失去可比基线。证据：同一 506.49 kB 块在副本配置 500 档复现警告、560 档静默。真正的门禁口径仍是 gzip ≤150 kB（现 145.33 kB）。
+- **应用块体积预算（2026-10-14 用户裁决）**：`vite.config.ts` 设 `build.chunkSizeWarningLimit = 560`。这是**登记的预算**，不是关掉警告——仓库同口径先例是 oxlint overrides「放宽是提阈值而非关闭」。当前块 514.94 kB（三期-C2 后），约 45 kB 余量——C 批次（数据窗口）已随 C2 收口，余量的预留对象转为 D 批次；B1→C2 的增量轨迹为 500.61 / 503.85 / 505.87 / 506.49 / 508.26 / 514.94。不拆动态 `import()`：`src/` 目前零动态导入边界，开第一刀会让「结构中性」的交付论证失去可比基线。证据：同一 506.49 kB 块在副本配置 500 档复现警告、560 档静默。真正的门禁口径仍是 gzip ≤150 kB（现 147.28 kB，裕度 2.72 kB——下一批同量级增量即触线）。
 - **画线剪贴板是应用内内存态（2026-10-14 三期-C1，用户裁决，非缺陷）**：右键「复制」写入 `drawingStore.clipboard`，**不写 localStorage、不碰系统剪贴板**——刷新即空，跨页签搬运走既有的「导出 / 导入画线 JSON」。两条同批口径同样按裁决而非 bug 处理：粘贴体**保留锁定态**（保真优先于「粘出来就能改」，故连粘两次得两条锁定线）；锁定对象**只在右键可命中**（`menuHitAt`），双击仍不弹画线设置（`InputController.ts:279` 保留 `hitAt`）。
 - **形态家族画线已修（2026-10-09）**：谐波四工具（gartley/bat/butterfly/crab）的比率标签无条件索引 `pts[4]`，而放置中的 `__preview` 走同一渲染路径，锚点不足 5 个时抛 TypeError；异常从 `pipeline.draw()` 逃出后 `ChartController` 的 rAF 循环不再自我重挂，**整张画布永久冻结**——用户侧表现为「ABCD 分类下其他划线工具没效果」，刷新页面才恢复。现整段比率标签以 `pts.length >= HARMONIC_LABELS.length` 守卫（不足时只画已有折线与锚点字母，同时避免越界点的 price 兜底 0 算出假比率）。回归：`tests/unit/drawing-pattern-render.test.ts`（9 工具 × 1..5 锚点逐档不抛错）。
 - **rAF 帧循环已加固（2026-10-09）**：`ChartController.start()` 原把 `requestAnimationFrame(loop)` 排在帧体之后，帧体（尤其 `pipeline.draw()`）一次抛错就再也不挂帧 → 整张画布永久冻结，须刷新页面。现改为「先挂下一帧再干活」，单帧异常只丢这一帧。不吞异常：错误仍上抛到 `window.onerror`（syncBus 的 console.error 口径只用于隔离外部 handler，本处是引擎自身缺陷，需要响亮暴露）。回归双跑：`tests/unit/chart-raf-loop.test.ts`（假帧队列逐帧驱动，6 例——含「连续 5 帧异常不终止」「dispose 后不再挂帧」「重复 start 不叠加」）+ `tests/e2e/drawing.spec.ts` 真浏览器注入异常用例。两者按旧顺序实测均失败（旧实现第 1 帧抛错即死），非空断言。

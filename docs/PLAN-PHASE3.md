@@ -25,7 +25,7 @@
 3. **工程债清理**：README 与 `oxlintrc` 类文档-代码口径漂移（三期-A 已处置）、lint disable 残留（原 **3 处**，三期-H 消除 1 处后**现 2 处**，二者经删除探针证实只抑制自身那一行、属真·有意例外，见 README「lint disable 台账」）、E2E 重试基线（`playwright.config.ts:17` `retries: 1` 与既定「`--retries=0` 全绿」标准不一致——登记为不排期残留，见 §2-F）。
 4. **决策落定**：D1（后端）、D4（MTF）、D6（取向）三个决策点给出书面裁决并结转进 OPEN-DECISIONS。**2026-10-12 全部达成**（档 0 + 关闭重评 / MTF 不做 / 收敛；三行已入册）。
 
-**量化验收口径（全期）**：`npm run verify` 全绿；`npm run test:e2e -- --retries=0` 全绿（**该 flag 自 2026-10-14 起与配置一致**——`playwright.config.ts` 的 `retries` 已归零，用户裁决④，故不带 flag 的跑法同样严格）；`npm run build` 最大 chunk gzip ≤ 150 kB（三期-B4 后现 **144.87 kB**、三期-C1 后 **145.33 kB**，留裕度）；Vitest 用例数 ≥ **1368**（三期-B4 后现量，+5 例 = 新文件 `tests/unit/alert-sound-pref.test.ts`；三期-C1 后现 **1377**）且不删既有断言。**原始体积口径（2026-10-14 用户裁决①已处置）**：B1 起应用块逐批越过 Vite 默认的 500 kB **警告阈值**（B1 500.61 → B2 503.85 → B3 505.87 → B4 **506.49 kB** → C1 **508.26 kB**）——裁决为**提阈值并登记预算**，`vite.config.ts:32` `chunkSizeWarningLimit = 560`（约 54 kB 余量，量级按三期-C 判）；这是提阈值而非关警告，越过 560 仍拦（探针实证：同一 506.49 kB 块在 500 档副本配置下警告复现）。真实门禁仍是 gzip ≤150 kB。详见 §2-B 的 B4 交付记录。
+**量化验收口径（全期）**：`npm run verify` 全绿；`npm run test:e2e -- --retries=0` 全绿（**该 flag 自 2026-10-14 起与配置一致**——`playwright.config.ts` 的 `retries` 已归零，用户裁决④，故不带 flag 的跑法同样严格）；`npm run build` 最大 chunk gzip ≤ 150 kB（三期-B4 后现 **144.87 kB**、三期-C1 后 **145.33 kB**、三期-C2 后 **147.28 kB**——裕度由 5.13 kB 收到 **2.72 kB**，口径仍在内，但下一批若再 +2 kB 量级即触线，届时须按「提预算而非压 gzip」的同一裁决路子重新登记）；Vitest 用例数 ≥ **1368**（三期-B4 后现量，+5 例 = 新文件 `tests/unit/alert-sound-pref.test.ts`；三期-C1 后现 **1377**、三期-C2 后现 **1446**）且不删既有断言。**原始体积口径（2026-10-14 用户裁决①已处置）**：B1 起应用块逐批越过 Vite 默认的 500 kB **警告阈值**（B1 500.61 → B2 503.85 → B3 505.87 → B4 **506.49 kB** → C1 **508.26 kB** → C2 **514.94 kB**）——裁决为**提阈值并登记预算**，`vite.config.ts:32` `chunkSizeWarningLimit = 560`（约 54 kB 余量，量级按三期-C 判；C2 交付后实余 **45.06 kB**，C 批次已收口，故该预算的预留对象转为 D 批次）；这是提阈值而非关警告，越过 560 仍拦（探针实证：同一 506.49 kB 块在 500 档副本配置下警告复现）。真实门禁仍是 gzip ≤150 kB。详见 §2-B 的 B4 交付记录。
 
 ## 2. 批次划分
 
@@ -216,7 +216,7 @@
 
 | 项 | 现状 | 动作 | 人日 |
 |---|---|---|---|
-| 数据窗口 Data Window | `AUDIT-TV-FEATURE-GAP:150`（P1，估 2–3）「Alt+D 弹窗：光标处全部指标/画线数值表 ／ 现状无（图例有 OHLCV + 叠加指标值）」；**宿主缺口已核**：crosshair 状态只在引擎内（`crosshair/Crosshair.ts` 的 barIndex/time/price，由 `HoverController.ts:146-152` 写入），React 侧仅收到跨图时间总线（`syncBus.ts:121` → `Chart.tsx:270-276`），**没有**任何「按 index 读值」的公开 API；指标读数链现成但只喂画布：`indicatorValuesAt(instance, bars, from, index)`（`drawIndicator.ts:161-175`）→ 图例（`RenderPipeline.ts:196-211`）与面板 tooltip（`PaneRenderer.ts:218`） | 采集 renderer 当前光标快照 → 数值表（全部指标 + 画线），需引擎侧 **additive** 读值口（公开 API 冻结口径下带默认值与回读）。**两项前提已由用户裁决定死（2026-10-14，OPEN-DECISIONS 同日 C 两行关闭）**：入口 = **不占快捷键**（Alt+D 仍归指标搜索 `useTvShortcuts.ts:144-146`；先按右轨图标 + 菜单入口交付，TV 快捷键重排另立专项）；宿主 = **右侧停靠面板**（新增第四个 `RightPanelId`，复用 `rightPanelStore.ts:4` 的挤压式停靠与 240–640 宽度存档，不做浮层） | 2–3 |
+| 数据窗口 Data Window | `AUDIT-TV-FEATURE-GAP:150`（P1，估 2–3）「Alt+D 弹窗：光标处全部指标/画线数值表 ／ 现状无（图例有 OHLCV + 叠加指标值）」；**宿主缺口已核**：crosshair 状态只在引擎内（`crosshair/Crosshair.ts` 的 barIndex/time/price，由 `HoverController.ts:146-152` 写入），React 侧仅收到跨图时间总线（`syncBus.ts:121` → `Chart.tsx:270-276`），**没有**任何「按 index 读值」的公开 API；指标读数链现成但只喂画布：`indicatorValuesAt(instance, bars, from, index)`（`drawIndicator.ts:161-175`）→ 图例（`RenderPipeline.ts:196-211`）与面板 tooltip（`PaneRenderer.ts:218`） | 采集 renderer 当前光标快照 → 数值表（全部指标 + 画线），需引擎侧 **additive** 读值口（公开 API 冻结口径下带默认值与回读）。**两项前提已由用户裁决定死（2026-10-14，OPEN-DECISIONS 同日 C 两行关闭）**：入口 = **不占快捷键**（Alt+D 仍归指标搜索 `useTvShortcuts.ts:144-146`；先按右轨图标 + 菜单入口交付，TV 快捷键重排另立专项）；宿主 = **右侧停靠面板**（新增第四个 `RightPanelId`，复用 `rightPanelStore.ts:4` 的挤压式停靠与 240–640 宽度存档，不做浮层）。**→ 2026-10-14 C2 已交付**（引擎 additive 读值口 + 第四个停靠面板 + 画线读数按甲档口径；一处漏项与两处不变式扩展见下 C2 交付记录 ④） | 2–3 |
 | 画线右键菜单三项 | `AUDIT-TV-UI-GAP:40`：TV 画线右键为「设置/克隆/移除/视觉顺序 + **复制/粘贴/锁定/设为默认**」，现 `DrawingContextMenu.tsx` 只有前者四项。**「含序列化」这个前提经核是半假半真——序列化不用新写**：`serializeDrawings` / `deserializeDrawings`（`drawing/types.ts:264-278`）已由 `exportDrawings` / `importDrawings`（`ChartController.ts:796-800`）暴露；**「锁定」引擎侧已全链就位、只缺菜单入口**：字段 `types.ts:86` → `DrawingLayer.setLocked`（`:179-181`）→ `ChartController.setDrawingLocked`（`:722`），另有全局档 `setDrawingsLocked`（`:305`）与对象树（`ObjectTree.tsx:150`）、画线设置对话框（`DrawingSettingsDialog.tsx:129`）两个消费点 | 补 **复制 / 粘贴 / 锁定** 三项：锁定是纯接线；粘贴需引擎侧 additive「按选中集新增（新 id + 偏移，单条历史）」，因 `importDrawings` 是 `replaceAll` 语义、与粘贴不同构（现成偏移惯用法见 `duplicateDrawing` `ChartController.ts:681-698`）。**→ 2026-10-14 C1 已交付**（含一处开工前没预见到的锁定缺陷，见下交付记录） | 2 |
 | 十字光标多面板 | 已按面板 priceScale 换算（`HoverController.ts:148` `pane.priceScale.yToPrice(y - pane.y)`；`drawCrosshair.ts` 实为 11 行 re-export 桶文件） | 无缺口 | 0 |
 
@@ -284,6 +284,45 @@ C. **勘正（初稿与实读不符处）**：
 
 D. **一项范围裁决（待用户定，不擅断）**：数据窗口的「画线数值」列做到哪一层。C 段 ⑥ 的 45 族按「给定 time 上是否有唯一价格读数」**判断**分五档（成员可按 id 复核，档位归属是判断不是事实）：**甲** 可插值线/线组 = trendline / ray / hline / arrow / info-line / measure / percent-line / fib / fib-extension / fib-fan / channel / fib-auto（12）；**乙** 区域盒类，穿过与否而非一个数 = rect / ellipse / circle / gann-box / polygon / path / forecast（7）；**丙** 形态标注，bar 处无定义 = abc-pattern / gartley / bat / butterfly / crab / head-shoulders ×2 / triangle ×2 / elliott-wave（10）；**丁** 文字与标记，读数是文字 = text / note / price-label / anchored-text / arrow-mark / icon-mark / price-note（7）；**戊** 角度/时间/曲线构造，time→price 不成立 = vline / fib-timezone / gann-fan / gann-line / fib-arc / fib-spiral / arc / curve（9，`fib-fan` 归甲戊有争议）。
    提议口径：**甲档出数、乙丙丁戊一律 `—`**，或本批**完全不做画线列**（先交 OHLCV + 全面板指标，画线列另立 C2b）。这直接决定 B-1 快照的形状，故在写引擎读口前定。
+   **→ 2026-10-14 用户裁决「甲档出数，其余 —」，并已随 C2 交付落地**（落地时的两处偏离与一处漏项见下方 C2 交付记录 ④）。
+
+**C2 交付记录（2026-10-14，数据窗口 = 引擎 additive 读值口 + 第四个右侧停靠面板）**
+
+**① 三项裁决的落地情况**：入口 = **不占快捷键**——本批未动 `useTvShortcuts.ts`（Alt+D 仍绑指标搜索 `:144-146`），数据窗口只有右轨图标与关闭按钮两个入口，TV 快捷键重排另立专项；宿主 = **右侧停靠面板**——新增第四个 `RightPanelId`，复用现成的挤压式停靠与 240–640 宽度存档（`rightPanelStore.ts:4/:13`），未造浮层、未新拖拽/层级语义；画线数值列 = **甲档出数、其余 `—`**。三条都由 C2 一次性兑现，无结转。
+
+**② 改动清单（引擎 2 新件 + 1 抽共用件 + 1 处接线；UI 1 新件 + 4 处接线）**：
+- 新 `src/engine/renderer/dataWindow.ts`（126 行，纯函数 + 6 个导出类型）：`buildDataWindowSnapshot(i)`（`:84`）一次出「光标 bar 的 OHLCV + 光标价 + 全面板指标读数 + 画线读数」。两条口径封在这里——index 空间（`:85-89`，跟随态取 `crosshair.barIndex`、回落态取 `currentIndex`）与回放钳制（`:88` `Math.min(raw, i.replayIndex)`）；两道既有过滤同口径搬入（`hideStudies` `:93`、`isVisibleOn(timeframeId)` `:96`）；画线只收可见者（`:108-115`）；`bar` **返回克隆**（`:120` `{ ...bar }`）。
+- 新 `src/engine/drawing/drawingValues.ts`（147 行）：`drawingReadingsAt(d, x, dctx)`（`:63`）14 个 case 出数，其余族 `default: return []`（`:140-142`）。两件共用件——线段族走 `segReading`（`:39-43`，**像素域插值后 `yToPrice`**）、档位组走 `levelReadings` + `pairLevelSpan`（`:46-61`，**价格域公式**、与渲染同一 `fibLevelEndX` 末端）。
+- **抽共用件** `geom.rayEndPix`（`geom.ts:18-28`）：`lineRender.ts:37` 的 ray 分支由内联 6 行改为调用它，渲染与读数共用同一末端公式，防两条末端口径各自漂移。**行为中性有证据**：黄金面 ㉒ drawings-line-family 零 diff（该面画着射线），且 `drawing-values.test.ts` 的 ray 用例钉住「b 之右仍出数、trendline 在同 x 为空」这一差异。
+- `ChartController.ts` 四处 additive（公开 API **只增不改**，两个新口都自带回读）：`dataWindowListeners` / `dataWindowNotify`（`:71-72`）、主循环冲刷（`:440`）、`invalidate()` 挂点（`:472`）、`get dataWindowSnapshot`（`:874-885`）+ `onDataWindowChanged(cb)`（`:892-895`，返回 off）+ `private notifyDataWindow`（`:897-899`）。
+- UI：`rightPanelStore.ts:4/:13`（union + `IDS` 落盘白名单各加一项）；`RightSide.tsx:18`（RAIL 第四条，lucide `Table2`）/`:26`（`decimals` props）/`:99`（挂载）；`App.tsx:229-233`（传 `decimals`，与图例同源、`:67` 已算好，不新造第二位口径）；新 `src/features/datawindow/DataWindowPanel.tsx`（188 行）三段表（OHLCV + 光标价 / 指标 / 画线）。**引擎只给裸数**，格式化全在 UI 侧（`format.ts` 的 `formatPrice`/`formatCompact` + 与画布图例同兜底位数的 `fmtIndicatorValue:129-135`）；时间行走 B3 的显示时区口径（`chartConfigStore` 直读 + `tzDate` 换算，`formatBarTime:139`）。
+
+**③ 三条承重口径与理由**：
+- **给 bar 对象而不是裸 index**：`crosshair.barIndex` 是**显示序列**空间，而公开 `getBars()` 返回 **base 序列**——HA / renko / kagi / 砖块下两者根本不同构，把 index 交出去就是把一次静默错配交给调用方。快照直接带 `Bar` 且带克隆（克隆同时封住「外部拿到内部序列引用」这条路）。探针：`bars: st.bars()` → `st.baseSeries.raw()` 只杀门面侧的 HA 用例（`s.bar.close` 必须等于 `(o+h+l+c)/4`，`transforms.ts:38`，与前序无关故可手算）。
+- **重读只挂在 `invalidate()`**：实时 tick / 改指标 / 改画线 / 平移缩放 / 光标移动全部经这一入口请求重绘，所以「漏挂某个变更源」在这条设计下**结构上不可能**，而不是「目前没漏」。合帧件直接复用 `DrawingsNotifyCoalescer`（该类与画线无关，就是「借主循环 rAF、每帧至多冲一次、rAF 未运行则立即广播不丢事件」的形态），不另起定时器。探针分两处才探干净：掏空 `request` 的回调杀「立即广播」与「光标移动实时链」两例、**但合帧例不红**；掏空主循环 `flush` 的回调反过来只杀合帧例——**两条路径各有自己的回调，一处掏空覆盖不了全链**（首版按「一处即全链」的预期解读，实测不合才改口）。
+- **线段族走像素域、档位组走价格域**：对数轴下像素线性 ≠ 价格线性，表里的数必须是屏幕上那条线的高度，故 `segReading` 插值 y 再 `yToPrice`；而 fib / fib-extension / percent-line 的渲染本就是「价格域公式 → priceToY」，读数反向取同一公式才对得上。**这条口径原本只有注释、没有测试**：线性 fixture 下两种实现重合，把 `segReading` 整段换成价格域线性 **50 例全绿逃逸**；补一例 log 轴 golden（98→106 段中点 = 几何均值 √10388 ≈ 101.9215，断言 `not.toBeCloseTo(102)`）后，同一变异只杀这 1 例。教训与 C1 的「断言要打在被关闭的性质上」同源：**线性轴测不出对数轴的口径**。
+
+**④ 一处漏项 + 两处按不变式的扩展（本批自查，当日修正）**：
+- **漏项 `measure`**：C2-0 D 段的甲档清单明列 `measure`，首版却落进 `default: return []`——而 `measureRender.ts:37-40` 画的正是两点像素直线（虚线 + 浮层统计标签），违反本文件自述的「屏幕上画着线 ⇒ 表里有数、屏幕上线不经过该 x ⇒ 表里空」。已并入线段族分支（`drawingValues.ts:73-79`），该族从「→ []」用例移进线段族 golden 用例；探针（把 `case 'measure'` 改名使其落空）杀 1 例。**这不是风格问题**：裁决原文写的是甲档出数，漏它=违反裁决；不变式写的是画着线就得有数，漏它=违反自己的口径。
+- **另按不变式收 2 族**（超出甲档字面清单，方向与漏项相反，故逐条说明理由）：`price-note`（C2-0 归丁档，但锚点之右确实画着一根延到右缘的水平虚线，`miscRender.drawPriceNote`）与 `fib-channel`（未进甲档清单，档位线与 `channel` 同构）。两者在给定 x 上都有确定高度，「其余 —」的「其余」因此是 **31 族而非 33**——这个差值就是上面那两族。
+- **甲/其余的分界此前并不穷尽**：`default` 分支是兜底，新加族不写 case 会静默变空、无人报警。首版「非出数族 → []」只点名 24 族，7 个谐波/头肩/三角族（bat / butterfly / crab / head-shoulders ×2 / triangle ×2）既不在出数清单也不在非出数清单，靠手数 45 才发现不齐。现改成**机器穷尽性断言**（`drawing-values.test.ts:330-341`）：出数清单 ∪ 非出数清单必须等于 `DRAWING_TOOLS` 全集且两者不重叠，任一族漏登记即红。补 7 族后，同一 `default` 变异从杀 24 例升到**杀 31 例**；穷尽性断言本身也验尸（从清单里摘掉 `bat` → 恰好它自己红）。**C 段 ⑥ 的「45 族」到此由手算转为断言**（`read.size + unread.size === DRAWING_TOOLS.length`，14 + 31 = 45）。
+
+**⑤ 测试（+69 单例 / +1 E2E；全量 90 文件 1446 例 / 67 E2E）**：
+- `tests/unit/drawing-values.test.ts` 新 51 例：逐族 golden（趋势线中点 102、射线外推、通道基线/副线、fib 7 档 / 扩展 9 档 / 百分比 3 档、扇形逐射线、fib 通道档位）、区间边界（x0 左 / 末端右皆空）、`x < x0 || x > endX` 与渲染同源、垂直线无读数、`points=[]` 直返空、31 个非出数族 `→ []`、穷尽性断言、log 轴口径例。
+- `tests/unit/data-window.test.ts` 新 14 例（**替身 `IndicatorInstance`**，只喂纯函数，不建引擎）：跟随 vs 回落、index 空间与克隆封存（`toEqual` + `not.toBe` 两条一起钉）、越界 → `bar: null`、回放钳制 3 例（跟随态钳、回落态钳、游标在更右不钳）、`hideStudies`、`isVisibleOn`、跨面板聚合、画线可见性过滤与名称取自 `getToolDef`、`paneId` 兜底。
+- `tests/unit/data-window-broadcast.test.ts` 新 4 例（jsdom + 真 `ChartRenderer`，补上一条只由 E2E 覆盖的门面侧）：`invalidate` 在 rAF 未运行时立即广播且 off 生效后停止、rAF 运行中同帧三次请求合为一次、pointermove 经 `HoverController` → `invalidate` → 快照转跟随态、HA 下图例 bar 取显示序列值。
+- E2E `tests/e2e/data-window.spec.ts` 1 例（**不落黄金面**，纯 DOM）：右轨图标开合（`aria-pressed`）→ OHLCV 行在位且「跟随最新」在、无光标价 → 光标入图后光标价出现、「跟随最新」消失 → 移到另一根时间行变 → 关闭后行清空。
+
+**⑥ 变异探针 15 处（每处先证明落地再解读，跑完按原串还原并 grep 零残留）**：
+- `drawingValues.ts` 6 处：`case 'measure'` 落空 → 1 例；`segReading` 改价格域线性 → 仅新增的 log 轴例红（其余 50 例逃逸，见 ③）；ray 不共用 `rayEndPix`（退回两点）→ 1 例；`levelReadings` 去掉 `x > endX` 右界 → 4 例（fib / fib-auto / fib-extension / percent-line 的「末端外空」）；`default` 分支改出数 → 31 例；从非出数清单摘掉 `bat`（探的是穷尽性断言自己）→ 1 例。
+- `dataWindow.ts` 5 处：回放钳制 `Math.min` 摘除 → 2 例（跟随态 / 回落态各一，「游标在更右不钳」那条**照绿**，证明钳制是有条件的而不是无条件截断）；bar 克隆退回引用 → 1 例（`not.toBe`）；`.filter((d) => d.visible)` → `() => true` → 1 例；`hideStudies` 守卫掏空 → 1 例；`isVisibleOn` 守卫掏空 → 1 例。
+- `ChartController.ts` 4 处：`request` 回调掏空 → 2 例；主循环 `flush` 回调掏空 → 1 例（与上一条互补，见 ③）；`bars` 改喂 base 序列 → 1 例；`onDataWindowChanged` 的 off 变空函数 → 1 例。
+- **一处流程自查**：`ray` 那条变异当轮跑完后没立即还原，导致下一轮（`default` 出数）的失败清单里混进了它——**归因靠逐条测试名而不是只看计数**，否则会把 25 例误读成「default 杀 25 例」。与 C1 记的「解读变异结果之前必须先证明变异落地」是同一条纪律的两半：**落地要验，还原也要验**。
+
+**⑦ 登记（非遗漏）**：① 面板只在 `layout === 1` 分支挂载（C2-0 C 段 ④ 的既有约束）——多格布局下右轨不存在，入口天然没有，属现状不是本批缺陷。② 数据窗口**不落黄金截图面**：它的值随光标与时钟变，像素基线要么锁死光标要么锁死时钟，两种都会把这张面变成维护负担；改由 DOM 断言 + 纯函数单测双兜。③ 指标读数沿用图例那条 **50 根回看脏缓存**（`INDICATOR_LOOKBACK`），故表里的值与图例同源，不是第二套计算。④ 面板不显示副面板指标的「多 plot 全值」以外的信息（`renderStudy` 一行一 plot），也不显示指标参数——TV 数据窗口同样如此。⑤ 画线读数只在**主面板**语境下换算（`dctx` 取主面板 `priceScale`），与绘制层一致；光标停在副面板时，画线行仍给主面板的值。⑥ 图例的回放态未来泄漏**本批未修**，已另登 OPEN-DECISIONS（`RenderPipeline.ts:202` 悬停分支未钳制）——数据窗口这条链路钳制正确并有 2 例钉住，两条口径当前不一致，等回放语义专项裁决。⑦ `getBars()` 仍返回 base 序列，未因本批改动（改动面会外溢到指标计算链），错配风险靠「快照不给裸 index」规避而非给序列。
+
+**⑧ 门禁（2026-10-14 实跑）**：`npm run verify` 绿（typecheck 0 错 / oxlint **386 文件 0 错 0 警告** / format:check 绿 / 单测 **90 文件 1446 例**，C1 后 +69）；`npm run test:e2e -- --retries=0` **67 例全过（9 个 spec 文件）、27 面黄金截图零 diff**（含 ㉒，用于 ② 的 ray 抽件中性证明）；`npm run build` 应用块 **514.94 kB / gzip 147.28 kB**（相对 C1 基线 508.26 kB 增 **+6.68 kB 原始 / +1.95 kB gzip**；合计 gzip 260.11 kB），560 阈值内无警告。**gzip ≤150 kB 全期口径仍在内，但裕度由 C1 的 4.67 kB 收到 2.72 kB**——已在 §1 量化验收口径与 README 同步登记。
+
 
 ### 三期-D · 指标与画线精度（3–5 人日，估）
 
@@ -350,7 +389,7 @@ D. **一项范围裁决（待用户定，不擅断）**：数据窗口的「画�
 三期-A（1–2d，无依赖） ──> 已交付（2026-10-12）
 三期-H（1–1.5d，债务清偿） ──> 已交付（2026-10-12）
                               ┌──> 三期-B（6–8d，**B0 + B1 + B2 + B3 + B4 已交付**，余 2–2.5d 两行；事件页已撤项、页级缺口清零、警报页已随 B4 补上）
-剩余功能面 = ─────────────────┼──> 三期-C（5–7d，**C1 画线右键三项已交付 2026-10-14**、余 2–3d 一行数据窗口；右键粘贴的前提「B 模板页」已随 B1 解锁）
+剩余功能面 = ─────────────────┼──> 三期-C（5–7d，**C1 画线右键三项 + C2 数据窗口已交付 2026-10-14**、余 0 行；右键粘贴的前提「B 模板页」已随 B1 解锁）
                               └──> 三期-D（3–5d，可与 B 并行）
 不排期：三期-E、三期-F（D6=收敛）；三期-G（D1=档 0，批次撤销）
 ```
@@ -358,6 +397,7 @@ D. **一项范围裁决（待用户定，不擅断）**：数据窗口的「画�
 - **合计 14–20 人日**（B 6–8 + C 5–7 + D 3–5）。上一版「12.5–18.5」随 B 批次 2026-10-12 开工取证重排作废（B0 前置入表 +1–1.5，事件页撤项 0）。原「默认排期 A → H → B → C → D → F，18–27.5 人日」与「扩展排期 +E，19–29 人日」两案随 D6 裁决作废。
   **已消耗（2026-10-14 复算）**：B0 约 1–1.5 + B1 约 1 + B2 约 1.5 + B3 约 1 + **B4 约 0.5** ⇒ 已耗约 **5–5.5 人日**，**B 余约 2–2.5 人日**（两行：时间轴刻度格式（紧凑/小数位，原估 1–1.5、时区子项已做完故**未重估**）与轴宽参数化 1；**页级缺口已清零**，警报页经裁决③随 B4 交付、不占页级预算）。全期剩余约 **9.5–14.5 人日**（B 2–2.5 + C 5–7 + D 3–5）。同日另落地两项非功能面：裁决①（`chunkSizeWarningLimit = 560`）与裁决④（`playwright.config.ts` `retries = 0` + `trace` 连带），各为零配置行改动、未计人日；裁决②（交易偏好不进模板）为纯登记、零代码。
   **C 批次复算（同日，C1 交付后）**：B 5–5.5 + **C1 约 1.5**（估 2，实际含开工后才发现的锁定单向门与两处探针逃逸补强）⇒ 已耗约 **6.5–7 人日**；**C 余 2–3 人日**（只剩数据窗口一行，其前提两项已由用户裁决定死：不开快捷键 + 右侧停靠面板），全期剩余约 **8–13 人日**（B 2–2.5 + C 2–3 + D 3–5）。
+  **C 批次复算（同日，C2 交付后 = C 批次收口）**：**C2 约 2.5**（估 2–3，落在区间内；含一处当日自查的甲档漏项、一处「线性轴测不出对数轴口径」的补测、一处「两条回调路径各须分别探」的解读纠正）⇒ B 5–5.5 + C1 1.5 + C2 2.5 = 已耗约 **9–9.5 人日**；**C 批次余 0 人日、整批交付完毕**，全期剩余约 **5.5–8.5 人日**（B 2–2.5 + D 3–5）。C 的三行缺口（画线右键三项 / 数据窗口 / 十字光标多面板）至此全部关闭，后者本来就核为无缺口 0 人日。
 - 批次间无强阻塞：B 与 D 可并行，**C 的画线粘贴语义依赖 B 的模板页**（该前提已随 **B1 交付解锁**，2026-10-12），C 其余项可即行。
 - **不排期残留项一览**（有裁决依据、非遗忘）：① ~~`playwright.config.ts:17` `retries: 1` 与「`--retries=0` 全绿」标准不一致（0.5d，D6 裁决未纳入）~~ **已闭合（2026-10-14 用户裁决④）**：现行 `retries: 0` 在 `:20`，本行左列是裁决前的旧事实，按只追加纪律不回写、就地标记闭合；② E 批次两项；③ F 的多视口冒烟；④ G 批次整体。
 - **三期收口判据**：§1 目标 1「无待办灰区」= B/C/D 三批交付完毕 + §3 结转清单与能力边界表覆盖全部「属后续增强」注释 + OPEN-DECISIONS 无因三期而新增的 OPEN 项（现存两行 OPEN 均有明确外部阻塞或机制待查属性，不属三期灰区）。
@@ -366,7 +406,7 @@ D. **一项范围裁决（待用户定，不擅断）**：数据窗口的「画�
 
 - 每批次收口：`npm run verify`（typecheck + lint + format:check + test）**+** `npm run test:e2e` + `npm run build`。
 - **Windows 前置**：E2E 前**手动起 dev server**（Playwright 自管 webServer 会挂）。
-- E2E 交付标准：`--retries=0` 全绿（三期-C1 后现 **66 例**、27 个金标准截图面）。自 2026-10-14 用户裁决④起，`playwright.config.ts:20` 的 `retries` 本身即为 **0**，该 flag 由「额外严格」变为「与配置一致」，不带 flag 的跑法不再给第二次尝试。
+- E2E 交付标准：`--retries=0` 全绿（三期-C1 后现 **66 例** → **三期-C2 后现 67 例**、9 个 spec 文件，27 个金标准截图面未变）。自 2026-10-14 用户裁决④起，`playwright.config.ts:20` 的 `retries` 本身即为 **0**，该 flag 由「额外严格」变为「与配置一致」，不带 flag 的跑法不再给第二次尝试。
 - oxlint 0 error / 0 warning；`max-statements: 60` / `max-params: 10`，7 个帧编排/分发文件放宽至 120（L28 口径）。
 - 文档纪律：OPEN-DECISIONS **只追加 + 就地关闭**；不改写历史交付记录；`docs/` 与 markdown 永久排除 Prettier。
 - 提交纪律：白名单 `git add <显式路径>`，禁止 `-A`；不留 `.bak`；一批次一/两个 commit；先 commit 验门禁、**push 前逐 commit 请示授权**。
