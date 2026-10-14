@@ -216,9 +216,16 @@
 
 | 项 | 现状 | 动作 | 人日 |
 |---|---|---|---|
-| 数据窗口 Data Window | `AUDIT-TV-UI-GAP:150` P1 待办，**Alt+D 零 src 命中**（未实现） | 采集 renderer 当前光标快照 → 表格浮层（全部指标/画线数值） | 2–3 |
-| 图表右键菜单完整度 | `AUDIT-TV-UI-GAP:36` 已有菜单，Paste(Ctrl+V)/Add alert on X 等 14 项未全 | 补 **复制/粘贴/锁定** 三项画线剪贴板语义（含序列化） | 2 |
-| 十字光标多面板 | 已按面板 priceScale 换算（`drawCrosshair.ts:90`） | 无缺口 | 0 |
+| 数据窗口 Data Window | `AUDIT-TV-FEATURE-GAP:150`（P1，估 2–3）「Alt+D 弹窗：光标处全部指标/画线数值表 ／ 现状无（图例有 OHLCV + 叠加指标值）」；**宿主缺口已核**：crosshair 状态只在引擎内（`crosshair/Crosshair.ts` 的 barIndex/time/price，由 `HoverController.ts:146-152` 写入），React 侧仅收到跨图时间总线（`syncBus.ts:121` → `Chart.tsx:270-276`），**没有**任何「按 index 读值」的公开 API；指标读数链现成但只喂画布：`indicatorValuesAt(instance, bars, from, index)`（`drawIndicator.ts:161-175`）→ 图例（`RenderPipeline.ts:196-211`）与面板 tooltip（`PaneRenderer.ts:218`） | 采集 renderer 当前光标快照 → 数值表（全部指标 + 画线），需引擎侧 **additive** 读值口（公开 API 冻结口径下带默认值与回读） | 2–3 |
+| 画线右键菜单三项 | `AUDIT-TV-UI-GAP:40`：TV 画线右键为「设置/克隆/移除/视觉顺序 + **复制/粘贴/锁定/设为默认**」，现 `DrawingContextMenu.tsx` 只有前者四项。**「含序列化」这个前提经核是半假半真——序列化不用新写**：`serializeDrawings` / `deserializeDrawings`（`drawing/types.ts:264-278`）已由 `exportDrawings` / `importDrawings`（`ChartController.ts:796-800`）暴露；**「锁定」引擎侧已全链就位、只缺菜单入口**：字段 `types.ts:86` → `DrawingLayer.setLocked`（`:179-181`）→ `ChartController.setDrawingLocked`（`:722`），另有全局档 `setDrawingsLocked`（`:305`）与对象树（`ObjectTree.tsx:150`）、画线设置对话框（`DrawingSettingsDialog.tsx:129`）两个消费点 | 补 **复制 / 粘贴 / 锁定** 三项：锁定是纯接线；粘贴需引擎侧 additive「按选中集新增（新 id + 偏移，单条历史）」，因 `importDrawings` 是 `replaceAll` 语义、与粘贴不同构（现成偏移惯用法见 `duplicateDrawing` `ChartController.ts:681-698`） | 2 |
+| 十字光标多面板 | 已按面板 priceScale 换算（`HoverController.ts:148` `pane.priceScale.yToPrice(y - pane.y)`；`drawCrosshair.ts` 实为 11 行 re-export 桶文件） | 无缺口 | 0 |
+
+**C 前提校准（2026-10-14，开工前逐行核实，修正本节初稿三处引用与两处前提）**：
+① **出处写错文件**：初稿把数据窗口记作 `AUDIT-TV-UI-GAP:150`——该行实为 §5.4「E2E 回归修复」小节标题，UI-GAP 全文只在 `:108` 的来源清单里提过「对象树/数据窗口」一次，**没有数据窗口缺口条目**；真出处是 `AUDIT-TV-FEATURE-GAP:150`。
+② **「Alt+D 零 src 命中」是真的但会误导**：命中的是标识名（全仓无 data window 字样），而 **Alt+D 这个键已被占用**——`useTvShortcuts.ts:144-146` 把 Alt+D 绑到 `onOpenIndicators`（指标搜索）。所以数据窗口不是「加一条快捷键」而是**换键或让位**，属用户可感知的行为变更，已登记为待裁决（见 OPEN-DECISIONS 同日 ① 行），不擅自改。
+③ **画线三项的正确出处是 `:40` 不是 `:36`**：`:36` 讲的是图表右键菜单的 14 项面，且其右列「仅 5 项」已陈旧（同文 `:132` 记录该菜单已重写为 12 项，实数经核为 12 项 + 4 条分隔线（项 `ChartContextMenu.tsx:111-230`、分隔线 `:131/:162/:198/:219`））。同时记一笔陈旧口径的处置：审计文档的「现状」列按只追加纪律**不回写成本**，仅在需要时补当次核实值。
+④ **两项前提的实质差别**：复制/粘贴/锁定不是同一件事的三个对称面——锁定是**已交付能力的最后一个入口**（零引擎改动），复制/粘贴才需要新的 additive API 与「剪贴板载体」选型（应用内内存 vs 系统剪贴板；`navigator.clipboard.readText` 全仓零命中，现仅有一处 `writeText` 在 `ChartContextMenu.tsx:80` 复制价格用），已登记为待裁决（同日 ② 行）。
+⑤ **顺带发现**：画线右键还有 TV 的「设为默认」一项（`:40` 明列），本批按 PLAN 原范围不做，登记以免被当遗漏。
 
 ### 三期-D · 指标与画线精度（3–5 人日，估）
 
