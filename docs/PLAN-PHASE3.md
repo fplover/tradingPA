@@ -25,7 +25,7 @@
 3. **工程债清理**：README 与 `oxlintrc` 类文档-代码口径漂移（三期-A 已处置）、lint disable 残留（原 **3 处**，三期-H 消除 1 处后**现 2 处**，二者经删除探针证实只抑制自身那一行、属真·有意例外，见 README「lint disable 台账」）、E2E 重试基线（`playwright.config.ts:17` `retries: 1` 与既定「`--retries=0` 全绿」标准不一致——登记为不排期残留，见 §2-F）。
 4. **决策落定**：D1（后端）、D4（MTF）、D6（取向）三个决策点给出书面裁决并结转进 OPEN-DECISIONS。**2026-10-12 全部达成**（档 0 + 关闭重评 / MTF 不做 / 收敛；三行已入册）。
 
-**量化验收口径（全期）**：`npm run verify` 全绿；`npm run test:e2e -- --retries=0` 全绿（**该 flag 自 2026-10-14 起与配置一致**——`playwright.config.ts` 的 `retries` 已归零，用户裁决④，故不带 flag 的跑法同样严格）；`npm run build` 最大 chunk gzip ≤ 150 kB（三期-B4 后现 **144.87 kB**，留裕度）；Vitest 用例数 ≥ **1368**（三期-B4 后现量，+5 例 = 新文件 `tests/unit/alert-sound-pref.test.ts`）且不删既有断言。**原始体积口径（2026-10-14 用户裁决①已处置）**：B1 起应用块逐批越过 Vite 默认的 500 kB **警告阈值**（B1 500.61 → B2 503.85 → B3 505.87 → B4 **506.49 kB**）——裁决为**提阈值并登记预算**，`vite.config.ts:32` `chunkSizeWarningLimit = 560`（约 54 kB 余量，量级按三期-C 判）；这是提阈值而非关警告，越过 560 仍拦（探针实证：同一 506.49 kB 块在 500 档副本配置下警告复现）。真实门禁仍是 gzip ≤150 kB。详见 §2-B 的 B4 交付记录。
+**量化验收口径（全期）**：`npm run verify` 全绿；`npm run test:e2e -- --retries=0` 全绿（**该 flag 自 2026-10-14 起与配置一致**——`playwright.config.ts` 的 `retries` 已归零，用户裁决④，故不带 flag 的跑法同样严格）；`npm run build` 最大 chunk gzip ≤ 150 kB（三期-B4 后现 **144.87 kB**、三期-C1 后 **145.33 kB**，留裕度）；Vitest 用例数 ≥ **1368**（三期-B4 后现量，+5 例 = 新文件 `tests/unit/alert-sound-pref.test.ts`；三期-C1 后现 **1377**）且不删既有断言。**原始体积口径（2026-10-14 用户裁决①已处置）**：B1 起应用块逐批越过 Vite 默认的 500 kB **警告阈值**（B1 500.61 → B2 503.85 → B3 505.87 → B4 **506.49 kB** → C1 **508.26 kB**）——裁决为**提阈值并登记预算**，`vite.config.ts:32` `chunkSizeWarningLimit = 560`（约 54 kB 余量，量级按三期-C 判）；这是提阈值而非关警告，越过 560 仍拦（探针实证：同一 506.49 kB 块在 500 档副本配置下警告复现）。真实门禁仍是 gzip ≤150 kB。详见 §2-B 的 B4 交付记录。
 
 ## 2. 批次划分
 
@@ -216,8 +216,8 @@
 
 | 项 | 现状 | 动作 | 人日 |
 |---|---|---|---|
-| 数据窗口 Data Window | `AUDIT-TV-FEATURE-GAP:150`（P1，估 2–3）「Alt+D 弹窗：光标处全部指标/画线数值表 ／ 现状无（图例有 OHLCV + 叠加指标值）」；**宿主缺口已核**：crosshair 状态只在引擎内（`crosshair/Crosshair.ts` 的 barIndex/time/price，由 `HoverController.ts:146-152` 写入），React 侧仅收到跨图时间总线（`syncBus.ts:121` → `Chart.tsx:270-276`），**没有**任何「按 index 读值」的公开 API；指标读数链现成但只喂画布：`indicatorValuesAt(instance, bars, from, index)`（`drawIndicator.ts:161-175`）→ 图例（`RenderPipeline.ts:196-211`）与面板 tooltip（`PaneRenderer.ts:218`） | 采集 renderer 当前光标快照 → 数值表（全部指标 + 画线），需引擎侧 **additive** 读值口（公开 API 冻结口径下带默认值与回读） | 2–3 |
-| 画线右键菜单三项 | `AUDIT-TV-UI-GAP:40`：TV 画线右键为「设置/克隆/移除/视觉顺序 + **复制/粘贴/锁定/设为默认**」，现 `DrawingContextMenu.tsx` 只有前者四项。**「含序列化」这个前提经核是半假半真——序列化不用新写**：`serializeDrawings` / `deserializeDrawings`（`drawing/types.ts:264-278`）已由 `exportDrawings` / `importDrawings`（`ChartController.ts:796-800`）暴露；**「锁定」引擎侧已全链就位、只缺菜单入口**：字段 `types.ts:86` → `DrawingLayer.setLocked`（`:179-181`）→ `ChartController.setDrawingLocked`（`:722`），另有全局档 `setDrawingsLocked`（`:305`）与对象树（`ObjectTree.tsx:150`）、画线设置对话框（`DrawingSettingsDialog.tsx:129`）两个消费点 | 补 **复制 / 粘贴 / 锁定** 三项：锁定是纯接线；粘贴需引擎侧 additive「按选中集新增（新 id + 偏移，单条历史）」，因 `importDrawings` 是 `replaceAll` 语义、与粘贴不同构（现成偏移惯用法见 `duplicateDrawing` `ChartController.ts:681-698`） | 2 |
+| 数据窗口 Data Window | `AUDIT-TV-FEATURE-GAP:150`（P1，估 2–3）「Alt+D 弹窗：光标处全部指标/画线数值表 ／ 现状无（图例有 OHLCV + 叠加指标值）」；**宿主缺口已核**：crosshair 状态只在引擎内（`crosshair/Crosshair.ts` 的 barIndex/time/price，由 `HoverController.ts:146-152` 写入），React 侧仅收到跨图时间总线（`syncBus.ts:121` → `Chart.tsx:270-276`），**没有**任何「按 index 读值」的公开 API；指标读数链现成但只喂画布：`indicatorValuesAt(instance, bars, from, index)`（`drawIndicator.ts:161-175`）→ 图例（`RenderPipeline.ts:196-211`）与面板 tooltip（`PaneRenderer.ts:218`） | 采集 renderer 当前光标快照 → 数值表（全部指标 + 画线），需引擎侧 **additive** 读值口（公开 API 冻结口径下带默认值与回读）。**两项前提已由用户裁决定死（2026-10-14，OPEN-DECISIONS 同日 C 两行关闭）**：入口 = **不占快捷键**（Alt+D 仍归指标搜索 `useTvShortcuts.ts:144-146`；先按右轨图标 + 菜单入口交付，TV 快捷键重排另立专项）；宿主 = **右侧停靠面板**（新增第四个 `RightPanelId`，复用 `rightPanelStore.ts:4` 的挤压式停靠与 240–640 宽度存档，不做浮层） | 2–3 |
+| 画线右键菜单三项 | `AUDIT-TV-UI-GAP:40`：TV 画线右键为「设置/克隆/移除/视觉顺序 + **复制/粘贴/锁定/设为默认**」，现 `DrawingContextMenu.tsx` 只有前者四项。**「含序列化」这个前提经核是半假半真——序列化不用新写**：`serializeDrawings` / `deserializeDrawings`（`drawing/types.ts:264-278`）已由 `exportDrawings` / `importDrawings`（`ChartController.ts:796-800`）暴露；**「锁定」引擎侧已全链就位、只缺菜单入口**：字段 `types.ts:86` → `DrawingLayer.setLocked`（`:179-181`）→ `ChartController.setDrawingLocked`（`:722`），另有全局档 `setDrawingsLocked`（`:305`）与对象树（`ObjectTree.tsx:150`）、画线设置对话框（`DrawingSettingsDialog.tsx:129`）两个消费点 | 补 **复制 / 粘贴 / 锁定** 三项：锁定是纯接线；粘贴需引擎侧 additive「按选中集新增（新 id + 偏移，单条历史）」，因 `importDrawings` 是 `replaceAll` 语义、与粘贴不同构（现成偏移惯用法见 `duplicateDrawing` `ChartController.ts:681-698`）。**→ 2026-10-14 C1 已交付**（含一处开工前没预见到的锁定缺陷，见下交付记录） | 2 |
 | 十字光标多面板 | 已按面板 priceScale 换算（`HoverController.ts:148` `pane.priceScale.yToPrice(y - pane.y)`；`drawCrosshair.ts` 实为 11 行 re-export 桶文件） | 无缺口 | 0 |
 
 **C 前提校准（2026-10-14，开工前逐行核实，修正本节初稿三处引用与两处前提）**：
@@ -225,7 +225,34 @@
 ② **「Alt+D 零 src 命中」是真的但会误导**：命中的是标识名（全仓无 data window 字样），而 **Alt+D 这个键已被占用**——`useTvShortcuts.ts:144-146` 把 Alt+D 绑到 `onOpenIndicators`（指标搜索）。所以数据窗口不是「加一条快捷键」而是**换键或让位**，属用户可感知的行为变更，已登记为待裁决（见 OPEN-DECISIONS 同日 ① 行），不擅自改。
 ③ **画线三项的正确出处是 `:40` 不是 `:36`**：`:36` 讲的是图表右键菜单的 14 项面，且其右列「仅 5 项」已陈旧（同文 `:132` 记录该菜单已重写为 12 项，实数经核为 12 项 + 4 条分隔线（项 `ChartContextMenu.tsx:111-230`、分隔线 `:131/:162/:198/:219`））。同时记一笔陈旧口径的处置：审计文档的「现状」列按只追加纪律**不回写成本**，仅在需要时补当次核实值。
 ④ **两项前提的实质差别**：复制/粘贴/锁定不是同一件事的三个对称面——锁定是**已交付能力的最后一个入口**（零引擎改动），复制/粘贴才需要新的 additive API 与「剪贴板载体」选型（应用内内存 vs 系统剪贴板；`navigator.clipboard.readText` 全仓零命中，现仅有一处 `writeText` 在 `ChartContextMenu.tsx:80` 复制价格用），已登记为待裁决（同日 ② 行）。
-⑤ **顺带发现**：画线右键还有 TV 的「设为默认」一项（`:40` 明列），本批按 PLAN 原范围不做，登记以免被当遗漏。
+**C1 交付记录（2026-10-14，画线右键「复制 / 粘贴 / 锁定」）**
+
+**① 开工前该说的一件事：锁定不是「纯接线」。** 本节初稿（以及上表「锁定是纯接线」那句）把锁定当成菜单项接上现成的 `setDrawingLocked` 即可，行号核实没查出问题——因为缺口不在缺口的入口，而在**命中层**：`hitTest.ts:40` 跳过锁定对象，而右键路径（`InputController.ts`）用的正是这个 `hitAt`，于是**锁上去的线在画布上再也点不中**，右键会穿到图表菜单，「解锁」只剩对象树一条路。这是单向门，且此前没有任何测试覆盖（对象树那条路本身是通的，所以观测层面看不出缺陷）。C1 因此带了一处引擎 additive：`hitDrawings` 末位加参 `includeLocked = false`（缺省旧语义逐位不变），新 `menuHitAt` 只在右键路径启用。登记该缺陷为**本批修复、非本批立项**。
+
+**② 改动清单（引擎 4 处 additive + 状态 1 处 + 菜单 1 处，无新文件）**：
+- `hitTest.ts:36`（形参）/ `:40`（跳过条件 `d.locked && !includeLocked`）/ `:26`（为何存在的注释：单向门）。
+- `DrawingGesture.ts:187-190` 新 `menuHitAt`：与 `hitAt` 共用同一条全局锁守卫（`drawingsLocked()`），唯一差别是带 `includeLocked`；编辑/拖拽/放置仍走 `hitAt`，「锁定即不可动」口径不变。
+- `InputController.ts:314` 右键命中由 `hitAt` → `menuHitAt`；`:279` 双击**刻意保留** `hitAt`（锁定对象不弹画线设置，与不可动同口径；解锁入口在右键）。
+- `DrawingLayer.ts:236-256` 新 `paste(list, dt=0, dp=0)`：逐条取新 id（`dw_${++seq}` + `taken` 去重，来档 id 重复也不撞名）、points/style/levels 三者各深拷、**整组一次 `snapshot()`**（两条 = 一步撤销）、粘贴体成为选中集、空表返回 `[]` 且不压快照。
+- `ChartController.ts:682-689` 把克隆位移抽成 `drawingShift()`（3 根 bar + 可视区间 2%），克隆与粘贴共用，避免两条「同址重叠」口径各自漂移；`:701` 顺带修 `duplicateDrawing` 丢 `levels`（见 ⑤）；`:808-811` 新 `exportDrawingsByIds`（子集筛选留在引擎内，格式与 `exportDrawings` 同源）；`:822-830` 新 `pasteDrawings(raw): number`（**与 `importDrawings` 不同构**：后者 `replaceAll` 清空，前者追加；0 条不广播不重绘）。
+- `drawingStore.ts:16/:23/:33/:40` `clipboard: string \| null` + `setClipboard`——**不落盘**（裁决③），刷新即空。
+- `DrawingContextMenu.tsx` 菜单 4 项 → 7 项：`:86-90` 复制、`:92-102` 粘贴（`:95` `disabled={!clipboard}`，灰字 `:198` `disabledStyle` 沿用 `LayoutSaveMenu.tsx:105` 口径——Radix 的 `disabled` 只给行为不给观感）、`:130-134` 锁定/解锁（标签与图标读 `:24` 的**当帧** `listDrawings()`，菜单每次开帧重算，不存在读到上一帧的陈旧态）；`:32-38` `copyTarget` 的整组语义（右键对象在多选集内 → 复制整组，否则只复制它自己）。
+
+**③ 三项裁决落地情况**：③ 剪贴板载体 = 应用内内存 → 本批交付（`drawingStore.clipboard`，无 `localStorage` 键）；① 数据窗口入口 = 先不开快捷键、② 宿主 = 右侧停靠面板 → 均属 C2 范围，本批**未动** `useTvShortcuts.ts`（Alt+D 仍归指标搜索）与 `rightPanelStore.ts`。
+
+**④ 测试（+9 单例 / +1 E2E 用例；全量 87 文件 1377 例 / 66 E2E）**：`gestures.test.ts:339`（单对象锁定 `menuHitAt` 命中而 `hitAt` 为 null；全局锁定态两者皆 null）；`drawing-interactions.test.ts:472`（层侧 4 例：新 id + 平移 + 保真 + 深拷、两条 = 一步撤销与 redo、空表不脏撤销栈、来档重名仍各取新 id）、`:547`（renderer 侧 4 例：`exportDrawingsByIds` 子集与往返、`pasteDrawings` 追加非替换 + 落点偏移 + 成为选中 + 与 `importDrawings` 对照、坏档 0 条且不广播、`duplicateDrawing` 带走档位）。E2E `interactions.spec.ts:101` 串五段：空剪贴板粘贴项在位但 `aria-disabled=true` → 锁定后右键仍出画线菜单（该项已是「解锁」，直接钉 ①的单向门）→ 复制→粘贴行数 +1 → Ctrl+点击并入多选集后整组复制 +2 → 刷新后剪贴板与画线同空。
+
+**⑤ 变异探针（18 处；每处先 `diff` 对照**变异前快照**证明落地，跑完按字节还原并 `diff -q` 校验）**：
+- 引擎侧 12 处：`includeLocked` 失效（`d.locked && !includeLocked` → `d.locked`）、`menuHitAt` 去掉全局锁守卫、`paste` 复用来源 id（连 `taken` 去重一起摘）、`paste` 的 levels 共享引用 / levels 整行删除 / style 共享引用 / points 共享引用（4 处深拷面）、`paste` 不压 `snapshot()`、`paste` 不置 `selectedIds`、`paste([])` 守卫删除、`duplicateDrawing` 丢档位行、`exportDrawingsByIds` 筛选失效（`filter(() => true)`）、`pasteDrawings` 空档守卫删除。
+- 菜单与输入侧 6 处（E2E 单例跑）：粘贴项 `disabled={false}`、复制项 `onSelect` 换 `onClose`（不写剪贴板）、`toggleLock` 恒锁、`copyTarget` 忽略多选集、右键路径退回 `hitAt`（**单向门复现**）、菜单锁定态恒读 `false`。
+- **首轮 18 处里 2 组逃逸，据此补强测试（本批最有价值的产出）**：(a) `paste` 的三条深拷面（levels 共享 / levels 删除 / style 共享）**全无人报警**——原用例粘的是 `JSON.parse(serializeDrawings(...))` 得到的**存档对象**，它与原体本就零共享，浅拷也脏不到原体；而 `{ ...src }` 展开已顺带把 `levels` 带过来，「值保真」断言对删行无感。改为**再粘一次层内活对象**并改其 style/levels/points（`:488-505`）后，四处各杀 1 例。(b) `pasteDrawings` 的空档守卫同样逃逸：0 条时广播与否不影响任何既有断言。加 `onDrawingsChanged` 计数（`:593-605`：坏档循环后断 0，再用真粘贴断 1，防「监听器压根没接上」让 0 变成空转）后杀 1 例。两句教训合一：**断言要打在「被保护的性质」上，而不是打在恰好可观测的性质上**——存档往返能测的只有值保真，深拷只能用共享引用去测。
+- 另记一次**探针工具自身的失效**（不是被测代码的）：首版探针脚本用 `if diff -u ... | tail` 判「变异是否落地」，管道退出码取的是 `tail` 而非 `diff`，于是**每次都走 NO-OP 分支**、把已落地的变异报成没落地；改为 `diff -q` 直接比较后正常。与「副本配置必须放仓库根」同类：**探针的前置校验也要被验尸**。
+
+**⑥ 顺带修正（本批发现、非本批立项）**：`duplicateDrawing`（右键「克隆」）此前不带走自定义 `levels`，而 Ctrl+拖动克隆（`cloneDrawing`）带走——同一功能两个入口口径分裂；`ChartController.ts:701` 一行补齐，并单立一例（探针「丢档位行」专杀它）。
+
+**⑦ 登记（非遗漏）**：① TV 画线右键的**「设为默认」仍未做**（`AUDIT-TV-UI-GAP:40` 明列），本批按 PLAN 原范围只补三项。② 粘贴体**保留锁定态**（保真优先于「粘出来就能改」），故连粘两次得两条锁定线、需逐条右键解锁；该口径已用单例钉住，将来若改成「粘贴即解锁」这条会红。③ 剪贴板只存画线序列化串，不做跨标签/系统剪贴板共享（`readText` 需权限提示，裁决③明确不做）。④ 双击锁定对象不弹画线设置（`InputController.ts:279` 保留 `hitAt`），解锁入口只在右键。⑤ **E2E 画线落点必须留在末根 bar 以左**：右侧停靠栏折叠会让画布从 870 跳到 1190 px，按画布宽推导的落点会翻到数据区之外，两点被 clamp 到同一时间而退化成一条竖线，随后的右键穿到图表菜单——本批首版即栽在此（属测试写法，非产品缺陷），已在 `interactions.spec.ts:136-140` 留注。⑥ 引擎公开 API 面本次**只增不改**：`hitDrawings` 新参带默认值、`menuHitAt`/`paste`/`exportDrawingsByIds`/`pasteDrawings` 四个新口都有回读（`listDrawings` / `selectedDrawingId` / 返回值）。
+
+**⑧ 门禁（2026-10-14 实跑）**：`npm run verify` 绿（typecheck 0 错 / oxlint **379 文件 0 错 0 警告** / format:check 绿 / 单测 **87 文件 1377 例**，+9）；`npm run test:e2e` **66 例全过、27 面黄金截图零 diff**（不带 flag 跑，`retries: 0` 已生效）；`npm run build` 应用块 **508.26 kB / gzip 145.33 kB**（C1 增量 +1.77 kB 原始 / +0.46 kB gzip），560 阈值内无警告；合计 gzip **257.78 kB**。
 
 ### 三期-D · 指标与画线精度（3–5 人日，估）
 
@@ -292,22 +319,23 @@
 三期-A（1–2d，无依赖） ──> 已交付（2026-10-12）
 三期-H（1–1.5d，债务清偿） ──> 已交付（2026-10-12）
                               ┌──> 三期-B（6–8d，**B0 + B1 + B2 + B3 + B4 已交付**，余 2–2.5d 两行；事件页已撤项、页级缺口清零、警报页已随 B4 补上）
-剩余功能面 = ─────────────────┼──> 三期-C（5–7d，右键粘贴的前提「B 模板页」已随 B1 解锁）
+剩余功能面 = ─────────────────┼──> 三期-C（5–7d，**C1 画线右键三项已交付 2026-10-14**、余 2–3d 一行数据窗口；右键粘贴的前提「B 模板页」已随 B1 解锁）
                               └──> 三期-D（3–5d，可与 B 并行）
 不排期：三期-E、三期-F（D6=收敛）；三期-G（D1=档 0，批次撤销）
 ```
 
 - **合计 14–20 人日**（B 6–8 + C 5–7 + D 3–5）。上一版「12.5–18.5」随 B 批次 2026-10-12 开工取证重排作废（B0 前置入表 +1–1.5，事件页撤项 0）。原「默认排期 A → H → B → C → D → F，18–27.5 人日」与「扩展排期 +E，19–29 人日」两案随 D6 裁决作废。
   **已消耗（2026-10-14 复算）**：B0 约 1–1.5 + B1 约 1 + B2 约 1.5 + B3 约 1 + **B4 约 0.5** ⇒ 已耗约 **5–5.5 人日**，**B 余约 2–2.5 人日**（两行：时间轴刻度格式（紧凑/小数位，原估 1–1.5、时区子项已做完故**未重估**）与轴宽参数化 1；**页级缺口已清零**，警报页经裁决③随 B4 交付、不占页级预算）。全期剩余约 **9.5–14.5 人日**（B 2–2.5 + C 5–7 + D 3–5）。同日另落地两项非功能面：裁决①（`chunkSizeWarningLimit = 560`）与裁决④（`playwright.config.ts` `retries = 0` + `trace` 连带），各为零配置行改动、未计人日；裁决②（交易偏好不进模板）为纯登记、零代码。
+  **C 批次复算（同日，C1 交付后）**：B 5–5.5 + **C1 约 1.5**（估 2，实际含开工后才发现的锁定单向门与两处探针逃逸补强）⇒ 已耗约 **6.5–7 人日**；**C 余 2–3 人日**（只剩数据窗口一行，其前提两项已由用户裁决定死：不开快捷键 + 右侧停靠面板），全期剩余约 **8–13 人日**（B 2–2.5 + C 2–3 + D 3–5）。
 - 批次间无强阻塞：B 与 D 可并行，**C 的画线粘贴语义依赖 B 的模板页**（该前提已随 **B1 交付解锁**，2026-10-12），C 其余项可即行。
-- **不排期残留项一览**（有裁决依据、非遗忘）：① `playwright.config.ts:17` `retries: 1` 与「`--retries=0` 全绿」标准不一致（0.5d，D6 裁决未纳入）；② E 批次两项；③ F 的多视口冒烟；④ G 批次整体。
+- **不排期残留项一览**（有裁决依据、非遗忘）：① ~~`playwright.config.ts:17` `retries: 1` 与「`--retries=0` 全绿」标准不一致（0.5d，D6 裁决未纳入）~~ **已闭合（2026-10-14 用户裁决④）**：现行 `retries: 0` 在 `:20`，本行左列是裁决前的旧事实，按只追加纪律不回写、就地标记闭合；② E 批次两项；③ F 的多视口冒烟；④ G 批次整体。
 - **三期收口判据**：§1 目标 1「无待办灰区」= B/C/D 三批交付完毕 + §3 结转清单与能力边界表覆盖全部「属后续增强」注释 + OPEN-DECISIONS 无因三期而新增的 OPEN 项（现存两行 OPEN 均有明确外部阻塞或机制待查属性，不属三期灰区）。
 
 ## 6. 门禁口径（本期沿用二期）
 
 - 每批次收口：`npm run verify`（typecheck + lint + format:check + test）**+** `npm run test:e2e` + `npm run build`。
 - **Windows 前置**：E2E 前**手动起 dev server**（Playwright 自管 webServer 会挂）。
-- E2E 交付标准：`--retries=0` 全绿（三期-B4 后现 **65 例**、27 个金标准截图面）。自 2026-10-14 用户裁决④起，`playwright.config.ts:20` 的 `retries` 本身即为 **0**，该 flag 由「额外严格」变为「与配置一致」，不带 flag 的跑法不再给第二次尝试。
+- E2E 交付标准：`--retries=0` 全绿（三期-C1 后现 **66 例**、27 个金标准截图面）。自 2026-10-14 用户裁决④起，`playwright.config.ts:20` 的 `retries` 本身即为 **0**，该 flag 由「额外严格」变为「与配置一致」，不带 flag 的跑法不再给第二次尝试。
 - oxlint 0 error / 0 warning；`max-statements: 60` / `max-params: 10`，7 个帧编排/分发文件放宽至 120（L28 口径）。
 - 文档纪律：OPEN-DECISIONS **只追加 + 就地关闭**；不改写历史交付记录；`docs/` 与 markdown 永久排除 Prettier。
 - 提交纪律：白名单 `git add <显式路径>`，禁止 `-A`；不留 `.bak`；一批次一/两个 commit；先 commit 验门禁、**push 前逐 commit 请示授权**。
