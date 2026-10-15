@@ -51,6 +51,29 @@ describe('Pine lookback：input 参数化周期', () => {
   });
 });
 
+describe('Pine lookback：标量位声明（FnDef.scalars）取代「第 2 个实参」启发式（三期-D3b）', () => {
+  it('0 号位周期此前整个漏计：ta.atr/ta.donchian 的周期现在计入', () => {
+    // 旧启发式要求 args.length >= 2 且只看 args[1]，单参函数（atr/cci/mfi/wpr/donchian）一律不计
+    expect(lookbackOf('plot(ta.atr(300))')).toBe(350);
+    expect(lookbackOf('[m, u, l] = ta.donchian(300)\nplot(m)')).toBe(350);
+    expect(lookbackOf('len = input.int(400, "周期", maxval=400)\nplot(ta.atr(len))')).toBe(450);
+  });
+
+  it('多周期函数取声明位的最大值（macd 慢线 / tsi 长线此前只取到第 2 实参）', () => {
+    expect(lookbackOf('[f, s, h] = ta.macd(close, 12, 300, 9)\nplot(f)')).toBe(350);
+    expect(lookbackOf('plot(ta.tsi(close, 13, 250))')).toBe(300);
+  });
+
+  it('非实参序列位置不再被当周期计入（math.max 的字面量此前误计）', () => {
+    expect(lookbackOf('plot(math.max(close, 300))')).toBe(150);
+  });
+
+  it('非周期标量位（倍数/替代值）并入取最大值：保守口径，宁大不小', () => {
+    expect(lookbackOf('[t, s] = ta.supertrend(300, 10)\nplot(t)')).toBe(350);
+    expect(lookbackOf('plot(ta.nz(close, 300))')).toBe(350);
+  });
+});
+
 describe('Pine lookback：用户函数体', () => {
   it('函数体内的大周期计入（旧行为扫不到）', () => {
     const src = 'ma(x) =>\n    ta.sma(x, 500)\nplot(ma(close))';

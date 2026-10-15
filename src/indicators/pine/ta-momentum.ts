@@ -12,26 +12,53 @@ import { bbT, type FnDef, intArg, macdT, scalar, undef } from './ta-shared';
 export const FNS_MOMENTUM: Record<string, FnDef> = {
   // 新增：K 线依赖
   'ta.tr': { min: 0, max: 1, tuple: false, fn: (_a, c) => barsTa.trueRange(c.bars) },
-  'ta.atr': { min: 1, max: 1, tuple: false, fn: (a, c) => barsTa.atrSeries(c.bars, intArg(a, 'ta.atr', 0)) },
+  'ta.atr': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    scalars: [0],
+    fn: (a, c) => barsTa.atrSeries(c.bars, intArg(a, 'ta.atr', 0)),
+  },
   'ta.adx': {
     min: 2,
     max: 2,
     tuple: false,
+    scalars: [0, 1],
     fn: (a, c) => barsTa.adxSeries(c.bars, intArg(a, 'ta.adx', 0), intArg(a, 'ta.adx', 1)),
   },
-  'ta.cci': { min: 1, max: 1, tuple: false, fn: (a, c) => barsTa.cciSeries(c.bars, intArg(a, 'ta.cci', 0)) },
-  'ta.mfi': { min: 1, max: 1, tuple: false, fn: (a, c) => barsTa.mfiSeries(c.bars, intArg(a, 'ta.mfi', 0)) },
-  'ta.wpr': { min: 1, max: 1, tuple: false, fn: (a, c) => barsTa.wprSeries(c.bars, intArg(a, 'ta.wpr', 0)) },
+  'ta.cci': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    scalars: [0],
+    fn: (a, c) => barsTa.cciSeries(c.bars, intArg(a, 'ta.cci', 0)),
+  },
+  'ta.mfi': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    scalars: [0],
+    fn: (a, c) => barsTa.mfiSeries(c.bars, intArg(a, 'ta.mfi', 0)),
+  },
+  'ta.wpr': {
+    min: 1,
+    max: 1,
+    tuple: false,
+    scalars: [0],
+    fn: (a, c) => barsTa.wprSeries(c.bars, intArg(a, 'ta.wpr', 0)),
+  },
   'ta.psar': {
     min: 3,
     max: 3,
     tuple: false,
+    scalars: [0, 1, 2],
     fn: (a, c) => barsTa.psarSeries(c.bars, scalar(a, 'ta.psar', 0), scalar(a, 'ta.psar', 1), scalar(a, 'ta.psar', 2)),
   },
   'ta.supertrend': {
     min: 2,
     max: 2,
     tuple: true,
+    scalars: [0, 1],
     fn: (a, c) => barsTa.supertrendSeries(c.bars, scalar(a, 'ta.supertrend', 0), intArg(a, 'ta.supertrend', 1)),
   },
   // 新增：多输出（元组）
@@ -39,6 +66,7 @@ export const FNS_MOMENTUM: Record<string, FnDef> = {
     min: 3,
     max: 4,
     tuple: true,
+    scalars: [1, 2, 3],
     fn: (a) =>
       macdT(a[0], intArg(a, 'ta.macd', 1), intArg(a, 'ta.macd', 2), a.length > 3 ? intArg(a, 'ta.macd', 3) : 9),
   },
@@ -46,18 +74,21 @@ export const FNS_MOMENTUM: Record<string, FnDef> = {
     min: 2,
     max: 3,
     tuple: true,
+    scalars: [1, 2],
     fn: (a) => bbT(a[0], intArg(a, 'ta.bb', 1), a.length > 2 ? scalar(a, 'ta.bb', 2) : 2),
   },
   'ta.bbands': {
     min: 2,
     max: 3,
     tuple: true,
+    scalars: [1, 2],
     fn: (a) => bbT(a[0], intArg(a, 'ta.bbands', 1), a.length > 2 ? scalar(a, 'ta.bbands', 2) : 2),
   },
   'ta.kc': {
     min: 2,
     max: 3,
     tuple: true,
+    scalars: [1, 2],
     fn: (a, c) => {
       const n = intArg(a, 'ta.kc', 1);
       const mult = a.length > 2 ? scalar(a, 'ta.kc', 2) : 2;
@@ -71,6 +102,7 @@ export const FNS_MOMENTUM: Record<string, FnDef> = {
     min: 1,
     max: 1,
     tuple: true,
+    scalars: [0],
     fn: (a, c) => {
       const n = intArg(a, 'ta.donchian', 0);
       const bars = c.bars;
@@ -92,10 +124,13 @@ export const FNS_MOMENTUM: Record<string, FnDef> = {
     },
   },
   // 二期-D：枢轴点与 VWAP
+  // scalars 声明 [1,2]：3 参形态（src, left, right）的 left/right 位；2 参形态
+  // （left, right）的 left 位由运行期 scalar() 兜底，声明取两形态交集以免误判 src。
   'ta.pivothigh': {
     min: 2,
     max: 3,
     tuple: false,
+    scalars: [1, 2],
     fn: (a, c) => {
       const hasSrc = a.length === 3;
       const src = hasSrc ? a[0] : (sourceSeries(c.bars, 'high') as S);
@@ -107,6 +142,7 @@ export const FNS_MOMENTUM: Record<string, FnDef> = {
     min: 2,
     max: 3,
     tuple: false,
+    scalars: [1, 2],
     fn: (a, c) => {
       const hasSrc = a.length === 3;
       const src = hasSrc ? a[0] : (sourceSeries(c.bars, 'low') as S);

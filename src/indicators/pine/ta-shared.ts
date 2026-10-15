@@ -17,17 +17,34 @@ export interface FnDef {
   max: number;
   /** 返回元组（须配合 [a, b, ...] 解构赋值使用） */
   tuple: boolean;
+  /**
+   * 必须为常量序列的实参位置（周期/长度/倍数等，按下标计，缺省实参跳过）。
+   * 须与 fn 内 intArg/scalar 实际读取的位置一致——校验侧（validator.ts 周期位规则）
+   * 与运行期侧（scalar()）共用这一份声明；一致性由
+   * tests/unit/pine-scalar-args.test.ts 逐条机械核对（声明位必须真的被 fn 读到并抛错）。
+   * 位置随实参个数移动的函数只声明「两种形态都成立」的位（如 ta.pivothigh 声明 [1,2]，
+   * 2 参形态的 left 位由运行期 scalar() 兜底）。
+   */
+  scalars?: readonly number[];
   fn: (args: S[], ctx: TaCtx) => S | S[];
 }
 
 export const undef = (n: number): S => new Array<number | undefined>(n).fill(undefined);
 
-/** 取标量参数：对应实参序列最后一个元素必须为数值（常量序列） */
+/**
+ * 取标量参数：对应实参必须是常量序列（各 bar 同值）。
+ * 旧行为只看末值，于是「周期位传序列」会静默取合成/实盘窗口的最后一根 bar 的值当周期——
+ * 编译期 dry-run 用探针 K 线，末值恰好是个正整数就过关，指标按一个用户没写过的周期出图。
+ * 现整个序列逐元素比对，非常量即抛错：编译期 dry-run 会把它转成可见错误（三期-D3b）。
+ */
 export function scalar(args: S[], fnName: string, idx: number): number {
   const a = args[idx];
   const v = a?.[a.length - 1];
   if (typeof v !== 'number' || !Number.isFinite(v)) {
     throw new Error(`「${fnName}」第 ${idx + 1} 个参数需为常量`);
+  }
+  if (a.some((w) => w !== v)) {
+    throw new Error(`「${fnName}」第 ${idx + 1} 个参数需为常量序列，不能是逐 bar 变化的序列`);
   }
   return v;
 }

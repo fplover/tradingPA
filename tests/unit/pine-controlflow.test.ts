@@ -152,8 +152,9 @@ describe('Pine 绘图指令：hline / bgcolor / barcolor', () => {
 
 describe('Pine 运行期错误前置（AC-B2：不穿透渲染循环）', () => {
   it('运行期抛错脚本 → 编译期 dry-run 拦截，def=null', () => {
-    // ta.sma(close,3)/0 → undefined 序列；作为周期再传入 ta.sma → 运行期抛错
-    const r = compilePine('n = ta.sma(close, 3) / 0\nplot(ta.sma(close, n))', 'test');
+    // ta.sma(close,3)/0 → undefined 序列；经用户函数形参传入 ta.sma 周期位（静态校验不下钻函数体，
+    // 见 pine-scalar-args.test.ts）→ 运行期 scalar() 抛错
+    const r = compilePine('n = ta.sma(close, 3) / 0\ns(x) =>\n    ta.sma(close, x)\nplot(s(n))', 'test');
     expect(r.def).toBeNull();
     expect(r.errors[0].message).toContain('运行期校验失败');
     expect(r.errors[0].message).toContain('常量');

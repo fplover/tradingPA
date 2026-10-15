@@ -112,8 +112,15 @@ describe('P2-A③ alertcondition 编译期注册', () => {
 
   it('运行期错误脚本 dry-run 前置拦截，不注册', () => {
     const id = 'pine-alert-rt';
+    // 周期位经用户函数形参传入（静态校验不下钻函数体），/0 产生的 undefined 序列由运行期 scalar() 抛错
     const r = compilePine(
-      ['n = ta.sma(close, 3) / 0', 'plot(close)', 'alertcondition(ta.sma(close, n) > 1, title="x")'].join('\n'),
+      [
+        'n = ta.sma(close, 3) / 0',
+        's(x) =>',
+        '    ta.sma(close, x)',
+        'plot(close)',
+        'alertcondition(s(n) > 1, title="x")',
+      ].join('\n'),
       id,
     );
     expect(r.def).toBeNull();
