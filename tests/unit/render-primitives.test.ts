@@ -7,6 +7,7 @@ import { theme, TV_FONT } from '@/engine/theme';
 import type { Bar } from '@/types/market';
 import type { Drawing, DrawingPoint } from '@/engine/drawing/types';
 import { drawCandles } from '@/engine/renderer/drawSeries';
+import { AXIS_HEIGHT, AXIS_WIDTH } from '@/engine/renderer/chartPanes';
 import {
   drawGrid,
   drawPriceAxis,
@@ -170,7 +171,7 @@ describe('drawAxes', () => {
   it('drawPriceAxis：轴底色/轴线/右对齐刻度文本位置符合 TV 规格', () => {
     const { ctx, priceScale, geo } = fixture();
     drawPriceAxis(asCtx(ctx), priceScale, 2, geo);
-    expect(hasCall(ctx, 'fillRect', [W, 0, 64, H])).toBe(true); // 轴背景
+    expect(hasCall(ctx, 'fillRect', [W, 0, AXIS_WIDTH, H])).toBe(true); // 轴背景
     expect(propSets(ctx, 'fillStyle')).toContain(theme.background);
     expect(hasPair(ctx, 'moveTo', [W + 0.5, 0], 'lineTo', [W + 0.5, H])).toBe(true);
     const tick = priceScale.ticks(6)[0];
@@ -190,11 +191,11 @@ describe('drawAxes', () => {
   it('drawTimeAxis：底栏 24px + 标签与垂直网格同一锚点，仅标注有 K 线处', () => {
     const { ctx, series, viewport, geo } = fixture();
     drawTimeAxis(asCtx(ctx), series, viewport, geo);
-    expect(hasCall(ctx, 'fillRect', [0, H, W, 24])).toBe(true);
+    expect(hasCall(ctx, 'fillRect', [0, H, W, AXIS_HEIGHT])).toBe(true);
     expect(hasPair(ctx, 'moveTo', [0, H + 0.5], 'lineTo', [W, H + 0.5])).toBe(true);
     // spacing=8 → step=10；first=-46.5 → 起点 -50；可见且 in [30,430] 的只有 bar0（x=372）
     expect(fillTexts(ctx)).toEqual(['09:30']);
-    expect(hasCall(ctx, 'fillText', ['09:30', 372, H + 12])).toBe(true);
+    expect(hasCall(ctx, 'fillText', ['09:30', 372, H + AXIS_HEIGHT / 2])).toBe(true);
     expect(propSets(ctx, 'textAlign')).toContain('center');
   });
 

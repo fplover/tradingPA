@@ -7,7 +7,7 @@ import { Crosshair } from '@/engine/crosshair/Crosshair';
 import { CloseCountdown } from '@/engine/countdown';
 import { PriceScale } from '@/engine/scale/PriceScale';
 import { BarSeries } from '@/data/BarSeries';
-import { chartAreaOffsetX, chartAreaWidth } from '@/engine/renderer/chartPanes';
+import { AXIS_HEIGHT, AXIS_WIDTH, chartAreaOffsetX, chartAreaWidth } from '@/engine/renderer/chartPanes';
 import { decideCursor } from '@/engine/renderer/cursor';
 import { drawCrosshair } from '@/engine/renderer/crosshairOverlay';
 import { drawPriceAxis, drawTimeAxis } from '@/engine/renderer/drawAxes';
@@ -26,9 +26,10 @@ const T0 = new Date(2024, 0, 8, 9, 30, 0).getTime();
 const IV = 60_000;
 const CANVAS_W = 1280;
 const CANVAS_H = 800;
-const AXIS_W = 64;
+/** 轴几何取引擎常量（三期-B5：测试不再自带一份 64 / 24，否则引擎漂移测试照绿） */
+const AXIS_W = AXIS_WIDTH;
 const CHART_W = CANVAS_W - AXIS_W; // 1216（right/left 图表区宽）
-const CHART_H = CANVAS_H - 24; // 776（主面板高）
+const CHART_H = CANVAS_H - AXIS_HEIGHT; // 776（主面板高）
 const BAR_COUNT = 600;
 
 /** 600 根确定性 K 线（与视觉回归 harness 同构的固定序列） */
@@ -251,10 +252,10 @@ describe('drawTimeAxis：轴侧与 12 小时制接线', () => {
   it('left：时间轴条右移一个轴宽（画布坐标）；right 保持原几何', () => {
     const c = createMockCtx();
     drawTimeAxis(asCtx(c), series(), viewport(), { chartW: CHART_W, chartH: CHART_H }, 'left');
-    expect(callsOf(c, 'fillRect')).toContainEqual([AXIS_W, CHART_H, CHART_W, 24]);
+    expect(callsOf(c, 'fillRect')).toContainEqual([AXIS_W, CHART_H, CHART_W, AXIS_HEIGHT]);
     const c2 = createMockCtx();
     drawTimeAxis(asCtx(c2), series(), viewport(), { chartW: CHART_W, chartH: CHART_H });
-    expect(callsOf(c2, 'fillRect')).toContainEqual([0, CHART_H, CHART_W, 24]);
+    expect(callsOf(c2, 'fillRect')).toContainEqual([0, CHART_H, CHART_W, AXIS_HEIGHT]);
   });
 
   it('hour12：日内标签透传为 H:mm AM/PM', () => {

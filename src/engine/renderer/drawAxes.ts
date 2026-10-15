@@ -6,7 +6,7 @@ import type { PriceScale } from '../scale/PriceScale';
 import { theme, TV_FONT } from '../theme';
 import type { DrawGeometry } from './drawSeries';
 import { PALETTE } from '@/engine/palette';
-import { AXIS_WIDTH, chartAreaOffsetX, type PriceAxisPos } from './chartPanes';
+import { AXIS_HEIGHT, AXIS_WIDTH, chartAreaOffsetX, type PriceAxisPos } from './chartPanes';
 
 /** 网格模式：TV 图表设置「画布」页四态 */
 export type GridMode = 'none' | 'horizontal' | 'vertical' | 'both';
@@ -52,8 +52,10 @@ export function drawGrid(
 
 /** 紧凑数字格式见 @/data/format（画布与 UI 共用） */
 
-/** 价格轴文字距轴右缘的内缩（TV 规格） */
-const AXIS_TEXT_INSET = 58;
+/** 价格轴文字与轴内缘的呼吸（TV 规格） */
+const AXIS_TEXT_BREATH = 6;
+/** 右轴文字基线 x 距轴条左缘：轴宽 − 呼吸（左轴直接用呼吸，二者同一条约束） */
+const AXIS_TEXT_INSET = AXIS_WIDTH - AXIS_TEXT_BREATH;
 
 /** 价格轴条本地 x：右轴 = 图表区右缘，左轴 = 图表区左边界左侧一个轴宽
  *  （PaneRenderer 已按轴侧 translate，二者均落位到画布对应边缘） */
@@ -83,15 +85,21 @@ export function drawPriceAxis(
   ctx.fillStyle = theme.axisText;
   ctx.font = `11px ${TV_FONT}`;
   // TV 价格轴标签贴轴内侧（alignLabels 默认 right）：右轴右对齐贴轴右缘、
-  // 左轴左对齐贴轴左缘，各留 6px 呼吸
+  // 左轴左对齐贴轴左缘，两枝各留一条呼吸（AXIS_TEXT_BREATH / 轴宽减去它）
   ctx.textAlign = pos === 'left' ? 'left' : 'right';
   ctx.textBaseline = 'middle';
-  const textX = pos === 'left' ? axisX + 6 : axisX + AXIS_TEXT_INSET;
+  const textX = pos === 'left' ? axisX + AXIS_TEXT_BREATH : axisX + AXIS_TEXT_INSET;
+  // ticks(6) 的 6 是刻度条数（PriceScale 的 targetCount 默认值），与文字呼吸 6 不同义，勿合并
   for (const price of priceScale.ticks(6)) {
     const y = priceScale.priceToY(price);
     if (y < 10 || y > geo.chartH - 2) continue;
     ctx.fillText(compact ? formatCompact(price) : priceScale.toLabel(price, decimals), textX, y);
   }
+}
+
+/** 时间轴条内的文字基线（条高 AXIS_HEIGHT，11px 字取半高处） */
+function timeAxisMidY(top: number): number {
+  return top + AXIS_HEIGHT / 2;
 }
 
 export function drawTimeAxis(
@@ -106,7 +114,7 @@ export function drawTimeAxis(
   // 轴在左：时间轴随图表区右移一个轴宽（画布坐标）；右/无轴 = 0
   const x0 = chartAreaOffsetX(pos);
   ctx.fillStyle = theme.background;
-  ctx.fillRect(x0, top, geo.chartW, 24);
+  ctx.fillRect(x0, top, geo.chartW, AXIS_HEIGHT);
   ctx.strokeStyle = theme.axisLine;
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -135,7 +143,7 @@ export function drawTimeAxis(
     const year = tzDate(bar.time, display.tzOffsetMinutes).getUTCFullYear();
     const showYear = lastLabeledYear !== -1 && year !== lastLabeledYear;
     lastLabeledYear = year;
-    ctx.fillText(formatTime(bar.time, spacing, showYear, display), x0 + lx, top + 12);
+    ctx.fillText(formatTime(bar.time, spacing, showYear, display), x0 + lx, timeAxisMidY(top));
   }
 }
 
@@ -188,6 +196,7 @@ export function drawLastPrice(
 
   const text = priceScale.toLabel(last.close, decimals);
   ctx.font = `11px ${TV_FONT}`;
+  // 58 = 徽章最小宽，与价格轴文字内缩同值纯属巧合，不是同一条约束
   const w = Math.max(58, ctx.measureText(text).width + 12);
   const h = 18;
   const by = Math.min(Math.max(y - h / 2, 1), geo.chartH - h - 1);

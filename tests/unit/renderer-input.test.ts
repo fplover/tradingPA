@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { ChartRenderer } from '@/engine/renderer/ChartRenderer';
+import { AXIS_WIDTH } from '@/engine/renderer/chartPanes';
 import type { Bar } from '@/types/market';
 import { createMockCtx, asCtx, callsOf, fillTexts, hasCall, type MockCtx } from './helpers/mock-ctx';
 
@@ -15,7 +16,7 @@ const T0 = new Date(2024, 0, 8, 9, 30, 0).getTime();
 const IV = 60_000;
 const CANVAS_W = 1280;
 const CANVAS_H = 800;
-const AXIS_W = 64;
+const AXIS_W = AXIS_WIDTH;
 
 /** 600 根确定性 K 线（与视觉回归 harness 同构的固定序列） */
 function makeBars(n = 600): Bar[] {
