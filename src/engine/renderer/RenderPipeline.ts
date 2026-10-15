@@ -199,7 +199,13 @@ export class RenderPipeline {
     const mainPane = st.panes[0];
     // 回放中图例与最新价都必须跟随回放游标（st.currentIndex / st.currentBar），
     // 取真实末柱会泄露「未来」价格——见 ChartState.currentIndex 注释。
-    const legendIndex = this.host.crosshair.visible && hoveredBar ? this.host.crosshair.barIndex : st.currentIndex;
+    // 悬停分支同样要钳：十字光标能移到游标之右，那条 bar 尚未发生。与数据窗口链路
+    // （dataWindow.ts 的 `replayIndex === null ? raw : Math.min(raw, replayIndex)`）同口径，
+    // 否则两条读数链路一个防泄露、一个泄露。非回放时 st.currentIndex = 末柱下标，钳制为恒等。
+    const hoverIndex = this.host.crosshair.barIndex;
+    const legendIndex =
+      this.host.crosshair.visible && hoveredBar ? Math.min(hoverIndex, st.currentIndex) : st.currentIndex;
+    const legendBar = st.displaySeries.barAt(legendIndex) ?? st.currentBar;
     if (!st.hideStudies && mainPane.indicators.length > 0 && legendIndex >= 0) {
       const bars = st.bars();
       for (const inst of mainPane.indicators) {
@@ -231,7 +237,7 @@ export class RenderPipeline {
     ctx.translate(x0, 0); // 图例块随图表区偏移（rects 仍为图表区局部坐标，输入层同口径判定）
     drawLegendBlock(
       ctx,
-      hoveredBar ?? st.currentBar,
+      legendBar,
       { ...legend, marketOpen: legend.market ? isMarketOpen(legend.market) : undefined },
       legendIndicators,
       st.legendOptions,
