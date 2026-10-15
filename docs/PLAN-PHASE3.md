@@ -359,13 +359,26 @@ D. **一项范围裁决（待用户定，不擅断）**：数据窗口的「画�
 **⑧ 门禁（2026-10-14 实跑）**：`npm run verify` 绿（typecheck 0 错 / oxlint **386 文件 0 错 0 警告** / format:check 绿 / 单测 **90 文件 1446 例**，C1 后 +69）；`npm run test:e2e -- --retries=0` **67 例全过（9 个 spec 文件）、27 面黄金截图零 diff**（含 ㉒，用于 ② 的 ray 抽件中性证明）；`npm run build` 应用块 **514.94 kB / gzip 147.28 kB**（相对 C1 基线 508.26 kB 增 **+6.68 kB 原始 / +1.95 kB gzip**；合计 gzip 260.11 kB），560 阈值内无警告。**gzip ≤150 kB 全期口径仍在内，但裕度由 C1 的 4.67 kB 收到 2.72 kB**——已在 §1 量化验收口径与 README 同步登记。
 
 
-### 三期-D · 指标与画线精度（3–5 人日，估）
+### 三期-D · 指标与画线精度（3–5 人日，估 → **2026-10-15 D-0 复算：已知残留 0.75–2.25 人日**（螺旋文档 0.5 + Pine 边界文案 0.25 + 抽样脚本按需 0–1.5），**Alligator 一行的工时挂起待裁**，不在原 3–5 内计价）
 
 | 项 | 现状 | 动作 | 人日 |
 |---|---|---|---|
-| Alligator 未来位移 | `src/indicators/pine/trend-extended.ts:9` 头注：渲染层不支持未来位移，故不做 TV 前移偏移 | 要么补渲染层偏移能力，要么把「不做」写进对齐口径文档 | 2–3 |
-| 斐波那契螺旋口径 | L31 已 RESOLVED，采用**像素空间**采样（r=r0·e^(bθ)，b=lnφ/(π/2)，240 步） | 维持；仅在文档补「世界坐标刻度不对称故不迁移」的结论 | 0.5 |
-| Pine 兼容率机械验证 | L33 已 RESOLVED：以金标准用例 + 子集边界文档兜底，无离线机械验证途径 | 维持；若三期-D 有富余则加抽样脚本 | 0–1.5 |
+| Alligator 未来位移 | `src/indicators/pine/trend-extended.ts:9` 头注：渲染层不支持未来位移，故不做 TV 前移偏移。**2026-10-15 D-0 勘正 ①：路径错——实际是 `src/indicators/builtin/trend-extended.ts:9`（`ls src/indicators/pine/` 无此文件；该头注的文字本身属实）。勘正 ②：前提成立，但本行漏了第三条路，见下方 D-0 核查 A** | 要么补渲染层偏移能力，要么把「不做」写进对齐口径文档 **→ 增列第三选项（compute 侧前移），三选一待裁决** | ~~2–3~~ → **待裁后重估**（实测：绘制层路线的 2–3 不是下限也不是上限，成本中心在窗口契约，见 D-0 A） |
+| 斐波那契螺旋口径 | L31 已 RESOLVED，采用**像素空间**采样（r=r0·e^(bθ)，b=lnφ/(π/2)，240 步）。**2026-10-15 D-0 复核：常量属实且落点更准**——`src/engine/drawing/fibTailMath.ts:18` `GOLDEN_RATIO`、`:21` `SPIRAL_GROWTH = Math.log(GOLDEN_RATIO) / (Math.PI / 2)`、`:24` `SPIRAL_TURNS = 2.5`、`:47` `spiralSamples(..., steps = 240)`；「世界坐标的 time/price 轴刻度不对称」的结论**已在该文件头注 `:8-9` 写明**，缺的只是对齐口径文档那一面：`docs/SPEC-TV-ALIGNMENT.md` 对「螺旋」**零提及**（grep 无命中） | 维持；仅在文档补「世界坐标刻度不对称故不迁移」的结论 **→ 落点确认为 SPEC-TV-ALIGNMENT.md，本行残留成立** | 0.5 |
+| Pine 兼容率机械验证 | L33 已 RESOLVED：以金标准用例 + 子集边界文档兜底，无离线机械验证途径。**2026-10-15 D-0 勘正：「兜底」的一半不存在**。「金标准用例」成立（`tests/unit/pine-*.test.ts` 实有 12 个文件，`pine-ta.test.ts` 180 行分五族 describe）；但「子集边界文档」经取证**只是审计文档里的建议而非已交付物**——`AUDIT-ARCHITECTURE-REFACTOR.md:28` 写的止损是「在编辑器面板明示『Pine v5 子集』边界」，而 `src/features/pine/PineEditorPanel.tsx` 实测对「子集 / 不支持 / 支持范围 / 限制」**四类关键词零命中** ⇒ 该声明从未落地到产品面 | ~~维持；若三期-D 有富余则加抽样脚本~~ → **残留重排为两件事**：①（廉价、且是审计原话要求的止损）在 Pine 编辑器补「v5 子集边界」文案，把 `AUDIT:160` 的 `numArg` 取序列末值、`AUDIT:162` 的多行 plot 解析失败这两条已核实的静默差异对用户说清；②抽样脚本仍按需，不在本批默认范围 | ①0.25 + ②0–1.5 |
+
+**D-0 开工前前提核查（2026-10-15，只核前提不动代码；本批按 C2-0 的同一纪律执行）**
+
+A. **Alligator 未来位移——「二选一」的框架不成立，实测有第三条路，且它的成本中心不在渲染层**：
+- 前提核为**事实**：`futureShift / shiftBars / plotOffset / xOffset / barOffset` 在 `src/engine/**` 与 `src/indicators/**` grep **零命中**；`IndicatorPlot`（`src/indicators/core/types.ts:33-37`）只有 `key/label/style` 三字段，无位移位。故 `trend-extended.ts:9` 头注「渲染层不支持未来位移」属实。
+- 第三条路 = **在 compute 侧前移序列**，不动渲染层。可行性有一半已被现存代码证明：`core/math.ts:96-114` 的 `wilder` 返回 `Array<number | undefined>`（前 `period-1` 项为 undefined），而 `renderer/drawIndicator.ts:109-129` 的 line 分支遇到 undefined 是 `pen = false` **抬笔断开**、不是补 0 —— 所以「前置 k 个 undefined」渲染出来就是「线晚 k 根起步」，与 TV 的观感同型；`Alligator.compute`（`:26-32`）本身已是纯数组变换，加一层前移是 3–5 行。
+- **但这条路的真实代价在窗口契约，不在那 3–5 行**：`core/instance.ts:163` `ctxFrom = max(0, from - lookback)`、`:164` `ctx = bars.slice(ctxFrom, to + 1)`，消费方一律按 `values[i - ctxFrom]` 取值（`drawIndicator.ts:116` 绘制、`:150` 副图自动缩放 `indicatorRange`），即**返回数组的下标必须自 ctxFrom 起与 bar 一一对齐**。在 compute 里 prepend 会让整段数组相对 ctxFrom 右移 k，等于把「lookback 前缀」与「可见窗」的映射改掉；而图例走 `(i-50, i)`、绘制走 `(from, to)` 两个不同窗口，**同一根 bar 可能在两个读数口给出两个数**——这正是 2026-10-08 记录在案的累积型指标缺陷同型（`SPEC-TV-ALIGNMENT` 第四轮 ①）。所以：`lookback` 若为 0，compute 路线确实是 0.25 人日；Alligator 现为 `lookback: 600`（`trend-extended.ts:15`），compute 路线必须先解决对齐契约，工时不该按 0.25 报。
+- 一条**外部规格**风险，本仓无法自证：TV 的 jaw/teeth/lips 位移量分别是 8/5/3 根，来源是外部知识而非本仓任何文件；本仓没有可对照的 TV 实例，也没有钉住这三个数的用例。**若采纳做，规格来源与用例都得新建**，否则「对齐 TV」这句话没有判据。
+
+B. **待裁决（D 批次唯一的产品判断，不擅断）**，三选一：① 补渲染层位移能力（改 `IndicatorPlot` + 绘制 + 命中/读数三处，additive 面最大）；② compute 侧前移（先解决 A 段的窗口对齐契约，避免造出第二套「图例 vs 绘制」读数）；③ 明确「不做」，把该偏离写进 `docs/SPEC-TV-ALIGNMENT.md` 的对齐口径（与该文档「明确不做」表同源落档，0.25 人日内可完）。**②③ 都要求先把 TV 位移量的规格写死**，否则②无法验收、③无法说明偏离的是什么。
+- 我的倾向：**③**。理由：本仓的对齐判据是 27 面黄金截图 + 单测，而①②都要新增一个「外部规格」才能验收；为一条指标线的观感差去改指标窗口契约，回归面（所有指标的图例/绘制双窗一致性）明显大于收益。
+
+C. **D-2 / D-3 的核查结论已就地写进上表**（D-2 前提全部为真、残留确为文档补写；D-3 前提的一半不存在——「子集边界」只存在于审计文档的建议句，`PineEditorPanel.tsx` 四类关键词零命中）。D-3 的 ① 不依赖任何裁决，可与 B 段并行。
 
 ### 三期-E · 回放与实盘口径（2–3 人日）——**不排期**（D6=收敛，2026-10-12）
 
