@@ -6,7 +6,10 @@ import { PALETTE } from '@/engine/palette';
 const num = (v: unknown) => Number(v);
 const hl2 = (bars: readonly { high: number; low: number }[]) => bars.map((b) => (b.high + b.low) / 2);
 
-/** Alligator 鳄鱼线（jaw/teeth/lips = SMMA(hl2, 13/8/5)；渲染层不支持未来位移，故不做 TV 前移偏移） */
+/** Alligator 鳄鱼线（jaw/teeth/lips = SMMA(hl2, 13/8/5)）。
+ *  与 TV 的已知偏差：TV 把三线分别前移（jaw 8 / teeth 5 / lips 3 根），本仓不前移，
+ *  故同一数据下与 TV 在时间轴上整体差 k 根。2026-10-15 三期-D1 裁决「不做」并登记于
+ *  docs/SPEC-TV-ALIGNMENT.md §9；位移量在本仓无对照实例与用例，补实现缺验收判据。 */
 export const Alligator: IndicatorDef = {
   id: 'alligator',
   name: 'Alligator 鳄鱼线',
