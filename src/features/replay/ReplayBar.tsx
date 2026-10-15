@@ -11,7 +11,7 @@ import {
   Shuffle,
   X,
 } from 'lucide-react';
-import { nextAutoplayIndex, useReplayStore } from '@/store/replayStore';
+import { nextAutoplayIndex, replayTickMs, REPLAY_SPEEDS, useReplayStore } from '@/store/replayStore';
 import { useTradeSettingsStore } from '@/store/tradeSettingsStore';
 import { useTradeStore } from '@/features/trading/tradeStore';
 import { Menu, MenuItem } from '@/ui/primitives';
@@ -30,9 +30,6 @@ import {
   datePopStyle,
   hintStyle,
 } from './replayBarStyles';
-
-const SPEEDS = [1, 2, 4];
-const BASE_INTERVAL = 300;
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
 
@@ -88,7 +85,7 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
         return;
       }
       setIndex(next);
-    }, BASE_INTERVAL / speed);
+    }, replayTickMs(speed));
     return () => window.clearInterval(id);
   }, [playing, index, speed, barCount, setIndex, setPlaying]);
 
@@ -204,7 +201,7 @@ export function ReplayBar({ barCount, intervalLabel, price, time, onSeekToTime }
               onChange={(e) => setSpeed(Number(e.target.value))}
               title="播放倍速"
             >
-              {SPEEDS.map((s) => (
+              {REPLAY_SPEEDS.map((s) => (
                 <option key={s} value={s}>
                   {s}x
                 </option>

@@ -11,7 +11,7 @@ interface ReplayStore {
   /** 复盘位置（bar index）；null = 未开启 */
   index: number | null;
   playing: boolean;
-  /** 播放倍速 */
+  /** 播放倍速；恒为 `REPLAY_SPEEDS` 档位值（`setSpeed` 拒绝越界档） */
   speed: number;
   /** 选择K线模式：开启后图表点击落点即为复盘位置 */
   selectMode: boolean;
@@ -48,6 +48,26 @@ export function nextAutoplayIndex(index: number, barCount: number): number | nul
   return next >= barCount ? null : next;
 }
 
+/** 1x 档的 tick 间隔（毫秒） */
+const BASE_INTERVAL_MS = 300;
+
+/**
+ * 倍速档位表——下拉选项与 tick 换算**同源**于此。
+ * 原 `SPEEDS`/`BASE_INTERVAL` 各自留在 ReplayBar 组件文件里，档位与换算分处两地，
+ * 与三期-B5 收敛的「同一真值另存一份」同类；上界取 8x（间隔 37.5ms）。
+ */
+export const REPLAY_SPEEDS = [1, 2, 4, 8] as const;
+
+/** 档位校验的唯一落点：越界值不进 store，故 state.speed 恒为档位值 */
+function isSpeed(v: number): boolean {
+  return (REPLAY_SPEEDS as readonly number[]).includes(v);
+}
+
+/** 倍速 → 自动播放 tick 间隔（毫秒） */
+export function replayTickMs(speed: number): number {
+  return BASE_INTERVAL_MS / speed;
+}
+
 export const useReplayStore = create<ReplayStore>((set) => ({
   index: null,
   playing: false,
@@ -56,7 +76,10 @@ export const useReplayStore = create<ReplayStore>((set) => ({
   barPos: loadBarPos(),
   setIndex: (index) => set({ index }),
   setPlaying: (playing) => set({ playing }),
-  setSpeed: (speed) => set({ speed }),
+  setSpeed: (speed) => {
+    if (!isSpeed(speed)) return;
+    set({ speed });
+  },
   setSelectMode: (selectMode) => set({ selectMode }),
   setBarPos: (barPos) => {
     try {
