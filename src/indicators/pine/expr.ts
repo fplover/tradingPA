@@ -27,6 +27,14 @@ class ExprParser {
     return false;
   }
 
+  /** 表达式解析后是否仍有残留记号（子集不支持的写法在此显式失败，如 x[n] 历史引用） */
+  hasRest(): boolean {
+    return this.pos < this.toks.length;
+  }
+  restText(): string {
+    return this.toks[this.pos]?.v ?? '';
+  }
+
   parseExpr(): Expr {
     return this.parseOr();
   }
@@ -125,5 +133,9 @@ class ExprParser {
 }
 
 export function parseExprSrc(src: string): Expr {
-  return new ExprParser(tokenize(src)).parseExpr();
+  const p = new ExprParser(tokenize(src));
+  const e = p.parseExpr();
+  if (p.hasRest())
+    throw new Error(`「${p.restText()}」之后的内容无法解析（子集不支持该语法，如历史引用 x[n]、再赋值 :=）`);
+  return e;
 }

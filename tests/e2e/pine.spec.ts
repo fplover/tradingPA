@@ -30,6 +30,16 @@ test('Pine 编辑器编译自定义指标', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Pine 编辑器' }).click();
   await expect(page.getByLabel('Pine 脚本源码')).toBeVisible();
+
+  // 子集边界文案（三期-D3①）：徽标悬浮说明必须列出实测边界，避免用户按完整 Pine 写脚本
+  const badge = page.getByLabel('Pine v5 子集边界说明');
+  await expect(badge).toBeVisible();
+  await expect(badge).toHaveText('Pine v5 子集');
+  const tooltip = await badge.getAttribute('title');
+  expect(tooltip).toContain('x[n]');
+  expect(tooltip).toContain('需为常量');
+  expect(tooltip).toContain('request.security');
+
   await page.getByRole('button', { name: /添加到图表/ }).click();
 
   // 指标已挂主图（图例为画布绘制，不在 DOM 中）：经引擎 listIndicators 验证

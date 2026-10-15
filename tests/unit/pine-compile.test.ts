@@ -240,6 +240,35 @@ describe('Pine 错误用例', () => {
     expect(r.errors[0].message).toContain('不支持的语句');
   });
 
+  it('历史引用 x[n] → 明错，不再静默忽略括号之后的内容', () => {
+    const r = compilePine('plot(close[1])', 'test');
+    expect(r.def).toBeNull();
+    expect(r.errors).toHaveLength(1);
+    expect(r.errors[0].line).toBe(1);
+    expect(r.errors[0].message).toContain('之后的内容无法解析');
+  });
+
+  it('再赋值 := 明错：顶层走「不支持的语句」，块内走残留记号守卫', () => {
+    const top = compilePine('x = 1\nx := x + 1\nplot(close)', 'test');
+    expect(top.def).toBeNull();
+    expect(top.errors[0].message).toBe('不支持的语句：x := x + 1');
+    const nested = compilePine('x = 1\nfor i = 0 to 2\n    x := x + 1\nplot(close)', 'test');
+    expect(nested.def).toBeNull();
+    expect(nested.errors[0].message).toContain('之后的内容无法解析');
+  });
+
+  it('函数返回值与元组尾缀的历史引用 → 明错', () => {
+    for (const src of ['plot(ta.sma(close, 2)[1])', '[a, b] = ta.macd(close, 2, 4, 3)[1]\nplot(a)']) {
+      const r = compilePine(src, 'test');
+      expect(r.def, src).toBeNull();
+      expect(r.errors[0].message, src).toContain('之后的内容无法解析');
+    }
+  });
+
+  it('正对照：无历史引用的等价写法仍编译通过', () => {
+    expect(compilePine('plot(ta.sma(close, 2))', 'test').errors).toEqual([]);
+  });
+
   it('无法识别的字符 → 报错且行号正确', () => {
     const r = compilePine('plot(close)\nplot(close @ 1)', 'test');
     expect(r.def).toBeNull();

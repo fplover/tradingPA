@@ -4,6 +4,23 @@ import { usePineStore, DRAFT_ID } from '@/store/pineStore';
 import { usePineRuntimeError } from './usePineRuntimeErrors';
 import { fontSize, icon, radius, space } from '@/ui/tokens';
 
+/**
+ * Pine v5 子集边界（三期-D3①）。每条均为编译器实测：命中即报错并给出行号，不存在静默忽略。
+ * 文案与 tests/unit/pine-compile.test.ts、tests/unit/pine-scalar-args.test.ts 的用例同源。
+ */
+const SUBSET_BOUNDARIES = [
+  '不支持历史引用 x[n] 与再赋值 :=（无逐 bar 状态回滚）',
+  '不支持三元 cond ? a : b；逻辑用 and / or / not',
+  '不支持 while（条件分支用 if / else，枚举用 switch，循环用 for）',
+  'plot / hline / bgcolor / plotshape / plotchar / alertcondition 必须写在顶层，不能放在 if / for 块内',
+  '周期与长度位实参需为常量（数字字面量、input.int 或常量变量），传逐 bar 序列即报错',
+  '函数仅注册表内 ta.* 与 math.*；request.security、table.*、label.*、input.string、syminfo.*、barmerge.* 等不支持',
+  'fill() / plotcandle / plotarea / alert() 不支持（绘图用 plot / plotshape / plotchar，警报用 alertcondition）',
+  'strategy.* 仅 entry / close / exit 骨架，不含完整回测撮合',
+];
+
+const subsetTooltip = `Pine v5 子集（非完整 Pine）：\n· ${SUBSET_BOUNDARIES.join('\n· ')}`;
+
 /** Pine 编辑器：TV 底部 dock 形态——编辑区 + 控制台，实时编译注册为指标 */
 export function PineEditorPanel() {
   const source = usePineStore((s) => s.editorSource);
@@ -43,6 +60,9 @@ export function PineEditorPanel() {
         }}
       >
         <span style={{ color: 'var(--text)', fontSize: fontSize.md, fontWeight: 600 }}>Pine 编辑器</span>
+        <span style={badgeStyle} title={subsetTooltip} aria-label="Pine v5 子集边界说明">
+          Pine v5 子集
+        </span>
         {draftName && <span style={{ color: 'var(--text-faint)', fontSize: fontSize.sm }}>· {draftName}</span>}
         <span style={{ flex: 1 }} />
         {scripts.length > 0 && (
@@ -179,6 +199,18 @@ const btnStyle: React.CSSProperties = {
   borderRadius: radius.sm,
   fontSize: fontSize.sm,
   cursor: 'pointer',
+  flexShrink: 0,
+};
+
+const badgeStyle: React.CSSProperties = {
+  alignSelf: 'center',
+  padding: `1px ${space.xs}px`,
+  background: 'var(--panel-2)',
+  color: 'var(--text-dim)',
+  border: '1px solid var(--border)',
+  borderRadius: radius.sm,
+  fontSize: fontSize.xs,
+  cursor: 'help',
   flexShrink: 0,
 };
 
