@@ -110,6 +110,13 @@ test('画线右键复制粘贴与锁定', async ({ page }) => {
     await canvas.click({ position: { x: 500, y: 300 } });
   }; // 两点工具放完即退出（stayMode 默认关），无需再点工具按钮
   const rightClickLine = () => canvas.click({ button: 'right', position: { x: 400, y: 250 } });
+  /** 经 DEV 调试句柄读画线条数（引擎真值，用来判定「两点是否落全」而非靠下游报错猜） */
+  const drawingCount = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __chartRenderer?: { listDrawings(): unknown[] } }).__chartRenderer?.listDrawings()
+          .length ?? -1,
+    );
 
   await placeTrendline();
 
@@ -136,16 +143,37 @@ test('画线右键复制粘贴与锁定', async ({ page }) => {
   // 多选整组复制：右键对象在多选集内时复制整组，而不是只复制它自己（锁 copyTarget 的分支）。
   // 刚放下的第二条已被 DrawingLayer.add 选中（:96），所以这里只需 Ctrl+点击把第一条并入 ——
   // 再 Ctrl+点击第二条会变成「取消选中」（toggle 语义），多选集退化成单条，粘贴只 +1。
-  // 坐标刻意留在「最后一根 bar 以左」的实数据区（x≤740）：画布宽会随右侧停靠栏折叠从 870 跳到 1190，
-  // 按画布宽推导的落点可能落到末根之后 —— 两点被 clamp 到同一时间，画线退化成竖线，右键便穿到图表菜单。
+  // **2026-10-15 取证（临时探针跑完即删；注意探针早先一轮用 page.mouse.move 采样，那是视口坐标，
+  // 比画线点击所用的画布相对坐标整体偏右 52px，先前「平台在绝对 x≈770」的读数是视口口径）**：
+  //   画布 bbox=(52,38,870,644) dpr=1；右侧停靠栏开→关使画布宽 870↔1190，但
+  //   getViewport() 在两态恒为 first=705.3 sp=8.00 ⇒ **x→bar 映射左锚定、与画布宽无关**，
+  //   多出的宽度全落在末柱之右的空白区；总 bar=801 且 12s 内固定 x 处 index 恒 787（无新 bar 追加、无滚动）。
+  //   cursorPrice 在 6.4s 内逐 800ms 采样零漂移 ⇒ live tick 抖动末柱不改主面板价域，y 不会漂。
+  //   末柱钳位起点 = (800−705.3)×8 ≈ 画布 x 758；旧写死的右端 740 距钳位仅 ≈2.2 根柱，
+  //   而 first 实测会在 704.3/705.3 间摆一栏（钳位随之移到 765/758）⇒ 安全带右端收到 700（距钳位 ≈7 根柱）。
+  //   左端 600 不动：它另需避开首次粘贴的副本（副本相对原线偏移 +3 栏 ≈24px，实测左移到 539 时
+  //   Ctrl+点击并入的是副本而非原线，多选集退化、整组粘贴变成 +1），右键落两点正中 (650,345)。
+  //   20 连跑（本用例 12× + 同流程探针 8×）右键均命中、行数均 5。
+  // 勘正：OPEN-DECISIONS 2026-10-14 那行记的成因是「两点被 clamp 到同一时间」，本轮按上表取证
+  //   **未能证实**——740 仍在钳位之左 2 根柱，且 x/y 映射与时间都稳定；失败样本的特征是「复制」
+  //   菜单项等满 30s 用例预算（30.7s 判超时），属前提未成立而非几何命中失败。故除右移安全带外，
+  //   另加两条点名前提的同步（工具已激活、画线已入库），让下一次真失败直接说出是哪一条。
   const placeSecond = async () => {
-    await page.getByRole('button', { name: '趋势线', exact: true }).click();
+    const b = (await canvas.boundingBox())!;
+    expect(b.width, '画布宽低于实测安全带下界，落点带需重新取证').toBeGreaterThanOrEqual(800);
+    const tool = page.getByRole('button', { name: '趋势线', exact: true });
+    const before = await drawingCount();
+    await tool.click();
+    // 两条同步都不改被测行为，只把「画线没落全」这种前提失败点名，而不是让它退化成下游
+    // 「复制」菜单项等满 30s 用例预算、从报错看不出是落点还是时序。
+    await expect(tool).toHaveAttribute('aria-pressed', 'true');
     await canvas.click({ position: { x: 600, y: 300 } });
-    await canvas.click({ position: { x: 740, y: 390 } });
+    await canvas.click({ position: { x: 700, y: 390 } });
+    await expect.poll(() => drawingCount(), { message: '第二条趋势线未入库（两点未落全）' }).toBe(before + 1);
   };
   await placeSecond();
   await canvas.click({ position: { x: 400, y: 250 }, modifiers: ['Control'] });
-  const rightClickSecond = () => canvas.click({ button: 'right', position: { x: 670, y: 345 } });
+  const rightClickSecond = () => canvas.click({ button: 'right', position: { x: 650, y: 345 } });
   await rightClickSecond();
   await page.getByRole('menuitem', { name: '复制', exact: true }).click();
   await rightClickSecond();
